@@ -25,7 +25,7 @@ TEXTS = {
     "reload.count": ("{count} Overlay(s) neu geladen.", "{count} overlay(s) reloaded."),
     "reload.none": ("Kein Overlay verbunden.", "No overlay connected."),
     "update.title": ("{app} {version} ist da", "{app} {version} is available"),
-    "update.text": ("Klicke hier, um die neue Version herunterzuladen.", "Click here to download the new version."),
+    "update.text": ("Klicke hier – unter „Update“ installierst du sie mit einem Klick.", "Click here – install it with one click under “Update”."),
     # closing the window (system dialog, only when the control page does not answer)
     "close.title": ("{app} schließen?", "Close {app}?"),
     "close.text": ("Bei „Nur Fenster schließen“ laufen die Overlays in OBS weiter.",

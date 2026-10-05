@@ -190,7 +190,25 @@ In der Szene **Ingame** weichen alle Positionen dem Spiel-HUD aus (Minimap, Scor
 ## App-Einstellungen (⚙)
 
 Alles, was nur die App betrifft: **Sprache**, **Verbindung zu OBS**, **Musik (Tuna)**, **Aussehen** (Dunkel, Hell, wie Windows),
-Größe der Oberfläche, Anordnung zurücksetzen und App beenden. Alles rund um CS bleibt in den Reitern.
+Größe der Oberfläche, Anordnung zurücksetzen, **Update** und App beenden. Alles rund um CS bleibt in den Reitern.
+
+## Update (ab 2.3)
+
+Unter ⚙ → **Update**: „Nach Updates suchen“ fragt GitHub, ob es eine neuere Version gibt. Gibt es eine, aktualisiert
+**„Jetzt aktualisieren“** die App mit einem Klick: Sie lädt die passende Datei, vergleicht sie mit der Prüfsumme von
+GitHub, beendet sich, setzt die neue Version ein und startet neu. Einstellungen, Bilder und Zugänge bleiben.
+
+| Installiert als | Update |
+|---|---|
+| Windows mit `…-Setup.exe` | automatisch (der Installer läuft unsichtbar) |
+| Linux AppImage | automatisch (die AppImage-Datei wird ersetzt) |
+| macOS (`.dmg`/`.zip`) | automatisch (die App im Programme-Ordner wird ersetzt) |
+| Windows portable, aus dem Quellcode | „Download-Seite öffnen“ – von Hand ersetzen |
+
+* **Bei jedem Start nach Updates suchen** (Standard: an) – findet die App eine neue Version, sagt sie es im Tray;
+  ein Klick darauf öffnet den Bereich Update.
+* Beim ersten Start nach einem Update steht dort „aktualisiert von v…“.
+* Nicht während einer laufenden Sendung aktualisieren: Die Overlays in OBS sind dabei kurz weg.
 
 ## Sprache · Language (ab 2.2)
 
@@ -264,8 +282,8 @@ Die macOS-App ist nur ad-hoc signiert (ohne Apple-Konto); die Beglaubigung durch
 * **Kaputte Dateien halten die App nicht auf:** Ist z. B. nach einem Stromausfall eine Datei im Datenordner beschädigt,
   legt die App sie als `….damaged` beiseite, startet mit Standardwerten und schreibt es ins Log.
 * **Vom PC geht nichts nach außen** außer dem Abholen der FACEIT-Match-Daten (nur Match-ID und dein API-Key) und – beim
-  Start der Desktop-App – der Frage an GitHub, ob es eine neuere Version gibt (nur die Versionsnummer wird abgerufen;
-  abschaltbar unter ⚙ → App). Gibt es eine, zeigt die App das im Tray und unter ⚙ → App an.
+  Start der Desktop-App – der Frage an GitHub, ob es eine neuere Version gibt (nur die Versionsliste wird abgerufen;
+  abschaltbar unter ⚙ → Update). Updates kommen nur aus den Releases dieses Projekts und nur mit passender Prüfsumme.
 * Das **OBS-Passwort** liegt ebenfalls im Schlüsselbund. Die Anmeldung bei OBS rechnet die App selbst aus, das Passwort
   steht nicht im Browser-Speicher der Steuerseite (ein altes wird beim ersten Start umgezogen).
 * Der **FACEIT-Schlüssel** sowie **Nutzer-ID und Key für DACH CS** liegen nur im Schlüsselbund des Systems – Windows:

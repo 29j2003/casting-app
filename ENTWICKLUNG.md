@@ -173,7 +173,7 @@ Die Dateien `web/<scene>.html` werden erzeugt – nie von Hand ändern.
 ### Eine neue Einstellung der App (gehört zur App, nicht zur Sendung)
 1. `casting_app/settings.py`: Standardwert in `DEFAULTS`, Prüfung in `update()`.
 2. Die Steuerseite liest und schreibt sie über `/api/app-settings`. Die Oberfläche steht unter ⚙ App-Einstellungen
-   in `web/control.html` (Abschnitt „App-Einstellungen (Update-Suche) …“).
+   in `web/control.html` (Abschnitt „App-Einstellungen (Sprache, Update-Suche)“).
 3. Soll Python sofort reagieren: `settings.listeners` (Beispiel: der Tray folgt der App-Sprache, `desktop/app.py`).
 
 ## Texte und Sprachen
@@ -328,6 +328,20 @@ deinstallieren).
   Danach signiert der Windows-Bau in zwei Runden: `build.py app` → `Casting-App.exe` signieren → `build.py package` →
   Installer signieren. Ohne Secret wird unsigniert gebaut. Laut den Bedingungen muss dann in der README stehen:
   „Free code signing provided by SignPath.io, certificate by SignPath Foundation“.
+
+## Update aus der App
+
+`casting_app/updater.py` (Server-Routen `/api/update`, `/api/update-check`, `/api/update-install`, Oberfläche unter
+⚙ → Update in `control.html`, Abschnitt „Update“):
+1. GitHub-API `releases/latest` → Version und die Datei für dieses System (`install_kind()`, `asset_suffix()`).
+   Nur Dateien unter `github.com/29j2003/casting-app/releases/download/` mit `sha256`-Prüfsumme der API werden angeboten.
+2. Download in den Datenordner (`update/`), SHA-256 prüfen – stimmt sie nicht, wird nichts installiert.
+3. `start_replacement()` startet einen kleinen Helfer (Windows: `.cmd`, sonst `/bin/sh`), der wartet, bis die App beendet
+   ist, die neue Version einsetzt (Setup `/S` · AppImage ersetzen · `.app` per `ditto` ersetzen) und sie startet.
+4. Beim nächsten Start notiert `update/installed-version.txt` „aktualisiert von …“ und alte Downloads werden gelöscht.
+
+Die Dateinamen der Releases (`Casting-App-<v>-Setup.exe`, `…-linux-x86_64.AppImage`, `…-mac-arm64.zip`, `…-mac-x64.zip`)
+kommen aus `tools/build.py` – wer sie ändert, muss `asset_suffix()` anpassen.
 
 ## Version und Release
 

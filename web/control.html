@@ -161,6 +161,8 @@
   .button.main { background: var(--accent); color: #151515; border-color: var(--accent); font-weight: 700; }
   .small { font-size: 12px; color: var(--muted); margin: 0; }
   .toggleSwitch { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--text); cursor: pointer; }
+  .update-progress { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin: 6px 0; }
+  .update-progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
   .toggleSwitch input { width: 17px; height: 17px; accent-color: var(--accent); }
 
   .themes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
@@ -1177,11 +1179,21 @@
           <button class="button" id="stepsAgain">„Erste Schritte" wieder zeigen</button>
         </div>
       </section>
+      <section id="updateArea"><h3>Update</h3>
+        <p class="small">Installiert: <b id="updateCurrent"></b> <span id="updateFrom"></span> · <span id="updateState">noch nicht gesucht</span></p>
+        <div class="update-progress" id="updateProgress" hidden><i></i></div>
+        <div class="line">
+          <button class="button" id="updateSearch">Nach Updates suchen</button>
+          <button class="button main" id="updateInstall" hidden>Jetzt aktualisieren</button>
+          <a class="button" id="updatePage" href="#" target="_blank" rel="noopener" hidden>Download-Seite öffnen</a>
+        </div>
+        <label class="toggleSwitch"><input type="checkbox" id="updateCheck"> Bei jedem Start nach Updates suchen (fragt nur die Versionsliste bei GitHub ab)</label>
+        <p class="small">Die neue Version wird von GitHub geladen, mit der Prüfsumme verglichen und installiert; die App startet danach neu.
+          Einstellungen, Bilder und Zugänge bleiben. Nicht während einer laufenden Sendung aktualisieren.</p>
+      </section>
       <section><h3>App</h3>
         <p class="small">Schließt du dieses Fenster, laufen verbundene OBS-Overlays weiter. Die App beendet sich von selbst, sobald auch OBS zu ist.
           Fenster wieder öffnen: die App-Datei erneut starten.</p>
-        <label class="toggleSwitch"><input type="checkbox" id="updateCheck"> Beim Start nach neuer Version suchen (fragt nur die Versionsnummer bei GitHub ab)</label>
-        <p class="small" id="updateHint" hidden></p>
         <button class="button" id="appQuit">App ganz beenden</button>
       
         <div class="line"><button class="button" data-folder="data">Daten &amp; Log öffnen</button></div>
@@ -4245,21 +4257,45 @@ async function logDraw() {
 setInterval(logDraw, 2000);
 $("obsNew2").onclick = () => obsOverlaysNewLoad(true);
 $("appVersion").textContent = "v" + K.VERSION;
-// App-Einstellungen (Update-Suche) und Hinweis auf eine neue Version
+// App-Einstellungen (Sprache, Update-Suche)
 async function appSettingsFetch() {
-  if (!K.SERVER) { $("updateCheck").closest("label").hidden = true; return; }
+  if (!K.SERVER) { $("updateArea").hidden = true; return; }
   try {
     const e = await (await fetch("/api/app-settings", { cache: "no-store" })).json();
     $("updateCheck").checked = e.check_for_updates !== false;
     CastI18n.follow(e.app_language);
-    const u = e.update;
-    $("updateHint").hidden = !u;
-    if (u) {
-      $("updateHint").innerHTML = `Neue Version <b>${esc(u.version)}</b> verfügbar` + (u.url ? ` – <a href="${esc(u.url)}" target="_blank" rel="noopener">herunterladen</a>` : "");
-      $("appVersion").textContent = "v" + K.VERSION + " · Update " + u.version;
-    }
+    updateDraw(e.update);
   } catch (err) {}
 }
+/* ---------- Update (⚙ App-Einstellungen → Update) ----------
+   Der Server fragt GitHub, lädt die passende Datei, prüft sie und installiert (casting_app/updater.py).
+   Die Seite zeigt nur den Stand (GET /api/update) und fragt während Suche/Download jede Sekunde nach. */
+const UPDATE_STATES = { idle: "noch nicht gesucht", checking: "suche …", current: "✓ aktuell", available: "Neue Version {} verfügbar",
+  downloading: "lade Version {} … {} %", installing: "installiere Version {} – die App startet gleich neu", error: "Update fehlgeschlagen: {}" };
+let updateTimer = 0;
+function updateDraw(u) {
+  if (!u) return;
+  $("updateCurrent").textContent = "v" + (u.current || K.VERSION);
+  $("updateState").textContent = (UPDATE_STATES[u.state] || u.state).replace("{}", u.state === "error" ? u.error : u.version).replace("{}", u.progress);
+  $("updateFrom").textContent = u.updatedFrom ? "aktualisiert von v" + u.updatedFrom : "";   // erster Start nach einem Update
+  $("updateProgress").hidden = u.state !== "downloading";
+  $("updateProgress").querySelector("i").style.width = (u.progress || 0) + "%";
+  const found = u.state === "available" || (u.state === "error" && u.version);
+  $("updateInstall").hidden = !(found && u.canInstall);
+  $("updatePage").hidden = !(found && !u.canInstall && u.url);
+  if (u.url) $("updatePage").href = u.url;
+  $("updateSearch").disabled = ["checking", "downloading", "installing"].includes(u.state);
+  $("appVersion").textContent = "v" + K.VERSION + (u.state === "available" ? " · Update " + u.version : "");
+  clearTimeout(updateTimer);
+  if (["checking", "downloading", "installing"].includes(u.state)) updateTimer = setTimeout(updatePoll, 1000);
+}
+async function updatePoll() { try { updateDraw(await (await fetch("/api/update", { cache: "no-store" })).json()); } catch (err) {} }
+$("updateSearch").onclick = async () => { try { updateDraw(await (await fetch("/api/update-check", { method: "POST" })).json()); } catch (err) {} };
+$("updateInstall").onclick = async () => {
+  if (!await confirmDialog({ title: "Jetzt aktualisieren?", text: "Die App lädt die neue Version, beendet sich und startet neu. Overlays in OBS sind dabei kurz weg – nicht während einer laufenden Sendung.", button: "Aktualisieren" })) return;
+  try { updateDraw(await (await fetch("/api/update-install", { method: "POST" })).json()); } catch (err) {}
+};
+if (window.castApp && window.castApp.onShowUpdate) window.castApp.onShowUpdate(() => { settings(true); $("updateArea").scrollIntoView({ block: "start" }); });
 // Sprache: App (Steuerseite, Dialoge, Tray) und Overlays unabhängig voneinander
 function languageDraw() {
   document.querySelectorAll("#appLanguage button").forEach(b => b.setAttribute("aria-pressed", b.dataset.language === CastI18n.language));

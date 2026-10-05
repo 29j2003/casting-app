@@ -188,9 +188,11 @@ def test_overlays_without_the_key_get_the_state_without_camera_links(server):
     assert secret_link.encode() in request("GET", "/api/state")[2]
     connection = http.client.HTTPConnection("127.0.0.1", 8787, timeout=5)
     connection.request("GET", "/api/events?page=pause&v=" + VERSION, headers={"Host": "localhost:8787"})
-    first = connection.getresponse().read1(65536)
+    answer, first = connection.getresponse(), b""
+    while b"event: state" not in first and len(first) < 200_000:      # the stream comes in pieces
+        first += answer.read1(65536)
     connection.close()
-    assert b"event: state" in first and secret_link.encode() not in first
+    assert secret_link.encode() not in first
 
 
 def test_one_time_code_opens_the_control_page_once(server):
@@ -206,3 +208,18 @@ def test_bad_image_upload_keeps_the_old_image(server):
     assert request("POST", "/api/image/test1234", image)[0] == 200
     assert request("POST", "/api/image/test1234", "data:image/png;base64,@@@kaputt")[0] == 400
     assert request("GET", "/api/image/test1234")[2] == b"\x89PNG old"
+
+
+def test_update_status_check_and_install_need_the_key(server, monkeypatch):
+    from casting_app import updater
+    monkeypatch.setattr(updater, "newer_release", lambda: {"version": "99.0.0", "url": "https://github.com/x", "asset": None})
+    assert request("GET", "/api/update", access=False)[0] == 403
+    assert request("POST", "/api/update-check", access=False)[0] == 403
+    assert request("POST", "/api/update-check")[0] == 200
+    for _ in range(50):
+        status = json.loads(request("GET", "/api/update")[2])
+        if status["state"] == "available":
+            break
+        time.sleep(0.05)
+    assert status["version"] == "99.0.0" and status["canInstall"] is False
+    assert request("POST", "/api/update-install")[0] == 409        # nothing that installs with one click (no checked file)

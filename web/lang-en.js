@@ -881,5 +881,22 @@ window.CastLanguages.en = {
  "im Stream und auf deinem Kopfhörer": "in the stream and on your headphones",
  "In OBS gibt es noch keine Quelle mit Ton – Setup → Szenen & OBS → „In OBS anlegen“.": "OBS has no source with audio yet – Setup → Scenes & OBS → “Create in OBS”.",
  "Die App antwortet nicht.": "The app does not respond.",
- "Bilanz {}": "Record {}"
+ "Bilanz {}": "Record {}",
+ "Update": "Update",
+ "Installiert:": "Installed:",
+ "noch nicht gesucht": "not checked yet",
+ "Nach Updates suchen": "Check for updates",
+ "Jetzt aktualisieren": "Update now",
+ "Download-Seite öffnen": "Open download page",
+ "Bei jedem Start nach Updates suchen (fragt nur die Versionsliste bei GitHub ab)": "Check for updates at every start (only asks GitHub for the list of versions)",
+ "Die neue Version wird von GitHub geladen, mit der Prüfsumme verglichen und installiert; die App startet danach neu. Einstellungen, Bilder und Zugänge bleiben. Nicht während einer laufenden Sendung aktualisieren.": "The new version is downloaded from GitHub, checked against its checksum and installed; the app then restarts. Settings, images and access data stay. Do not update during a live show.",
+ "suche …": "checking …",
+ "✓ aktuell": "✓ up to date",
+ "Neue Version {} verfügbar": "New version {} available",
+ "lade Version {} … {} %": "downloading version {} … {} %",
+ "installiere Version {} – die App startet gleich neu": "installing version {} – the app restarts in a moment",
+ "Update fehlgeschlagen: {}": "Update failed: {}",
+ "Jetzt aktualisieren?": "Update now?",
+ "Die App lädt die neue Version, beendet sich und startet neu. Overlays in OBS sind dabei kurz weg – nicht während einer laufenden Sendung.": "The app downloads the new version, quits and starts again. Overlays in OBS are gone for a moment – not during a live show.",
+ "aktualisiert von v{}": "updated from v{}"
 };

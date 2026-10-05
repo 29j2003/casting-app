@@ -1,11 +1,10 @@
 /* =====================================================================
-   CASTING-APP
-   Eine Datei, ein Fenster. Beim Start:
-     - lokaler Server nur auf diesem PC (http://localhost:8787)
-     - öffnet die Steuerseite als eigenes App-Fenster (Edge/Chrome im App-Modus)
+   CASTING-APP – Server
+   Lokaler Server nur auf diesem PC (http://localhost:8787):
+     - liefert die Steuerseite (steuerung.html) und die Overlays aus
      - Overlays in OBS:  http://localhost:8787/overlay.html
-   Schließt du das Fenster, laufen verbundene OBS-Overlays weiter;
-   die App beendet sich, sobald weder Fenster noch Overlays mehr offen sind.
+   Gestartet wird er von der Desktop-App (electron/main.js), die die Steuerseite in ihrem eigenen Fenster zeigt.
+   Ohne Fenster:  „Casting-App --ohne-fenster“ oder für Entwicklung/Tests „node server.js“.
 
    Sicherheit:
      - nur Anfragen von diesem PC an die eigene Adresse (Schutz gegen DNS-Rebinding)
@@ -13,6 +12,7 @@
      - vom PC geht nichts nach außen – einzige Verbindung nach draußen ist das
        Abholen der FACEIT-Match-Daten (Match-ID + API-Key)
      - ausgeliefert werden nur App-Dateien sowie Videos/Schriften aus den eigenen Ordnern
+     - Geheimnisse (FACEIT-Key, DACH-CS-ID/-Key) liegen verschlüsselt (Electron safeStorage) und verlassen den Server nie
    ===================================================================== */
 "use strict";
 const http = require("http"), https = require("https"), fs = require("fs"), fsp = fs.promises;
@@ -20,16 +20,27 @@ const path = require("path"), os = require("os"), { spawn, execFileSync } = requ
 const { promisify } = require("util");
 const { pipeline } = require("stream");
 const statP = promisify(fs.stat);   // funktioniert auch für die eingebauten App-Dateien
+const geheimnisseAnlegen = require("./geheimnisse");
 
-const VERSION = "1.9.7";
+const VERSION = "2.0.0";
 const NAME = "Casting-App";
 const PORT = 8787;
 const BASIS = `http://localhost:${PORT}`;
 const WIN = process.platform === "win32";
 const WEB = path.join(__dirname, "web");
 
+/* ---------- Einstellungen vom Starter (Desktop-App oder node server.js) ----------
+   dokumente:      Ordner „Dokumente“ (die Desktop-App kennt ihn ohne PowerShell – schneller Start)
+   tresor:         Verschlüsselung für Geheimnisse (Electron safeStorage); ohne Tresor nur für die laufende Sitzung
+   beenden:        wird nach dem Speichern aufgerufen, um das Programm zu beenden
+   fensterOffen:   meldet, ob das App-Fenster gerade sichtbar ist (für das automatische Beenden)
+   autoBeenden:    beenden, sobald weder Fenster noch Overlays mehr offen sind
+   ordnerOeffnen:  Ordner im Dateimanager zeigen */
+let OPT = {};
+
 /* ---------- Ordner ---------- */
 function dokumente() {
+  if (OPT.dokumente) return path.join(OPT.dokumente, NAME);
   if (!WIN) return path.join(os.homedir(), NAME);
   try {
     const d = execFileSync("powershell.exe", ["-NoProfile", "-Command", "[Environment]::GetFolderPath('MyDocuments')"],
@@ -39,35 +50,44 @@ function dokumente() {
   return path.join(os.homedir(), "Documents", NAME);
 }
 const DATEN = WIN ? path.join(process.env.APPDATA || os.homedir(), NAME) : path.join(os.homedir(), ".casting-app");
-const EIGENE = dokumente();
-// Ordner der Vorversion („Cast-Overlay") einmalig übernehmen
-for (const [neu, alt] of [[DATEN, DATEN.replace(/Casting-App$/, "Cast-Overlay").replace(/\.casting-app$/, ".cast-overlay")], [EIGENE, EIGENE.replace(/Casting-App$/, "Cast-Overlay")]]) {
-  try { if (alt !== neu && fs.existsSync(alt) && !fs.existsSync(neu)) fs.renameSync(alt, neu); } catch (e) {}
+let EIGENE = null, ORDNER = { daten: DATEN };
+function ordnerAnlegen() {
+  EIGENE = dokumente();
+  // Ordner der Vorversion („Cast-Overlay") einmalig übernehmen
+  for (const [neu, alt] of [[DATEN, DATEN.replace(/Casting-App$/, "Cast-Overlay").replace(/\.casting-app$/, ".cast-overlay")], [EIGENE, EIGENE.replace(/Casting-App$/, "Cast-Overlay")]]) {
+    try { if (alt !== neu && fs.existsSync(alt) && !fs.existsSync(neu)) fs.renameSync(alt, neu); } catch (e) {}
+  }
+  ORDNER = {
+    daten: DATEN, bilder: path.join(DATEN, "bilder"), fenster: path.join(DATEN, "fenster"),
+    eigene: EIGENE, videos: path.join(EIGENE, "Videos"), schriften: path.join(EIGENE, "Schriften")
+  };
+  for (const o of ["daten", "bilder", "eigene", "videos", "schriften"]) fs.mkdirSync(ORDNER[o], { recursive: true });
 }
-const ORDNER = {
-  daten: DATEN, bilder: path.join(DATEN, "bilder"), fenster: path.join(DATEN, "fenster"),
-  eigene: EIGENE, videos: path.join(EIGENE, "Videos"), schriften: path.join(EIGENE, "Schriften")
-};
-for (const o of ["daten", "bilder", "eigene", "videos", "schriften"]) fs.mkdirSync(ORDNER[o], { recursive: true });
 
 /* ---------- Log ---------- */
 const LOG = [];
 const logDatei = path.join(DATEN, "log.txt");
-try { if (fs.existsSync(logDatei) && fs.statSync(logDatei).size > 2e6) fs.renameSync(logDatei, logDatei + ".alt"); } catch (e) {}
+let logGeprueft = false;
 function log(text, art = "info") {
   const z = { zeit: Date.now(), art, text: String(text).slice(0, 500) };
   LOG.push(z); if (LOG.length > 400) LOG.shift();
+  if (!logGeprueft) {
+    logGeprueft = true;
+    try { fs.mkdirSync(DATEN, { recursive: true }); if (fs.existsSync(logDatei) && fs.statSync(logDatei).size > 2e6) fs.renameSync(logDatei, logDatei + ".alt"); } catch (e) {}
+  }
   try { fs.appendFileSync(logDatei, `${new Date(z.zeit).toISOString()} [${art}] ${z.text}\n`); } catch (e) {}
-  if (!WIN) console.log(`[${art}] ${z.text}`);
+  if (!WIN || OPT.konsole) console.log(`[${art}] ${z.text}`);
 }
 
 /* ---------- Stand + Bilder ---------- */
 const zustandDatei = path.join(DATEN, "zustand.json");
 let zustandText = null, zustandStand = 0;
-try {
-  zustandText = fs.readFileSync(zustandDatei, "utf8");
-  zustandStand = +(zustandText.match(/"stand"\s*:\s*(\d+)/) || [])[1] || 0;
-} catch (e) { zustandText = null; }
+function zustandLaden() {
+  try {
+    zustandText = fs.readFileSync(zustandDatei, "utf8");
+    zustandStand = +(zustandText.match(/"stand"\s*:\s*(\d+)/) || [])[1] || 0;
+  } catch (e) { zustandText = null; }
+}
 let speicherTakt = null;
 function zustandSpeichern() {
   clearTimeout(speicherTakt);
@@ -89,7 +109,6 @@ async function bilderAufraeumen() {
     if (weg) log(`${weg} ungenutzte Bilder aufgeräumt`);
   } catch (e) {}
 }
-setTimeout(bilderAufraeumen, 60000); setInterval(bilderAufraeumen, 6 * 3600000);
 
 /* ---------- Dateitypen ---------- */
 const TYPEN = {
@@ -114,7 +133,7 @@ function zustandAnAlle() {
   const zeilen = zustandText.replace(/\n/g, " ");
   for (const c of clients) if (c.seite !== "steuerung") c.res.write(`event: zustand\ndata: ${zeilen}\n\n`);
 }
-setInterval(() => { for (const c of clients) c.res.write(": still\n\n"); }, 20000);
+setInterval(() => { for (const c of clients) c.res.write(": still\n\n"); }, 20000).unref();
 
 /* ---------- Hilfen ---------- */
 function antwort(res, code, daten, typ = "application/json; charset=utf-8") {
@@ -157,57 +176,23 @@ function innerhalb(ordner, rel) {
   return voll.startsWith(path.resolve(ordner) + path.sep) ? voll : null;
 }
 
-/* ---------- FACEIT-Schlüssel: verschlüsselt gespeichert, nie herausgegeben ----------
-   Windows: mit DPAPI an dein Windows-Konto gebunden (andere Konten/PCs können die Datei nicht lesen).
-   Die Steuerseite kann den Schlüssel nur setzen oder löschen – abrufen kann ihn niemand. */
-const SCHLUESSEL_DATEI = path.join(DATEN, "faceit.schluessel");
-let faceitSchluessel = null;
-function powershellMitEingabe(skript, eingabe) {
-  const enc = Buffer.from(skript, "utf16le").toString("base64");
-  const r = require("child_process").spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-EncodedCommand", enc],
-    { input: eingabe, encoding: "utf8", timeout: 15000, windowsHide: true });
-  if (r.status !== 0) throw new Error("DPAPI fehlgeschlagen");
-  return r.stdout;
-}
-const PS_SCHUTZ = "Add-Type -AssemblyName System.Security; $i=[Console]::In.ReadToEnd(); $b=[Text.Encoding]::UTF8.GetBytes($i); [Console]::Out.Write([Convert]::ToBase64String([Security.Cryptography.ProtectedData]::Protect($b,$null,'CurrentUser')))";
-const PS_AUF = "Add-Type -AssemblyName System.Security; $i=[Console]::In.ReadToEnd(); $b=[Convert]::FromBase64String($i.Trim()); [Console]::Out.Write([Text.Encoding]::UTF8.GetString([Security.Cryptography.ProtectedData]::Unprotect($b,$null,'CurrentUser')))";
-function schluesselSpeichern(k) {
-  const inhalt = WIN ? powershellMitEingabe(PS_SCHUTZ, k) : Buffer.from(k).toString("base64");
-  fs.writeFileSync(SCHLUESSEL_DATEI, inhalt, { mode: 0o600 });
-  faceitSchluessel = k;
-}
-function schluesselLaden() {
-  try {
-    if (!fs.existsSync(SCHLUESSEL_DATEI)) return;
-    const inhalt = fs.readFileSync(SCHLUESSEL_DATEI, "utf8");
-    const k = WIN ? powershellMitEingabe(PS_AUF, inhalt) : Buffer.from(inhalt, "base64").toString("utf8");
-    if (/^[A-Za-z0-9-]{8,100}$/.test(k)) faceitSchluessel = k;
-  } catch (e) { log("FACEIT-Schlüssel konnte nicht entschlüsselt werden – bitte neu eintragen", "warn"); }
-}
-schluesselLaden();
+/* ---------- Geheimnisse: FACEIT-Key, DACH-CS-Nutzer-ID und -Key ----------
+   Verschlüsselt mit Electron safeStorage (Windows: DPAPI, macOS: Schlüsselbund, Linux: Secret Service/KWallet),
+   siehe geheimnisse.js. Die Steuerseite kann sie nur setzen oder löschen – abrufen kann sie niemand. */
+let geheim = null;   // wird in starten() angelegt (braucht den Tresor der Desktop-App)
 
 /* ---------- DACH CS: offizielle Browserquellen ----------
-   Nutzer-ID + Key werden wie der FACEIT-Schlüssel verschlüsselt gespeichert und nie herausgegeben.
    OBS lädt http://localhost:8787/dach/<seite> – die App leitet dann an DACH CS weiter (mit ID und Key).
    So steht der Key weder in OBS-Szenensammlungen noch in Sicherungen der App. */
 const DACH_SEITEN = new Set(["overview", "singlecast", "duocast", "lineup", "mapveto", "ingame", "positions", "tabelle", "playoffs", "last_matches", "current_matches", "next_matches", "last_matches_f1", "last_matches_f2", "next_matches_f1", "next_matches_f2", "mvp", "pause", "pause_content", "pause_own_content", "singleinteraction", "duointeraction", "solo_interview", "duointerview", "endscreen"]);
-const DACH_ID_DATEI = path.join(DATEN, "dach.json"), DACH_KEY_DATEI = path.join(DATEN, "dach.schluessel");
-let dachId = "", dachKey = null;
-function geheimSchreiben(datei, wert) { fs.writeFileSync(datei, WIN ? powershellMitEingabe(PS_SCHUTZ, wert) : Buffer.from(wert).toString("base64"), { mode: 0o600 }); }
-function geheimLesen(datei) {
-  if (!fs.existsSync(datei)) return null;
-  const inhalt = fs.readFileSync(datei, "utf8");
-  return WIN ? powershellMitEingabe(PS_AUF, inhalt) : Buffer.from(inhalt, "base64").toString("utf8");
-}
-try { dachId = (JSON.parse(fs.readFileSync(DACH_ID_DATEI, "utf8")).userid || "").toString(); } catch (e) {}
-try { const k = geheimLesen(DACH_KEY_DATEI); if (k && /^[A-Za-z0-9-]{5,64}$/.test(k)) dachKey = k; } catch (e) { log("DACH-Key konnte nicht entschlüsselt werden – bitte neu eintragen", "warn"); }
 
 /* ---------- FACEIT (einzige Verbindung nach draußen) ---------- */
 function faceit(rest, auth) {
   return new Promise((ok, nein) => {
     const host = rest.startsWith("data/") ? "open.faceit.com" : "api.faceit.com";
     const headers = { "User-Agent": "casting-app", "Accept": "application/json" };
-    if (faceitSchluessel && rest.startsWith("data/")) headers.Authorization = "Bearer " + faceitSchluessel;   // nur der Server kennt den Schlüssel
+    const k = geheim.holen("faceit");
+    if (k && rest.startsWith("data/")) headers.Authorization = "Bearer " + k;   // nur der Server kennt den Schlüssel
     const r = https.get({ host, path: "/" + rest, headers, timeout: 15000 }, a => {
       const teile = []; let n = 0;
       a.on("data", d => { n += d.length; if (n > 5e6) { r.destroy(); nein(new Error("Antwort zu groß")); } else teile.push(d); });
@@ -254,9 +239,8 @@ async function videoInfo(name) {
 const GSI_NETZ_PORT = 8788;
 const gsiDatei = path.join(DATEN, "gsi.json");
 let gsiCfg = { token: require("crypto").randomBytes(12).toString("hex"), netz: false, seiteA: "CT", teamA: "", teamB: "" };
-try { Object.assign(gsiCfg, JSON.parse(fs.readFileSync(gsiDatei, "utf8"))); } catch (e) {}
+function gsiLaden() { try { Object.assign(gsiCfg, JSON.parse(fs.readFileSync(gsiDatei, "utf8"))); } catch (e) {} gsiSpeichern(); }
 const gsiSpeichern = () => { try { fs.writeFileSync(gsiDatei, JSON.stringify(gsiCfg), { mode: 0o600 }); } catch (e) {} };
-gsiSpeichern();
 let live = null, liveQuelle = null, liveSendenTakt = null, vorherStand = null;
 const gsiStats = { map: null, spieler: {} };
 function lanAdressen() {
@@ -425,6 +409,7 @@ async function bearbeiten(req, res) {
   if (sfs && sfs !== "same-origin" && sfs !== "none") { res.writeHead(403); return res.end(); }   // fremde Webseiten bekommen nichts
     // Weiterleitung zur offiziellen DACH-CS-Browserquelle (ID und Key setzt nur die App ein)
     if (!DACH_SEITEN.has(m[1])) return antwort(res, 404, { fehler: "unbekannte DACH-CS-Seite" });
+    const dachId = geheim.holen("dachId"), dachKey = geheim.holen("dachKey");
     if (!dachId || !dachKey) {
       res.writeHead(409, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
       return res.end('<body style="margin:0;background:transparent;font:600 28px Segoe UI,sans-serif;color:#fff;display:grid;place-items:center;height:100vh"><div style="background:rgba(0,0,0,.6);padding:24px 32px;border-radius:12px">DACH-CS-Zugang fehlt – in der Casting-App unter Setup → Aussehen eintragen</div></body>');
@@ -540,23 +525,26 @@ async function bearbeiten(req, res) {
       } catch (e) { return antwort(res, 200, { ok: false, fehler: "Ordner nicht gefunden oder kein Schreibzugriff." }); }
     }
     if (pfad === "/api/dach-zugang") {
+      // Nutzer-ID und Key gelten beide als Geheimnis: die Antwort sagt nur, OB sie gespeichert sind
+      const info = () => ({ idGesetzt: geheim.da("dachId"), keyGesetzt: geheim.da("dachKey"), dauerhaft: geheim.dauerhaft() });
       if (req.method === "POST") {
         let j = {}; try { j = JSON.parse(await koerper(req, 1000)); } catch (e) {}
         const id = String(j.userid ?? "").trim(), key = String(j.key || "").trim();
-        if (!/^\d{1,9}$/.test(id)) return antwort(res, 400, { fehler: "Die Nutzer-ID besteht nur aus Ziffern (z. B. 123)." });
+        if (!id && !geheim.da("dachId")) return antwort(res, 400, { fehler: "Bitte die Nutzer-ID eintragen (nur Ziffern, z. B. 123)." });
+        if (id && !/^\d{1,9}$/.test(id)) return antwort(res, 400, { fehler: "Die Nutzer-ID besteht nur aus Ziffern (z. B. 123)." });
         if (key && !/^[A-Za-z0-9-]{5,64}$/.test(key)) return antwort(res, 400, { fehler: "Das sieht nicht wie ein DACH-CS-Key aus." });
         try {
-          dachId = id; fs.writeFileSync(DACH_ID_DATEI, JSON.stringify({ userid: id }), { mode: 0o600 });
-          if (key) { geheimSchreiben(DACH_KEY_DATEI, key); dachKey = key; }
+          if (id) geheim.setzen("dachId", id);
+          if (key) geheim.setzen("dachKey", key);
         } catch (e) { return antwort(res, 500, { fehler: "Speichern fehlgeschlagen" }); }
-        log("DACH-CS-Zugang gespeichert (Nutzer-ID " + id + ", Key verschlüsselt)");
-        return antwort(res, 200, { userid: dachId, keyGesetzt: !!dachKey });
+        log("DACH-CS-Zugang gespeichert" + (geheim.dauerhaft() ? " (verschlüsselt)" : " (nur für diese Sitzung)"));
+        return antwort(res, 200, info());
       }
       if (req.method === "DELETE") {
-        dachId = ""; dachKey = null; for (const f of [DACH_ID_DATEI, DACH_KEY_DATEI]) { try { fs.unlinkSync(f); } catch (e) {} }
-        log("DACH-CS-Zugang gelöscht"); return antwort(res, 200, { userid: "", keyGesetzt: false });
+        geheim.loeschen("dachId"); geheim.loeschen("dachKey");
+        log("DACH-CS-Zugang gelöscht"); return antwort(res, 200, info());
       }
-      return antwort(res, 200, { userid: dachId, keyGesetzt: !!dachKey });
+      return antwort(res, 200, info());
     }
     if (pfad === "/api/faceit-schluessel") {
       // Nur setzen, löschen oder fragen, OB einer gespeichert ist – der Schlüssel selbst verlässt den Server nie
@@ -564,16 +552,16 @@ async function bearbeiten(req, res) {
         let j = {}; try { j = JSON.parse(await koerper(req, 1000)); } catch (e) {}
         const k = String(j.schluessel || "").trim();
         if (!/^[A-Za-z0-9-]{8,100}$/.test(k)) return antwort(res, 400, { fehler: "Das sieht nicht wie ein FACEIT-Schlüssel aus." });
-        try { schluesselSpeichern(k); } catch (e) { return antwort(res, 500, { fehler: "Speichern fehlgeschlagen" }); }
-        log("FACEIT-Schlüssel gespeichert (verschlüsselt)");
-        return antwort(res, 200, { gesetzt: true });
+        try { geheim.setzen("faceit", k); } catch (e) { return antwort(res, 500, { fehler: "Speichern fehlgeschlagen" }); }
+        log("FACEIT-Schlüssel gespeichert" + (geheim.dauerhaft() ? " (verschlüsselt)" : " (nur für diese Sitzung)"));
+        return antwort(res, 200, { gesetzt: true, dauerhaft: geheim.dauerhaft() });
       }
       if (req.method === "DELETE") {
-        faceitSchluessel = null; try { fs.unlinkSync(SCHLUESSEL_DATEI); } catch (e) {}
+        geheim.loeschen("faceit");
         log("FACEIT-Schlüssel gelöscht");
         return antwort(res, 200, { gesetzt: false });
       }
-      return antwort(res, 200, { gesetzt: !!faceitSchluessel });
+      return antwort(res, 200, { gesetzt: geheim.da("faceit"), dauerhaft: geheim.dauerhaft() });
     }
     if (pfad === "/api/meldung" && req.method === "POST") {
       // Meldungen der Overlays (z. B. aus OBS) ins Log – kurz und begrenzt
@@ -601,7 +589,8 @@ async function bearbeiten(req, res) {
       const welcher = url.searchParams.get("welcher");
       const ziel = { videos: ORDNER.videos, schriften: ORDNER.schriften, daten: ORDNER.daten }[welcher];
       if (!ziel) return antwort(res, 400, { fehler: "unbekannt" });
-      if (WIN) spawn("explorer.exe", [ziel], { detached: true, stdio: "ignore", windowsHide: false }).unref();
+      if (OPT.ordnerOeffnen) OPT.ordnerOeffnen(ziel);
+      else if (WIN) spawn("explorer.exe", [ziel], { detached: true, stdio: "ignore", windowsHide: false }).unref();
       return antwort(res, 200, { ok: true, ordner: ziel });
     }
     if (pfad === "/api/log") {
@@ -632,21 +621,11 @@ async function bearbeiten(req, res) {
       for (const k of ["offset", "limit", "type"]) { const v = url.searchParams.get(k); if (v && /^[a-z0-9]{1,10}$/i.test(v)) q.set(k, v); }
       if ([...q].length) m[1] += "?" + q.toString();
       try {
-        if (m[1].startsWith("data/") && !faceitSchluessel) return antwort(res, 401, { fehler: "kein FACEIT-Schlüssel gespeichert" });
+        if (m[1].startsWith("data/") && !geheim.da("faceit")) return antwort(res, 401, { fehler: "kein FACEIT-Schlüssel gespeichert" });
         const a = await faceit(m[1]);
         log(`FACEIT ${a.code} ${m[1].split("/").slice(0, 2).join("/")}`);
         return antwort(res, a.code, a.text);
       } catch (e) { log("FACEIT: " + e.message, "fehler"); return antwort(res, 502, { fehler: e.message }); }
-    }
-    if (pfad === "/api/fenster-zu" && req.method === "POST") {
-      let j = {}; try { j = JSON.parse(await koerper(req, 200) || "{}"); } catch (e) {}
-      if (j.bestaetigt) log("Fenster geschlossen – Overlays laufen weiter"); else fensterWurdeGeschlossen(true);
-      return antwort(res, 200, { ok: true });
-    }
-    if (pfad === "/api/fenster-antwort" && req.method === "POST") {
-      let j = {}; try { j = JSON.parse(await koerper(req, 200)); } catch (e) {}
-      if (["beenden", "fenster", "oeffnen"].includes(j.wahl)) fensterAntwort(j.wahl);
-      return antwort(res, 200, { ok: true });
     }
     if (pfad === "/api/beenden" && req.method === "POST") {
       antwort(res, 200, { ok: true });
@@ -674,80 +653,36 @@ async function bearbeiten(req, res) {
   return datei(req, res, voll, TYPEN[endung], endung === ".html" ? { "Content-Security-Policy": "frame-ancestors 'self'" } : {});
 }
 
-/* ---------- Fenster (Edge/Chrome im App-Modus) ---------- */
-let fenster = null;
-function browserFinden() {
-  if (process.env.CAST_BROWSER && fs.existsSync(process.env.CAST_BROWSER)) return process.env.CAST_BROWSER;   // nur für Tests
-  if (!WIN) return null;
-  const pf86 = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)", pf = process.env.ProgramFiles || "C:\\Program Files", la = process.env.LOCALAPPDATA || "";
-  return [
-    path.join(pf86, "Microsoft", "Edge", "Application", "msedge.exe"), path.join(pf, "Microsoft", "Edge", "Application", "msedge.exe"),
-    path.join(pf, "Google", "Chrome", "Application", "chrome.exe"), path.join(pf86, "Google", "Chrome", "Application", "chrome.exe"),
-    path.join(la, "Google", "Chrome", "Application", "chrome.exe")
-  ].find(p => p && fs.existsSync(p)) || null;
-}
-function fensterOeffnen() {
-  const ziel = BASIS + "/steuerung.html";
-  const exe = browserFinden();
-  if (!exe) {
-    if (WIN) spawn("cmd.exe", ["/c", "start", "", ziel], { detached: true, stdio: "ignore", windowsHide: true }).unref();
-    log("Kein Edge/Chrome gefunden – Steuerseite im Standardbrowser geöffnet: " + ziel, "warn");
-    return null;
-  }
-  const p = spawn(exe, [
-    "--app=" + ziel, "--user-data-dir=" + ORDNER.fenster, "--autoplay-policy=no-user-gesture-required", "--window-size=1500,950",
-    "--no-first-run", "--no-default-browser-check", "--disable-features=Translate", "--autoplay-policy=no-user-gesture-required"
-  ], { stdio: "ignore", windowsHide: false });
-  p.on("exit", () => { fenster = null; letzteAktivitaet = Date.now(); });
-  log("Fenster geöffnet (" + path.basename(exe) + ")");
-  return p;
+/* ---------- Overlays neu laden (z. B. aus dem Tray-Menü) ----------
+   Schickt allen verbundenen Overlays (OBS-Browserquellen) „neuladen“ – sie laden sich dann selbst neu. */
+function overlaysNeuLaden() {
+  let n = 0;
+  for (const c of clients) if (c.seite !== "steuerung") { c.res.write("event: neuladen\ndata: {}\n\n"); n++; }
+  log(n ? `${n} Overlay(s) neu geladen` : "Overlays neu laden: keine Overlays verbunden");
+  return n;
 }
 
-/* ---------- Fenster-Kreuz: nachfragen ----------
-   Schließt jemand das App-Fenster, öffnet die App ein kleines eigenes Fenster (schliessen.html):
-   ganz beenden · nur Fenster schließen (Overlays laufen weiter) · abbrechen (Fenster geht wieder auf).
-   Ohne Antwort gilt nach 60 s „nur Fenster schließen“. Erkannt wird das Schließen am Ende des Fenster-Prozesses
-   oder – falls Edge im Hintergrund weiterläuft – an der Abmeldung der Seite. */
-let fensterFrage = null, frageTakt = null, frageGeplant = null;
-function fensterWurdeGeschlossen(sofort) {
-  if (fensterFrage || frageGeplant) return;
-  // kurz warten: Neuladen der Seite oder ein weiteres offenes Fenster zählt nicht
-  frageGeplant = setTimeout(() => {
-    frageGeplant = null;
-    if ([...clients].some(c => c.seite === "steuerung")) return;
-    const exe = browserFinden();
-    if (!exe) { log("Fenster geschlossen – Overlays laufen weiter"); return; }
-    fensterFrage = { seit: Date.now() };
-    spawn(exe, ["--app=" + BASIS + "/schliessen.html", "--user-data-dir=" + ORDNER.fenster, "--autoplay-policy=no-user-gesture-required", "--window-size=520,250",
-      "--no-first-run", "--no-default-browser-check"], { stdio: "ignore", detached: true }).unref();
-    log("Fenster geschlossen – frage nach, ob die App ganz beendet werden soll");
-    clearTimeout(frageTakt);
-    frageTakt = setTimeout(() => fensterAntwort("fenster"), 70000);   // Sicherheitsnetz, falls das Fragefenster nie antwortet
-  }, sofort ? 600 : 2500);
-}
-function fensterAntwort(wahl) {
-  if (!fensterFrage) return;
-  fensterFrage = null; clearTimeout(frageTakt); letzteAktivitaet = Date.now();
-  if (wahl === "beenden") { log("Über das Fenster-Kreuz beendet"); setTimeout(beenden, 300); }
-  else if (wahl === "oeffnen") { log("Schließen abgebrochen – Fenster wieder geöffnet"); if (!fenster) fenster = fensterOeffnen(); }
-  else log("Nur das Fenster geschlossen – Overlays laufen weiter");
-}
-
-/* ---------- Beenden, wenn nichts mehr offen ist ---------- */
+/* ---------- Beenden ---------- */
 let letzteAktivitaet = Date.now();
 const START = Date.now();
-function beenden() {
-  try { if (fenster) fenster.kill(); } catch (e) {}
+let beendet = false;
+function speichernSofort() {
   clearTimeout(speicherTakt);
   try { if (zustandText) fs.writeFileSync(zustandDatei, zustandText, "utf8"); } catch (e) {}
-  log(NAME + " beendet");
-  process.exit(0);
 }
+function beenden() {
+  if (beendet) return; beendet = true;
+  speichernSofort();
+  log(NAME + " beendet");
+  if (OPT.beenden) OPT.beenden(); else process.exit(0);
+}
+// Desktop-App: beenden, sobald weder Fenster noch Overlays mehr offen sind (nach 30 s Ruhe)
 setInterval(() => {
-  if (!WIN) return;                                   // unter Linux (Tests) läuft der Server einfach weiter
-  const offen = fenster || [...clients].length > 0 || fensterFrage || frageGeplant;
-  if (!offen && Date.now() - letzteAktivitaet > 30000) beenden();
-}, 5000);
+  if (!OPT.autoBeenden) return;
+  const offen = (OPT.fensterOffen && OPT.fensterOffen()) || clients.size > 0;
+  if (offen) letzteAktivitaet = Date.now();
+  else if (Date.now() - letzteAktivitaet > 30000) { log("Weder Fenster noch Overlays offen – beende"); beenden(); }
+}, 5000).unref();
 
 /* ---------- Start ---------- */
 // Läuft schon eine Casting-App? Liefert deren Version (oder null)
@@ -766,31 +701,58 @@ function alteBeenden() {
     r.on("error", ok); r.on("timeout", () => { r.destroy(); ok(); }); r.end();
   });
 }
-(async () => {
-  const laufend = await laeuftSchon();
-  if (laufend === VERSION) {                          // gleiche Version läuft schon: nur das Fenster öffnen
-    const exe = browserFinden();
-    if (exe) spawn(exe, ["--app=" + BASIS + "/steuerung.html", "--user-data-dir=" + ORDNER.fenster, "--autoplay-policy=no-user-gesture-required"], { detached: true, stdio: "ignore" }).unref();
-    process.exit(0);
-  }
-  if (laufend) {                                      // ältere/andere Version läuft noch: ablösen
-    log(`Version ${laufend} läuft noch – wird durch ${VERSION} ersetzt`, "warn");
-    await alteBeenden();
-    for (let i = 0; i < 40 && await laeuftSchon(); i++) await new Promise(r => setTimeout(r, 250));
-    await new Promise(r => setTimeout(r, 800));       // altes Fenster sauber schließen lassen
-  }
-  log(`${NAME} ${VERSION} startet · Daten: ${ORDNER.daten} · Videos: ${ORDNER.videos}`);
-  const behandeln = (req, res) => bearbeiten(req, res).catch(e => { log("Fehler: " + e.message, "fehler"); try { antwort(res, 500, { fehler: "intern" }); } catch (x) {} });
-  const server4 = http.createServer(behandeln);
-  server4.requestTimeout = 60000; server4.headersTimeout = 20000;
-  server4.on("error", e => { log("Port " + PORT + " belegt: " + e.message, "fehler"); if (WIN) spawn("cmd.exe", ["/c", "start", "", BASIS], { detached: true, stdio: "ignore" }); process.exit(1); });
-  server4.listen(PORT, "127.0.0.1", () => {
-    log("Server bereit: " + BASIS);
-    if (gsiCfg.netz) gsiNetzSetzen(true);
-    fenster = fensterOeffnen();
-  });
-  const server6 = http.createServer(behandeln);
-  server6.on("error", () => {});                     // ohne IPv6 egal
-  server6.listen({ port: PORT, host: "::1", ipv6Only: true });
-})();
+// Ältere/andere Version abloesen: sie wird über /api/beenden beendet, dann warten, bis der Port frei ist
+async function abloesen(laufend) {
+  log(`Version ${laufend} läuft noch – wird durch ${VERSION} ersetzt`, "warn");
+  await alteBeenden();
+  for (let i = 0; i < 40 && await laeuftSchon(); i++) await new Promise(r => setTimeout(r, 250));
+  await new Promise(r => setTimeout(r, 300));       // altes Programm sauber schließen lassen
+}
+
+/* Startet den Server. Ergebnis:
+     { art: "gestartet" }       – dieser Server läuft
+     { art: "laeuft-schon" }    – die gleiche Version läuft bereits (z. B. ohne Fenster); nichts gestartet
+   Ein belegter Port (fremdes Programm) wird als Fehler gemeldet. */
+let gestartet = null;
+function starten(optionen = {}) {
+  if (gestartet) return gestartet;
+  OPT = Object.assign({}, optionen);
+  gestartet = (async () => {
+    const laufend = await laeuftSchon();
+    if (laufend === VERSION) return { art: "laeuft-schon" };
+    if (laufend) await abloesen(laufend);
+    ordnerAnlegen();
+    zustandLaden();
+    gsiLaden();
+    geheim = geheimnisseAnlegen({ ordner: DATEN, tresor: OPT.tresor, log, windows: WIN });
+    setTimeout(bilderAufraeumen, 60000).unref(); setInterval(bilderAufraeumen, 6 * 3600000).unref();
+    log(`${NAME} ${VERSION} startet · Daten: ${ORDNER.daten} · Videos: ${ORDNER.videos}`);
+    const behandeln = (req, res) => bearbeiten(req, res).catch(e => { log("Fehler: " + e.message, "fehler"); try { antwort(res, 500, { fehler: "intern" }); } catch (x) {} });
+    await new Promise((ok, nein) => {
+      const server4 = http.createServer(behandeln);
+      server4.requestTimeout = 60000; server4.headersTimeout = 20000;
+      server4.on("error", e => { log("Port " + PORT + " belegt: " + e.message, "fehler"); nein(new Error(`Port ${PORT} ist belegt (${e.code || e.message}).`)); });
+      server4.listen(PORT, "127.0.0.1", () => {
+        log("Server bereit: " + BASIS);
+        if (gsiCfg.netz) gsiNetzSetzen(true);
+        ok();
+      });
+    });
+    const server6 = http.createServer(behandeln);
+    server6.on("error", () => {});                     // ohne IPv6 egal
+    server6.listen({ port: PORT, host: "::1", ipv6Only: true });
+    return { art: "gestartet" };
+  })();
+  return gestartet;
+}
+
 process.on("uncaughtException", e => log("Unerwarteter Fehler: " + (e && e.stack || e), "fehler"));
+
+module.exports = { starten, beenden, speichernSofort, overlaysNeuLaden, laeuftSchon, alteBeenden, log, VERSION, NAME, PORT, BASIS, DATEN };
+
+// „node server.js“: nur der Server, ohne Fenster (Entwicklung, Tests)
+if (require.main === module) {
+  starten({ konsole: true }).then(r => {
+    if (r.art === "laeuft-schon") { console.log(`${NAME} ${VERSION} läuft bereits: ${BASIS}`); process.exit(0); }
+  }).catch(e => { console.error(e.message); process.exit(1); });
+}

@@ -9,7 +9,7 @@ window.CastKern = (function () {
   "use strict";
 
   const SCHLUESSEL = "cast-zustand-v1";
-  const VERSION = "1.9.7";                     // muss zur App passen – sonst lädt sich die Seite neu
+  const VERSION = "2.0.0";                     // muss zur App passen – sonst lädt sich die Seite neu
   // Läuft die Seite über den Cast-Dienst (http://localhost:8787)?
   const SERVER = /^https?:$/.test(location.protocol) && location.port === "8787" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 

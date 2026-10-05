@@ -1144,8 +1144,8 @@
         <p class="klein">OBS → Werkzeuge → WebSocket-Server-Einstellungen: „WebSocket-Server aktivieren". Port und Passwort (unter „Verbindungsinformationen anzeigen") nur <b>hier</b> eintragen. Die Overlays brauchen kein Passwort.</p>
         <div class="reihe">
           <label>Port<input type="number" id="obsPort"></label>
-          <label>Passwort<input type="password" id="obsPasswort"></label>
-          <button class="knopf" id="obsNeu">Verbinden</button>
+          <label>Passwort<input type="password" id="obsPasswort" autocomplete="off"></label>
+          <button class="knopf" id="obsNeu">Verbinden</button><button class="knopf" id="obsPasswortLoeschen" hidden>Passwort löschen</button>
         </div>
         <p class="klein" id="obsQuellen"></p>
         
@@ -1267,7 +1267,24 @@ function verbindung() {
   catch (e) { return Object.assign({}, window.CAST_VERBINDUNG || {}); }
 }
 $("obsPort").value = verbindung().port || 4455;
-$("obsPasswort").value = verbindung().passwort || "";
+// OBS-Passwort: in der App im Schlüsselbund des Systems (nicht im Browser-Speicher); ohne App wie bisher hier gemerkt
+$("obsPasswort").value = K.SERVER ? "" : (verbindung().passwort || "");
+async function obsPasswortStatus() {
+  if (!K.SERVER) return;
+  let gesetzt = false;
+  try { gesetzt = !!(await (await fetch("/api/obs-passwort", { cache: "no-store" })).json()).gesetzt; } catch (err) {}
+  $("obsPasswort").placeholder = gesetzt ? "✓ gespeichert" : "";
+  $("obsPasswortLoeschen").hidden = !gesetzt;
+}
+async function obsPasswortSpeichern(passwort) {
+  if (!K.SERVER || !passwort) return;
+  try { await fetch("/api/obs-passwort", { method: "POST", body: JSON.stringify({ passwort }) }); } catch (err) {}
+}
+if (K.SERVER && verbindung().passwort) {        // Umzug: ein Passwort aus älteren Versionen wandert einmal in den Schlüsselbund
+  const alt = verbindung().passwort;
+  localStorage.setItem(VERB_KEY, JSON.stringify({ port: verbindung().port || 4455 }));
+  obsPasswortSpeichern(alt).then(obsPasswortStatus);
+} else obsPasswortStatus();
 
 /* ---------- Senden ---------- */
 let kanal;
@@ -1338,9 +1355,18 @@ if (!K.SERVER) {   // nur ohne App: Stand zusätzlich über OBS an die Browserqu
   setInterval(() => { if (kanal.obs.offen) kanal.obs.anBrowserquellen("cast-zustand", { cast: "bilder", bilder: aktuelleBilder }); }, 60000);
 }
 setInterval(() => K.Bilder.aufraeumen(new Set(Object.keys(aktuelleBilder))), 120000);
-$("obsNeu").onclick = () => {
-  localStorage.setItem(VERB_KEY, JSON.stringify({ port: +$("obsPort").value || 4455, passwort: $("obsPasswort").value }));
+$("obsNeu").onclick = async () => {
+  if (K.SERVER) {
+    localStorage.setItem(VERB_KEY, JSON.stringify({ port: +$("obsPort").value || 4455 }));
+    await obsPasswortSpeichern($("obsPasswort").value);
+    $("obsPasswort").value = "";                 // Passwort sofort aus der Seite entfernen
+    obsPasswortStatus();
+  } else localStorage.setItem(VERB_KEY, JSON.stringify({ port: +$("obsPort").value || 4455, passwort: $("obsPasswort").value }));
   kanal.obs.neu();
+};
+$("obsPasswortLoeschen").onclick = async () => {
+  try { await fetch("/api/obs-passwort", { method: "DELETE" }); } catch (err) {}
+  obsPasswortStatus(); kanal.obs.neu();
 };
 
 /* ---------- Felder ---------- */

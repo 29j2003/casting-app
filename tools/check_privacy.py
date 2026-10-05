@@ -8,7 +8,7 @@ Fails (exit code 1) if
   - a tracked text file contains an email address (fonts and other binary files are skipped; their
     license data names the font makers).
 
-The CI runs this on every push (.github/workflows/build.yml, job "privacy"). It cannot un-publish a push –
+The CI runs this on every push (.github/workflows/build.yml, job "checks"). It cannot un-publish a push –
 GitHub's "Block command line pushes that expose my email" stops it before that – but it makes every slip visible.
 """
 

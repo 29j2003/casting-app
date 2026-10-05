@@ -89,6 +89,8 @@ lädt sie beim nächsten Start neu. Änderungen an Python brauchen einen Neustar
 | `tests/live/fast_switching.py`, `tests/live/memory.py` | nach Änderungen an Ton, DACH CS oder größeren Umbauten |
 
 Die CI (`.github/workflows/build.yml`) führt bei jedem Push alles aus und baut die App für Windows, Linux und macOS.
+Der schnellste Job `checks` sagt nach unter einer Minute, ob es grundsätzlich passt: keine privaten E-Mail-Adressen,
+Python und JavaScript syntaktisch in Ordnung, Szenen-Dateien passen zu `tools/generate_scenes.py`.
 
 ### Live-Tests (`tests/live/`)
 
@@ -282,7 +284,7 @@ Datei mit danebenliegendem Schlüssel wäre nur scheinbar sicher und gibt es des
 Commits tragen die E-Mail-Adresse des Autors – im öffentlichen Repository für alle sichtbar. Deshalb:
 * GitHub → Settings → Emails: „Keep my email addresses private“ und „Block command line pushes that expose my email“ an.
 * Lokal `git config user.email "<id>+<name>@users.noreply.github.com"` (die Adresse steht auf derselben GitHub-Seite).
-* `tools/check_privacy.py` (CI-Job `privacy`) schlägt fehl, sobald ein Commit eine andere als eine noreply-Adresse
+* `tools/check_privacy.py` (CI-Job `checks`) schlägt fehl, sobald ein Commit eine andere als eine noreply-Adresse
   trägt oder eine Datei eine E-Mail-Adresse enthält; die Adresse selbst gibt es nie aus. `KNOWN_OLD_COMMITS` nennt den
   einen Commit von vor dieser Prüfung.
 

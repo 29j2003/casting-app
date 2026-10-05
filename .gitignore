@@ -1,0 +1,10 @@
+# build output (tools/build.py)
+dist/
+pyinstaller-work/
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+# system files
+.DS_Store

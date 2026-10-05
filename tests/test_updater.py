@@ -154,3 +154,26 @@ def test_first_start_after_an_update_is_noted(tmp_path):
     assert update.snapshot()["updatedFrom"] == "2.2.1" and any("2.2.1" in m for m in messages)
     assert not (tmp_path / "update" / "Casting-App-old-Setup.exe").exists()
     assert updater.Updater(tmp_path, lambda text, level="info": None).snapshot()["updatedFrom"] == ""   # only once
+
+
+@pytest.mark.skipif(not updater.IS_WINDOWS, reason="Windows-Installer-Helfer")
+def test_windows_helper_runs_the_installer_after_the_app_quit(tmp_path, monkeypatch):
+    import subprocess
+    import sys
+    folder = tmp_path / "Jürgen Ä"                                         # umlauts and spaces in the path
+    folder.mkdir()
+    marker = folder / "installiert.txt"
+    installer = folder / "Casting-App-99.0.0-Setup.cmd"                    # stands in for the NSIS installer
+    installer.write_text(f'@echo %1> "{marker}"\r\n', encoding="utf-8")
+    monkeypatch.setattr(sys, "executable", r"C:\Windows\System32\whoami.exe")   # "restart" something harmless
+    monkeypatch.setattr(updater.tempfile, "gettempdir", lambda: str(folder))
+    old_app = subprocess.Popen(["ping", "-n", "3", "127.0.0.1"], stdout=subprocess.DEVNULL)   # ~2 s
+    updater.start_replacement("windows-installer", installer, pid=old_app.pid)
+    time.sleep(0.5)
+    assert not marker.exists()                                               # waits while the app still runs
+    old_app.wait()
+    for _ in range(100):
+        if marker.exists():
+            break
+        time.sleep(0.1)
+    assert marker.read_text(encoding="utf-8", errors="replace").strip() == "/S"

@@ -218,8 +218,8 @@ def start_replacement(kind: str, file: Path, pid: int | None = None) -> None:
     if kind == "windows-installer":
         executable = Path(sys.executable).resolve()
         script = Path(tempfile.gettempdir()) / "casting-app-update.cmd"
-        script.write_text(
-            "@echo off\r\n"
+        script.write_text(                       # UTF-8 + chcp 65001: paths with umlauts (C:\\Users\\Jürgen) stay intact
+            "@echo off\r\nchcp 65001 >nul\r\n"
             f":wait\r\ntasklist /FI \"PID eq {pid}\" | find \"{pid}\" >nul && (timeout /t 1 >nul & goto wait)\r\n"
             f"\"{file}\" /S\r\n"
             f"start \"\" \"{executable}\"\r\n"

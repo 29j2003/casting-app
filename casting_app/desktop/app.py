@@ -40,7 +40,7 @@ INSTANCE_NAME = f"casting-app-{os.environ.get('USERNAME') or os.environ.get('USE
 AUTO_QUIT_AFTER_MS = 30_000
 AUTO_QUIT_CHECK_MS = 5_000
 RELOAD_FALLBACK_MS = 4_000
-WINDOW_STORAGE = DATA_DIR / "app-fenster"
+WINDOW_STORAGE = DATA_DIR / "app-window"
 
 
 class ServerRequests(QObject):
@@ -64,12 +64,12 @@ class DesktopApp(QObject):
         self._idle_since_ms = 0
         self.single_instance: "SingleInstance | None" = None    # kept alive while the app runs
 
-        icon = QIcon(str(WEB_DIR / "medien" / "app-logo-192.png"))
+        icon = QIcon(str(WEB_DIR / "media" / "app-logo-192.png"))
         qt_app.setWindowIcon(icon)
         from .web_page import create_profile        # needs the QApplication
         self._profile = create_profile(WINDOW_STORAGE, self)
-        self.window = MainWindow(self._profile, f"{BASE_URL}/steuerung.html", icon, DATA_DIR / "fenster.json")
-        self.tray = TrayIcon(QIcon(str(WEB_DIR / "medien" / "app-logo-32.png")), self)
+        self.window = MainWindow(self._profile, f"{BASE_URL}/control.html", icon, DATA_DIR / "window.json")
+        self.tray = TrayIcon(QIcon(str(WEB_DIR / "media" / "app-logo-32.png")), self)
 
         self.window.quit_requested.connect(lambda: self.quit("Über das Fenster-Kreuz beendet"))
         self.window.hide_requested.connect(self.hide_window)
@@ -227,7 +227,7 @@ class SingleInstance(QObject):
 
 def take_over_window_settings_from_version_1() -> None:
     """Copy the control page's settings (localStorage of the old Edge window) once."""
-    old = DATA_DIR / "fenster" / "Default" / "Local Storage"
+    old = DATA_DIR / "fenster" / "Default" / "Local Storage"           # folder name of version 1.x
     new = WINDOW_STORAGE / "Local Storage"
     if new.exists() or not old.exists():
         return

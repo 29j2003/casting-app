@@ -70,7 +70,7 @@ def test_unreadable_legacy_file_is_set_aside(tmp_path):
         raise OSError("DPAPI could not decrypt the file")
     store = SecretStore(tmp_path, keyring_backend=MemoryKeyring(), legacy_decrypt=broken)
     assert not store.has(FACEIT_KEY)
-    assert (tmp_path / "faceit.schluessel.nicht-lesbar").exists()
+    assert (tmp_path / "faceit.schluessel.unreadable").exists()
 
 
 def test_without_keyring_secrets_live_for_the_session_only(tmp_path):

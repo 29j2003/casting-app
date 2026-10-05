@@ -13,7 +13,7 @@ import time
 MAX_CLIENTS = 40
 KEEPALIVE_SECONDS = 20
 MAX_QUEUED_EVENTS = 500
-CONTROL_PAGE = "steuerung"          # page name the control page reports itself with
+CONTROL_PAGE = "control"          # page name the control page reports itself with
 
 
 class EventClient:
@@ -46,8 +46,8 @@ class EventClient:
             return ": still\n\n"
 
     def describe(self) -> dict:
-        """Client info for the control page (German keys are part of the page's API)."""
-        return {"seite": self.page, "obs": self.from_obs, "seit": self.connected_at, "v": self.version}
+        """Client info for the control page."""
+        return {"page": self.page, "obs": self.from_obs, "since": self.connected_at, "v": self.version}
 
 
 class EventHub:

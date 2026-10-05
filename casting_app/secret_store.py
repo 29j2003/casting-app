@@ -20,7 +20,7 @@ Migration from version 1.x (once, on first start)
     dach.json                          – the DACH user ID in plain text
     The values are moved into the keyring and the old files are deleted. A file
     that cannot be read (e.g. created by another Windows account) is renamed to
-    *.nicht-lesbar so the app does not retry on every start.
+    *.unreadable so the app does not retry on every start.
 """
 
 import base64
@@ -194,7 +194,7 @@ class SecretStore:
                     path.unlink(missing_ok=True)
             except Exception:
                 try:
-                    path.rename(path.with_name(path.name + ".nicht-lesbar"))
+                    path.rename(path.with_name(path.name + ".unreadable"))
                 except OSError:
                     pass
                 self._log(f"Alte Datei {file_name} nicht lesbar – bitte den Wert neu eintragen", "warn")

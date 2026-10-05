@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file: http://absolute; script-src 'self' file: http://absolute; style-src 'self' file: http://absolute 'unsafe-inline'; img-src * data: blob:; media-src 'self' file: http://absolute blob: data:; font-src 'self' file: http://absolute data:; frame-src 'self' file: http://absolute https:; connect-src 'self' http://localhost:* http://127.0.0.1:*; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Cast Duo + Clips</title>
+<link rel="stylesheet" href="cast.css">
+
+</head>
+<body data-szene="cast-duo-clips">
+<div class="hg"><div class="hg-leer"><img alt=""></div><div class="hg-dunkel"></div><div class="hg-schleier"></div></div>
+<div class="marke rein" data-teil="marke" style="--d:.1s" data-max="400"></div>
+<div class="box rein" data-teil="titel" style="left:482px;top:47px;width:919px;height:126px;--d:0.2s">
+  <div class="box-kopf ticker" style="--kh:46px;--kf:23px"></div>
+  <div class="box-feld" style="font-size:66px"><span data-t="texte.titel" data-passend></span></div>
+</div>
+<div class="box rein" data-teil="matchup" style="left:1433px;top:47px;width:430px;height:126px;--d:0.3s">
+  <div class="box-kopf" data-t="texte.matchUp"></div>
+  <div class="box-feld" style="padding:0"><div class="matchup"><div class="team-logo a"></div><div class="vs">vs</div><div class="team-logo b"></div></div></div>
+</div>
+<div class="kam rein" data-quelle="inhalt" data-teil="kam-inhalt" style="left:57px;top:212px;width:1344px;height:756px;--d:0.4s">
+  <div class="kam-info"><b>Clips / Browser</b>1344 × 756 · X 57 · Y 212</div>
+</div>
+<div class="kam rein" data-quelle="c1" data-teil="kam-c1" style="left:1433px;top:212px;width:430px;height:242px;--d:0.5s">
+  <div class="kam-info"><b>Caster 1</b>430 × 242 · X 1433 · Y 212</div>
+  <div class="box schild">
+    <div class="box-kopf" data-t="caster.c1.name"></div>
+    <div class="box-feld" data-t="caster.c1.zusatz"></div>
+  </div>
+</div>
+<div class="kam rein" data-quelle="c2" data-teil="kam-c2" style="left:1433px;top:586px;width:430px;height:242px;--d:0.6s">
+  <div class="kam-info"><b>Caster 2</b>430 × 242 · X 1433 · Y 586</div>
+  <div class="box schild">
+    <div class="box-kopf" data-t="caster.c2.name"></div>
+    <div class="box-feld" data-t="caster.c2.zusatz"></div>
+  </div>
+</div>
+
+<script src="themes.js"></script>
+<script src="verbindung.js"></script>
+<script src="cast-kern.js"></script>
+<script src="cast.js"></script>
+</body>
+</html>

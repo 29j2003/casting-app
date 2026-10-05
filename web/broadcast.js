@@ -232,9 +232,12 @@
       const all = [...dachLayer.querySelectorAll("iframe")];
       const fresh = all.find(x => x !== dachActive && x !== dachRunning) || all[0];
       clearTimeout(fresh._clear); fresh._brand = (fresh._brand || 0) + 1;
+      const brand = fresh._brand;                              // nur der neueste Auftrag für diesen Rahmen zählt
       let done = false;
       const toggle = () => { dachChain = dachChain.then(async () => {   // Übergänge laufen nacheinander, nie gleichzeitig
-        if (done || dachPage !== page || fresh.getAttribute("src") !== "/dach/" + page) return; done = true;
+        if (done || fresh._brand !== brand || dachPage !== page || fresh.getAttribute("src") !== "/dach/" + page) return;
+        done = true;
+        if (fresh === dachActive) return;                      // zeigt diese Seite schon – kein Übergang auf sich selbst
         const S = (C().Z || Z).broadcast || {}, previous = dachActive, kind = previous ? (S.transition || "fade") : "cut", d = Math.max(0, +S.duration || 0);
         dachRunning = fresh;
         await dachTransition(previous, fresh, kind, d, () => dachFrameSet(C().Z || Z, page, kind === "cut" ? 0 : d));

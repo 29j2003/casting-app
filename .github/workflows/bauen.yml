@@ -1,6 +1,7 @@
 # Baut die Casting-App (Python + Qt) bei jedem Push für Windows, Linux und macOS (Intel und Apple Silicon)
 # und prüft sie unter Linux mit den Tests aus tests/.
-# Ein Tag wie „v2.0.0“ legt zusätzlich ein Release mit allen Dateien zum Herunterladen an.
+# Ein Release mit allen Dateien entsteht bei einem Tag wie „v2.0.0“ – oder von Hand: Actions → Bauen → „Run workflow“
+# auf main mit „Release erstellen“; dann legt der Workflow den Tag v<Version> selbst an.
 name: Bauen
 
 on:
@@ -8,6 +9,11 @@ on:
     branches: ["**"]
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      release:
+        description: "Release erstellen (Tag v<Version> aus casting_app/version.py, nur auf main)"
+        type: boolean
+        default: false
 
 env:
   PYTHON_VERSION: "3.12"
@@ -77,17 +83,26 @@ jobs:
         run: cat app.log || true
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release && github.ref == 'refs/heads/main')
     needs: [bauen, testen]
     runs-on: ubuntu-latest
     permissions: { contents: write }
     steps:
       - uses: actions/checkout@v4
-      - name: Tag passt zur Version
-        run: test "${GITHUB_REF_NAME}" = "v$(python3 -c 'import casting_app.version as v; print(v.VERSION)')"
+      - name: Tag bestimmen (muss zur Version passen)
+        id: tag
+        run: |
+          tag="v$(python3 -c 'import casting_app.version as v; print(v.VERSION)')"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "$tag" ]; then
+            echo "Tag ${GITHUB_REF_NAME} passt nicht zur Version ($tag)"; exit 1
+          fi
+          echo "name=$tag" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
         with: { path: dist, merge-multiple: true }
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          target_commitish: ${{ github.sha }}
+          name: Casting-App ${{ steps.tag.outputs.name }}
           files: dist/*
           generate_release_notes: true

@@ -42,7 +42,7 @@ def request(method, path, body=None, headers=None, host="localhost:8787"):
 
 def test_ping(server):
     status, _, body = request("GET", "/api/ping")
-    assert status == 200 and json.loads(body) == {"ok": True, "dienst": "cast", "version": VERSION}
+    assert status == 200 and json.loads(body) == {"ok": True, "service": "cast", "dienst": "cast", "version": VERSION}
 
 
 @pytest.mark.parametrize("headers, host", [
@@ -58,14 +58,14 @@ def test_files_only_from_own_folders(server):
     assert request("GET", "/overlay.html")[0] == 200
     assert request("GET", "/..%2f..%2fetc%2fpasswd.html")[0] == 404
     assert request("GET", "/.git/config.md")[0] == 404
-    status, headers, body = request("GET", "/medien/maps/de_dust2.jpg", headers={"Range": "bytes=0-99"})
+    status, headers, body = request("GET", "/media/maps/de_dust2.jpg", headers={"Range": "bytes=0-99"})
     assert status == 206 and len(body) == 100 and headers["Content-Range"].startswith("bytes 0-99/")
 
 
 def test_secrets_are_never_returned(server):
-    request("POST", "/api/faceit-schluessel", json.dumps({"schluessel": "abcdefgh-1234-5678"}))
-    request("POST", "/api/dach-zugang", json.dumps({"userid": "4242", "key": "dachkey-0815"}))
-    answers = b"".join(request("GET", path)[2] for path in ("/api/faceit-schluessel", "/api/dach-zugang", "/api/log"))
+    request("POST", "/api/faceit-key", json.dumps({"key": "abcdefgh-1234-5678"}))
+    request("POST", "/api/dach-access", json.dumps({"userid": "4242", "key": "dachkey-0815"}))
+    answers = b"".join(request("GET", path)[2] for path in ("/api/faceit-key", "/api/dach-access", "/api/log"))
     for secret in (b"abcdefgh-1234-5678", b"dachkey-0815", b"4242"):
         assert secret not in answers
     status, headers, _ = request("GET", "/dach/pause")
@@ -73,14 +73,25 @@ def test_secrets_are_never_returned(server):
 
 
 def test_state_is_kept_and_older_states_are_ignored(server):
-    newer = int(time.time() * 1000) * 10                    # "stand" is a time stamp; stay above any earlier state
-    request("POST", "/api/zustand", json.dumps({"stand": newer, "theme": "neu"}))
-    request("POST", "/api/zustand", json.dumps({"stand": newer - 5, "theme": "alt"}))
-    status, _, body = request("GET", "/api/zustand?nach=1")
-    assert status == 200 and json.loads(body)["theme"] == "neu"
-    assert request("GET", f"/api/zustand?nach={newer}")[0] == 204
+    newer = int(time.time() * 1000) * 10                    # "revision" is a time stamp; stay above any earlier state
+    request("POST", "/api/state", json.dumps({"revision": newer, "theme": "new"}))
+    request("POST", "/api/state", json.dumps({"revision": newer - 5, "theme": "old"}))
+    status, _, body = request("GET", "/api/state?after=1")
+    assert status == 200 and json.loads(body)["theme"] == "new"
+    assert request("GET", f"/api/state?after={newer}")[0] == 204
     time.sleep(0.6)                                          # saving is bundled
-    assert json.loads((server.folders.data / "zustand.json").read_text())["theme"] == "neu"
+    assert json.loads((server.folders.data / "state.json").read_text())["theme"] == "new"
+
+
+def test_pages_of_version_2_1_still_work(server):
+    """OBS browser sources keep their old address; an old page that is still open reloads itself."""
+    status, headers, _ = request("GET", "/spieler.html?preview=1")
+    assert status == 301 and headers["Location"] == "/players.html?preview=1"
+    assert request("GET", "/steuerung.html")[1]["Location"] == "/control.html"
+    assert request("GET", "/medien/themes/dachcs/blau_1.svg")[1]["Location"] == "/media/themes/dachcs/blue_1.svg"
+    status, _, body = request("GET", "/api/ereignisse?seite=spieler&v=2.1.0")
+    assert status == 200 and b"event: neuladen" in body
+    assert request("POST", "/api/beenden", headers={"Origin": "https://evil.example"})[0] == 403
 
 
 def test_game_state_needs_token(server):

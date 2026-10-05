@@ -31,7 +31,7 @@ def send_file(handler, path: Path, content_type: str, version: str, extra_header
         if not path.is_file():
             raise FileNotFoundError
     except OSError:
-        return handler.send_json(404, {"fehler": "nicht gefunden"})
+        return handler.send_json(404, {"error": "nicht gefunden"})
     size = info.st_size
     etag = f'"{version}-{size:x}-{int(info.st_mtime * 1000):x}"'
     cacheable = re.match(r"^(video|image|font)/", content_type)

@@ -19,7 +19,7 @@ class PageConnection:
         self._ids = itertools.count(1)
 
     @classmethod
-    async def open(cls, port: int = 9222, url_part: str = "steuerung.html") -> "PageConnection":
+    async def open(cls, port: int = 9222, url_part: str = "control.html") -> "PageConnection":
         targets = json.load(urllib.request.urlopen(f"http://127.0.0.1:{port}/json"))
         target = next(t for t in targets if t.get("type") == "page" and url_part in t.get("url", ""))
         socket = await websockets.connect(target["webSocketDebuggerUrl"], max_size=50_000_000)

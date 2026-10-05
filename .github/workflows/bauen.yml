@@ -43,7 +43,7 @@ jobs:
       - name: Bibliotheken für Qt (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libfuse2 libegl1 libxkbcommon-x11-0 libxcb-cursor0 libnss3
-      # prüft die Version in casting_app/version.py, pyproject.toml und web/cast-kern.js und baut dann nach dist/
+      # prüft die Version in casting_app/version.py, pyproject.toml und web/cast-core.js und baut dann nach dist/
       - name: Bauen (ohne SignPath)
         if: env.SIGNPATH != 'true'
         run: python tools/build.py
@@ -138,12 +138,12 @@ jobs:
           for i in $(seq 1 60); do curl -sf http://localhost:8787/api/ping && break; sleep 1; done
           python tests/test_uebergaenge.py | tee uebergaenge.txt
           grep -qE "^([0-9]+)/\1 Wechsel sauber · Fehler: \[\]" uebergaenge.txt
-          for art in blende schieben wischen stinger; do python tests/test_blitze.py $art | tee -a blitze.txt; done
+          for art in fade slide wipe stinger; do python tests/test_blitze.py $art | tee -a blitze.txt; done
           if grep -E "Auffälligkeiten: [1-9]" blitze.txt; then exit 1; fi
           python tests/test_schnelle_wechsel.py | tee wechsel.txt
           grep -q "kein leeres Bild" wechsel.txt && grep -q "10/10 Runden" wechsel.txt && grep -q "Fehler: \[\]" wechsel.txt
           python tests/test_speicher.py 6
-          curl -s -X POST http://localhost:8787/api/beenden
+          curl -s -X POST http://localhost:8787/api/quit
       - if: failure()
         run: cat app.log || true
 

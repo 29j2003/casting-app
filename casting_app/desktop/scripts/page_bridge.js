@@ -1,7 +1,6 @@
 /* Runs in the control page itself (main world, top frame only, before the page's scripts).
  *
- * Provides window.castApp – the API steuerung.html uses in the desktop app (German names are
- * part of that page's API). It talks to the app only through DOM events; the connection to
+ * Provides window.castApp – the API control.html uses in the desktop app. It talks to the app only through DOM events; the connection to
  * Python (QWebChannel) lives in an isolated world (app_bridge.js) that no web page can reach.
  */
 (() => {
@@ -32,12 +31,12 @@
 
   Object.defineProperty(window, "castApp", { value: Object.freeze({
     desktop: true,
-    // close dialog: the page registers its dialog and reports the choice ("beenden", "fenster" or "")
-    beiSchliessen: handler => { if (typeof handler === "function") onCloseRequested = handler; },
-    schliessenAntwort: choice => toApp({ type: "close-answer", choice: ["beenden", "fenster"].includes(choice) ? choice : "" }),
+    // close dialog: the page registers its dialog and reports the choice ("quit", "window" or "")
+    onCloseRequested: handler => { if (typeof handler === "function") onCloseRequested = handler; },
+    closeAnswer: choice => toApp({ type: "close-answer", choice: ["quit", "window"].includes(choice) ? choice : "" }),
     // "Ton im App-Fenster": on/off and volume 0–100
-    ton: (on, volume) => toApp({ type: "audio", on: on === true, volume: Number(volume) }),
+    audio: (on, volume) => toApp({ type: "audio", on: on === true, volume: Number(volume) }),
     // tray "Overlays in OBS neu laden": the handler returns true when OBS did it
-    beiOverlaysNeuLaden: handler => { if (typeof handler === "function") onReloadOverlays = handler; }
+    onReloadOverlays: handler => { if (typeof handler === "function") onReloadOverlays = handler; }
   }) });
 })();

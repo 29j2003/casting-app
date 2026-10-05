@@ -4,7 +4,7 @@
 //  (unter „Verbindung & Sicherung"); das hier sind nur Startwerte.
 //  Die Overlays selbst brauchen KEIN Passwort.
 // =====================================================================
-window.CAST_VERBINDUNG = {
+window.CAST_CONNECTION = {
   port: 4455,
-  passwort: ""
+  password: ""
 };

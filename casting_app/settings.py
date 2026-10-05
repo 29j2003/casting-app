@@ -19,7 +19,7 @@ class AppSettings:
     """Small JSON-backed settings store; unknown keys and invalid values are ignored."""
 
     def __init__(self, data_dir: Path):
-        self._file = data_dir / "einstellungen.json"
+        self._file = data_dir / "settings.json"
         self._lock = threading.Lock()
         self._values = dict(DEFAULTS)
         try:

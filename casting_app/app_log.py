@@ -11,7 +11,7 @@ from pathlib import Path
 
 MAX_ENTRIES_IN_MEMORY = 400
 MAX_TEXT_LENGTH = 500
-MAX_FILE_SIZE = 2_000_000          # bytes; a bigger log.txt is moved to log.txt.alt on start
+MAX_FILE_SIZE = 2_000_000          # bytes; a bigger log.txt is moved to log.txt.old on start
 
 
 class AppLog:
@@ -26,17 +26,17 @@ class AppLog:
             try:
                 log_file.parent.mkdir(parents=True, exist_ok=True)
                 if log_file.exists() and log_file.stat().st_size > MAX_FILE_SIZE:
-                    log_file.replace(log_file.with_name(log_file.name + ".alt"))
+                    log_file.replace(log_file.with_name(log_file.name + ".old"))
             except OSError:
                 pass
 
     def write(self, text: str, level: str = "info") -> None:
-        """Add an entry. level: "info", "warn", "fehler" or "overlay" (the page styles these)."""
-        entry = {"zeit": int(time.time() * 1000), "art": level, "text": str(text)[:MAX_TEXT_LENGTH]}
+        """Add an entry. level: "info", "warn", "error" or "overlay" (the page styles these)."""
+        entry = {"time": int(time.time() * 1000), "kind": level, "text": str(text)[:MAX_TEXT_LENGTH]}
         with self._lock:
             self._entries.append(entry)
             if self._file:
-                stamp = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(entry["zeit"] / 1000))
+                stamp = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(entry["time"] / 1000))
                 try:
                     with open(self._file, "a", encoding="utf-8") as f:
                         f.write(f"{stamp}Z [{level}] {entry['text']}\n")
@@ -52,7 +52,7 @@ class AppLog:
         self.write(text, "warn")
 
     def error(self, text: str) -> None:
-        self.write(text, "fehler")
+        self.write(text, "error")
 
     def latest(self, count: int = 200) -> list[dict]:
         """The newest entries, oldest first."""

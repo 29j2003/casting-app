@@ -41,9 +41,9 @@ class AppFolders:
     fonts: Path
 
     def as_dict(self) -> dict:
-        """Folder paths as shown in the "Log" tab (German keys are part of the page's API)."""
-        return {"daten": str(self.data), "bilder": str(self.images), "eigene": str(self.own_files),
-                "videos": str(self.videos), "schriften": str(self.fonts)}
+        """Folder paths as shown in the "Log" tab."""
+        return {"data": str(self.data), "images": str(self.images), "custom": str(self.own_files),
+                "videos": str(self.videos), "fonts": str(self.fonts)}
 
 
 def documents_dir() -> Path:
@@ -69,7 +69,9 @@ def create_folders(documents: Path | None = None) -> AppFolders:
                 old.rename(new)
         except OSError:
             pass
-    folders = AppFolders(data=DATA_DIR, images=DATA_DIR / "bilder", own_files=own_files,
+    from .legacy import migrate_data_folder        # data of version 2.1 and older (German names)
+    migrate_data_folder(DATA_DIR)
+    folders = AppFolders(data=DATA_DIR, images=DATA_DIR / "images", own_files=own_files,
                          videos=own_files / "Videos", fonts=own_files / "Schriften")
     for folder in (folders.data, folders.images, folders.own_files, folders.videos, folders.fonts):
         folder.mkdir(parents=True, exist_ok=True)

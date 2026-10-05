@@ -61,8 +61,8 @@ class GameStateReceiver:
         self._broadcast = broadcast
         self._log = log
         self._lock = threading.Lock()
-        # settings (German keys: stored in gsi.json and used by the control page)
-        self.settings = {"token": secrets.token_hex(12), "netz": False, "seiteA": "CT", "teamA": "", "teamB": ""}
+        # settings (stored in gsi.json and shown on the control page)
+        self.settings = {"token": secrets.token_hex(12), "network": False, "sideA": "CT", "teamA": "", "teamB": ""}
         try:
             self.settings.update(json.loads(self._settings_file.read_text(encoding="utf-8")))
         except (OSError, ValueError):
@@ -71,7 +71,7 @@ class GameStateReceiver:
         self.last_raw: str | None = None       # last post as received
         self.last_time = 0.0
         self.live: dict | None = None          # processed state sent to the pages
-        self.source: str | None = None         # "lokal" or "netz"
+        self.source: str | None = None         # "local" or "network"
         self._map_name = None
         self._round = 0
         self._players: dict = {}
@@ -90,26 +90,26 @@ class GameStateReceiver:
 
     def apply_settings(self, changes: dict) -> None:
         """Settings from the control page: LAN receiver, side of team A, team names."""
-        if isinstance(changes.get("netz"), bool):
-            self.settings["netz"] = changes["netz"]
-            self.set_lan_receiver(changes["netz"])
-        if changes.get("seiteA") in ("CT", "T"):
-            self.settings["seiteA"] = changes["seiteA"]
+        if isinstance(changes.get("network"), bool):
+            self.settings["network"] = changes["network"]
+            self.set_lan_receiver(changes["network"])
+        if changes.get("sideA") in ("CT", "T"):
+            self.settings["sideA"] = changes["sideA"]
         for key in ("teamA", "teamB"):
             if isinstance(changes.get(key), str):
                 self.settings[key] = changes[key][:60]
         self.save_settings()
         with self._lock:
             if self.live:
-                self.live["seiteA"] = self.settings["seiteA"]
+                self.live["sideA"] = self.settings["sideA"]
                 self._broadcast("live", json.dumps(self.live))
 
     def info(self) -> dict:
-        """State for the setup page (German keys are part of the page's API)."""
-        return {"token": self.settings["token"], "netz": self.lan_receiver_running, "netzGewuenscht": self.settings["netz"],
-                "port": LAN_PORT, "ips": lan_addresses(), "seiteA": self.settings["seiteA"],
-                "alterMs": int((time.time() - self.last_time) * 1000) if self.last_time else None,
-                "quelle": self.source, "live": self.live}
+        """State for the setup page."""
+        return {"token": self.settings["token"], "network": self.lan_receiver_running, "networkWanted": self.settings["network"],
+                "port": LAN_PORT, "ips": lan_addresses(), "sideA": self.settings["sideA"],
+                "ageMs": int((time.time() - self.last_time) * 1000) if self.last_time else None,
+                "source": self.source, "live": self.live}
 
     # --- receiving ---
 
@@ -118,10 +118,10 @@ class GameStateReceiver:
         try:
             state = json.loads(body)
         except ValueError:
-            return 400, {"fehler": "kein JSON"}
+            return 400, {"error": "kein JSON"}
         token = (state.get("auth") or {}).get("token")
-        if token != self.settings["token"] and not (source == "lokal" and token == LOCAL_TOKEN):
-            return 403, {"fehler": "falscher Schlüssel"}
+        if token != self.settings["token"] and not (source == "local" and token == LOCAL_TOKEN):
+            return 403, {"error": "falscher Schlüssel"}
         self.last_raw, self.last_time = body, time.time()
         self._process(state, source)
         return 200, {"ok": True}
@@ -142,16 +142,16 @@ class GameStateReceiver:
             rounds_played = round_number + (0 if round_info.get("phase") in (None, "", "freezetime") else 1)
             players = [self._player_line(player_id, player, rounds_played) for player_id, player in all_players.items()]
             self.live = {
-                "zeit": int(time.time() * 1000), "quelle": source, "map": game_map.get("name") or "",
-                "phase": game_map.get("phase") or "", "runde": round_number, "rundenPhase": round_info.get("phase") or "",
-                "bombe": round_info.get("bomb") or "",
+                "time": int(time.time() * 1000), "source": source, "map": game_map.get("name") or "",
+                "phase": game_map.get("phase") or "", "round": round_number, "roundPhase": round_info.get("phase") or "",
+                "bomb": round_info.get("bomb") or "",
                 "ct": {"name": ct.get("name") or "", "score": _number(ct.get("score"))},
                 "t": {"name": t.get("name") or "", "score": _number(t.get("score"))},
-                "seiteA": self.settings["seiteA"], "beobachtet": (state.get("player") or {}).get("steamid") or "",
-                "spieler": players,
+                "sideA": self.settings["sideA"], "observed": (state.get("player") or {}).get("steamid") or "",
+                "players": players,
             }
             if not self.source:
-                self._log(f"CS2 sendet Live-Daten ({'Observer-PC im Netzwerk' if source == 'netz' else 'dieser PC'})", "info")
+                self._log(f"CS2 sendet Live-Daten ({'Observer-PC im Netzwerk' if source == 'network' else 'dieser PC'})", "info")
             self.source = source
             if self._send_timer is None:              # at most five updates per second
                 self._send_timer = threading.Timer(SEND_INTERVAL, self._send_live)
@@ -181,7 +181,7 @@ class GameStateReceiver:
         """Half time / overtime: the scores swap columns, so team A swaps sides."""
         previous = self._previous_score
         if previous and ct.get("score") != t.get("score") and ct.get("score") == previous["t"] and t.get("score") == previous["ct"]:
-            self.settings["seiteA"] = "T" if self.settings["seiteA"] == "CT" else "CT"
+            self.settings["sideA"] = "T" if self.settings["sideA"] == "CT" else "CT"
             self.save_settings()
             self._log("CS2: Seitenwechsel erkannt", "info")
         self._previous_score = {"ct": ct.get("score"), "t": t.get("score")}
@@ -192,9 +192,9 @@ class GameStateReceiver:
             return bool(a and b) and (a.lower() in b.lower() or b.lower() in a.lower())
         team_a, team_b = self.settings["teamA"], self.settings["teamB"]
         if similar(ct.get("name"), team_a) or similar(t.get("name"), team_b):
-            self.settings["seiteA"] = "CT"
+            self.settings["sideA"] = "CT"
         elif similar(t.get("name"), team_a) or similar(ct.get("name"), team_b):
-            self.settings["seiteA"] = "T"
+            self.settings["sideA"] = "T"
 
     def _player_line(self, player_id: str, player: dict, rounds_played: int) -> dict:
         match_stats, state = player.get("match_stats") or {}, player.get("state") or {}
@@ -202,12 +202,12 @@ class GameStateReceiver:
         damage = stats.get("dmg", 0) + stats.get("round_dmg", 0)
         headshots = stats.get("hs", 0) + stats.get("round_hs", 0)
         kills = _number(match_stats.get("kills"))
-        return {"id": player_id, "name": str(player.get("name") or "")[:32], "seite": player.get("team"),
+        return {"id": player_id, "name": str(player.get("name") or "")[:32], "side": player.get("team"),
                 "k": kills, "d": _number(match_stats.get("deaths")), "a": _number(match_stats.get("assists")),
                 "mvps": _number(match_stats.get("mvps")), "adr": round(damage / max(1, rounds_played)),
                 "hs": round(100 * headshots / kills) if kills else 0, "hp": _number(state.get("health")),
-                "geld": _number(state.get("money")), "ausruestung": _number(state.get("equip_value")),
-                "rk": _number(state.get("round_kills"))}
+                "money": _number(state.get("money")), "equipment": _number(state.get("equip_value")),
+                "roundKills": _number(state.get("round_kills"))}
 
     def _send_live(self) -> None:
         with self._lock:
@@ -235,7 +235,7 @@ class GameStateReceiver:
                     length = int(self.headers.get("Content-Length") or 0)
                     if length > MAX_BODY:
                         return self._answer(400, {})
-                    status, answer = receiver.accept(self.rfile.read(length).decode("utf-8", "replace"), "netz")
+                    status, answer = receiver.accept(self.rfile.read(length).decode("utf-8", "replace"), "network")
                     self._answer(status, answer)
 
                 def do_GET(self):
@@ -255,7 +255,7 @@ class GameStateReceiver:
             try:
                 self._lan_server = ThreadingHTTPServer(("0.0.0.0", LAN_PORT), LanHandler)
             except OSError as error:
-                self._log(f"Netzwerk-Empfang (Port {LAN_PORT}): {error}", "fehler")
+                self._log(f"Netzwerk-Empfang (Port {LAN_PORT}): {error}", "error")
                 return
             self._lan_server.daemon_threads = True
             threading.Thread(target=self._lan_server.serve_forever, name="gsi-lan", daemon=True).start()

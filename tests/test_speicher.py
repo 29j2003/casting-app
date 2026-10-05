@@ -11,9 +11,9 @@ import sys
 from cdp import PageConnection
 
 SCENES = ["intro", "cast-duo", "cast-solo", "cast-duo-clips", "cast-solo-clips", "cast-duo-interview", "cast-solo-interview",
-          "map-veto", "spieler", "serie", "sponsoren", "ingame", "pause", "ende"]
-DACH_PAGES = ["dach-duocast", "dach-singlecast", "dach-pause", "dach-tabelle", "dach-overview"]
-TRANSITIONS = ["schnitt", "blende", "schieben", "wischen", "stinger"]
+          "map-veto", "players", "series", "sponsors", "ingame", "pause", "end"]
+DACH_PAGES = ["dach-duocast", "dach-singlecast", "dach-pause", "dach-table", "dach-overview"]
+TRANSITIONS = ["cut", "fade", "slide", "wipe", "stinger"]
 LIVE_DOM = "document.getElementsByTagName('*').length + $('frame').contentDocument.getElementsByTagName('*').length"
 
 
@@ -52,7 +52,7 @@ async def main():
     rounds = int(sys.argv[1]) if len(sys.argv) > 1 else 8
     page = await PageConnection.open()
     await page.send("Performance.enable")
-    await page.evaluate("Z.sendung.aktiv=true; Z.sendung.dauer=500; themeWaehlen('regulaer'); senden(); 1")
+    await page.evaluate("Z.broadcast.active=true; Z.broadcast.duration=500; themeChoose('regular'); send(); 1")
     await asyncio.sleep(1.5)
     values = [await measure(page)]
     print("Start:", describe(values[0]))
@@ -60,15 +60,15 @@ async def main():
     switches = 0
     for round_number in range(rounds):
         for _ in range(60):
-            await page.evaluate(f"Z.sendung.uebergang='{random.choice(TRANSITIONS)}'; szeneWechseln('{random.choice(SCENES)}'); 1")
+            await page.evaluate(f"Z.broadcast.transition='{random.choice(TRANSITIONS)}'; sceneSwitch('{random.choice(SCENES)}'); 1")
             await asyncio.sleep(random.randint(80, 400) / 1000)
             switches += 1
-        await page.evaluate("themeWaehlen('dachcs-offiziell'); senden(); 1")
+        await page.evaluate("themeChoose('dachcs-official'); send(); 1")
         for _ in range(10):
-            await page.evaluate(f"dachWechseln('{random.choice(DACH_PAGES)}'); 1")
+            await page.evaluate(f"dachSwitch('{random.choice(DACH_PAGES)}'); 1")
             await asyncio.sleep(0.2)
             switches += 1
-        await page.evaluate("themeWaehlen('regulaer'); senden(); $('appTon').click(); $('appTon').click(); 1")
+        await page.evaluate("themeChoose('regular'); send(); $('appAudio').click(); $('appAudio').click(); 1")
         await asyncio.sleep(1.5)
         values.append(await measure(page))
         print(f"Runde {round_number + 1}: {switches} Wechsel ·", describe(values[-1]))

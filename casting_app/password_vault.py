@@ -50,7 +50,7 @@ def vault_from_environment(data_dir: Path, log) -> "PasswordVault | None":
 
     Used by the server-only mode and by unattended starts of the desktop app (no password dialog then).
     """
-    password = os.environ.get(ENVIRONMENT_VARIABLE)
+    password = os.environ.pop(ENVIRONMENT_VARIABLE, None)     # removed at once: child processes must not inherit it
     if not password or not is_available():
         return None
     try:

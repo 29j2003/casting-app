@@ -550,7 +550,14 @@ class CastingServer:
         return request.send_json(200, {"isSet": store.has(secret_store.OBS_PASSWORD), "persistent": store.persistent})
 
     def _api_obs_login(self, request) -> None:
-        """Answer OBS's login challenge (obs-websocket 5) so the password itself never leaves the server."""
+        """Answer OBS's login challenge (obs-websocket 5) so the password itself never leaves the server.
+
+        Only for the control page: a browser always sends Origin and Sec-Fetch-Site with this POST, a plain
+        program on this PC (curl, scripts) usually does not – it gets no answer that would let it into OBS.
+        """
+        if (request.headers.get("Origin") not in ALLOWED_ORIGINS
+                or request.headers.get("Sec-Fetch-Site") != "same-origin"):
+            return request.send_plain(403)
         password = self.secrets.get(secret_store.OBS_PASSWORD)
         if not password:
             return request.send_json(404, {"error": "kein OBS-Passwort gespeichert"})

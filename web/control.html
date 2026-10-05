@@ -1337,7 +1337,7 @@ function send() {
   $("saved").textContent = ok ? "✓ gespeichert " + new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "⚠ Speichern fehlgeschlagen";
   if (typeof stepsDraw === "function") setTimeout(stepsDraw, 0);
   channel.send({ cast: "state", z: small });
-  const f = $("frame").contentWindow; if (f) f.postMessage({ cast: "state", z: Z }, "*");
+  const f = $("frame").contentWindow; if (f) f.postMessage({ cast: "state", z: Z }, location.origin);
 }
 // alle Bilder erneut schicken (neu geladene Quellen, neue Verbindung)
 function allImagesSend() { if (Object.keys(currentImages).length) channel.send({ cast: "images", images: currentImages }); }
@@ -2158,7 +2158,7 @@ function sourcesDraw() {
       s.onchange = () => { const c = cameras.find(x => x.deviceId === s.value); Q.device = s.value; Q.deviceName = c ? c.label : ""; send(); };
       l.appendChild(s); f.appendChild(l);
       const r = document.createElement("div"); r.className = "line"; r.append(toggleSwitch("audio", "Mikrofon-Ton"), toggleSwitch("mirror", "Spiegeln"), rendering()); f.appendChild(r);
-      f.insertAdjacentHTML("beforeend", `<p class="small">In OBS muss dafür der Kamerazugriff für Browserquellen erlaubt sein – siehe ANLEITUNG.</p>`);
+      f.insertAdjacentHTML("beforeend", `<p class="small">In OBS muss dafür der Kamerazugriff für Browserquellen erlaubt sein – siehe Anleitung (LIESMICH).</p>`);
     }
     if (Q.type === "image") {
       const r = document.createElement("div"); r.className = "image-row";
@@ -2649,7 +2649,7 @@ function gsiNamesReport() {
 }
 function liveReceived(d) {
   liveLast = d;
-  try { $("frame").contentWindow.postMessage({ cast: "live", live: d }, "*"); } catch (err) {}   // Vorschau zeigt die Live-Daten mit
+  try { $("frame").contentWindow.postMessage({ cast: "live", live: d }, location.origin); } catch (err) {}   // Vorschau zeigt die Live-Daten mit
   if (liveTimer) return;                                    // Anzeige hier höchstens 2× pro Sekunde
   liveTimer = setTimeout(() => { liveTimer = null; liveShow(); }, 500);
 }
@@ -3878,7 +3878,7 @@ async function audioSourceCreate(k, n) {
 // die Lautstärke regelt die App für alles im Fenster – die Vorschau selbst spielt dann mit 100 %.
 function monitorSend() {
   if (window.castApp) window.castApp.audio(!!ui.appAudio, ui.appAudioVol ?? 60);
-  try { $("frame").contentWindow.postMessage({ cast: "monitor", mode: ui.appAudio ? "app" : "off", vol: window.castApp ? 100 : (ui.appAudioVol ?? 60) }, "*"); } catch (err) {}
+  try { $("frame").contentWindow.postMessage({ cast: "monitor", mode: ui.appAudio ? "app" : "off", vol: window.castApp ? 100 : (ui.appAudioVol ?? 60) }, location.origin); } catch (err) {}
 }
 function appAudioDraw() {
   $("appAudio").classList.toggle("on", !!ui.appAudio); $("appAudio").setAttribute("aria-checked", !!ui.appAudio);
@@ -4235,7 +4235,7 @@ function preview() {
   $("frame").src = (single ? "overlay" : $("scene").value) + ".html?preview=1";
 }
 $("scene").onchange = preview;
-$("frame").onload = () => $("frame").contentWindow.postMessage({ cast: "state", z: Z }, "*");
+$("frame").onload = () => $("frame").contentWindow.postMessage({ cast: "state", z: Z }, location.origin);
 // Vorschau so groß wie möglich, ohne Verzerrung (wie in OBS)
 function previewSize() {
   const p = $("stageSlot"), w = p.clientWidth, h = p.clientHeight;

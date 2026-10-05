@@ -347,7 +347,7 @@ class CastingServer:
             if not self._store_state(request.read_body(MAX_STATE_SIZE)):
                 return request.send_json(400, {"fehler": "kein Stand"})
             return request.send_json(200, {"ok": True})
-        newer_than = int(query.get("nach") or 0) if str(query.get("nach") or "0").isdigit() else 0
+        newer_than = int(query["nach"]) if str(query.get("nach", "")).isdigit() else 0
         if not self._state_text or self._state_number <= newer_than:
             return request.send_plain(204)
         return request.send_body(200, self._state_text.encode())

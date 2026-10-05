@@ -1,6 +1,8 @@
 """Build the Casting-App for the system this script runs on.
 
-    python tools/build.py
+    python tools/build.py              everything for this system
+    python tools/build.py app          only the app folder (dist/Casting-App) – e.g. to have it signed first
+    python tools/build.py package      only the packages (installer, AppImage, dmg) from an existing app folder
 
 Result in dist/:
     Windows  Casting-App-<version>-Setup.exe (installer) and Casting-App-<version>-windows-portable.zip
@@ -11,6 +13,8 @@ Requirements: pip install -e ".[build]"; Windows additionally NSIS (makensis), L
 
 Signing
     Windows: unsigned unless WINDOWS_CERTIFICATE (path to .pfx) and WINDOWS_CERTIFICATE_PASSWORD are set (signtool).
+             In CI the app can instead be signed by SignPath (free for open source): "app" → sign the folder →
+             "package" → sign the installer; see .github/workflows/bauen.yml.
     macOS:   ad-hoc signed ("-") so Apple Silicon starts it. Notarization is prepared but off:
              set MAC_NOTARIZE=1, MAC_SIGNING_IDENTITY ("Developer ID Application: …"), APPLE_ID,
              APPLE_APP_PASSWORD and APPLE_TEAM_ID to sign with hardened runtime and notarize.
@@ -168,10 +172,22 @@ def package_mac(app_bundle: Path) -> None:
 
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")    # Windows consoles default to cp1252
+    stage = sys.argv[1] if len(sys.argv) > 1 else "all"
+    if stage not in ("all", "app", "package"):
+        sys.exit("Aufruf: python tools/build.py [app|package]")
     check_versions()
-    shutil.rmtree(DIST, ignore_errors=True)
     WORK.mkdir(exist_ok=True)
-    app = run_pyinstaller()
+    if stage in ("all", "app"):
+        shutil.rmtree(DIST, ignore_errors=True)
+        app = run_pyinstaller()
+        if stage == "app":
+            return print(f"✓ {app.relative_to(ROOT)}")
+    else:
+        app = DIST / (f"{APP_NAME}.app" if sys.platform == "darwin" else APP_NAME)
+        if not app.exists():
+            sys.exit(f"✗ {app.relative_to(ROOT)} fehlt – zuerst „python tools/build.py app“")
+        for old in DIST.glob(f"{APP_NAME}-*"):         # packages of an earlier run
+            old.unlink()
     if sys.platform == "win32":
         package_windows(app)
     elif sys.platform == "darwin":

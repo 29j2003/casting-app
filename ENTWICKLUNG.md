@@ -251,6 +251,13 @@ Datei mit danebenliegendem Schlüssel wäre nur scheinbar sicher und gibt es des
 * Dateien aus 1.x (`faceit.schluessel`, `dach.schluessel` per DPAPI bzw. Base64, `dach.json`) werden beim ersten Start
   einmalig in den Schlüsselbund übernommen und gelöscht.
 * Im Repository liegen keine Zugangsdaten. Die CI liest den SignPath-Token nur aus den GitHub-Secrets.
+* **Grenzen:** DACH CS nimmt ID und Key nur als URL-Parameter an. `/dach/<page>` leitet deshalb mit beiden weiter
+  (`no-store`, `no-referrer`, nicht geloggt); die Adresse steht danach im iframe in OBS bzw. im App-Fenster.
+  Der Server prüft Adresse, Host, `Origin` und `Sec-Fetch-Site`, aber kein Passwort: Ein Programm auf **diesem PC**, das
+  Browser-Kopfzeilen fälscht, käme an `/dach/…` und `/api/obs-auth`. Programme unter demselben Nutzerkonto können
+  ohnehin den Schlüsselbund lesen – dagegen schützt keine App.
+* Die Vorschau bekommt Zustand und Live-Daten per `postMessage(…, location.origin)` – nie eine fremde Seite.
+* FACEIT-Abfragen folgen keiner Weiterleitung (der Key ginge sonst an den Ziel-Host mit).
 
 ## Bauen und signieren
 

@@ -180,6 +180,7 @@ class SecretStore:
         """Move the secret files of version 1.x into the keyring once (see module docstring)."""
         for name, file_name, file_format in LEGACY_FILES:
             path = self._data_dir / file_name
+            (self._data_dir / (file_name + ".unreadable")).unlink(missing_ok=True)    # left by older versions
             if not path.exists():
                 continue
             if self.has(name):                         # already migrated earlier
@@ -192,14 +193,16 @@ class SecretStore:
                 else:
                     value = self._legacy_decrypt(content)
                 value = value.strip()
+            except Exception:                          # cannot be decoded: delete it, it holds nothing usable
+                path.unlink(missing_ok=True)
+                self._log(f"Alte Datei {file_name} nicht lesbar – bitte den Wert neu eintragen", "warn")
+                continue
+            try:
                 if is_valid(name, value):
                     self.set(name, value)
                     self._log(f"Gespeicherten Zugang aus Version 1.x übernommen ({file_name})", "info")
-                if self.persistent:                    # without keyring keep the file for the next try
-                    path.unlink(missing_ok=True)
-            except Exception:
-                try:
-                    path.rename(path.with_name(path.name + ".unreadable"))
-                except OSError:
-                    pass
-                self._log(f"Alte Datei {file_name} nicht lesbar – bitte den Wert neu eintragen", "warn")
+            except Exception:                          # keyring refused: keep the file and try again next start
+                self._log(f"Alte Datei {file_name} konnte noch nicht übernommen werden", "warn")
+                continue
+            if self.persistent:                        # without keyring keep the file for the next try
+                path.unlink(missing_ok=True)

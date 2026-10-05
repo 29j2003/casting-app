@@ -6,6 +6,7 @@ Starts the server in-process on port 8787 – no other Casting-App may run.
 
 import http.client
 import json
+import os
 import time
 
 import pytest
@@ -101,6 +102,34 @@ def test_game_state_needs_token(server):
     assert request("POST", "/api/gsi", json.dumps(post))[0] == 200
     # a website may not post game state
     assert request("POST", "/api/gsi", json.dumps(post), headers={"Sec-Fetch-Site": "same-origin"})[0] == 403
+    # the token is not kept: the control page's view of the last post has no "auth"
+    status, _, body = request("GET", "/api/gsi")
+    assert status == 200 and "auth" not in json.loads(body)["data"] and post["auth"]["token"].encode() not in body
+    assert request("POST", "/api/gsi", "[1, 2]")[0] == 400
+
+
+def test_obs_login_only_for_the_control_page(server):
+    server.secrets.set("obs-password", "geheim-obs-123")
+    challenge = json.dumps({"salt": "s", "challenge": "c"})
+    assert request("POST", "/api/obs-auth", challenge)[0] == 403              # a program without browser headers
+    own_page = {"Origin": "http://localhost:8787", "Sec-Fetch-Site": "same-origin"}
+    status, _, body = request("POST", "/api/obs-auth", challenge, headers=own_page)
+    assert status == 200 and "authentication" in json.loads(body)
+    server.secrets.delete("obs-password")
+
+
+def test_faceit_never_follows_redirects():
+    """urllib would send the API key along to the host a redirect names – the FACEIT client refuses redirects."""
+    from casting_app.server import faceit
+    handler = next(h for h in faceit._opener.handlers if isinstance(h, faceit._NoRedirects))
+    assert handler.redirect_request(None, None, 302, "Found", {}, "https://evil.example/") is None
+
+
+def test_vault_password_is_removed_from_the_environment(tmp_path, monkeypatch):
+    from casting_app import password_vault
+    monkeypatch.setenv(password_vault.ENVIRONMENT_VARIABLE, "nur-fuer-tests")
+    password_vault.vault_from_environment(tmp_path, lambda *a, **k: None)
+    assert password_vault.ENVIRONMENT_VARIABLE not in os.environ
 
 
 def test_app_language_setting(server, tmp_path):

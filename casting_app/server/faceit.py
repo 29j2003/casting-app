@@ -30,6 +30,16 @@ def clean_query(params: dict[str, str]) -> str:
     return "?" + "&".join(kept) if kept else ""
 
 
+class _NoRedirects(urllib.request.HTTPRedirectHandler):
+    """Refuse redirects: urllib would otherwise send the API key along to whatever host a redirect names."""
+
+    def redirect_request(self, request, fp, code, message, headers, new_url):
+        return None                                        # urllib then raises HTTPError with the 3xx status
+
+
+_opener = urllib.request.build_opener(_NoRedirects)
+
+
 def fetch(path_with_query: str, api_key: str | None) -> tuple[int, bytes]:
     """GET a FACEIT resource. Returns (HTTP status, body). Raises OSError on network problems."""
     host = "open.faceit.com" if needs_api_key(path_with_query) else "api.faceit.com"
@@ -38,7 +48,7 @@ def fetch(path_with_query: str, api_key: str | None) -> tuple[int, bytes]:
     if api_key and needs_api_key(path_with_query):
         request.add_header("Authorization", f"Bearer {api_key}")
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as answer:
+        with _opener.open(request, timeout=TIMEOUT_SECONDS) as answer:
             return answer.status, _read_limited(answer)
     except urllib.error.HTTPError as error:
         return error.code, _read_limited(error)

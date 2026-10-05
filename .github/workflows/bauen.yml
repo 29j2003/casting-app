@@ -1,53 +1,86 @@
-# Baut die Casting-App bei jedem Push automatisch für Windows, Linux und macOS.
-# Ein Tag wie „v1.9.7“ legt zusätzlich ein Release mit allen Dateien zum Herunterladen an.
+# Baut die Casting-App (Desktop-App mit Electron) bei jedem Push für Windows, Linux und macOS
+# und prüft sie unter Linux mit den Tests aus tests/.
+# Ein Tag wie „v2.0.0“ legt zusätzlich ein Release mit allen Dateien zum Herunterladen an.
 name: Bauen
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
     tags: ["v*"]
-  pull_request:
   workflow_dispatch:
 
 jobs:
-  windows-linux:
+  bauen:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, ziel: win, name: windows }
+          - { os: ubuntu-latest, ziel: linux, name: linux }
+          - { os: macos-latest, ziel: mac, name: macos }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      # prüft die Version in package.json, server.js und web/cast-kern.js und baut dann nach dist/
+      - run: node tools/bauen.js ${{ matrix.ziel }}
+        env:
+          # Notarisierung (macOS) ist vorbereitet, aber aus – zum Einschalten CAST_NOTARISIEREN auf "1" setzen
+          # und die Apple-Zugangsdaten als Secrets hinterlegen (siehe electron-builder.config.js).
+          CAST_NOTARISIEREN: "0"
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - name: Signatur prüfen (macOS, ad-hoc)
+        if: matrix.ziel == 'mac'
+        run: |
+          for app in dist/mac*/Casting-App.app; do codesign --verify --deep --strict "$app" && codesign -dv "$app" 2>&1 | grep -E "Signature|Identifier"; done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: casting-app-${{ matrix.name }}
+          if-no-files-found: error
+          path: |
+            dist/*.exe
+            dist/*.AppImage
+            dist/*.dmg
+            dist/*.zip
+
+  testen:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20 }
-      - run: npm install --no-save @yao-pkg/pkg @yao-pkg/pkg-fetch resedit pe-library
-      - run: node tools/bauen.js win linux
-      - uses: actions/upload-artifact@v4
-        with:
-          name: casting-app-windows-linux
-          path: |
-            dist/Casting-App.exe
-            dist/casting-app-linux
-
-  macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20 }
-      - run: npm install --no-save @yao-pkg/pkg
-      - run: node tools/bauen.js mac-x64 mac-arm64
-      # Apple Silicon startet nur signierte Programme – eine Ad-hoc-Signatur reicht zum Starten (ohne Apple-Konto)
-      - run: codesign --force --sign - dist/casting-app-macos-apple dist/casting-app-macos-intel
-      - uses: actions/upload-artifact@v4
-        with:
-          name: casting-app-macos
-          path: |
-            dist/casting-app-macos-intel
-            dist/casting-app-macos-apple
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: npm ci
+      - run: pip install playwright websockets && python -m playwright install --with-deps chromium
+      # Ubuntu 24.04 erlaubt die Chromium-Sandbox sonst nicht
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - run: node tests/test_geheimnisse.js
+      - run: xvfb-run -a node tests/test_desktop.js
+      - name: Overlay-Tests gegen die laufende Desktop-App
+        run: |
+          xvfb-run -a npx electron . --remote-debugging-port=9222 > app.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://localhost:8787/api/ping && break; sleep 1; done
+          python3 tests/test_uebergaenge.py | tee uebergaenge.txt
+          grep -qE "^([0-9]+)/\1 Wechsel sauber · Fehler: \[\]" uebergaenge.txt
+          for art in blende schieben wischen stinger; do python3 tests/test_blitze.py $art | tee -a blitze.txt; done
+          if grep -E "Auffälligkeiten: [1-9]" blitze.txt; then exit 1; fi
+          python3 tests/test_schnelle_wechsel.py | tee wechsel.txt
+          grep -q "kein leeres Bild" wechsel.txt && grep -q "10/10 Runden" wechsel.txt && grep -q "Fehler: \[\]" wechsel.txt
+          python3 tests/test_speicher.py 6
+          curl -s -X POST http://localhost:8787/api/beenden
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [windows-linux, macos]
+    needs: [bauen, testen]
     runs-on: ubuntu-latest
     permissions: { contents: write }
     steps:
+      - uses: actions/checkout@v4
+      - name: Tag passt zur Version
+        run: test "${GITHUB_REF_NAME}" = "v$(node -p "require('./package.json').version")"
       - uses: actions/download-artifact@v4
         with: { path: dist, merge-multiple: true }
       - uses: softprops/action-gh-release@v2

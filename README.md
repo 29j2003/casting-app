@@ -106,8 +106,9 @@ von Qt WebEngine bei jedem Start erst entpacken.
   `MAC_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID` (gehärtete Laufzeit, `build/entitlements.mac.plist`).
 
 **GitHub Actions** (`.github/workflows/bauen.yml`): jeder Push baut für Windows, Linux, macOS Apple Silicon und Intel
-(Artefakte je System) und führt unter Linux alle Tests aus. Ein Tag wie `v2.0.0` (muss zur Version passen) erzeugt
-zusätzlich ein Release mit allen Dateien.
+(Artefakte je System) und führt unter Linux und Windows alle Tests aus (Windows zusätzlich: echtes DPAPI, Anmeldeinformations-
+verwaltung, Installer still installieren/starten/deinstallieren). **Release:** Actions → Bauen → „Run workflow“ auf `main` mit
+„Release erstellen“ – der Workflow legt den Tag `v<Version>` an und lädt alle Dateien hoch (oder einen passenden Tag pushen).
 
 ## Tests
 

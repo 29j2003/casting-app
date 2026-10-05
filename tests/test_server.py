@@ -16,6 +16,7 @@ from casting_app.app_log import AppLog
 from casting_app.paths import create_folders
 from casting_app.secret_store import SecretStore
 from casting_app.server.app_server import CastingServer
+from casting_app.version import VERSION
 
 
 @pytest.fixture(scope="module")
@@ -41,7 +42,7 @@ def request(method, path, body=None, headers=None, host="localhost:8787"):
 
 def test_ping(server):
     status, _, body = request("GET", "/api/ping")
-    assert status == 200 and json.loads(body) == {"ok": True, "dienst": "cast", "version": "2.0.0"}
+    assert status == 200 and json.loads(body) == {"ok": True, "dienst": "cast", "version": VERSION}
 
 
 @pytest.mark.parametrize("headers, host", [

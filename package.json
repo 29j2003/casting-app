@@ -5,6 +5,7 @@
   "description": "Casting-App – Steuerung und Overlays für CS2-Casts in OBS",
   "author": "29_THE_P4TCH3R",
   "main": "electron/main.js",
+  "desktopName": "casting-app.desktop",
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
@@ -12,7 +13,9 @@
     "ohne-fenster": "electron . --ohne-fenster",
     "server": "node server.js",
     "build": "node tools/bauen.js",
-    "szenen": "python3 tools/szenen_erzeugen.py"
+    "szenen": "python3 tools/szenen_erzeugen.py",
+    "test:desktop": "node tests/test_desktop.js",
+    "test:geheimnisse": "node tests/test_geheimnisse.js"
   },
   "devDependencies": {
     "electron": "^44.5.1",

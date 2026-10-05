@@ -147,6 +147,7 @@ def package_mac(app_bundle: Path) -> None:
 
 
 def main() -> None:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")    # Windows consoles default to cp1252
     check_versions()
     shutil.rmtree(DIST, ignore_errors=True)
     WORK.mkdir(exist_ok=True)

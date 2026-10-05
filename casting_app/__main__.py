@@ -62,6 +62,8 @@ def run_server_only() -> int:
 
 
 def main(arguments: list[str] | None = None) -> int:
+    if sys.stdout:                               # a windowed build on Windows has no console at all
+        sys.stdout.reconfigure(errors="replace")
     options = parse_arguments(arguments)
     if options.no_window:
         return run_server_only()

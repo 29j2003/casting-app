@@ -238,7 +238,7 @@ Kameras laufen dabei ohne Neuladen weiter.
 
 Die Windows-Dateien sind nicht signiert, deshalb warnt Windows beim ersten Start. Eine vertrauenswürdige Signatur braucht ein
 Code-Signing-Zertifikat, das auf deinen Namen ausgestellt ist (z. B. Microsoft Trusted Signing oder ein OV/EV-Zertifikat einer
-Zertifizierungsstelle). Mit so einem Zertifikat signiert der Bau (`tools/build.py`) Installer und App selbst, siehe README.
+Zertifizierungsstelle). Mit so einem Zertifikat signiert der Bau (`tools/build.py`) Installer und App selbst, siehe ENTWICKLUNG.md.
 Die macOS-App ist nur ad-hoc signiert (ohne Apple-Konto); die Beglaubigung durch Apple (Notarisierung) ist vorbereitet, aber aus.
 
 ## Sicherheit
@@ -257,7 +257,9 @@ Die macOS-App ist nur ad-hoc signiert (ohne Apple-Konto); die Beglaubigung durch
   ohne das Passwort nicht lesbar; das Passwort wird bei jedem Start abgefragt). Ohne Passwort gelten sie nur bis zum
   Beenden der App. Ohne Fenster (`--no-window`) öffnet die Umgebungsvariable `CASTING_APP_VAULT_PASSWORD` den Tresor. Sie werden nach dem Speichern nie wieder angezeigt –
   nicht in der App, nicht in Sicherungen, Sitzungen, Exporten oder im Log – und keine Schnittstelle gibt sie heraus.
-  Die App setzt sie nur intern ein (FACEIT-Abfragen, Weiterleitung zu den DACH-CS-Browserquellen).
+  Die App setzt sie nur intern ein (FACEIT-Abfragen, Weiterleitung zu den DACH-CS-Browserquellen). DACH CS verlangt
+  ID und Key in der Adresse seiner Seiten – sie stehen deshalb in der Adresse der DACH-Rahmen in OBS. Zeige die
+  Eigenschaften dieser Rahmen oder die OBS-Entwicklerwerkzeuge nicht im Stream.
 * Im App-Fenster laufen nur die eigenen Seiten; Links nach draußen öffnet der Standardbrowser. Kamera und Mikrofon dürfen nur
   die eigenen Seiten benutzen.
 * Der Netzwerk-Empfang für CS2 (Port 8788) ist aus, bis du ihn einschaltest, und nimmt dann nur CS2-Spielstände mit deinem Schlüssel an.

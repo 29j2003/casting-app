@@ -1,7 +1,7 @@
 # Casting-App – Handbuch für Änderungen
 
 Dieses Handbuch erklärt, wie die App aufgebaut ist und wie man typische Änderungen macht, Schritt für Schritt.
-Für Nutzer der App gibt es [LIESMICH.md](LIESMICH.md); den Überblick über Aufbau, Bauen und Signieren gibt [README.md](README.md).
+Für Nutzer der App gibt es [LIESMICH.md](LIESMICH.md). Alles für Entwickler steht hier – auch Tests, Bauen, Signieren und Release.
 
 **Regel für alle Änderungen:** Namen im Code sind englisch (Variablen, Funktionen, CSS-Klassen, IDs, Dateien,
 JSON-Felder). Texte, die Nutzer sehen, sind deutsch und bekommen eine englische Übersetzung (siehe [Texte](#texte-und-sprachen)).
@@ -12,6 +12,8 @@ JSON-Felder). Texte, die Nutzer sehen, sind deutsch und bekommen eine englische 
 - [Rezepte für häufige Änderungen](#rezepte-für-häufige-änderungen)
 - [Texte und Sprachen](#texte-und-sprachen)
 - [Gespeicherte Daten ändern](#gespeicherte-daten-ändern)
+- [Technische Details](#technische-details)
+- [Bauen und signieren](#bauen-und-signieren)
 - [Version und Release](#version-und-release)
 - [Fehlersuche](#fehlersuche)
 - [Worauf man achten muss](#worauf-man-achten-muss)
@@ -84,8 +86,28 @@ lädt sie beim nächsten Start neu. Änderungen an Python brauchen einen Neustar
 | `tests/live/transitions.py`, `tests/live/flicker.py` | nach Änderungen an Szenen, Übergängen, `broadcast.js` |
 | `tests/live/fast_switching.py`, `tests/live/memory.py` | nach Änderungen an Ton, DACH CS oder größeren Umbauten |
 
-Die Live-Skripte brauchen eine laufende App – siehe [tests/live/README.md](tests/live/README.md). Die CI
-(`.github/workflows/build.yml`) führt bei jedem Push alles aus und baut die App für Windows, Linux und macOS.
+Die CI (`.github/workflows/build.yml`) führt bei jedem Push alles aus und baut die App für Windows, Linux und macOS.
+
+### Live-Tests (`tests/live/`)
+
+Diese Skripte steuern eine **laufende** App und prüfen, was die Overlays wirklich zeigen – Bild für Bild, über viele
+schnelle Klicks und über lange Sitzungen. Jedes gibt am Ende `OK: …` oder `PROBLEM: …` aus und endet bei einem Problem
+mit Fehlercode 1. Vorher die App starten (unter Linux als root zusätzlich `QTWEBENGINE_DISABLE_SANDBOX=1`):
+
+```
+QTWEBENGINE_REMOTE_DEBUGGING=9222 python -m casting_app
+```
+
+| Skript | Prüft |
+|---|---|
+| `transitions.py` | jede Szene mit jeder Übergangsart: danach genau eine Szene, alles sichtbar, Stinger weg |
+| `flicker.py [art]` | Bild für Bild während eines Wechsels: nichts blitzt auf, flackert oder verschwindet kurz |
+| `fast_switching.py` | schnelle Klicks (eigene Szenen und DACH CS – Offiziell), Ton-Regler an ein nachgebautes OBS, Schließen-Frage |
+| `memory.py [runden]` | lange Sitzung im App-Fenster: Speicher, DOM und Listener wachsen nicht |
+| `cs2_simulation.py [url] [runden]` | kein Test – schickt simulierte CS2-Spielstände, um die Live-Statistik ohne CS2 auszuprobieren |
+
+Gemeinsames liegt in `tests/live/common.py` (Adressen, Szenenliste, Öffnen von Steuerseite und Overlay). `cdp.py` ist ein
+kleiner DevTools-Client für das App-Fenster, denn Playwright kann sich nicht an Qt WebEngine hängen.
 
 Besonders hilfreich: `tests/test_control_page.py` klickt jeden Knopf der Steuerseite, lädt jede Szene, prüft
 jede Einblendung im Overlay und öffnet die Steuerseite auf Englisch. Ein Tippfehler in einem Namen fällt dort sofort auf.
@@ -140,8 +162,9 @@ Die Dateien `web/<scene>.html` werden erzeugt – nie von Hand ändern.
 3. Der Name erscheint in der Steuerseite; für die englische Ansicht in `web/lang-en.js` übersetzen.
 
 ### Eine neue Server-Route (`/api/…`)
-1. `casting_app/server/app_server.py` → `_route_api`: ein `if path == "/api/<name>"`, die Arbeit in einer
-   eigenen Methode `_api_<name>`. Die Sicherheitsprüfung (nur dieser PC, nur eigene Seiten) läuft schon vorher für jede Anfrage.
+1. `casting_app/server/app_server.py` → `_api_routes()`: eine Zeile `"/api/<name>": ("POST", self._api_<name>)`
+   (Methode `None` = jede), die Arbeit in einer eigenen Methode `_api_<name>(self, request, query)`.
+   Die Sicherheitsprüfung (nur dieser PC, nur eigene Seiten) läuft schon vorher für jede Anfrage.
 2. Antworten mit `request.send_json(status, {...})`, englische Feldnamen. Fehlertexte für Nutzer sind deutsch
    (`{"error": "…"}`) und kommen mit Übersetzung in `web/lang-en.js`.
 3. Test in `tests/test_server.py`.
@@ -189,6 +212,85 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
   nutzen sowohl die Steuerseite als auch `casting_app/legacy.py`. Neue Einträge per Skript in die JSON-Tabelle schreiben
   und einen Fall in `tests/test_legacy.py` ergänzen.
 
+## Technische Details
+
+* **Schließen:** `closeEvent` wird ignoriert, die Steuerseite zeigt sofort ihren eigenen Dialog
+  (Ganz beenden · Nur Fenster schließen · Abbrechen). Bestätigt die Seite nicht binnen 1 s, fragt ein Systemdialog.
+  „Nur Fenster schließen“ versteckt das Fenster; das Tray-Symbol bietet Öffnen · Overlays in OBS neu laden · Ganz beenden.
+* **Brücke zur Steuerseite:** `window.castApp` (`desktop/scripts/page_bridge.js`) spricht nur über DOM-Ereignisse mit einer
+  isolierten Skript-Welt (`app_bridge.js`), die den `QWebChannel` zu Python hält. Eingebettete fremde Seiten erreichen Python nicht.
+* **Eine Instanz / Update-Ablösung:** `QLocalServer` – ein zweiter Start holt das Fenster nach vorn. Läuft eine **ältere**
+  Version (auch 1.x), wird sie über `/api/ping` erkannt und über `/api/beenden` beendet (den Namen versteht jede Version;
+  neu heißt er `/api/quit`). Eine ältere Version löst nie eine neuere ab.
+* **Alte Adressen** aus 2.1 und älter leitet der Server weiter (`/steuerung.html`, `/spieler.html`, `/medien/…`); eine noch
+  offene Seite der alten Version (z. B. in OBS) lädt sich einmal neu.
+* **Leistung:** Grafikbeschleunigung an (Ausweg `--no-gpu`), keine Hintergrund-Drosselung (Chromium-Schalter in
+  `desktop/app.py`), PyInstaller-Ordner statt Einzeldatei (kein Entpacken der ~200 MB Qt WebEngine bei jedem Start).
+
+### Ton im App-Fenster
+
+| | Wie | Reichweite |
+|---|---|---|
+| **Aus/An** | `QWebEnginePage.setAudioMuted()` für die ganze Seite | gilt für **alles** im Fenster, auch fremde iframes (VDO.Ninja, YouTube/Twitch-Clips, DACH CS) |
+| **Lautstärke** | Qt hat keine Lautstärke je Seite. `desktop/scripts/volume.js` läuft in **jedem** Rahmen und multipliziert die Lautstärke aller `<video>`/`<audio>` und Web-Audio-Ausgaben mit einem Faktor. Neue Rahmen fragen ihn per `postMessage` ab, bestehende setzt Python über `runJavaScript()` | wirkt in eigenen und fremden Seiten |
+| **Grenzen** | Medien in einem Shadow-DOM ohne Skript-`play()` und `new MediaElementAudioSourceNode()` werden nicht erfasst | dort hilft **Aus** |
+
+Der Ton für OBS (obs-websocket: Lautstärke, Stumm, Verzögerung, Abhören) ist davon unabhängig.
+
+### Geheimnisse
+
+FACEIT-Key, DACH-CS-Nutzer-ID und -Key und das OBS-Passwort liegen **nur im Schlüsselbund des Systems** (Paket `keyring`:
+Windows-Anmeldeinformationsverwaltung, macOS-Schlüsselbund, Linux Secret Service/KWallet), Dienstname „Casting-App“.
+Ohne Schlüsselbund bietet die App einen Passwort-Tresor an (`password_vault.py`: Schlüssel per scrypt aus dem Passwort,
+Inhalt AES-GCM; das Passwort wird nie gespeichert) – sonst gelten sie nur für die laufende Sitzung. Eine „verschlüsselte“
+Datei mit danebenliegendem Schlüssel wäre nur scheinbar sicher und gibt es deshalb nicht.
+
+* Nur der Server liest sie (`SecretStore.get()`); die Webseiten können sie setzen oder löschen, aber nie lesen
+  (`/api/dach-access` meldet nur `idSet`/`keySet`). Die obs-websocket-Anmeldung rechnet der Server aus (`/api/obs-auth`).
+* Sie stehen nie im Zustand, im Log, in Exporten, in Dateien, in Adressen (URLs) oder in API-Antworten.
+* Dateien aus 1.x (`faceit.schluessel`, `dach.schluessel` per DPAPI bzw. Base64, `dach.json`) werden beim ersten Start
+  einmalig in den Schlüsselbund übernommen und gelöscht.
+* Im Repository liegen keine Zugangsdaten. Die CI liest den SignPath-Token nur aus den GitHub-Secrets.
+* **Grenzen:** DACH CS nimmt ID und Key nur als URL-Parameter an. `/dach/<page>` leitet deshalb mit beiden weiter
+  (`no-store`, `no-referrer`, nicht geloggt); die Adresse steht danach im iframe in OBS bzw. im App-Fenster.
+  Der Server prüft Adresse, Host, `Origin` und `Sec-Fetch-Site`, aber kein Passwort: Ein Programm auf **diesem PC**, das
+  Browser-Kopfzeilen fälscht, käme an `/dach/…` und `/api/obs-auth`. Programme unter demselben Nutzerkonto können
+  ohnehin den Schlüsselbund lesen – dagegen schützt keine App.
+* Die Vorschau bekommt Zustand und Live-Daten per `postMessage(…, location.origin)` – nie eine fremde Seite.
+* FACEIT-Abfragen folgen keiner Weiterleitung (der Key ginge sonst an den Ziel-Host mit).
+
+## Bauen und signieren
+
+```
+pip install -e ".[build]"
+python tools/build.py        # baut für das laufende System nach dist/ (Teilschritte: app, package)
+```
+
+| System | Ergebnis |
+|---|---|
+| Windows | `Casting-App-<v>-Setup.exe` (NSIS, ohne Adminrechte) und `Casting-App-<v>-windows-portable.zip` |
+| Linux | `Casting-App-<v>-linux-x86_64.AppImage` |
+| macOS | `Casting-App-<v>-mac-arm64.dmg/.zip` bzw. `…-mac-x64.dmg/.zip` (je nach Mac), ad-hoc signiert |
+
+Windows braucht NSIS (`makensis`). Die CI baut bei jedem Push für alle vier Systeme (Artefakte je System) und testet unter
+Linux und Windows (Windows zusätzlich: echtes DPAPI, Anmeldeinformationsverwaltung, Installer still installieren, starten,
+deinstallieren).
+
+* **macOS:** ohne Apple-Konto ad-hoc signiert. Notarisierung ist vorbereitet, aber aus: `MAC_NOTARIZE=1` plus
+  `MAC_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID` (gehärtete Laufzeit, `build/entitlements.mac.plist`).
+* **Windows mit eigenem Zertifikat:** `WINDOWS_CERTIFICATE` (Pfad zur .pfx) und `WINDOWS_CERTIFICATE_PASSWORD` setzen (signtool).
+* **Windows mit SignPath** (kostenlos für Open Source, entfernt die SmartScreen-Warnung) – einmal einrichten:
+  1. Voraussetzungen: Repository öffentlich, OSI-anerkannte Lizenz (The Unlicense ✓), Bau nur in GitHub Actions (✓).
+  2. Bei <https://signpath.org/apply> bewerben.
+  3. Nach der Zusage im SignPath-Konto: Projekt `casting-app` mit GitHub als Build-Quelle, zwei Artifact Configurations
+     `app-folder` und `installer` (Inhalt: die Dateien in `tools/signpath/`), eine Signing Policy, z. B. `release-signing`.
+  4. Im GitHub-Repository (Settings → Secrets and variables → Actions): Secret `SIGNPATH_API_TOKEN`, Variablen
+     `SIGNPATH_ORGANIZATION_ID`, `SIGNPATH_PROJECT_SLUG`, `SIGNPATH_SIGNING_POLICY_SLUG`.
+
+  Danach signiert der Windows-Bau in zwei Runden: `build.py app` → `Casting-App.exe` signieren → `build.py package` →
+  Installer signieren. Ohne Secret wird unsigniert gebaut. Laut den Bedingungen muss dann in der README stehen:
+  „Free code signing provided by SignPath.io, certificate by SignPath Foundation“.
+
 ## Version und Release
 
 1. Die Version an drei Stellen gleich setzen:
@@ -221,5 +323,5 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
 * **Keine Bedien-Hinweise im Stream:** Hinweise für den Bediener nur in der Vorschau (`body.idle`).
 * **Overlays ändern sich nicht durch die Desktop-App:** Desktop-Besonderheiten liegen in `casting_app/desktop/` oder
   hinter `window.castApp`.
-* **Geheimnisse** nie in Zustand, Log, Exporte, Dateien oder API-Antworten.
-* `LIESMICH.md` und `web/ANLEITUNG.md` sind dieselbe Anleitung – beide gleich halten.
+* **Geheimnisse** nie in Zustand, Log, Exporte, Dateien, URLs oder API-Antworten – und nie ins Repository.
+* **Doku:** Nutzer-Anleitung nur in `LIESMICH.md`, alles für Entwickler nur hier. `README.md` ist die kurze Startseite.

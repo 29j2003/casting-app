@@ -50,7 +50,7 @@ Aufbau und Rezepte für Änderungen: `ENTWICKLUNG.md` (bei neuen Bausteinen dort
 - Stream-Overlays dürfen keine Bedien-Hinweise zeigen – Hinweise nur in der Vorschau (`body.idle`).
 - Nach Änderungen an Übergängen: `tests/live/transitions.py` und `tests/live/flicker.py` müssen sauber bleiben.
 - Nach Änderungen an `casting_app/`: `python -m pytest` (unter Linux mit `xvfb-run -a`) muss sauber bleiben.
-- `LIESMICH.md` und `web/ANLEITUNG.md` sind dieselbe Anleitung – beide gleich halten.
+- **Doku:** Nutzer-Anleitung nur in `LIESMICH.md`, Entwickler-Doku nur in `ENTWICKLUNG.md`, `README.md` bleibt kurz. Keine weiteren `.md`-Dateien anlegen.
 - **Zwei Sprachen** (App und Overlays, unabhängig): neuer sichtbarer Text in der Steuerseite → Übersetzung in
   `web/lang-en.js`; feste Overlay-Texte → `OVERLAY_TEXTS`/`OVERLAY_WORDS` in `web/cast-core.js` (beide Sprachen);
   Texte aus Python → `casting_app/texts.py`. Werte, die der Code vergleicht, nie aus sichtbarem Text ableiten.

@@ -25,6 +25,7 @@ from casting_app import instance
 from casting_app.app_log import AppLog
 from casting_app.desktop import app as desktop_app
 from casting_app.paths import DATA_DIR
+from casting_app.version import VERSION
 
 ROOT = Path(__file__).resolve().parent.parent
 _RESULT_NUMBERS = itertools.count(1)
@@ -74,7 +75,7 @@ def test_window_shows_control_page(qtbot, desktop):
     page = wait_for_page(qtbot, desktop)
     assert desktop.window.isVisible()
     assert page.url().toString() == "http://localhost:8787/steuerung.html"
-    assert ping()["version"] == "2.0.0"
+    assert ping()["version"] == VERSION
     # the connection to Python is invisible to the page (isolated world)
     assert run_js(qtbot, page, "typeof window.qt + ' ' + typeof window.castAppSend") == "undefined undefined"
 

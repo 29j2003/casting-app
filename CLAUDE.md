@@ -14,6 +14,8 @@ Nutzer: Julius (Twitch 29_THE_P4TCH3R), castet DACH CS Masters, ESEA, Uniliga.
   API-Pfade und JSON-Felder bleiben deutsch, weil die Seiten in `web/` sie benutzen.
 - `casting_app/secret_store.py` – FACEIT-Key, DACH-CS-ID/-Key nur im Schlüsselbund (`keyring`), keine Dateien;
   ohne Schlüsselbund nur Sitzung; einmalige Übernahme der 1.x-Dateien (DPAPI über ctypes, Base64, dach.json).
+- `casting_app/password_vault.py` – Passwort-Tresor für Systeme ohne Schlüsselbund (scrypt + AES-GCM, Passwort wird nie gespeichert).
+- `casting_app/settings.py` (einstellungen.json: Update-Prüfung, Sprache, Tresor-Angebot) · `update_check.py` (GitHub Releases).
 - `casting_app/instance.py` – laufende Version (`/api/ping`), ältere ablösen (`/api/beenden`), Versionsvergleich.
 - `casting_app/desktop/` – `app.py` (Start, eine Instanz per `QLocalServer`, Tray, Auto-Beenden, Beenden),
   `main_window.py` (Fenster, `closeEvent` → Dialog der Steuerseite, Systemdialog nur als Rückfall), `web_page.py`
@@ -50,7 +52,6 @@ Nutzer: Julius (Twitch 29_THE_P4TCH3R), castet DACH CS Masters, ESEA, Uniliga.
 - Szenen neu erzeugen: `python3 tools/szenen_erzeugen.py`
 
 ## Geplant
-- OBS-Passwort (liegt noch im localStorage der Steuerseite) ebenfalls in den Schlüsselbund legen.
 - Notarisierung für macOS einschalten, sobald ein Apple-Entwicklerkonto da ist; Windows-Signatur mit eigenem Zertifikat.
 - Konzept 3 vollständig umsetzen: Match-Stepper + Spieltag, Turnier-Phasen, Teams-Vorstellung, Fernsteuerung (Touch Portal).
 - DACH-Rahmen für Duocam/Interaktion/Interview exakt vermessen (Screenshots vom Nutzer).

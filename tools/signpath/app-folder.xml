@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SignPath artifact configuration "app-folder": signs Casting-App.exe in the PyInstaller folder
+     (round 1, before the installer is built, so the installed program is signed as well).
+     Only our own program is signed – Qt and Python libraries are signed by their vendors. -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="Casting-App.exe">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

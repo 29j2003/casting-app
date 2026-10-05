@@ -1,4 +1,4 @@
-"""Secrets of the app: FACEIT API key, DACH CS user ID and DACH CS key.
+"""Secrets of the app: FACEIT API key, DACH CS user ID and DACH CS key, OBS WebSocket password.
 
 Where they live
     Only in the system keyring – Windows Credential Manager, macOS Keychain or
@@ -36,12 +36,14 @@ KEYRING_SERVICE = "Casting-App"
 FACEIT_KEY = "faceit-key"
 DACH_USER_ID = "dach-user-id"
 DACH_KEY = "dach-key"
+OBS_PASSWORD = "obs-password"
 
 # What a valid value looks like – anything else is rejected before it is stored
 VALID_VALUE = {
     FACEIT_KEY: re.compile(r"^[A-Za-z0-9-]{8,100}$"),
     DACH_USER_ID: re.compile(r"^\d{1,9}$"),
     DACH_KEY: re.compile(r"^[A-Za-z0-9-]{5,64}$"),
+    OBS_PASSWORD: re.compile(r"^[^\r\n]{1,200}$"),
 }
 
 # Old 1.x files: (secret name, file name, format)

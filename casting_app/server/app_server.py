@@ -10,6 +10,7 @@ The API and the JSON field names are German because the existing web pages use t
 """
 
 import base64
+import hashlib
 import json
 import re
 import socket
@@ -23,6 +24,7 @@ from typing import Callable
 from .. import secret_store
 from ..app_log import AppLog
 from ..paths import IS_WINDOWS, WEB_DIR, AppFolders
+from ..settings import AppSettings
 from ..version import VERSION
 from . import cs2_setup, faceit
 from .event_hub import EventClient, EventHub
@@ -60,15 +62,19 @@ class CastingServer:
     """Owns the app state and serves all requests."""
 
     def __init__(self, folders: AppFolders, secrets: secret_store.SecretStore, log: AppLog,
-                 on_quit_requested: Callable[[], None], open_folder: Callable[[Path], None] | None = None):
+                 on_quit_requested: Callable[[], None], open_folder: Callable[[Path], None] | None = None,
+                 settings: AppSettings | None = None):
         """
         on_quit_requested – called when a page or a newer version asks the app to quit (/api/beenden)
         open_folder       – shows a folder in the file manager (desktop app); None = Windows Explorer only
+        settings          – app settings (created from the data folder if not given)
         """
         self.folders = folders
         self.secrets = secrets
         self.log = log
         self.events = EventHub()
+        self.settings = settings or AppSettings(folders.data)
+        self.available_update: dict | None = None   # set by the update check: {"version", "url"}
         self.game_state = GameStateReceiver(folders.data, self.events.broadcast, log.write)
         self._on_quit_requested = on_quit_requested
         self._open_folder = open_folder
@@ -286,6 +292,14 @@ class CastingServer:
             return self._api_dach_access(request)
         if path == "/api/faceit-schluessel":
             return self._api_faceit_key(request)
+        if path == "/api/app-einstellungen":
+            if method == "POST":
+                self.settings.update(request.read_json(1000))
+            return request.send_json(200, {**self.settings.as_dict(), "update": self.available_update})
+        if path == "/api/obs-passwort":
+            return self._api_obs_password(request)
+        if path == "/api/obs-anmeldung" and method == "POST":
+            return self._api_obs_login(request)
         if path.startswith("/api/faceit/"):
             return self._api_faceit(request, path[len("/api/faceit/"):], query)
         if path == "/api/meldung" and method == "POST":
@@ -455,6 +469,36 @@ class CastingServer:
             self.log.info("FACEIT-Schlüssel gelöscht")
             return request.send_json(200, {"gesetzt": False})
         return request.send_json(200, {"gesetzt": store.has(secret_store.FACEIT_KEY), "dauerhaft": store.persistent})
+
+    def _api_obs_password(self, request) -> None:
+        """OBS WebSocket password: set, delete, or ask WHETHER one is stored – it is never returned."""
+        store = self.secrets
+        if request.command == "POST":
+            password = str(request.read_json(1000).get("passwort") or "")
+            if not secret_store.is_valid(secret_store.OBS_PASSWORD, password):
+                return request.send_json(400, {"fehler": "Ungültiges Passwort"})
+            try:
+                store.set(secret_store.OBS_PASSWORD, password)
+            except (OSError, ValueError):
+                return request.send_json(500, {"fehler": "Speichern fehlgeschlagen"})
+            self.log.info("OBS-Passwort gespeichert" + (" (Schlüsselbund)" if store.persistent else " (nur für diese Sitzung)"))
+        elif request.command == "DELETE":
+            store.delete(secret_store.OBS_PASSWORD)
+            self.log.info("OBS-Passwort gelöscht")
+        return request.send_json(200, {"gesetzt": store.has(secret_store.OBS_PASSWORD), "dauerhaft": store.persistent})
+
+    def _api_obs_login(self, request) -> None:
+        """Answer OBS's login challenge (obs-websocket 5) so the password itself never leaves the server."""
+        password = self.secrets.get(secret_store.OBS_PASSWORD)
+        if not password:
+            return request.send_json(404, {"fehler": "kein OBS-Passwort gespeichert"})
+        data = request.read_json(1000)
+        salt, challenge = str(data.get("salt") or ""), str(data.get("challenge") or "")
+        if not salt or not challenge or len(salt) > 200 or len(challenge) > 200:
+            return request.send_json(400, {"fehler": "salt und challenge fehlen"})
+        secret = base64.b64encode(hashlib.sha256((password + salt).encode()).digest()).decode()
+        answer = base64.b64encode(hashlib.sha256((secret + challenge).encode()).digest()).decode()
+        request.send_json(200, {"authentication": answer})
 
     def _api_faceit(self, request, resource: str, query: dict) -> None:
         if not faceit.ALLOWED_PATH.match(resource):

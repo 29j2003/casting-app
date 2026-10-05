@@ -25,7 +25,9 @@ from PySide6.QtWidgets import QApplication
 from .. import instance, update_check
 from ..app_log import AppLog
 from ..paths import DATA_DIR, IS_WINDOWS, WEB_DIR, create_folders
-from ..secret_store import SecretStore
+from .. import password_vault
+from ..secret_store import SecretStore, system_keyring_or_none
+from ..settings import AppSettings
 from ..server.app_server import BASE_URL, CastingServer
 from ..version import APP_NAME, VERSION
 from .main_window import MainWindow
@@ -235,6 +237,14 @@ def take_over_window_settings_from_version_1() -> None:
         pass
 
 
+def _secret_backend(data_dir, settings):
+    """System keyring; without one (some Linux systems) optionally a password-protected vault."""
+    if system_keyring_or_none() is not None or not password_vault.is_available():
+        return "system"
+    from .vault_dialog import open_or_offer_vault
+    return open_or_offer_vault(data_dir, settings)       # None: secrets for this session only
+
+
 def prepare_qt(no_gpu: bool = False) -> None:
     """Settings that must be made before the QApplication exists."""
     flags = CHROMIUM_FLAGS + (["--disable-gpu"] if no_gpu else [])
@@ -261,9 +271,11 @@ def start_desktop_app(qt_app: QApplication, log: AppLog) -> DesktopApp | None:
     server_requests = ServerRequests()
     server = None
     if running is None:
-        server = CastingServer(folders, SecretStore(folders.data, log.write), log,
-                               on_quit_requested=server_requests.quit_requested.emit,
-                               open_folder=lambda folder: server_requests.open_folder_requested.emit(str(folder)))
+        settings = AppSettings(folders.data)
+        server = CastingServer(folders, SecretStore(folders.data, log.write, keyring_backend=_secret_backend(folders.data, settings)),
+                               log, on_quit_requested=server_requests.quit_requested.emit,
+                               open_folder=lambda folder: server_requests.open_folder_requested.emit(str(folder)),
+                               settings=settings)
         log.info(f"{APP_NAME} {VERSION} startet · Daten: {folders.data} · Videos: {folders.videos}")
         server.start()                            # OSError if the port is taken
     else:

@@ -18,6 +18,7 @@ os.environ.setdefault("QTWEBENGINE_DISABLE_SANDBOX", "1" if hasattr(os, "getuid"
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import keyring                                   # noqa: E402
+import pytest                                    # noqa: E402
 from keyring.backend import KeyringBackend       # noqa: E402
 
 
@@ -43,3 +44,13 @@ class MemoryKeyring(KeyringBackend):
 
 MEMORY_KEYRING = MemoryKeyring()
 keyring.set_keyring(MEMORY_KEYRING)
+
+
+@pytest.fixture(scope="session")
+def qapp_args():
+    """Settings for the one QApplication of the test session (pytest-qt), made before it exists."""
+    from casting_app.desktop import app as desktop_app
+    # only for the tests: accept the self-made certificate of the HTTPS test page in test_desktop.py
+    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--ignore-certificate-errors"
+    desktop_app.prepare_qt()
+    return [sys.argv[0]]

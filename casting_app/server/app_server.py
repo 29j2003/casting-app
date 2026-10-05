@@ -62,16 +62,18 @@ class CastingServer:
     """Owns the app state and serves all requests."""
 
     def __init__(self, folders: AppFolders, secrets: secret_store.SecretStore, log: AppLog,
-                 on_quit_requested: Callable[[], None], open_folder: Callable[[Path], None] | None = None):
+                 on_quit_requested: Callable[[], None], open_folder: Callable[[Path], None] | None = None,
+                 settings: AppSettings | None = None):
         """
         on_quit_requested – called when a page or a newer version asks the app to quit (/api/beenden)
         open_folder       – shows a folder in the file manager (desktop app); None = Windows Explorer only
+        settings          – app settings (created from the data folder if not given)
         """
         self.folders = folders
         self.secrets = secrets
         self.log = log
         self.events = EventHub()
-        self.settings = AppSettings(folders.data)
+        self.settings = settings or AppSettings(folders.data)
         self.available_update: dict | None = None   # set by the update check: {"version", "url"}
         self.game_state = GameStateReceiver(folders.data, self.events.broadcast, log.write)
         self._on_quit_requested = on_quit_requested

@@ -811,7 +811,7 @@
           <label>Format<select id="tourFormat">
             <option value="se">Single Elimination</option><option value="de">Double Elimination</option>
             <option value="swiss">Swiss</option><option value="gsl">Gruppen (GSL, je 4 Teams)</option>
-            <option value="tabelle">Gruppen mit Tabelle (jeder gegen jeden)</option><option value="import">Wie bei FACEIT (übernommener Baum)</option></select></label>
+            <option value="table">Gruppen mit Tabelle (jeder gegen jeden)</option><option value="import">Wie bei FACEIT (übernommener Baum)</option></select></label>
         </div>
         <div class="line" id="tourTabSettings" hidden>
           <label>Gruppen<input type="number" id="tourGroups" min="1" max="8" value="1"></label>
@@ -1284,9 +1284,9 @@ async function obsPasswordSave(password) {
   try { await fetch("/api/obs-password", { method: "POST", body: JSON.stringify({ password }) }); } catch (err) {}
 }
 if (K.SERVER && connection().password) {        // Umzug: ein Passwort aus älteren Versionen wandert einmal in den Schlüsselbund
-  const alt = connection().password;
+  const oldPassword = connection().password;
   localStorage.setItem(CONN_KEY, JSON.stringify({ port: connection().port || 4455 }));
-  obsPasswordSave(alt).then(obsPasswordStatus);
+  obsPasswordSave(oldPassword).then(obsPasswordStatus);
 } else obsPasswordStatus();
 
 /* ---------- Senden ---------- */
@@ -1966,7 +1966,7 @@ $("faceitKeyDelete").onclick = async () => {
   $("faceitKeyStatus").textContent = "Schlüssel gelöscht.";
 };
 // Umzug: ein Schlüssel aus älteren Versionen (im Browser gespeichert) wandert einmal in den sicheren Speicher und wird hier gelöscht
-if (faceit.key) { const alt = faceit.key; delete faceit.key; faceitRemember(); faceitKeySet(alt); } else faceitKeyState();
+if (faceit.key) { const oldKey = faceit.key; delete faceit.key; faceitRemember(); faceitKeySet(oldKey); } else faceitKeyState();
 const faceitStatus = (t, color) => { $("faceitStatus").textContent = t; $("faceitStatus").style.color = color || ""; };
 function matchId(t) {
   const m = String(t).match(/1-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
@@ -2025,9 +2025,9 @@ async function faceitLoad(muted) {
     Z.teams.b.name = fb.name || fb.nickname || Z.teams.b.name; Z.teams.b.logo = fb.avatar || "";
   }
   if ($("faceitPlayers").checked) {
-    const off = p => ({ name: p.nickname || "", real: "", image: p.avatar || "", level: p.game_skill_level || p.skill_level || 0 });
-    Z.players.a = (fa.roster || fa.players || []).map(off);
-    Z.players.b = (fb.roster || fb.players || []).map(off);
+    const fromFaceit = p => ({ name: p.nickname || "", real: "", image: p.avatar || "", level: p.game_skill_level || p.skill_level || 0 });
+    Z.players.a = (fa.roster || fa.players || []).map(fromFaceit);
+    Z.players.b = (fb.roster || fb.players || []).map(fromFaceit);
   }
   if ($("faceitVeto").checked) {
     const ents = (((m.voting || {}).map || {}).entities) || [];
@@ -2499,7 +2499,7 @@ function sponsorsDraw() {
     away.onclick = () => remove(list, i, `Sponsor „${s.name || "?"}“`, () => { sponsorsDraw(); scenesDraw(); });
     box.appendChild(z);
   });
-  const sceneDef = $("sponsorScenes"); sceneDef.innerHTML = `<span class="small">Sponsor-Kasten zeigen in:</span>`;
+  const scenesBox = $("sponsorScenes"); scenesBox.innerHTML = `<span class="small">Sponsor-Kasten zeigen in:</span>`;
   const r = document.createElement("div"); r.className = "line";
   SPONSOR_SCENES.forEach(([k, n]) => {
     const l = document.createElement("label"); l.className = "toggleSwitch"; l.style.flex = "0 0 auto";
@@ -2507,7 +2507,7 @@ function sponsorsDraw() {
     c.onchange = () => { Z.sponsors.sceneList = Z.sponsors.sceneList || {}; Z.sponsors.sceneList[k] = c.checked; send(); };
     l.append(c, n); r.appendChild(l);
   });
-  sceneDef.appendChild(r);
+  scenesBox.appendChild(r);
 }
 $("sponsorPlus").onclick = () => { sponsorEntries().push({ name: "", logo: "" }); sponsorsDraw(); };
 
@@ -2872,8 +2872,8 @@ function draggable(divider, field, element, direction, reversedValue) {
     const reversed = typeof reversedValue === "function" ? reversedValue() : reversedValue;
     ev.preventDefault(); divider.setPointerCapture(ev.pointerId); divider.classList.add("drags");
     const vertical = direction === "y", start = vertical ? ev.clientY : ev.clientX;
-    const r = element.getBoundingClientRect(), alt = vertical ? r.height : r.width, zoom = parseFloat(document.body.style.zoom) || 1;
-    const move = m => { const d = ((vertical ? m.clientY : m.clientX) - start) / zoom; ui[field] = Math.max(vertical ? 120 : 260, Math.round(alt + (reversed ? -d : d))); widths(); };
+    const r = element.getBoundingClientRect(), startSize = vertical ? r.height : r.width, zoom = parseFloat(document.body.style.zoom) || 1;
+    const move = m => { const d = ((vertical ? m.clientY : m.clientX) - start) / zoom; ui[field] = Math.max(vertical ? 120 : 260, Math.round(startSize + (reversed ? -d : d))); widths(); };
     const end = () => { divider.classList.remove("drags"); divider.removeEventListener("pointermove", move); uiSave(); };
     divider.addEventListener("pointermove", move);
     divider.addEventListener("pointerup", end, { once: true });
@@ -2884,7 +2884,7 @@ draggable($("divider2"), "b2", $("dockRight"), "x", () => placement().page !== "
 draggable($("dividerH"), "hU", $("dockBottom"), "y", () => placement().preview !== "upper");
 function bottomFit() {
   const cards = cardsIn($("dockBottom")); if (!cards.length) return;
-  const full = Math.max(...cards.map(k => { const alt = k.style.maxHeight; k.style.maxHeight = "none"; const h = k.scrollHeight; k.style.maxHeight = alt; return h; })) + 16;
+  const full = Math.max(...cards.map(k => { const previousMax = k.style.maxHeight; k.style.maxHeight = "none"; const h = k.scrollHeight; k.style.maxHeight = previousMax; return h; })) + 16;
   const max = $("middle").clientHeight * 0.6;
   ui.hU = Math.round(Math.min(full, max)); pageEl.style.setProperty("--hU", ui.hU + "px"); uiSave();
 }
@@ -2893,12 +2893,12 @@ $("dividerH").title = "Ziehen = Höhe ändern · Doppelklick = Höhe passend zum
 // Lage der Bereiche frei wählbar – nur die Reihenfolge ändert sich, nichts wird neu aufgebaut
 function placement() { return Object.assign({ tabs: "left", side: "right", preview: "bottom" }, ui.placement || {}); }
 function placementSet() {
-  const L = placement(), sponsor = document.querySelector(".column"), mapinfo = $("middle"), dframe = $("dockRight"), t1 = $("divider1"), t2 = $("divider2");
-  const middlePart = L.side === "left" ? [dframe, t2, mapinfo] : [mapinfo, t2, dframe];
-  const sequence = L.tabs === "right" ? [...middlePart, t1, sponsor] : [sponsor, t1, ...middlePart];
+  const L = placement(), columnEl = document.querySelector(".column"), middleEl = $("middle"), dockRightEl = $("dockRight"), t1 = $("divider1"), t2 = $("divider2");
+  const middlePart = L.side === "left" ? [dockRightEl, t2, middleEl] : [middleEl, t2, dockRightEl];
+  const sequence = L.tabs === "right" ? [...middlePart, t1, columnEl] : [columnEl, t1, ...middlePart];
   sequence.forEach((el, i) => { el.style.order = i + 1; });
   const upper = L.preview === "upper";
-  $("dockBottom").style.order = upper ? 0 : 3; $("dividerH").style.order = upper ? 1 : 2; mapinfo.querySelector(".preview").style.order = upper ? 2 : 0;
+  $("dockBottom").style.order = upper ? 0 : 3; $("dividerH").style.order = upper ? 1 : 2; middleEl.querySelector(".preview").style.order = upper ? 2 : 0;
   document.querySelectorAll("[data-placement]").forEach(g => g.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.value === L[g.dataset.placement])));
   zones.bottom.textContent = upper ? "⤒  Über der Vorschau" : "⤓  Unter der Vorschau";
   zones.right.textContent = L.side === "left" ? "⇤  Links neben der Vorschau" : "⇥  Rechts neben der Vorschau";
@@ -2972,19 +2972,19 @@ function groupCleanup(g) {
   if (cards.length <= 1) { if (cards[0]) { cards[0].classList.remove("tab-active"); g.replaceWith(cards[0]); } else g.remove(); }
   else tabsDraw(g);
 }
-function groupNew(dock, pregame, active) {
+function groupNew(dock, before, active) {
   const g = document.createElement("div"); g.className = "tabgroup"; g.dataset.active = active || "";
   g.innerHTML = `<div class="tab-bar" role="tablist"></div>`;
-  dock.insertBefore(g, pregame || dock.querySelector(".dock-target"));
+  dock.insertBefore(g, before || dock.querySelector(".dock-target"));
   return g;
 }
 function asTab(d, target) {
   if (target === d || target === groupFrom(d)) return;
-  const alt = groupFrom(d);
+  const previousGroup = groupFrom(d);
   let g = target.classList.contains("tabgroup") ? target : null;
   if (!g) { g = groupNew(target.parentElement, target, d.dataset.area); g.appendChild(target); target.open = true; }
   g.appendChild(d); g.dataset.active = d.dataset.area; d.open = true;
-  tabsDraw(g); groupCleanup(alt); dockRemember();
+  tabsDraw(g); groupCleanup(previousGroup); dockRemember();
 }
 // eigene Reihenfolge der Bereiche je Reiter (Ziehen in der linken Spalte)
 function rowRemember(g) {
@@ -2994,21 +2994,21 @@ function rowRemember(g) {
   ui.line = ui.line || {}; ui.line[g.dataset.group] = cards.map(x => x.dataset.area); uiSave();
 }
 function afterHome(d) {
-  const alt = groupFrom(d);
+  const previousGroup = groupFrom(d);
   const g = document.querySelector(`.group[data-group="${d.dataset.home}"]`);
   const after = [...g.children].find(x => x.tagName === "DETAILS" && +x.dataset.num > +d.dataset.num);
   d.classList.remove("tab-active");
   g.insertBefore(d, after || null);
-  groupCleanup(alt);
+  groupCleanup(previousGroup);
 }
-function dockPanel(d, place, pregame) {
-  const alt = groupFrom(d);
+function dockPanel(d, place, before) {
+  const previousGroup = groupFrom(d);
   if (place === "left") afterHome(d);
   else {
     const dock = DOCKS[place];
     d.classList.remove("tab-active");
-    dock.insertBefore(d, pregame && pregame.parentElement === dock && pregame !== d ? pregame : dock.querySelector(".dock-target"));
-    groupCleanup(alt);
+    dock.insertBefore(d, before && before.parentElement === dock && before !== d ? before : dock.querySelector(".dock-target"));
+    groupCleanup(previousGroup);
   }
   if (place !== "left") d.open = true;
   dockRemember();
@@ -3060,12 +3060,12 @@ const zones = { left: document.createElement("div"), bottom: document.createElem
 zones.left.textContent = "⇤  Zurück in den Reiter"; zones.bottom.textContent = "⤓  Unter der Vorschau"; zones.right.textContent = "⇥  Rechts neben der Vorschau";
 Object.values(zones).forEach(z => { z.className = "zone"; document.documentElement.appendChild(z); });
 document.documentElement.append(ghost, stroke);
-let turn = null;
+let dragState = null;
 function dragStart(ev, d) {
   if (!document.body.classList.contains("layout-edit")) return;     // im Normalbetrieb bleibt alles, wo es ist
   if (ev.button !== 0 || ev.target.closest(".pin")) return;
   if (locked(placeFrom(d))) return;                            // aus gesperrten Bereichen lässt sich nichts herausziehen
-  turn = { d, x: ev.clientX, y: ev.clientY, active: false, target: null };
+  dragState = { d, x: ev.clientX, y: ev.clientY, active: false, target: null };
   const move = m => dragMove(m), release = m => { document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", release); dragEnd(m); };
   document.addEventListener("pointermove", move); document.addEventListener("pointerup", release);
 }
@@ -3080,12 +3080,12 @@ function compassShow(r, field) {
   [...compass.children].forEach((z, i) => z.classList.toggle("on", i === field));
 }
 function dragMove(m) {
-  if (!turn) return;
-  if (!turn.active) {
-    if (Math.hypot(m.clientX - turn.x, m.clientY - turn.y) < 7) return;     // kleiner Ruck = Klick, kein Ziehen
-    turn.active = true; turn.d._dragged = true; menu.hidden = true;
-    document.body.classList.add("is-dragging"); turn.d.classList.add("becomes-dragged");
-    ghost.textContent = "⠿  " + turn.d.querySelector("summary").textContent.replace(/[⠿⧉]/g, "").trim(); ghost.hidden = false;
+  if (!dragState) return;
+  if (!dragState.active) {
+    if (Math.hypot(m.clientX - dragState.x, m.clientY - dragState.y) < 7) return;     // kleiner Ruck = Klick, kein Ziehen
+    dragState.active = true; dragState.d._dragged = true; menu.hidden = true;
+    document.body.classList.add("is-dragging"); dragState.d.classList.add("becomes-dragged");
+    ghost.textContent = "⠿  " + dragState.d.querySelector("summary").textContent.replace(/[⠿⧉]/g, "").trim(); ghost.hidden = false;
     DOCKS.bottom.classList.remove("empty"); DOCKS.right.classList.remove("empty");
     requestAnimationFrame(() => { zoneSet(zones.left, surface(document.querySelector(".column"))); zoneSet(zones.bottom, surface(DOCKS.bottom)); zoneSet(zones.right, surface(DOCKS.right)); });
   }
@@ -3095,17 +3095,17 @@ function dragMove(m) {
   const left = below && below.closest(".column");
   let place = dock ? (dock.id === "dockBottom" ? "bottom" : "right") : left ? "left" : null;
   if (place && locked(place)) place = null;                         // gesperrt: hier landet nichts
-  Object.entries(zones).forEach(([o, z]) => z.classList.toggle("on", o === place && (o === "left" || !cardsIn(DOCKS[o]).some(k => k !== turn.d))));
+  Object.entries(zones).forEach(([o, z]) => z.classList.toggle("on", o === place && (o === "left" || !cardsIn(DOCKS[o]).some(k => k !== dragState.d))));
   Object.entries(DOCKS).forEach(([o, dk]) => dk.classList.toggle("over-zone", o === place));
-  turn.target = place ? { place } : null;
+  dragState.target = place ? { place } : null;
   stroke.hidden = true; compass.hidden = true; tabTarget.hidden = true;
   // über einer angedockten Karte: Kompass – Mitte = als Tab, Rand = davor/danach
   const card = dock && below.closest("#dockBottom > details, #dockRight > details, .tabgroup");
-  if (card && card !== turn.d && card !== groupFrom(turn.d)) {
+  if (card && card !== dragState.d && card !== groupFrom(dragState.d)) {
     const r = card.getBoundingClientRect(), fx = (m.clientX - r.left) / r.width, fy = (m.clientY - r.top) / Math.min(r.height, 240);
     const across = place === "bottom";
     if (Math.abs(fx - 0.5) < 0.22 && Math.abs(fy - 0.5) < 0.3) {
-      turn.target = { place, tab: card };
+      dragState.target = { place, tab: card };
       compassShow(r, 4);
       tabTarget.hidden = false; Object.assign(tabTarget.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: Math.min(r.height, 240) + "px" });
       const name = card.classList.contains("tabgroup") ? "der Gruppe" : "„" + card.querySelector("summary").textContent.replace(/[⠿⧉]/g, "").trim() + "“";
@@ -3116,29 +3116,29 @@ function dragMove(m) {
   }
   // linke Spalte: im eigenen Reiter an die Stelle unter dem Zeiger einsortieren
   if (place === "left") {
-    const g = document.querySelector(`.group[data-group="${turn.d.dataset.home}"]`);
+    const g = document.querySelector(`.group[data-group="${dragState.d.dataset.home}"]`);
     if (g && !g.hidden) {
-      const cards = [...g.children].filter(x => x.tagName === "DETAILS" && x !== turn.d && !x.hidden);
-      let pregame = null;
-      for (const k of cards) { const r = k.getBoundingClientRect(); if (m.clientY < r.top + r.height / 2) { pregame = k; break; } }
-      turn.target = { place: "left", pregame, group: g };
+      const cards = [...g.children].filter(x => x.tagName === "DETAILS" && x !== dragState.d && !x.hidden);
+      let before = null;
+      for (const k of cards) { const r = k.getBoundingClientRect(); if (m.clientY < r.top + r.height / 2) { before = k; break; } }
+      dragState.target = { place: "left", before, group: g };
       zones.left.classList.remove("on");
       if (cards.length) {
-        const ref = pregame || cards[cards.length - 1], r = ref.getBoundingClientRect();
-        Object.assign(stroke.style, { left: r.left + "px", top: (pregame ? r.top - 5 : r.bottom + 2) + "px", width: r.width + "px", height: "4px" });
+        const ref = before || cards[cards.length - 1], r = ref.getBoundingClientRect();
+        Object.assign(stroke.style, { left: r.left + "px", top: (before ? r.top - 5 : r.bottom + 2) + "px", width: r.width + "px", height: "4px" });
         stroke.hidden = false;
       }
       return;
     }
   }
   if (place && dock) {
-    const cards = cardsIn(dock).filter(x => x !== turn.d);
+    const cards = cardsIn(dock).filter(x => x !== dragState.d);
     const across = place === "bottom";
-    let pregame = null;
-    for (const k of cards) { const r = k.getBoundingClientRect(); if (across ? m.clientX < r.left + r.width / 2 : m.clientY < r.top + r.height / 2) { pregame = k; break; } }
-    turn.target.pregame = pregame;
+    let before = null;
+    for (const k of cards) { const r = k.getBoundingClientRect(); if (across ? m.clientX < r.left + r.width / 2 : m.clientY < r.top + r.height / 2) { before = k; break; } }
+    dragState.target.before = before;
     if (cards.length) {
-      const ref = pregame || cards[cards.length - 1], r = ref.getBoundingClientRect(), post = !pregame;
+      const ref = before || cards[cards.length - 1], r = ref.getBoundingClientRect(), post = !before;
       Object.assign(stroke.style, across
         ? { left: (post ? r.right + 2 : r.left - 4) + "px", top: r.top + "px", width: "4px", height: r.height + "px" }
         : { left: r.left + "px", top: (post ? r.bottom + 2 : r.top - 4) + "px", width: r.width + "px", height: "4px" });
@@ -3147,16 +3147,16 @@ function dragMove(m) {
   }
 }
 function dragEnd() {
-  if (!turn) return;
-  const { d, active, target } = turn; turn = null;
+  if (!dragState) return;
+  const { d, active, target } = dragState; dragState = null;
   ghost.hidden = true; stroke.hidden = true; compass.hidden = true; tabTarget.hidden = true; Object.values(zones).forEach(z => z.classList.remove("on"));
   document.body.classList.remove("is-dragging"); d.classList.remove("becomes-dragged"); Object.values(DOCKS).forEach(dk => dk.classList.remove("over-zone"));
   if (active && target && target.tab) asTab(d, target.tab);
-  else if (active && target && target.group) { const alt = groupFrom(d); d.classList.remove("tab-active"); target.group.insertBefore(d, target.pregame || null); groupCleanup(alt); rowRemember(target.group); dockRemember(); }
-  else if (active && target) dockPanel(d, target.place, target.pregame);
+  else if (active && target && target.group) { const previousGroup = groupFrom(d); d.classList.remove("tab-active"); target.group.insertBefore(d, target.before || null); groupCleanup(previousGroup); rowRemember(target.group); dockRemember(); }
+  else if (active && target) dockPanel(d, target.place, target.before);
   else dockRemember();
 }
-addEventListener("keydown", ev => { if (ev.key === "Escape" && turn) { turn.active = false; dragEnd(); } });
+addEventListener("keydown", ev => { if (ev.key === "Escape" && dragState) { dragState.active = false; dragEnd(); } });
 $("docksBack").onclick = () => {
   areas.forEach(d => { if (placeFrom(d) !== "left") afterHome(d); });
   ui.b1 = ui.b2 = ui.hU = null; ["--b1", "--b2", "--hU"].forEach(v => pageEl.style.removeProperty(v));
@@ -3457,8 +3457,8 @@ const tourStatus = t => { $("tourStatus").textContent = t; };
 function tournamentDraw() {
   const T = tour();
   $("tourName").value = T.name || ""; $("tourFormat").value = T.format; $("tourSwissSettings").hidden = T.format !== "swiss";
-  $("tourTabSettings").hidden = T.format !== "tabelle"; $("tourGroups").value = T.groupsCount || 1; $("tourNext").value = T.nextPlaces ?? 2; $("tourGamesShow").checked = !!T.gamesShow;
-  $("tourPointsBox").hidden = T.format !== "tabelle"; pointsDraw();
+  $("tourTabSettings").hidden = T.format !== "table"; $("tourGroups").value = T.groupsCount || 1; $("tourNext").value = T.nextPlaces ?? 2; $("tourGamesShow").checked = !!T.gamesShow;
+  $("tourPointsBox").hidden = T.format !== "table"; pointsDraw();
   $("tourWins").value = T.swiss.wins; $("tourLosses").value = T.swiss.losses;
   $("tourMode").value = T.visible.mode; $("tourRound").value = T.visible.round; $("tourResultOff").checked = !!T.visible.resultsOff;
   // Teams
@@ -3502,7 +3502,7 @@ function tournamentTreeDraw() {
   };
   const column = (title, matches, addition) => { const s = document.createElement("div"); s.className = "tour-round"; s.innerHTML = `<div class="tour-title">${esc(title)}</div>`; matches.forEach(m => s.appendChild(card(m, addition && addition(m)))); box.appendChild(s); };
   if (T.teams.length < 2) { box.innerHTML = `<span class="small">Mindestens 2 Teams eintragen.</span>`; return; }
-  if (B.format === "gsl" || B.format === "tabelle") B.groups.forEach(g => column(g.name, g.matches, m => m.title));
+  if (B.format === "gsl" || B.format === "table") B.groups.forEach(g => column(g.name, g.matches, m => m.title));
   else {
     B.rounds.forEach(r => column(r.title, r.matches, B.format === "swiss" ? (m => "Bilanz " + m.record) : null));
     B.bottom.forEach(r => column(r.title, r.matches));
@@ -3514,8 +3514,8 @@ $("tourFormat").onchange = async () => {
   const T = tour();
   if (Object.keys(T.res).length && !await confirmDialog({ title: "Format wechseln?", text: "Eingetragene Ergebnisse passen danach meist nicht mehr und werden gelöscht.", button: "Wechseln" })) { $("tourFormat").value = T.format; return; }
   T.format = $("tourFormat").value; T.res = {}; T.swiss.rounds = [];
-  if (T.format !== "import" && T.format !== "tabelle") T.games = [];
-  if (T.format === "tabelle" && T.games && T.games.some(x => x.group === undefined)) T.games = [];
+  if (T.format !== "import" && T.format !== "table") T.games = [];
+  if (T.format === "table" && T.games && T.games.some(x => x.group === undefined)) T.games = [];
   tournamentDraw(); send();
 };
 $("tourGroups").onchange = () => { const T = tour(); T.groupsCount = Math.max(1, Math.min(8, +$("tourGroups").value || 1)); if (!T.gamesSource) T.games = []; T.teams.forEach(t => { if (!T.gamesSource) delete t.group; }); tournamentTreeDraw(); send(); };
@@ -3590,7 +3590,7 @@ function faceitResults(T, games) {
   games.forEach(x => {
     const f = x.teams || {}, a = tid((f.faction1 || {}).faction_id), b = tid((f.faction2 || {}).faction_id), sc = (x.results || {}).score || {};
     const id = "F" + x.match_id; if (!a || !b) return;
-    if (x.results) { const alt = T.res[id] || {}; T.res[id] = Object.assign({ a: sc.faction1 ?? "", b: sc.faction2 ?? "", done: x.status === "FINISHED" }, alt.rdA !== undefined ? { rdA: alt.rdA, rdB: alt.rdB } : {}); n++; }
+    if (x.results) { const previous = T.res[id] || {}; T.res[id] = Object.assign({ a: sc.faction1 ?? "", b: sc.faction2 ?? "", done: x.status === "FINISHED" }, previous.rdA !== undefined ? { rdA: previous.rdA, rdB: previous.rdB } : {}); n++; }
   });
   return n;
 }
@@ -3628,15 +3628,15 @@ $("tourFaceitAll").onclick = async () => {
       a: tid(((x.teams || {}).faction1 || {}).faction_id), b: tid(((x.teams || {}).faction2 || {}).faction_id) }));
     T.gamesSource = "faceit";
     if (tablesKind) {
-      T.format = "tabelle"; T.groupsCount = Math.max(1, groupsNum.length);
+      T.format = "table"; T.groupsCount = Math.max(1, groupsNum.length);
       T.teams.forEach(t => { const s = T.games.find(x => x.a === t.id || x.b === t.id); t.group = s ? s.group : 0; });
     } else T.format = "import";
     T.res = {}; T.swiss.rounds = [];
     const n = faceitResults(T, games);
-    if (T.format === "tabelle") await faceitRounds(T, games);
+    if (T.format === "table") await faceitRounds(T, games);
     if (info.name) T.name = info.name;
     tournamentDraw(); send();
-    tourStatus(`✓ Übernommen: ${T.teams.length} Teams · ${T.format === "tabelle" ? T.groupsCount + " Gruppe(n) mit Tabelle" : "Baum wie bei FACEIT"} · ${n} Ergebnisse.`);
+    tourStatus(`✓ Übernommen: ${T.teams.length} Teams · ${T.format === "table" ? T.groupsCount + " Gruppe(n) mit Tabelle" : "Baum wie bei FACEIT"} · ${n} Ergebnisse.`);
   } catch (err) { tourStatus("FACEIT: " + err.message); }
 };
 $("tourStats").onclick = async () => {
@@ -3653,8 +3653,8 @@ $("tourStats").onclick = async () => {
 };
 $("tourFaceitResult").onclick = async () => {
   const id = tournamentId($("tourFaceit").value), T = tour(); if (!id) return tourStatus("Bitte einen FACEIT-Turnier-Link einfügen.");
-  if (T.gamesSource === "faceit" && (T.format === "import" || T.format === "tabelle")) {
-    try { tourStatus("Lade Ergebnisse …"); const sponsor = await faceitGames(id), n = faceitResults(T, sponsor); if (T.format === "tabelle") await faceitRounds(T, sponsor); tournamentTreeDraw(); send(); return tourStatus(`✓ ${n} Ergebnisse aktualisiert.`); }
+  if (T.gamesSource === "faceit" && (T.format === "import" || T.format === "table")) {
+    try { tourStatus("Lade Ergebnisse …"); const games = await faceitGames(id), n = faceitResults(T, games); if (T.format === "table") await faceitRounds(T, sponsor); tournamentTreeDraw(); send(); return tourStatus(`✓ ${n} Ergebnisse aktualisiert.`); }
     catch (err) { return tourStatus("FACEIT: " + err.message); }
   }
   try {
@@ -3700,10 +3700,10 @@ function selection({ title, text, buttons, whenShown }) {
     const d = document.createElement("div"); d.className = "question";
     d.innerHTML = `<div class="question-box" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><p>${esc(text)}</p><div class="line" style="justify-content:flex-end">${buttons.map(([w, n, kind]) => `<button class="button ${kind === "main" ? "main" : ""}" data-w="${w}"${kind === "red" ? ' style="background:var(--rot);color:#fff;border-color:var(--rot)"' : ""}>${esc(n)}</button>`).join("")}</div></div>`;
     document.body.appendChild(d); if (whenShown) whenShown(d);
-    const finish = w => { d.remove(); removeEventListener("keydown", hotkey); ok(w); };
-    const hotkey = ev => { if (ev.key === "Escape") finish(""); };
+    const close = w => { d.remove(); removeEventListener("keydown", hotkey); ok(w); };
+    const hotkey = ev => { if (ev.key === "Escape") close(""); };
     addEventListener("keydown", hotkey);
-    d.querySelectorAll("button").forEach(b => b.onclick = () => finish(b.dataset.w));
+    d.querySelectorAll("button").forEach(b => b.onclick = () => close(b.dataset.w));
     d.querySelector('[data-w=window]')?.focus();
   });
 }
@@ -3951,15 +3951,15 @@ function dachScenesDraw(box) {
   box.classList.remove("arrange"); box.classList.add("columns");
   const cur = Z.broadcast.scene;
   Object.entries(DACH_GROUPS).forEach(([g, title]) => {
-    const sponsor = document.createElement("div"); sponsor.className = "scene-column";
-    sponsor.innerHTML = `<div class="scene-group">${esc(title)}</div>`;
+    const sceneColumn = document.createElement("div"); sceneColumn.className = "scene-column";
+    sceneColumn.innerHTML = `<div class="scene-group">${esc(title)}</div>`;
     DACH_SCENES.filter(x => x[0] === g).forEach(([, k, n]) => {
       const b = document.createElement("button"); b.textContent = n; b.dataset.sceneDef = k;
       if (k === cur) b.classList.add("active");
       b.onclick = () => dachSwitch(k);
-      sponsor.appendChild(b);
+      sceneColumn.appendChild(b);
     });
-    box.appendChild(sponsor);
+    box.appendChild(sceneColumn);
   });
   box.style.setProperty("--scene-columns", Object.keys(DACH_GROUPS).length);
 }
@@ -4093,8 +4093,8 @@ $("bgTipYes").onclick = async () => {
 function overlaysPill() {
   bgTipShow();
   const ov = clientsList.filter(c => c.page !== "control");
-  const obs = ov.filter(c => c.obs).length, alt = ov.filter(c => c.v !== K.VERSION).length;
-  pill("helperStatus", `Overlays: ${ov.length}${obs ? " (OBS " + obs + ")" : ""}${alt ? " · " + alt + " veraltet" : ""}`, alt ? "warn" : ov.length ? "ok" : "off");
+  const obs = ov.filter(c => c.obs).length, outdated = ov.filter(c => c.v !== K.VERSION).length;
+  pill("helperStatus", `Overlays: ${ov.length}${obs ? " (OBS " + obs + ")" : ""}${outdated ? " · " + outdated + " veraltet" : ""}`, outdated ? "warn" : ov.length ? "ok" : "off");
   if (ov.some(c => c.obs && c.v !== K.VERSION)) obsOverlaysNewLoad(false);   // nur wenn das Overlay IN OBS alt ist
 }
 // Browserquellen der App in OBS neu laden (z. B. nach einem Update – sonst läuft dort der alte Code weiter)

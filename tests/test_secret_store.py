@@ -10,13 +10,17 @@ import sys
 import pytest
 from conftest import MemoryKeyring
 
-from casting_app import secret_store
 from casting_app.secret_store import DACH_KEY, DACH_USER_ID, FACEIT_KEY, SecretStore
 
 
 def fake_dpapi(content: str) -> str:
     """Stands in for Windows DPAPI in the tests: "protected" means reversed Base64."""
     return base64.b64decode(content.strip()[::-1]).decode()
+
+
+def plain_base64(content: str) -> str:
+    """Format of the 1.x files on Linux/macOS (independent of the system the test runs on)."""
+    return base64.b64decode(content.strip()).decode()
 
 
 def write_legacy_files(folder, windows: bool) -> None:
@@ -34,7 +38,7 @@ def test_migrates_legacy_files_into_keyring_and_deletes_them(tmp_path, windows):
     keyring = MemoryKeyring()
     messages = []
     store = SecretStore(tmp_path, lambda text, level="info": messages.append(text), keyring_backend=keyring,
-                        legacy_decrypt=fake_dpapi if windows else secret_store.decrypt_legacy_file)
+                        legacy_decrypt=fake_dpapi if windows else plain_base64)
     assert store.get(FACEIT_KEY) == "abcdefgh-1234-5678"
     assert store.get(DACH_KEY) == "dachkey-0815"
     assert store.get(DACH_USER_ID) == "4242"

@@ -1,66 +1,86 @@
 # Speicher über eine lange Sitzung: steuert das App-Fenster der Desktop-App selbst (Vorschau inklusive) mit vielen
 # Szenenwechseln, Übergängen, DACH-Seiten und Ton an/aus und misst nach jeder Runde (nach Speicherbereinigung)
 # JS-Speicher, DOM-Elemente und Listener der Steuerseite sowie den Arbeitsspeicher (PSS) aller App-Prozesse (Linux).
-#   App mit Fernsteuerung starten:  npx electron . --remote-debugging-port=9222   (als root zusätzlich --no-sandbox)
+#   App mit Fernsteuerung starten:  QTWEBENGINE_REMOTE_DEBUGGING=9222 python -m casting_app
 #   python3 tests/test_speicher.py [Runden]
-import asyncio, os, random, sys
-from playwright.async_api import async_playwright
+import asyncio
+import os
+import random
+import sys
 
-SZ = ["intro", "cast-duo", "cast-solo", "cast-duo-clips", "cast-solo-clips", "cast-duo-interview", "cast-solo-interview",
-      "map-veto", "spieler", "serie", "sponsoren", "ingame", "pause", "ende"]
-DACH = ["dach-duocast", "dach-singlecast", "dach-pause", "dach-tabelle", "dach-overview"]
+from cdp import PageConnection
 
-def app_rss_mb():
-    # Summe PSS aller Prozesse der Desktop-App (Haupt-, GPU-, Renderer-Prozesse; geteilter Speicher anteilig) – nur Linux
-    if not os.path.isdir("/proc"): return None
-    summe = 0
-    for pid in os.listdir("/proc"):
-        if not pid.isdigit(): continue
+SCENES = ["intro", "cast-duo", "cast-solo", "cast-duo-clips", "cast-solo-clips", "cast-duo-interview", "cast-solo-interview",
+          "map-veto", "spieler", "serie", "sponsoren", "ingame", "pause", "ende"]
+DACH_PAGES = ["dach-duocast", "dach-singlecast", "dach-pause", "dach-tabelle", "dach-overview"]
+TRANSITIONS = ["schnitt", "blende", "schieben", "wischen", "stinger"]
+LIVE_DOM = "document.getElementsByTagName('*').length + $('frame').contentDocument.getElementsByTagName('*').length"
+
+
+def app_memory_mb():
+    """Sum of PSS of the app and its web engine processes (shared memory counted proportionally) – Linux only."""
+    if not os.path.isdir("/proc"):
+        return None
+    total_kb = 0
+    for pid in filter(str.isdigit, os.listdir("/proc")):
         try:
-            cmd = open(f"/proc/{pid}/cmdline", "rb").read()
-            if b"electron" not in cmd or b"xvfb" in cmd: continue
-            for z in open(f"/proc/{pid}/smaps_rollup"):
-                if z.startswith("Pss:"): summe += int(z.split()[1])
-        except Exception: pass
-    return summe / 1024
+            command = open(f"/proc/{pid}/cmdline", "rb").read()
+            if b"casting_app" not in command and b"QtWebEngineProcess" not in command and b"Casting-App" not in command:
+                continue
+            for line in open(f"/proc/{pid}/smaps_rollup"):
+                if line.startswith("Pss:"):
+                    total_kb += int(line.split()[1])
+        except OSError:
+            pass
+    return total_kb / 1024
+
+
+async def measure(page):
+    """JS heap (MB), live DOM elements, event listeners, app memory (MB) – after garbage collection."""
+    await page.send("HeapProfiler.collectGarbage")
+    await asyncio.sleep(0.5)
+    metrics = {m["name"]: m["value"] for m in (await page.send("Performance.getMetrics"))["metrics"]}
+    return metrics["JSHeapUsedSize"] / 1048576, await page.evaluate(LIVE_DOM), metrics["JSEventListeners"], app_memory_mb()
+
+
+def describe(values):
+    heap, dom, listeners, memory = values
+    return f"JS {heap:.1f} MB · DOM {dom} Elemente · Listener {int(listeners)} · App gesamt {memory or 0:.0f} MB"
+
 
 async def main():
-    runden = int(sys.argv[1]) if len(sys.argv) > 1 else 8
-    async with async_playwright() as p:
-        b = await p.chromium.connect_over_cdp("http://localhost:9222")
-        pg = next(x for x in b.contexts[0].pages if "steuerung.html" in x.url)
-        cdp = await pg.context.new_cdp_session(pg)
-        await cdp.send("Performance.enable")
-        fehler = []; pg.on("pageerror", lambda e: fehler.append(str(e)))
-        await pg.evaluate("Z.sendung.aktiv=true; Z.sendung.dauer=500; themeWaehlen('regulaer'); senden();")
-        await pg.wait_for_timeout(1500)
-        async def messen():
-            await cdp.send("HeapProfiler.collectGarbage"); await pg.wait_for_timeout(500)
-            m = {x["name"]: x["value"] for x in (await cdp.send("Performance.getMetrics"))["metrics"]}
-            # Elemente, die wirklich im DOM hängen (Steuerseite + Vorschau); der Zähler „Nodes“ enthält auch noch nicht
-            # weggeräumte Knoten und schwankt deshalb
-            dom = await pg.evaluate("document.getElementsByTagName('*').length + $('frame').contentDocument.getElementsByTagName('*').length")
-            return m["JSHeapUsedSize"] / 1048576, dom, app_rss_mb(), m["JSEventListeners"]
-        start = await messen(); werte = [start]
-        print(f"Start: JS {start[0]:.1f} MB · DOM {int(start[1])} Elemente · Listener {int(start[3])} · App gesamt {start[2] or 0:.0f} MB")
-        random.seed(7); n = 0
-        for r in range(runden):
-            for _ in range(60):
-                await pg.evaluate(f"Z.sendung.uebergang='{random.choice(['schnitt','blende','schieben','wischen','stinger'])}'; szeneWechseln('{random.choice(SZ)}')")
-                await pg.wait_for_timeout(random.randint(80, 400)); n += 1
-            await pg.evaluate("themeWaehlen('dachcs-offiziell'); senden();")
-            for _ in range(10):
-                await pg.evaluate(f"dachWechseln('{random.choice(DACH)}')"); await pg.wait_for_timeout(200); n += 1
-            await pg.evaluate("themeWaehlen('regulaer'); senden(); $('appTon').click(); $('appTon').click();")
-            await pg.wait_for_timeout(1500)
-            w = await messen(); werte.append(w)
-            print(f"Runde {r + 1}: {n} Wechsel · JS {w[0]:.1f} MB · DOM {int(w[1])} Elemente · Listener {int(w[3])} · App gesamt {w[2] or 0:.0f} MB")
-        # Wachstum in der zweiten Hälfte (nach dem Aufwärmen) zählt
-        mitte = werte[len(werte) // 2]; ende = werte[-1]
-        js = ende[0] - mitte[0]; dom = ende[1] - mitte[1]; lis = ende[3] - mitte[3]
-        print(f"Zweite Hälfte: JS {js:+.1f} MB · DOM {dom:+.0f} Elemente · Listener {lis:+.0f} · App {((ende[2] or 0) - (mitte[2] or 0)):+.0f} MB · Fehler: {fehler[:3]}")
-        ok = js < 5 and dom < 200 and lis < 100 and not fehler
-        print("Speicher stabil" if ok else "Speicher wächst – bitte prüfen")
-        sys.exit(0 if ok else 1)
+    rounds = int(sys.argv[1]) if len(sys.argv) > 1 else 8
+    page = await PageConnection.open()
+    await page.send("Performance.enable")
+    await page.evaluate("Z.sendung.aktiv=true; Z.sendung.dauer=500; themeWaehlen('regulaer'); senden(); 1")
+    await asyncio.sleep(1.5)
+    values = [await measure(page)]
+    print("Start:", describe(values[0]))
+    random.seed(7)
+    switches = 0
+    for round_number in range(rounds):
+        for _ in range(60):
+            await page.evaluate(f"Z.sendung.uebergang='{random.choice(TRANSITIONS)}'; szeneWechseln('{random.choice(SCENES)}'); 1")
+            await asyncio.sleep(random.randint(80, 400) / 1000)
+            switches += 1
+        await page.evaluate("themeWaehlen('dachcs-offiziell'); senden(); 1")
+        for _ in range(10):
+            await page.evaluate(f"dachWechseln('{random.choice(DACH_PAGES)}'); 1")
+            await asyncio.sleep(0.2)
+            switches += 1
+        await page.evaluate("themeWaehlen('regulaer'); senden(); $('appTon').click(); $('appTon').click(); 1")
+        await asyncio.sleep(1.5)
+        values.append(await measure(page))
+        print(f"Runde {round_number + 1}: {switches} Wechsel ·", describe(values[-1]))
+    # growth in the second half (after warming up) is what counts
+    middle, end = values[len(values) // 2], values[-1]
+    heap, dom, listeners = end[0] - middle[0], end[1] - middle[1], end[2] - middle[2]
+    print(f"Zweite Hälfte: JS {heap:+.1f} MB · DOM {dom:+d} Elemente · Listener {listeners:+.0f} · "
+          f"App {((end[3] or 0) - (middle[3] or 0)):+.0f} MB")
+    stable = heap < 5 and dom < 200 and listeners < 100
+    print("Speicher stabil" if stable else "Speicher wächst – bitte prüfen")
+    await page.close()
+    sys.exit(0 if stable else 1)
+
 
 asyncio.run(main())

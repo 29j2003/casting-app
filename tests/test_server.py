@@ -101,3 +101,25 @@ def test_game_state_needs_token(server):
     assert request("POST", "/api/gsi", json.dumps(post))[0] == 200
     # a website may not post game state
     assert request("POST", "/api/gsi", json.dumps(post), headers={"Sec-Fetch-Site": "same-origin"})[0] == 403
+
+
+def test_app_language_setting(server, tmp_path):
+    from casting_app.settings import AppSettings
+    settings = AppSettings(tmp_path)
+    changes = []
+    settings.listeners.append(changes.append)
+    assert settings.get("app_language") == "de"
+    settings.update({"language": "en"})                      # name in 2.1
+    assert settings.get("app_language") == "en" and changes == [{"app_language": "en"}]
+    settings.update({"app_language": "fr"})                  # unknown languages are ignored
+    assert AppSettings(tmp_path).get("app_language") == "en"
+
+
+def test_dach_notice_follows_the_overlay_language(server):
+    server.secrets.delete("dach-user-id")
+    newer = int(time.time() * 1000) * 10 + 100
+    request("POST", "/api/state", json.dumps({"revision": newer, "overlayLanguage": "en"}))
+    status, _, body = request("GET", "/dach/pause")
+    assert status == 409 and b"DACH CS access missing" in body
+    request("POST", "/api/state", json.dumps({"revision": newer + 1, "overlayLanguage": "de"}))
+    assert "DACH-CS-Zugang fehlt" in request("GET", "/dach/pause")[2].decode()

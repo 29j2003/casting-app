@@ -445,7 +445,7 @@
   .mbar-score .mbar-k { width: 26px; height: 26px; font-size: 14px; } .mbar-score .mbar-k:not(.main) { opacity: .55; }
   .mbar-series { display: flex; flex-wrap: wrap; gap: 6px; } .mbar-series:empty { display: none; }
   .mbar-series span { height: 26px; padding: 0 10px; border-radius: 13px; background: var(--f2); border: 1px solid var(--line); font-size: 12px; display: flex; align-items: center; }
-  .mbar-series span.running { background: var(--accent-soft); border-color: var(--accent); } .mbar-series span.isOpen { color: var(--muted); }
+  .mbar-series span.running { background: var(--accent-soft); border-color: var(--accent); } .mbar-series span.pending { color: var(--muted); }
   /* Einblendungen: kompakte Zeilen */
   .gfx-bar { display: flex; align-items: center; gap: 6px; } .gfx-bar .button { height: 28px; padding: 0 10px; font-size: 13px; }
   #gfxNewChoice { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -633,7 +633,7 @@
           <button class="button" data-gfx-new="hint">+ Hinweis</button>
           <button class="button" data-gfx-new="score">+ Punktestand</button>
           <button class="button" data-gfx-new="mapinfo">+ Map-Info</button>
-          <button class="button" data-gfx-new="mapfakt">+ Map-Fakt</button>
+          <button class="button" data-gfx-new="mapfact">+ Map-Fakt</button>
           <button class="button" data-gfx-new="scoreboard">+ Scoreboard (live)</button>
           <button class="button" data-gfx-new="players">+ Spieler (live)</button>
           <label>Standard-Dauer für neue (Sek., 0 = bleibt)<input type="number" id="gfxDuration" value="0" min="0"></label>
@@ -694,7 +694,7 @@
         <label>FACEIT API-Key (Server side, von developers.faceit.com)
           <input type="text" id="faceitKey" autocomplete="off" spellcheck="false" placeholder="Schlüssel einfügen …" style="-webkit-text-security: disc"></label>
         <div class="line"><button class="button" id="faceitKeySave">Schlüssel speichern</button><button class="button" id="faceitKeyDelete">Schlüssel löschen</button></div>
-        <p class="small" id="faceitKeyStatus">Der Schlüssel wird verschlüsselt gespeichert (an dein Windows-Konto gebunden) und nie wieder angezeigt –
+        <p class="small" id="faceitKeyStatus">Der Schlüssel wird im Schlüsselbund des Systems gespeichert und nie wieder angezeigt –
           weder hier noch in Sicherungen, Sitzungen, Exporten oder im Log. Die App setzt ihn nur intern für FACEIT-Abfragen ein.</p>
       </div>
     </details>
@@ -703,7 +703,7 @@
       <summary>Map-Veto</summary>
       <div class="content">
         <div class="line">
-          <label>Quelle<select id="vSource"><option value="manuell">Manuell</option><option value="faceit">FACEIT</option></select></label>
+          <label>Quelle<select id="vSource"><option value="manual">Manuell</option><option value="faceit">FACEIT</option></select></label>
           <label>Format / Preset<select id="vFormat"></select></label>
           <button class="button" id="vNew">Neu starten</button>
         </div>
@@ -825,7 +825,7 @@
               <option value="3-3-0-0">Sieg 3 · Niederlage 0</option>
               <option value="2-2-1-0">Sieg 2 · Niederlage mit Map-Gewinn 1 · Niederlage 0</option>
               <option value="3-2-1-0">Sieg 2:0 = 3 · Sieg 2:1 = 2 · Niederlage 1:2 = 1 · 0:2 = 0</option>
-              <option value="eigen">Eigene Werte …</option></select></label>
+              <option value="own">Eigene Werte …</option></select></label>
             <label>Gruppe im Overlay<select id="tourShowGroup"></select></label>
           </div>
           <div class="line" id="tourPointsOwn">
@@ -853,7 +853,7 @@
         <span class="small">Spiele – Ergebnis eintragen, Haken = fertig. <b>Klick auf ein Team</b> hebt es im Overlay hervor und zeigt sein Profil.</span>
         <div id="tourTree" class="tour-tree"></div>
         <div class="line" style="align-items:end">
-          <label>Im Overlay zeigen<select id="tourMode"><option value="alle">Alles</option><option value="aufdecken">Runde für Runde aufdecken – bis Runde</option><option value="ab">Erst ab Runde</option></select></label>
+          <label>Im Overlay zeigen<select id="tourMode"><option value="all">Alles</option><option value="reveal">Runde für Runde aufdecken – bis Runde</option><option value="fromRound">Erst ab Runde</option></select></label>
           <label style="flex:0 0 90px">Runde<input type="number" id="tourRound" min="1" max="12" value="1"></label>
           <label class="toggleSwitch" style="align-self:center"><input type="checkbox" id="tourResultOff"> Ergebnisse ausblenden (nur, wer weiterkommt)</label>
         </div>
@@ -875,7 +875,7 @@
             <label style="flex:1">Key<input type="text" id="dachKey" autocomplete="off" spellcheck="false" placeholder="Key einfügen …" style="-webkit-text-security: disc"></label>
             <button class="button" id="dachSave">Speichern</button><button class="button" id="dachDelete">Löschen</button>
           </div>
-          <p class="small" id="dachStatus">ID und Key findest du im DACH-CS-Nutzerbereich unter Casting → Browserquellen. Beide werden verschlüsselt gespeichert und nie wieder angezeigt.</p>
+          <p class="small" id="dachStatus">ID und Key findest du im DACH-CS-Nutzerbereich unter Casting → Browserquellen. Beide werden im Schlüsselbund des Systems gespeichert und nie wieder angezeigt.</p>
           <p class="small" id="dachObsStatus">Alles läuft in deiner einen Browserquelle („Cast – Overlay“). Die Inhalte (Teams, Spielstand, Tabelle …) steuerst du im DACH-CS-Live-Dashboard – die App schaltet die Seiten um, setzt Kameras und Inhalt in die Rahmen und legt ihre Einblendungen darüber.</p>
           <details class="dach-frame-edit" data-area="dach-frame-edit"><summary>Kamera- und Inhalts-Rahmen anpassen</summary>
             <div class="line" style="align-items:end"><label>Seite<select id="dframeSide"></select></label>
@@ -1111,9 +1111,9 @@
         <option value="cast-duo-interview">Cast Duo + Interview</option>
         <option value="cast-solo-interview">Cast Solo + Interview</option>
         <option value="map-veto">Map-Veto</option>
-        <option value="serie">Serie</option>
-        <option value="sponsoren">Sponsoren</option>
-        <option value="spieler">Line-ups</option>
+        <option value="series">Serie</option>
+        <option value="sponsors">Sponsoren</option>
+        <option value="players">Line-ups</option>
         <option value="ingame">Ingame</option>
         <option value="scoreboard">Scoreboard</option>
         <option value="team-a">Team A</option>
@@ -1121,7 +1121,7 @@
         <option value="h2h">Head-to-Head</option>
         <option value="bracket">Turnierbaum</option>
         <option value="pause">Pause</option>
-        <option value="ende">Ende</option>
+        <option value="end">Ende</option>
       </select>
     </label>
   </div>
@@ -1153,6 +1153,14 @@
       <section><h3>Musik (Spotify über Tuna)</h3>
         <label class="toggleSwitch"><input type="checkbox" data-field="music.displayed" data-kind="bool"> In Intro, Pause und Ende anzeigen</label>
         <label>Tuna-Adresse<input type="text" data-field="music.address"></label>
+      </section>
+      <section><h3>Sprache · Language</h3>
+        <span class="small">Sprache der App</span>
+        <div class="segment" id="appLanguage"><button data-language="de">Deutsch</button><button data-language="en">English</button></div>
+        <p class="small">Oberfläche, Dialoge und Tray-Menü. Die App lädt danach neu.</p>
+        <span class="small">Sprache der Overlays</span>
+        <div class="segment" id="overlayLanguage"><button data-language="de">Deutsch</button><button data-language="en">English</button></div>
+        <p class="small">Feste Texte in den Overlays (Szenen-Überschriften, Statistiken). Eigene Texte bleiben, wie du sie eingetragen hast.</p>
       </section>
       <section><h3>Aussehen der App</h3>
         <div class="segment" id="appDesign">
@@ -1213,6 +1221,8 @@
   <option value="Rajdhani"><option value="Bahnschrift"><option value="Bahnschrift SemiCondensed"><option value="Bahnschrift Condensed">
   <option value="Saira Condensed"><option value="Arial Narrow"><option value="Segoe UI">
 </datalist>
+<script src="lang-en.js"></script>
+<script src="i18n.js"></script>
 <script src="themes.js"></script>
 <script src="connection.js"></script>
 <script src="legacy.js"></script>
@@ -1650,8 +1660,8 @@ function mbarDraw() {
     if (t.logo) { l.style.backgroundImage = K.cssUrl(t.logo); l.textContent = ""; } else { l.style.backgroundImage = ""; l.textContent = (t.short || (t.name || "").split(/\s+/).filter(Boolean).map(w => w[0]).join("").slice(0, 3) || (k === "a" ? "TA" : "TB")).toUpperCase(); } });
   try {
     const maps = steps().filter(x => x.action !== "ban" && x.map);
-    $("mbarSeries").innerHTML = maps.map(x => { const r = x.result || {}, st = r.status || "isOpen";
-      return `<span class="${st === "running" ? "running" : st === "isOpen" ? "isOpen" : ""}">${esc(x.map)}${st === "done" ? ` ${esc(r.a)}:${esc(r.b)}` : st === "running" ? " läuft" : ""}</span>`; }).join("");
+    $("mbarSeries").innerHTML = maps.map(x => { const r = x.result || {}, st = r.status || "pending";
+      return `<span class="${st === "running" ? "running" : st === "pending" ? "pending" : ""}">${esc(x.map)}${st === "done" ? ` ${esc(r.a)}:${esc(r.b)}` : st === "running" ? " läuft" : ""}</span>`; }).join("");
     const run = maps.findIndex(x => (x.result || {}).status === "running");
     $("mbarMap").textContent = maps.length ? `Map ${run >= 0 ? run + 1 : Math.min(maps.length, maps.filter(x => (x.result || {}).status === "done").length + 1)} von ${maps.length}${run >= 0 ? " · " + maps[run].map : ""}` : "";
   } catch (err) {}
@@ -2407,16 +2417,16 @@ function seriesDraw() {
   const maps = steps().filter(x => x.action !== "ban" && x.map);
   if (!maps.length) { box.innerHTML = `<p class="small">Noch keine gepickten Maps – erst das Map-Veto ausfüllen.</p>`; return; }
   maps.forEach((x, i) => {
-    const e = x.result = Object.assign({ a: "", b: "", status: "isOpen" }, x.result || {});
+    const e = x.result = Object.assign({ a: "", b: "", status: "pending" }, x.result || {});
     const z = document.createElement("div"); z.className = "row se-row";
     z.innerHTML = `<span><b>Map ${i + 1}</b> · ${esc(x.map)}</span>
-      <select><option value="offen">Ausstehend</option><option value="laeuft">Läuft</option><option value="fertig">Fertig</option></select>
+      <select><option value="pending">Ausstehend</option><option value="running">Läuft</option><option value="done">Fertig</option></select>
       <input type="number" min="0" placeholder="${esc((Z.teams.a.name || "A").slice(0, 6))}"><b>:</b><input type="number" min="0" placeholder="${esc((Z.teams.b.name || "B").slice(0, 6))}">`;
     const sel = z.querySelector("select"), [a, b] = z.querySelectorAll("input");
     sel.value = e.status; a.value = e.a; b.value = e.b;
     sel.onchange = () => { e.status = sel.value; seriesPoints(); send(); };
-    a.oninput = () => { e.a = a.value === "" ? "" : +a.value; if (e.status === "isOpen") { e.status = "running"; sel.value = "running"; } seriesPoints(); laterSend(); };
-    b.oninput = () => { e.b = b.value === "" ? "" : +b.value; if (e.status === "isOpen") { e.status = "running"; sel.value = "running"; } seriesPoints(); laterSend(); };
+    a.oninput = () => { e.a = a.value === "" ? "" : +a.value; if (e.status === "pending") { e.status = "running"; sel.value = "running"; } seriesPoints(); laterSend(); };
+    b.oninput = () => { e.b = b.value === "" ? "" : +b.value; if (e.status === "pending") { e.status = "running"; sel.value = "running"; } seriesPoints(); laterSend(); };
     box.appendChild(z);
   });
   const [sa, sb] = seriesScore();
@@ -2693,9 +2703,9 @@ function transitionChoiceDraw() {
 }
 
 /* ---------- Einblendungen ---------- */
-const GFX_NAMES = { caster: "Caster", lowerthird: "Bauchbinde", hint: "Hinweis", score: "Punktestand", mapinfo: "Map-Info", mapfakt: "Map-Fakt", scoreboard: "Scoreboard (live)", players: "Spieler (live)" };
+const GFX_NAMES = { caster: "Caster", lowerthird: "Bauchbinde", hint: "Hinweis", score: "Punktestand", mapinfo: "Map-Info", mapfact: "Map-Fakt", scoreboard: "Scoreboard (live)", players: "Spieler (live)" };
 const GFX_POS = [["bl", "Links unten"], ["bc", "Mitte unten"], ["br", "Rechts unten"], ["tl", "Links oben"], ["tc", "Mitte oben"], ["tr", "Rechts oben"], ["cl", "Links Mitte"], ["cr", "Rechts Mitte"]];
-const GFX_DEFAULT = { lowerthird: "bl", caster: "bl", hint: "tc", score: "tc", mapinfo: "tl", mapfakt: "tr", scoreboard: "bc", players: "bl" };
+const GFX_DEFAULT = { lowerthird: "bl", caster: "bl", hint: "tc", score: "tc", mapinfo: "tl", mapfact: "tr", scoreboard: "bc", players: "bl" };
 const opts = (list, value) => list.map(([v, n]) => `<option value="${esc(v)}"${String(v) === String(value) ? " selected" : ""}>${esc(n)}</option>`).join("");
 const gfxOpen = new Set();
 const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return s >= 60 ? Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") + " min" : s + " s"; };
@@ -2723,7 +2733,7 @@ function graphicsDraw() {
   // neue Arten aus späteren Versionen nur EINMAL ergänzen – danach darf man sie löschen
   if ((Z.gfxVersion || 0) < 2) { K.DEFAULT.graphics.forEach(s => { if (!Z.graphics.some(x => x.type === s.type)) Z.graphics.push(Object.assign(K.clone(s), { id: "e" + s.type })); }); Z.gfxVersion = 2; }
   Z.graphics.forEach((x, i) => {
-    const visible = K.gfxVisible(x, Date.now(), Z.broadcast.scene), isOpen = gfxOpen.has(x.id);
+    const visible = K.gfxVisible(x, Date.now(), Z.broadcast.scene), settingsOpen = gfxOpen.has(x.id);
     const z = document.createElement("div"); z.className = "gfx-card" + (visible ? " on" : ""); z.dataset.id = x.id;
     let quick = "", extra = "";
     if (x.type === "lowerthird") quick = `<input type="text" data-f="title" placeholder="Name" aria-label="Name"><input type="text" data-f="text" placeholder="Zusatz" aria-label="Zusatz">`;
@@ -2737,7 +2747,7 @@ function graphicsDraw() {
       const l = liveLast ? liveLast.players : [];
       quick = `<select data-f="playersId" aria-label="Spieler">${opts([["", "Beobachteter Spieler (folgt der Kamera)"], ...l.map(p => [p.id, p.name])], x.playersId || "")}</select>`;
     }
-    else if (x.type === "mapfakt") {
+    else if (x.type === "mapfact") {
       const maps = [["", "Aktuelle Map (automatisch)"], ...Z.mapPool.map(m => [m.name, m.name])];
       const pool = Z.mapPool.find(m => m.name === x.map) || null, facts = pool ? (pool.facts || []) : [];
       quick = `<select data-f="map" aria-label="Map">${opts(maps, x.map || "")}</select><select data-f="fact" aria-label="Fakt">${opts([[-1, "Fakten wechseln"], ...facts.map((f, n) => [n, f.slice(0, 40)])], x.fact ?? -1)}</select>`;
@@ -2745,14 +2755,14 @@ function graphicsDraw() {
     }
     const scenesChips = OVERLAY_SCENES.map(([k, n]) => `<button type="button" data-scene="${esc(k)}" aria-pressed="${(x.sceneList || []).includes(k)}">${esc(n)}</button>`).join("");
     z.innerHTML = `<div class="gfx-head">
-        <button class="gfx-open" aria-label="Einstellungen" aria-expanded="${isOpen}">▸</button>
+        <button class="gfx-open" aria-label="Einstellungen" aria-expanded="${settingsOpen}">▸</button>
         <div><b>${esc(x.name || GFX_NAMES[x.type] || x.type)}</b>${x.name ? ` <span class="gfx-kind">${esc(GFX_NAMES[x.type] || x.type)}</span>` : ""}</div>
         <span class="gfx-status">${esc(gfxStatus(x))}</span>
         <button class="button ${x.on ? "" : "main"} gfx-show">${x.on ? "Aus" : "Zeigen"}</button>
         <button class="gfx-more" aria-label="Mehr: duplizieren, verschieben, löschen">⋯</button>
       </div>
       ${quick ? `<div class="gfx-quick">${quick}</div>` : ""}
-      <div class="gfx-settings"${isOpen ? "" : " hidden"}>
+      <div class="gfx-settings"${settingsOpen ? "" : " hidden"}>
         <label class="wide">Name in der Liste<input type="text" data-f="name" placeholder="${esc(GFX_NAMES[x.type] || "")}"></label>
         <label>Position<select data-f="pos">${opts(GFX_POS, x.pos || GFX_DEFAULT[x.type] || "bl")}</select></label>
         <label>Dauer (Sek., 0 = bleibt)<input type="number" min="0" data-f="duration" value="${esc(x.duration || 0)}"></label>
@@ -2777,16 +2787,16 @@ function graphicsDraw() {
       x.sceneList = OVERLAY_SCENES.map(([k]) => k).filter(k => s.has(k));
       graphicsDraw(); send();
     });
-    z.querySelector(".gfx-open").onclick = () => { isOpen ? gfxOpen.delete(x.id) : gfxOpen.add(x.id); graphicsDraw(); };
+    z.querySelector(".gfx-open").onclick = () => { settingsOpen ? gfxOpen.delete(x.id) : gfxOpen.add(x.id); graphicsDraw(); };
     z.querySelector(".gfx-show").onclick = () => gfxShow(x, !x.on);
     z.querySelector(".gfx-more").onclick = ev => gfxMenu(x, i, ev.currentTarget);
     box.appendChild(z);
   });
   // Seitenleiste: die volle Karte der gewählten Einblendung
-  const isOpen = (Z.graphics || []).find(x => x.id === gfxOpenId);
-  if (isOpen && !$("gfxDrawer").hidden) {
-    const card = box.querySelector(`.gfx-card[data-id="${CSS.escape(isOpen.id)}"]`);
-    $("drawerName").textContent = isOpen.name || GFX_NAMES[isOpen.type] || isOpen.type;
+  const openGfx = (Z.graphics || []).find(x => x.id === gfxOpenId);
+  if (openGfx && !$("gfxDrawer").hidden) {
+    const card = box.querySelector(`.gfx-card[data-id="${CSS.escape(openGfx.id)}"]`);
+    $("drawerName").textContent = openGfx.name || GFX_NAMES[openGfx.type] || openGfx.type;
     if (document.activeElement && $("drawerContent").contains(document.activeElement) && document.activeElement.type === "text") {} else { $("drawerContent").innerHTML = ""; if (card) $("drawerContent").appendChild(card); }
   }
   // Live-Liste: Favoriten und alles, was gerade an ist (oder alle)
@@ -3491,10 +3501,10 @@ function tournamentTreeDraw() {
   const card = (m, title) => {
     const d = document.createElement("div"); d.className = "tour-m" + (m.done ? " done" : "");
     const e2 = T.res[m.id] || {};
-    const isOpen = !m.a || !m.b || m.a === "BYE" || m.b === "BYE";
+    const undecided = !m.a || !m.b || m.a === "BYE" || m.b === "BYE";
     d.innerHTML = [["a", m.a], ["b", m.b]].map(([s, id]) => `<div class="tour-z"><button type="button" data-team="${esc(id || "")}" class="${id && id === T.focused ? "focused" : ""}"${!id || id === "BYE" ? " disabled" : ""}>${esc(name(id))}</button>
-      <input type="number" min="0" data-s="${s}" value="${e2[s] ?? ""}"${isOpen ? " disabled" : ""} aria-label="Ergebnis"></div>`).join("") +
-      `<div class="tour-foot"><span>${esc(title || m.title || m.id)}</span><label class="toggleSwitch"><input type="checkbox"${m.done ? " checked" : ""}${isOpen ? " disabled" : ""}> fertig</label></div>`;
+      <input type="number" min="0" data-s="${s}" value="${e2[s] ?? ""}"${undecided ? " disabled" : ""} aria-label="Ergebnis"></div>`).join("") +
+      `<div class="tour-foot"><span>${esc(title || m.title || m.id)}</span><label class="toggleSwitch"><input type="checkbox"${m.done ? " checked" : ""}${undecided ? " disabled" : ""}> fertig</label></div>`;
     d.querySelectorAll("input[data-s]").forEach(f => f.oninput = () => { T.res[m.id] = Object.assign({}, T.res[m.id], { [f.dataset.s]: f.value === "" ? "" : +f.value }); laterSend(); });
     d.querySelector("input[type=checkbox]").onchange = ev => { T.res[m.id] = Object.assign({}, T.res[m.id], { done: ev.target.checked }); tournamentTreeDraw(); send(); };
     d.querySelectorAll("button[data-team]").forEach(b => b.onclick = () => { T.focused = T.focused === b.dataset.team ? "" : b.dataset.team; tournamentTreeDraw(); send(); });
@@ -3572,10 +3582,10 @@ async function faceitGames(id) {
 }
 // Runden je Map (für RD) – nur für fertige Spiele, die noch keine Runden haben
 async function faceitRounds(T, games) {
-  const isOpen = games.filter(x => x.status === "FINISHED" && T.res["F" + x.match_id] && T.res["F" + x.match_id].rdA === undefined);
+  const pendingGames = games.filter(x => x.status === "FINISHED" && T.res["F" + x.match_id] && T.res["F" + x.match_id].rdA === undefined);
   let n = 0;
-  for (const x of isOpen) {
-    n++; tourStatus(`Lade Runden für die Rundendifferenz (${n} von ${isOpen.length}) …`);
+  for (const x of pendingGames) {
+    n++; tourStatus(`Lade Runden für die Rundendifferenz (${n} von ${pendingGames.length}) …`);
     try {
       const d = await faceitJson(`data/v4/matches/${x.match_id}/stats`), f1 = ((x.teams || {}).faction1 || {}).faction_id;
       let a = 0, b = 0;
@@ -4130,7 +4140,7 @@ async function logDraw() {
   const since = t => { const s = Math.round((Date.now() - t) / 1000); return s < 60 ? s + " s" : Math.round(s / 60) + " min"; };
   const st = [
     ["Version", d.version], ["Läuft seit", since(d.start)],
-    ["OBS-Verbindung", channel && channel.obs && channel.obs.isOpen ? "connected" : "nicht verbunden"],
+    ["OBS-Verbindung", channel && channel.obs && channel.obs.isOpen ? "verbunden" : "nicht verbunden"],
     ["CS2-Live-Daten", d.gsi == null ? "keine" : "vor " + Math.round(d.gsi / 1000) + " s"]
   ];
   const ov = d.clients.filter(c => c.page !== "control");
@@ -4151,6 +4161,7 @@ async function appSettingsFetch() {
   try {
     const e = await (await fetch("/api/app-settings", { cache: "no-store" })).json();
     $("updateCheck").checked = e.check_for_updates !== false;
+    CastI18n.follow(e.app_language);
     const u = e.update;
     $("updateHint").hidden = !u;
     if (u) {
@@ -4159,6 +4170,19 @@ async function appSettingsFetch() {
     }
   } catch (err) {}
 }
+// Sprache: App (Steuerseite, Dialoge, Tray) und Overlays unabhängig voneinander
+function languageDraw() {
+  document.querySelectorAll("#appLanguage button").forEach(b => b.setAttribute("aria-pressed", b.dataset.language === CastI18n.language));
+  document.querySelectorAll("#overlayLanguage button").forEach(b => b.setAttribute("aria-pressed", b.dataset.language === (Z.overlayLanguage || "de")));
+}
+document.querySelectorAll("#appLanguage button").forEach(b => b.onclick = async () => {
+  if (K.SERVER) { try { await fetch("/api/app-settings", { method: "POST", body: JSON.stringify({ app_language: b.dataset.language }) }); } catch (e) {} }
+  CastI18n.setLanguage(b.dataset.language);
+});
+document.querySelectorAll("#overlayLanguage button").forEach(b => b.onclick = () => {
+  K.overlayLanguageSet(Z, b.dataset.language); languageDraw(); everything(); send();
+});
+languageDraw();
 $("updateCheck").onchange = () => fetch("/api/app-settings", { method: "POST", body: JSON.stringify({ check_for_updates: $("updateCheck").checked }) }).catch(() => {});
 appSettingsFetch(); setTimeout(appSettingsFetch, 8000);
 $("logCopy").onclick = () => navigator.clipboard.writeText($("logText").innerText).catch(() => {});
@@ -4166,7 +4190,7 @@ $("logOnlyError").onchange = logDraw;
 $("appQuit").onclick = async () => {
   if (!await confirmDialog({ title: "App ganz beenden?", text: "Auch die Overlays in OBS bekommen danach keine Änderungen mehr, bis du die App wieder startest.", button: "Beenden" })) return;
   try { await fetch("/api/quit", { method: "POST" }); } catch (e) {}
-  document.body.innerHTML = "<p style='padding:40px;font:16px sans-serif;color:#ccc'>Cast-Overlay wurde beendet. Du kannst dieses Fenster schließen.</p>";
+  document.body.innerHTML = "<p style='padding:40px;font:16px sans-serif;color:#ccc'>Die Casting-App wurde beendet. Du kannst dieses Fenster schließen.</p>";
 };
 
 /* ---------- Sichern / Laden ---------- */
@@ -4227,7 +4251,7 @@ document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => { tabs(
 tabs((() => { try { return localStorage.getItem("cast-tabs") || "live"; } catch (e) { return "live"; } })());
 
 setTimeout(audioFetch, 1500);
-function everything() { if (typeof dachCardShow === "function") { dachCardShow(); dframeDraw(); } audioDraw(); cleanDraw(); mbarDraw(); tournamentDraw(); bgSourceDraw(); graphicsDraw(); poolComplete(); scenesDraw(); scenesSetupDraw(); sponsorsDraw(); seriesDraw(); videoInfoDraw(); sourcesDraw(); themesDraw(); themeAdjust(); fieldsFill(); teamDraw("a"); teamDraw("b"); timerShow(); poolDraw(); vetoDraw(); playersDraw("a"); playersDraw("b"); }
+function everything() { languageDraw(); if (typeof dachCardShow === "function") { dachCardShow(); dframeDraw(); } audioDraw(); cleanDraw(); mbarDraw(); tournamentDraw(); bgSourceDraw(); graphicsDraw(); poolComplete(); scenesDraw(); scenesSetupDraw(); sponsorsDraw(); seriesDraw(); videoInfoDraw(); sourcesDraw(); themesDraw(); themeAdjust(); fieldsFill(); teamDraw("a"); teamDraw("b"); timerShow(); poolDraw(); vetoDraw(); playersDraw("a"); playersDraw("b"); }
 everything();
 helperCheck(); musicCheck();
 (async () => {

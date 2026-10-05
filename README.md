@@ -17,6 +17,7 @@ casting_app/                      Python-Paket (Code und Kommentare englisch)
  ├─ password_vault.py             Passwort-Tresor für Systeme ohne Schlüsselbund
  ├─ settings.py, update_check.py  App-Einstellungen (settings.json), Suche nach neuer Version
  ├─ legacy.py                     Daten aus 2.1 und älter (deutsche Namen) einmalig übernehmen
+ ├─ texts.py                      Texte der Python-Seite (Tray, Dialoge) auf Deutsch und Englisch
  ├─ instance.py                   laufende Version erkennen, ältere ablösen
  ├─ server/                       HTTP-Server http://localhost:8787 (nur dieser PC)
  │   ├─ app_server.py             Prüfung jeder Anfrage, alle /api-Routen, Zustand, Bilder
@@ -33,6 +34,7 @@ casting_app/                      Python-Paket (Code und Kommentare englisch)
      ├─ tray.py                   Tray-Symbol
      └─ scripts/                  ins Fenster eingespieltes JavaScript (Brücke, Lautstärke)
 web/                              Steuerseite (control.html) und Overlays (overlay.html, Szenen), laufen auch in OBS
+ ├─ i18n.js, lang-en.js           Sprache der App: übersetzt die Steuerseite beim Anzeigen (Wörterbuch Deutsch → Englisch)
  └─ legacy.js                     Tabelle alter (deutscher) Namen → neue Namen für die Daten-Übernahme
 tools/generate_scenes.py          erzeugt die Szenen-Vorlagen web/<scene>.html
 tools/build.py                    Bauen mit PyInstaller (+ installer.nsi für Windows)
@@ -55,6 +57,16 @@ tests/                            pytest-Tests und Skripte gegen die laufende Ap
 * **Ohne Fenster:** `Casting-App --no-window` (Alias `--ohne-fenster`) startet nur den Server.
 * **Leistung:** Grafikbeschleunigung an (Ausweg `--no-gpu` / `--ohne-gpu`), keine Hintergrund-Drosselung
   (Chromium-Schalter in `desktop/app.py`), PyInstaller-Ordner statt Einzeldatei (kein Entpacken bei jedem Start).
+
+### Zwei Sprachen: App und Overlays (unabhängig)
+
+| | Wo | Wie |
+|---|---|---|
+| **Sprache der App** | `settings.json` → `app_language` (plus `localStorage`, damit schon der erste Bildaufbau stimmt) | Die Texte im Code bleiben deutsch. `web/i18n.js` übersetzt auf Englisch alles Sichtbare beim Anzeigen (Textknoten, `title`/`placeholder`/`aria-label`, `alert`/`confirm`/`prompt`, auch später entstehende Elemente per `MutationObserver`) mit dem Wörterbuch `web/lang-en.js`; `{}` steht für eingesetzte Werte. Tray und Dialoge: `casting_app/texts.py`. |
+| **Sprache der Overlays** | im Zustand (`overlayLanguage`) – OBS bekommt sie mit | `OVERLAY_TEXTS` (Standardwerte der Überschriften) und `OVERLAY_WORDS` (Wörter, die das Overlay selbst schreibt) in `web/cast-core.js`. Beim Wechsel tauschen nur Texte, die noch auf dem Standard der alten Sprache stehen. |
+
+Neuer sichtbarer Text in der Steuerseite → Eintrag in `web/lang-en.js` ergänzen; `tests/test_control_page.py` öffnet die
+Steuerseite auf Englisch, klickt alle Knöpfe und meldet jeden deutschen Rest.
 
 ### Ton im App-Fenster – was geht und was nicht
 

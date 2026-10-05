@@ -30,5 +30,5 @@ include = ["casting_app*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # only these files are pytest tests; the other scripts in tests/ are run directly against a running app
-python_files = ["test_secret_store.py", "test_password_vault.py", "test_update_check.py", "test_server.py", "test_obs_password.py", "test_desktop.py", "test_legacy.py", "test_control_page.py"]
+python_files = ["test_secret_store.py", "test_password_vault.py", "test_update_check.py", "test_server.py", "test_obs_password.py", "test_desktop.py", "test_legacy.py", "test_control_page.py", "test_texts.py"]
 qt_api = "pyside6"

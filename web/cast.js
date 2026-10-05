@@ -13,8 +13,8 @@
   if (PREVIEW) document.body.classList.add("idle");
   if (EMBEDDED) document.body.classList.add("embedded", "waiting");
 
-  let Rawstate = K.load();                              // Zustand mit Bild-Verweisen (klein)
-  let Z = K.resolve(Rawstate, K.Images.mem);         // Zustand mit echten Bildern (zum Zeichnen)
+  let rawState = K.load();                              // Zustand mit Bild-Verweisen (klein)
+  let Z = K.resolve(rawState, K.Images.mem);         // Zustand mit echten Bildern (zum Zeichnen)
   const $$ = s => [...document.querySelectorAll(s)];
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const pull = path => path.split(".").reduce((o, k) => (o == null ? o : o[k]), Z);
@@ -211,7 +211,7 @@
         : `<span>${esc(Z.texts.decider)}</span>`;
       const text = x.map ? esc(x.map) : (i === upnext ? esc(Z.texts.amTurn) : "?");
       const res = x.map && x.action !== "ban" ? resultBadge(x.result) : "";
-      return `<div class="box veto-card ${x.action}${x.map ? "" : " isOpen"}${i === upnext ? " upnext" : ""}${fresh}">
+      return `<div class="box veto-card ${x.action}${x.map ? "" : " open"}${i === upnext ? " upnext" : ""}${fresh}">
         <div class="box-head">${esc(label[x.action] || x.action)}</div>
         <div class="veto-image">${image ? `<img${whole} src="${esc(image)}" alt="">` : `<div class="initial">${x.map ? esc(x.map[0]) : ""}</div>`}${res}${side}<div class="veto-map">${text}</div></div>
         <div class="veto-team">${team}</div></div>`;
@@ -221,7 +221,7 @@
 
   /* ---------- Serie ---------- */
   function resultBadge(e) {
-    if (!e || !e.status || e.status === "isOpen") return "";
+    if (!e || !e.status || e.status === "pending") return "";
     if (e.status === "running" && (e.a === "" || e.a == null)) return `<div class="veto-result running">${esc(Z.texts.running)}</div>`;
     return `<div class="veto-result${e.status === "running" ? " running" : ""}">${esc(e.a ?? 0)}<span class="dp">:</span>${esc(e.b ?? 0)}</div>`;
   }
@@ -240,15 +240,15 @@
     $$(".series-mini").forEach(m => { if (newNeeded(m, keyName)) seriesDraw(null, m, maps); });
   }
   function seriesDraw(cards, mini, maps) {
-    if (cards && !maps.length) cards.innerHTML = `<div class="empty-hint">Noch keine gespielten Maps – erst das Map-Veto ausfüllen</div>`;
+    if (cards && !maps.length) cards.innerHTML = `<div class="empty-hint">${esc(K.word(Z, "noMaps"))}</div>`;
     if (cards && maps.length) {
       const width = Math.min(360, Math.floor((1806 - (Math.max(1, maps.length) - 1) * 20) / Math.max(1, maps.length)));
       cards.style.setProperty("--kb", width + "px");
       cards.innerHTML = maps.map((x, i) => {
         const e = x.result || {}, pool = mapImage(x.map), image = x.image || pool.image || "";
-        const status = e.status || "isOpen";
+        const status = e.status || "pending";
         const winner = status === "done" ? (+e.a > +e.b ? "a" : +e.b > +e.a ? "b" : "") : "";
-        const score = status === "isOpen" ? "" : `<div class="series-score"><span class="${winner === "b" ? "lost" : ""}">${esc(e.a ?? 0)}</span><span class="dp">:</span><span class="${winner === "a" ? "lost" : ""}">${esc(e.b ?? 0)}</span></div>`;
+        const score = status === "pending" ? "" : `<div class="series-score"><span class="${winner === "b" ? "lost" : ""}">${esc(e.a ?? 0)}</span><span class="dp">:</span><span class="${winner === "a" ? "lost" : ""}">${esc(e.b ?? 0)}</span></div>`;
         const foot = winner ? `<div class="team-logo ${winner}"></div><span data-team-name="${winner}"></span>`
                    : `<span>${esc(status === "running" ? Z.texts.running : Z.texts.pending)}</span>`;
         return `<div class="box series-card ${status}"><div class="box-head">${esc(Z.texts.map)} ${i + 1}</div>
@@ -257,7 +257,7 @@
       }).join("");
     }
     if (mini) {
-      mini.innerHTML = maps.filter(x => (x.result || {}).status && x.result.status !== "isOpen").map(x =>
+      mini.innerHTML = maps.filter(x => (x.result || {}).status && x.result.status !== "pending").map(x =>
         `<div class="series-chip ${x.result.status}"><b>${esc(x.map)}</b><span>${esc(x.result.a ?? 0)}<span class="dp">:</span>${esc(x.result.b ?? 0)}</span></div>`).join("");
     }
   }
@@ -291,7 +291,7 @@
     }
     {
       // Raster-Szene
-      $$(".sponsor-grid").forEach(r => { if (!newNeeded(r, keyName)) return; r.innerHTML = list.length ? list.map(s => `<div class="sponsor-tile">${sponsorContent(s)}</div>`).join("") : `<div class="empty-hint">Noch keine Sponsoren für dieses Theme</div>`; });
+      $$(".sponsor-grid").forEach(r => { if (!newNeeded(r, keyName)) return; r.innerHTML = list.length ? list.map(s => `<div class="sponsor-tile">${sponsorContent(s)}</div>`).join("") : `<div class="empty-hint">${esc(K.word(Z, "noSponsors"))}</div>`; });
     }
     // große Einblendung (in allen Szenen)
     let large = document.querySelector(".sponsor-large");
@@ -317,12 +317,12 @@
   /* ---------- Turnierbaum ---------- */
   function tournamentDraw() {
     const boxes = $$(".tournament-tree"); if (!boxes.length) return;
-    const T = Z.tournament || {}, B = K.tournamentBuild(T), S = T.visible || {};
+    const T = Z.tournament || {}, B = K.tournamentBuild(T, Z.overlayLanguage), S = T.visible || {};
     const teamFrom = id => (T.teams || []).find(t => t.id === id);
     const row = (id, points, winner, hidden) => {
-      if (id === "BYE") return `<div class="bracket-team free"><div class="bracket-logo"></div><span>Freilos</span><b></b></div>`;
+      if (id === "BYE") return `<div class="bracket-team free"><div class="bracket-logo"></div><span>${esc(K.word(Z, "bye"))}</span><b></b></div>`;
       const t = teamFrom(id);
-      if (!t || hidden) return `<div class="bracket-team isOpen"><div class="bracket-logo"></div><span>${hidden ? "?" : "–"}</span><b></b></div>`;
+      if (!t || hidden) return `<div class="bracket-team open"><div class="bracket-logo"></div><span>${hidden ? "?" : "–"}</span><b></b></div>`;
       const logo = t.logo ? `<img src="${esc(t.logo)}" alt="">` : esc((t.short || t.name || "?").slice(0, 3));
       return `<div class="bracket-team${winner ? " winner" : ""}${T.focused === id ? " focused" : ""}"><div class="bracket-logo">${logo}</div><span>${esc(t.name || "")}</span><b>${S.resultsOff || points == null || points === "" ? "" : esc(points)}</b></div>`;
     };
@@ -333,7 +333,7 @@
     const columns = (rounds, start) => rounds.map((r, i) => !show(start + i) && S.mode === "fromRound" ? "" :
       `<div class="bracket-round"><div class="bracket-title">${esc(r.title)}</div><div class="bracket-games">${r.matches.map(m => card(m, !show(start + i))).join("")}</div></div>`).join("");
     let h = "";
-    if (!B.teams || B.teams.length < 2) h = `<div class="live-wait">Noch kein Turnier angelegt</div>`;
+    if (!B.teams || B.teams.length < 2) h = `<div class="live-wait">${esc(K.word(Z, "noTournament"))}</div>`;
     else if (B.format === "table") {
       const choice = T.showGroup === undefined || T.showGroup === "" ? null : +T.showGroup;
       const shown = B.groups.filter((g, i) => choice === null || i === choice);
@@ -399,7 +399,7 @@
   function liveDraw() {
     const da = !!liveData;
     // ohne CS2-Daten steht der Match-Titel im Kopf (nie ein leeres Feld)
-    $$(".live-info").forEach(e => { const t = da ? `${MAPNAME(liveData.map)} · ${Z.texts.round || "RUNDE"} ${liveData.round + 1}` : (Z.texts.title || ""); if (e.textContent !== t) e.textContent = t; });
+    $$(".live-info").forEach(e => { const t = da ? `${MAPNAME(liveData.map)} · ${Z.texts.round || K.word(Z, "round")} ${liveData.round + 1}` : (Z.texts.title || ""); if (e.textContent !== t) e.textContent = t; });
     $$(".live-table").forEach(e => {
       const team = e.dataset.team, h = da ? tableHtml(team, e.classList.contains("compact")) : wait();
       if (newNeeded(e, h)) e.innerHTML = h;
@@ -462,12 +462,12 @@
     }
     if (e.type === "players") {
       const p = liveData && (liveData.players.find(x => x.id === (e.playersId || liveData.observed)) || null);
-      if (!p) return `<div class="box-head">SPIELER</div><div class="box-field">${wait()}</div>`;
+      if (!p) return `<div class="box-head">${esc(Z.texts.players || "")}</div><div class="box-field">${wait()}</div>`;
       const team = p.side === sideFrom("a") ? "a" : "b";
       return `<div class="box-head"><div class="team-logo ${team}"></div><span>${esc(p.name)}</span></div>
         <div class="box-field gfx-sponsor"><div><b>${p.k}/${p.d}/${p.a}</b><span>K/D/A</span></div><div><b>${p.adr}</b><span>ADR</span></div><div><b>${p.hs}%</b><span>HS</span></div><div><b>${p.mvps}</b><span>MVP</span></div></div>`;
     }
-    if (e.type === "mapfakt") {
+    if (e.type === "mapfact") {
       const map = e.map || ((currentMap().cur || {}).map) || "";
       const pool = mapImage(map), facts = (pool.facts || []).filter(Boolean);
       const num = e.fact >= 0 ? e.fact : factNum;
@@ -476,7 +476,7 @@
     }
     return `<div class="box-head">${esc(e.title || "")}</div><div class="box-field">${esc(e.text || "")}</div>`;
   }
-  const DEFAULT_POS = { lowerthird: "bl", caster: "bl", hint: "tc", score: "tc", mapinfo: "tl", mapfakt: "tr", scoreboard: "bc", players: "bl" };
+  const DEFAULT_POS = { lowerthird: "bl", caster: "bl", hint: "tc", score: "tc", mapinfo: "tl", mapfact: "tr", scoreboard: "bc", players: "bl" };
   function graphics() {
     if (EMBEDDED) return;
     let stageLayer = document.querySelector(".gfx-layer");
@@ -497,7 +497,7 @@
       d.classList.toggle("on", visible);
       const switchTo = K.gfxNextSwitch(e, now);
       if (switchTo) nextEnd = nextEnd ? Math.min(nextEnd, switchTo) : switchTo;
-      if (visible && e.type === "mapfakt" && !(e.fact >= 0)) factSec = Math.max(4, +e.seconds || 12);
+      if (visible && e.type === "mapfact" && !(e.fact >= 0)) factSec = Math.max(4, +e.seconds || 12);
     });
     [...stageLayer.children].forEach(d => { if (!list.some(e => e.id === d.dataset.id)) d.remove(); });
     clearTimeout(gfxTimer);
@@ -626,7 +626,7 @@
       if (stream.getAudioTracks().length) { const c = audioctx(); if (c) audioChain(c.createMediaStreamSource(stream), box.closest(".cam").dataset.source, () => box.isConnected); }
       levelMeasure(box.closest(".cam"), stream);
     } catch (e) {
-      box.innerHTML = `<div class="cam-error">Kamera nicht verfügbar<small>${esc(e && (e.name || e.message) || e)}</small></div>`;
+      box.innerHTML = `<div class="cam-error">${esc(K.word(Z, "cameraMissing"))}<small>${esc(e && (e.name || e.message) || e)}</small></div>`;
     }
   }
   /* Sprecher-Anzeige: Pegel messen und das Schild aufleuchten lassen */
@@ -729,7 +729,7 @@
       "Datei:     " + (location.pathname.split("/").pop() || "?") + (location.protocol === "file:" ? " (lokale Datei)" : " (" + location.protocol.replace(":", "") + ")"),
       "Browser:   " + (navigator.userAgent.match(/(OBS|Chrome|Edg|Firefox|Safari)\/[\d.]+/g) || []).join(" "),
       "Zustand:   " + receivedFrom + (receivedUm ? " · " + new Date(receivedUm).toLocaleTimeString("de-DE") : "") + " · Stand " + (Z.revision ? new Date(Z.revision).toLocaleTimeString("de-DE") : "–"),
-      "Bilder:    " + Object.keys(K.Images.mem).length + " gemerkt · Zustand " + Math.round(JSON.stringify(Rawstate).length / 1024) + " KB",
+      "Bilder:    " + Object.keys(K.Images.mem).length + " gemerkt · Zustand " + Math.round(JSON.stringify(rawState).length / 1024) + " KB",
       "Videos:    " + ((H.videos || []).length || "keine eingetragen") + (H.transparent ? " (Hintergrund durchsichtig!)" : ""),
       "Formate:   H.264 " + (t.canPlayType('video/mp4; codecs="avc1.640028"') || "nein") + " · H.265 " + (t.canPlayType('video/mp4; codecs="hvc1.1.6.L120.90"') || "nein") + " · VP9 " + (t.canPlayType('video/webm; codecs="vp9"') || "nein")
     ];
@@ -968,14 +968,14 @@
     if (!z || (z.revision || 0) < (Z.revision || 0)) return;
     imagesCleanup(z);
     receivedFrom = originPage || "Steuerseite"; receivedUm = Date.now();
-    Rawstate = K.merge(K.clone(K.DEFAULT), z);
-    Z = K.resolve(Rawstate, K.Images.mem);
-    K.save(Rawstate);
+    rawState = K.merge(K.clone(K.DEFAULT), z);
+    Z = K.resolve(rawState, K.Images.mem);
+    K.save(rawState);
     draw();
   }
   // Bilder kamen dazu -> alles mit den echten Bildern neu zeichnen
   function newDraw() {
-    Z = K.resolve(Rawstate, K.Images.mem);
+    Z = K.resolve(rawState, K.Images.mem);
     $$(".cam[data-source]").forEach(k => { if (k._source && /asset:|data:/.test(k._source)) k._source = null; });
     draw();
   }
@@ -1041,17 +1041,17 @@
       if (d.cast === "images" && d.images) K.Images.set(d.images).then(newDraw);
       if (d.cast === "state") adopt(d.z, "Steuerseite");
     },
-    onStorage() { const n = K.load(); if ((n.revision || 0) > (Z.revision || 0)) { Rawstate = n; Z = K.resolve(n, K.Images.mem); draw(); } }
+    onStorage() { const n = K.load(); if ((n.revision || 0) > (Z.revision || 0)) { rawState = n; Z = K.resolve(n, K.Images.mem); draw(); } }
   });
   if (!K.SERVER && "BroadcastChannel" in window) new BroadcastChannel("cast-overlay").postMessage({ cast: "request" });
   // Sicherheitsnetz ohne App: gespeicherten Stand regelmäßig prüfen (gleicher Browser, andere Tabs)
-  if (!K.SERVER || PREVIEW) setInterval(() => { if (K.savedRevision() > (Z.revision || 0)) { const n = K.load(); if ((n.revision || 0) > (Z.revision || 0)) { Rawstate = n; K.Images.load().then(newDraw); } } }, 1000);
+  if (!K.SERVER || PREVIEW) setInterval(() => { if (K.savedRevision() > (Z.revision || 0)) { const n = K.load(); if ((n.revision || 0) > (Z.revision || 0)) { rawState = n; K.Images.load().then(newDraw); } } }, 1000);
   // Vorschau in der Steuerseite (iframe) bekommt den Zustand direkt
   addEventListener("message", ev => {
     if (window.parent === window || ev.source !== window.parent) return;   // nur die Vorschau der Steuerseite
     const d = ev.data;
     if (d && d.cast === "show") { document.body.classList.remove("waiting"); return; }
-    if (d && d.cast === "state" && d.z) { Z = Rawstate = K.merge(K.clone(K.DEFAULT), d.z); receivedFrom = "Vorschau der Steuerseite"; receivedUm = Date.now(); draw(); }
+    if (d && d.cast === "state" && d.z) { Z = rawState = K.merge(K.clone(K.DEFAULT), d.z); receivedFrom = "Vorschau der Steuerseite"; receivedUm = Date.now(); draw(); }
     if (d && d.cast === "live") { liveData = d.live; liveDraw(); }
     if (d && d.cast === "monitor") {
       const before = monitorOn(); monitor = { mode: d.mode || "off", vol: +d.vol || 0 }; audioctx(); audioApply(); previewAudio();

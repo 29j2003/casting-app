@@ -13,13 +13,15 @@ window.CastCore = (function () {
   // Läuft die Seite über den Cast-Dienst (http://localhost:8787)?
   const SERVER = /^https?:$/.test(location.protocol) && location.port === "8787" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
-  const DEFAULT = {
-    theme: "regular",                             // neutral für den ersten Start – Liga-Themes per Klick
-    themeData: {},          // eigene Anpassungen pro Theme (überschreiben themes.js)
-    texts: {
+
+  // Feste Texte der Overlays in beiden Sprachen (⚙ App-Einstellungen → Sprache der Overlays).
+  //   texts: Standardwerte für Z.texts – in der Steuerseite änderbar; beim Sprachwechsel werden nur
+  //          Texte ersetzt, die noch dem Standard der alten Sprache entsprechen.
+  //   words: Wörter, die das Overlay selbst schreibt (Turnierbaum, Hinweise in der Vorschau …).
+  const OVERLAY_TEXTS = {
+    de: {
       title: "GRAND FINAL",
       ticker: ["Willkommen zum Cast", "Folgt uns auf Twitch", "Best of 3 – los geht's"],
-      tickerTempo: 90,
       startIn: "START IN",
       matchUp: "MATCH UP",
       nextIn: "WEITER IN",
@@ -49,8 +51,77 @@ window.CastCore = (function () {
       waitCs2: "Warte auf CS2-Daten …",
       tournament: "TURNIER",
       next: "NEXT",
-      mapFact: "MAP-FAKT"
+      mapFact: "MAP-FAKT",
+      round: "RUNDE",
+      players: "SPIELER"
     },
+    en: {
+      title: "GRAND FINAL",
+      ticker: ["Welcome to the cast", "Follow us on Twitch", "Best of 3 – let's go"],
+      startIn: "STARTING IN",
+      matchUp: "MATCH UP",
+      nextIn: "BACK IN",
+      pauseTitle: "BREAK",
+      pauseBelow: "BACK IN A MOMENT",
+      endTitle: "THANKS FOR WATCHING",
+      endBelow: "SEE YOU NEXT TIME",
+      finalscore: "FINAL SCORE",
+      interview: "INTERVIEW",
+      musicLabel: "NOW PLAYING",
+      mapVeto: "MAP VETO",
+      lineups: "LINE-UPS",
+      ban: "BAN",
+      pick: "PICK",
+      decider: "DECIDER",
+      amTurn: "UP NEXT",
+      series: "SERIES",
+      map: "MAP",
+      running: "LIVE",
+      pending: "UPCOMING",
+      sponsorLabel: "PRESENTED BY",
+      sponsorsTitle: "OUR PARTNERS",
+      sponsorTicker: "Presented by",
+      scoreboard: "SCOREBOARD",
+      teamStats: "TEAM STATS",
+      h2h: "HEAD TO HEAD",
+      waitCs2: "Waiting for CS2 data …",
+      tournament: "TOURNAMENT",
+      next: "NEXT",
+      mapFact: "MAP FACT",
+      round: "ROUND",
+      players: "PLAYERS"
+    }
+  };
+  const OVERLAY_WORDS = {
+    de: { final: "FINALE", upperFinal: "OBEN-FINALE", lowerFinal: "UNTEN-FINALE", semifinal: "HALBFINALE", quarterfinal: "VIERTELFINALE",
+          roundOf16: "ACHTELFINALE", round: "RUNDE", upperRound: "OBEN R", lowerRound: "UNTEN R", group: "GRUPPE", table: "TABELLE",
+          opening: "ERÖFFNUNG", winners: "GEWINNER", elimination: "AUSSCHEIDUNG", decider: "ENTSCHEIDUNG", bye: "Freilos",
+          noMaps: "Noch keine gespielten Maps – erst das Map-Veto ausfüllen", noSponsors: "Noch keine Sponsoren für dieses Theme",
+          noTournament: "Noch kein Turnier angelegt", cameraMissing: "Kamera nicht verfügbar" },
+    en: { final: "FINAL", upperFinal: "UPPER FINAL", lowerFinal: "LOWER FINAL", semifinal: "SEMIFINAL", quarterfinal: "QUARTERFINAL",
+          roundOf16: "ROUND OF 16", round: "ROUND", upperRound: "UPPER R", lowerRound: "LOWER R", group: "GROUP", table: "TABLE",
+          opening: "OPENING", winners: "WINNERS", elimination: "ELIMINATION", decider: "DECIDER", bye: "Bye",
+          noMaps: "No maps played yet – fill in the map veto first", noSponsors: "No sponsors for this theme yet",
+          noTournament: "No tournament set up yet", cameraMissing: "Camera not available" }
+  };
+  /** A fixed overlay word in the overlay language of the state. */
+  const word = (Z, key) => (OVERLAY_WORDS[(Z || {}).overlayLanguage] || OVERLAY_WORDS.de)[key];
+  /** Switch the overlay language: texts still at the old default get the new default, own texts stay. */
+  function overlayLanguageSet(Z, language) {
+    if (!OVERLAY_TEXTS[language]) return;
+    const before = OVERLAY_TEXTS[Z.overlayLanguage] || OVERLAY_TEXTS.de, after = OVERLAY_TEXTS[language];
+    Z.texts = Z.texts || {};
+    for (const key of Object.keys(after)) {
+      if (Z.texts[key] === undefined || JSON.stringify(Z.texts[key]) === JSON.stringify(before[key])) Z.texts[key] = clone(after[key]);
+    }
+    Z.overlayLanguage = language;
+  }
+
+  const DEFAULT = {
+    theme: "regular",                             // neutral für den ersten Start – Liga-Themes per Klick
+    themeData: {},          // eigene Anpassungen pro Theme (überschreiben themes.js)
+    overlayLanguage: "de",                        // Sprache der festen Overlay-Texte: "de" | "en" (⚙ App-Einstellungen)
+    texts: Object.assign({}, OVERLAY_TEXTS.de, { tickerTempo: 90 }),
     // Logo pro Szene: "auto" (Icon, wenn der Platz fehlt) | "voll" | "icon"
     logoMode: {},
     teams: {
@@ -117,7 +188,7 @@ window.CastCore = (function () {
       { id: "e3", type: "hint", pos: "tc", title: "", text: "Gleich geht's weiter", on: false, until: 0 },
       { id: "e4", type: "score", pos: "tc", on: false, until: 0 },
       { id: "e5", type: "mapinfo", pos: "tl", on: false, until: 0 },
-      { id: "e6", type: "mapfakt", pos: "tr", map: "", fact: -1, seconds: 12, on: false, until: 0 }
+      { id: "e6", type: "mapfact", pos: "tr", map: "", fact: -1, seconds: 12, on: false, until: 0 }
     ],
     // Live-Spieldaten aus CS2 (Vorbereitung)
     live: { on: false },
@@ -379,7 +450,8 @@ window.CastCore = (function () {
   /* ---------- Turnierbaum: Single/Double Elimination, Swiss, GSL-Gruppen ----------
      Teilnehmer je Spiel: Team-ID, null (steht noch nicht fest) oder "BYE" (Freilos). */
   function setOrder(P) { let o = [1]; while (o.length < P) { const n = o.length * 2; o = o.flatMap(x => [x, n + 1 - x]); } return o; }
-  function tournamentBuild(T) {
+  function tournamentBuild(T, language) {
+    const W = OVERLAY_WORDS[language] || OVERLAY_WORDS.de;     // round and group names in the overlay language
     T = T || {}; const teams = (T.teams || []).filter(t => t && t.id), res = T.res || {}, M = {};
     const fresh = (id, a, b, qa, qb) => (M[id] = { id, a, b, qa, qb });
     const who = q => !q ? null : q.team !== undefined ? q.team : (M[q.id] || {})[q.kind] ?? null;
@@ -393,7 +465,7 @@ window.CastCore = (function () {
       else if (m.a && m.b && m.done && +m.sa !== +m.sb) { const aWon = +m.sa > +m.sb; m.winner = aWon ? m.a : m.b; m.loser = aWon ? m.b : m.a; }
       return m;
     }
-    const title = (rest, upper) => rest === 1 ? (upper ? "OBEN-FINALE" : "FINALE") : rest === 2 ? "HALBFINALE" : rest === 3 ? "VIERTELFINALE" : rest === 4 ? "ACHTELFINALE" : "";
+    const title = (rest, upper) => rest === 1 ? (upper ? W.upperFinal : W.final) : rest === 2 ? W.semifinal : rest === 3 ? W.quarterfinal : rest === 4 ? W.roundOf16 : "";
     const result = { format: T.format || "se", rounds: [], bottom: [], finale: null, groups: [], table: [], teams };
     if (teams.length < 2) return result;
     const fmt = T.format || "se";
@@ -401,19 +473,19 @@ window.CastCore = (function () {
       const P = Math.pow(2, Math.ceil(Math.log2(teams.length))), k = Math.log2(P), ord = setOrder(P), pre = fmt === "de" ? "O" : "W";
       const assign = s => s <= teams.length ? teams[s - 1].id : "BYE";
       for (let r = 1; r <= k; r++) {
-        const round = { title: (fmt === "de" && r === k) ? "OBEN-FINALE" : title(k - r + 1, false) || "RUNDE " + r, matches: [] };
+        const round = { title: (fmt === "de" && r === k) ? W.upperFinal : title(k - r + 1, false) || W.round + " " + r, matches: [] };
         for (let i = 0; i < P / Math.pow(2, r); i++) {
           const m = r === 1 ? fresh(`${pre}1-${i + 1}`, null, null, { team: assign(ord[2 * i]) }, { team: assign(ord[2 * i + 1]) })
                             : fresh(`${pre}${r}-${i + 1}`, null, null, { id: `${pre}${r - 1}-${2 * i + 1}`, kind: "winner" }, { id: `${pre}${r - 1}-${2 * i + 2}`, kind: "winner" });
           round.matches.push(resolve(m));
         }
-        if (fmt === "de" && r < k) round.title = "OBEN R" + r;
+        if (fmt === "de" && r < k) round.title = W.upperRound + r;
         result.rounds.push(round);
       }
       if (fmt === "de" && k >= 2) {
         const count = j => P / Math.pow(2, Math.ceil(j / 2) + 1), J = 2 * (k - 1);
         for (let j = 1; j <= J; j++) {
-          const round = { title: j === J ? "UNTEN-FINALE" : "UNTEN R" + j, matches: [] }, n = count(j);
+          const round = { title: j === J ? W.lowerFinal : W.lowerRound + j, matches: [] }, n = count(j);
           for (let i = 0; i < n; i++) {
             let qa, qb;
             if (j === 1) { qa = { id: `O1-${2 * i + 1}`, kind: "loser" }; qb = { id: `O1-${2 * i + 2}`, kind: "loser" }; }
@@ -437,8 +509,8 @@ window.CastCore = (function () {
           resolve(fresh(p(4), null, null, { id: p(1), kind: "loser" }, { id: p(2), kind: "loser" })),
           resolve(fresh(p(5), null, null, { id: p(3), kind: "loser" }, { id: p(4), kind: "winner" }))
         ];
-        ["ERÖFFNUNG", "ERÖFFNUNG", "GEWINNER", "AUSSCHEIDUNG", "ENTSCHEIDUNG"].forEach((x, i) => { ms[i].title = x; });
-        result.groups.push({ name: "GRUPPE " + n, matches: ms, proceed: [ms[2].winner, ms[4].winner] });
+        [W.opening, W.opening, W.winners, W.elimination, W.decider].forEach((x, i) => { ms[i].title = x; });
+        result.groups.push({ name: W.group + " " + n, matches: ms, proceed: [ms[2].winner, ms[4].winner] });
       });
     }
     // Gruppen mit Tabelle (jeder gegen jeden) – Spiele selbst erzeugt oder exakt aus FACEIT übernommen
@@ -454,7 +526,7 @@ window.CastCore = (function () {
         return p; };
       const games = (T.games && T.games.length) ? T.games : groups.flatMap((g, gi) => eachVsEach(g).map((x, i) => ({ id: `R${gi + 1}-${i + 1}`, group: gi, round: x.round, a: x.a, b: x.b })));
       groups.forEach((ids, gi) => {
-        const ms = games.filter(x => (+x.group || 0) === gi).map(x => Object.assign(resolve(fresh(x.id, null, null, { team: x.a }, { team: x.b })), { round: x.round, title: x.round ? "RUNDE " + x.round : "" }));
+        const ms = games.filter(x => (+x.group || 0) === gi).map(x => Object.assign(resolve(fresh(x.id, null, null, { team: x.a }, { team: x.b })), { round: x.round, title: x.round ? W.round + " " + x.round : "" }));
         // Punkte je Turnier einstellbar: Sieg ohne/mit Map-Verlust, Niederlage mit/ohne Map-Gewinn, Unentschieden
         const P = Object.assign({ win: 3, winClose: 3, lossClose: 1, loss: 0, draws: 1 }, T.points || {});
         const pointsFor = (own, opponent) => own > opponent ? (opponent > 0 ? P.winClose : P.win) : own < opponent ? (own > 0 ? P.lossClose : P.loss) : P.draws;
@@ -479,7 +551,7 @@ window.CastCore = (function () {
         Object.values(afterPoints).forEach(g => { if (g.length > 1) { const d = direct(g); g.forEach(r => { r.dv = d[r.id]; }); } else g[0].dv = 0; });
         table.forEach(r => { r.bracket = withRounds ? r.rd : r.diff; });
         table.sort((x, y) => y.pts - x.pts || y.dv - x.dv || y.bracket - x.bracket || y.s - x.s);
-        result.groups.push({ name: G > 1 ? "GRUPPE " + String.fromCharCode(65 + gi) : "TABELLE", matches: ms, table, withRounds });
+        result.groups.push({ name: G > 1 ? W.group + " " + String.fromCharCode(65 + gi) : W.table, matches: ms, table, withRounds });
       });
     }
     // Baum genau so, wie FACEIT ihn liefert (Runden als Spalten, negative Runden = unterer Baum)
@@ -489,14 +561,14 @@ window.CastCore = (function () {
       const numbering = Object.keys(rounds).map(Number);
       const upper = numbering.filter(r => r >= 0).sort((a, b) => a - b), bottom = numbering.filter(r => r < 0).sort((a, b) => b - a);
       const column = (r, title) => ({ title, matches: rounds[r].map(x => resolve(fresh(x.id, null, null, { team: x.a || null }, { team: x.b || null }))) });
-      upper.forEach((r, i) => result.rounds.push(column(r, title(upper.length - i, false) || "RUNDE " + r)));
-      bottom.forEach((r, i) => result.bottom.push(column(r, i === bottom.length - 1 ? "UNTEN-FINALE" : "UNTEN R" + (i + 1))));
+      upper.forEach((r, i) => result.rounds.push(column(r, title(upper.length - i, false) || W.round + " " + r)));
+      bottom.forEach((r, i) => result.bottom.push(column(r, i === bottom.length - 1 ? W.lowerFinal : W.lowerRound + (i + 1))));
     }
     if (fmt === "swiss") {
       const S = T.swiss || {}, record = {};
       teams.forEach(t => { record[t.id] = { id: t.id, s: 0, n: 0, opponent: [] }; });
       (S.rounds || []).forEach((round, ri) => {
-        const r = { title: "RUNDE " + (ri + 1), matches: [] };
+        const r = { title: W.round + " " + (ri + 1), matches: [] };
         round.forEach(x => {
           const m = resolve(fresh(x.id, null, null, { team: x.a }, { team: x.b }));
           // Bilanz VOR dem Spiel für die Anzeige („1–0“-Gruppe)
@@ -516,7 +588,7 @@ window.CastCore = (function () {
   }
   // Swiss: nächste Runde auslosen (gleiche Bilanz gegeneinander, keine Wiederholungen, Freilos bei ungerader Zahl)
   function swissDraw(T) {
-    const B = tournamentBuild(Object.assign({}, T, { format: "swiss" }));
+    const B = tournamentBuild(Object.assign({}, T, { format: "swiss" }), "en");   // names are not shown here
     const S = T.swiss || {}, num = (S.rounds || []).length + 1;
     const active = B.table.filter(b => !b.status).map(b => Object.assign({}, b, { seed: T.teams.findIndex(t => t.id === b.id) }));
     if (num === 1) { const h = Math.ceil(active.length / 2); active.sort((a, b) => a.seed - b.seed); }
@@ -579,5 +651,5 @@ window.CastCore = (function () {
     return e.until && e.until > now ? e.until : 0;
   }
 
-  return { VERSION, SERVER, split, gfxVisible, gfxNextSwitch, DACH_PAGES, DACH_FRAME, dachFrame, tournamentBuild, swissDraw, resolve, Images, cssUrl, DEFAULT, KEY, clone, merge, load, save, savedRevision, channel, timerRest, time };
+  return { VERSION, SERVER, OVERLAY_TEXTS, OVERLAY_WORDS, word, overlayLanguageSet, split, gfxVisible, gfxNextSwitch, DACH_PAGES, DACH_FRAME, dachFrame, tournamentBuild, swissDraw, resolve, Images, cssUrl, DEFAULT, KEY, clone, merge, load, save, savedRevision, channel, timerRest, time };
 })();

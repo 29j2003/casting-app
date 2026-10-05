@@ -63,14 +63,28 @@ def test_invalid_values_are_rejected(tmp_path):
             store.set(name, value)
 
 
-def test_unreadable_legacy_file_is_set_aside(tmp_path):
+def test_unreadable_legacy_file_is_deleted(tmp_path):
     (tmp_path / "faceit.schluessel").write_text("kaputt")
+    (tmp_path / "faceit.schluessel.unreadable").write_text("left by an older version")
 
     def broken(content):
         raise OSError("DPAPI could not decrypt the file")
     store = SecretStore(tmp_path, keyring_backend=MemoryKeyring(), legacy_decrypt=broken)
     assert not store.has(FACEIT_KEY)
-    assert (tmp_path / "faceit.schluessel.unreadable").exists()
+    assert list(tmp_path.iterdir()) == []                  # no copy of a secret stays behind
+
+
+def test_legacy_file_stays_until_the_keyring_takes_it(tmp_path):
+    key = "abcdefgh-1234-5678"
+    (tmp_path / "faceit.schluessel").write_text(base64.b64encode(key.encode()).decode())
+
+    class RefusingKeyring(MemoryKeyring):
+        def set_password(self, service, username, password):
+            raise RuntimeError("locked")
+    SecretStore(tmp_path, keyring_backend=RefusingKeyring(), legacy_decrypt=lambda c: base64.b64decode(c).decode())
+    assert (tmp_path / "faceit.schluessel").exists()      # not lost, not renamed: tried again next start
+    store = SecretStore(tmp_path, keyring_backend=MemoryKeyring(), legacy_decrypt=lambda c: base64.b64decode(c).decode())
+    assert store.get(FACEIT_KEY) == key and not (tmp_path / "faceit.schluessel").exists()
 
 
 def test_without_keyring_secrets_live_for_the_session_only(tmp_path):

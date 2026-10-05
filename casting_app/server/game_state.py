@@ -10,6 +10,7 @@ five times per second. CS2 only reports damage and headshots of the running roun
 so they are summed up per player here.
 """
 
+import hmac
 import json
 import secrets
 import socket
@@ -121,10 +122,14 @@ class GameStateReceiver:
             state = json.loads(body)
         except ValueError:
             return 400, {"error": "kein JSON"}
-        token = (state.get("auth") or {}).get("token")
-        if token != self.settings["token"] and not (source == "local" and token == LOCAL_TOKEN):
+        if not isinstance(state, dict) or not isinstance(state.get("auth") or {}, dict):
+            return 400, {"error": "kein JSON"}
+        token = str((state.get("auth") or {}).get("token") or "")
+        if not (hmac.compare_digest(token.encode(), self.settings["token"].encode())
+                or (source == "local" and token == LOCAL_TOKEN)):
             return 403, {"error": "falscher Schlüssel"}
-        self.last_raw, self.last_time = body, time.time()
+        state.pop("auth", None)                        # the token is not kept or shown anywhere
+        self.last_raw, self.last_time = json.dumps(state, ensure_ascii=False), time.time()
         self._process(state, source)
         return 200, {"ok": True}
 

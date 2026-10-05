@@ -5,11 +5,11 @@ Ein eigenes Programm mit eigenem Fenster – für Windows, Linux und macOS. Die 
 
 ## Installieren (ab 2.0)
 
-* **Windows:** `Casting-App-Setup-2.x.x.exe` ausführen (Installation für dein Konto, mit Startmenü- und Desktop-Verknüpfung)
-  – oder ohne Installation `Casting-App-2.x.x-portable.exe` starten. Windows fragt beim ersten Mal evtl. „Windows hat den PC
-  geschützt": **Weitere Informationen → Trotzdem ausführen** (die Datei ist nicht signiert).
+* **Windows:** `Casting-App-2.x.x-Setup.exe` ausführen (Installation für dein Konto, ohne Adminrechte, mit Startmenü- und
+  Desktop-Verknüpfung) – oder ohne Installation `Casting-App-2.x.x-windows-portable.zip` entpacken und darin
+  `Casting-App.exe` starten (z. B. vom USB-Stick). Windows fragt beim ersten Mal evtl. „Windows hat den PC geschützt":
+  **Weitere Informationen → Trotzdem ausführen** (die Datei ist nicht signiert).
 * **Linux:** `Casting-App-2.x.x-linux-x86_64.AppImage` ausführbar machen (`chmod +x …`) und starten.
-  Unter Ubuntu 24.04 und neuer evtl. mit `--no-sandbox` starten, falls die App sonst nicht aufgeht.
 * **macOS:** `.dmg` öffnen (Apple Silicon: `…-mac-arm64.dmg`, Intel: `…-mac-x64.dmg`) und die App in „Programme“ ziehen.
   Die App ist nicht von Apple beglaubigt: beim ersten Start **Rechtsklick → Öffnen → Öffnen**.
 
@@ -17,8 +17,8 @@ Ein eigenes Programm mit eigenem Fenster – für Windows, Linux und macOS. Die 
 
 Einfach die neue Version starten – eine noch laufende alte Version wird dabei automatisch beendet.
 * Zustand, Bilder, Sitzungen, Videos und Schriften bleiben, wo sie sind, und werden weiter benutzt.
-* **FACEIT-Key und DACH-CS-Zugang** übernimmt die App beim ersten Start einmalig in den neuen, sicheren Speicher
-  und löscht die alten Dateien.
+* **FACEIT-Key und DACH-CS-Zugang** übernimmt die App beim ersten Start einmalig in den Schlüsselbund des Systems
+  (Windows: Anmeldeinformationsverwaltung) und löscht die alten Dateien.
 * **Einstellungen der Oberfläche** (Arbeitsbereiche, Docks, OBS-Verbindung) übernimmt sie einmalig aus dem alten Edge-Fenster.
   Fehlt danach etwas: OBS-Verbindung unter ⚙ neu eintragen, Arbeitsbereich neu wählen.
 * Die alte `Casting-App.exe` wird nicht mehr gebraucht. Edge oder Chrome braucht die App nicht mehr.
@@ -222,7 +222,7 @@ Kameras laufen dabei ohne Neuladen weiter.
 
 Die Windows-Dateien sind nicht signiert, deshalb warnt Windows beim ersten Start. Eine vertrauenswürdige Signatur braucht ein
 Code-Signing-Zertifikat, das auf deinen Namen ausgestellt ist (z. B. Microsoft Trusted Signing oder ein OV/EV-Zertifikat einer
-Zertifizierungsstelle). Mit so einem Zertifikat signiert der Bau (electron-builder) Installer und App selbst, siehe README.
+Zertifizierungsstelle). Mit so einem Zertifikat signiert der Bau (`tools/build.py`) Installer und App selbst, siehe README.
 Die macOS-App ist nur ad-hoc signiert (ohne Apple-Konto); die Beglaubigung durch Apple (Notarisierung) ist vorbereitet, aber aus.
 
 ## Sicherheit
@@ -231,9 +231,10 @@ Die macOS-App ist nur ad-hoc signiert (ohne Apple-Konto); die Beglaubigung durch
 * Nur die eigenen Seiten dürfen zugreifen, keine Webseiten aus dem Internet.
 * **Vom PC geht nichts nach außen.** Die einzige Verbindung nach draußen ist das Abholen der FACEIT-Match-Daten
   (nur Match-ID und dein API-Key).
-* Der **FACEIT-Schlüssel** sowie **Nutzer-ID und Key für DACH CS** liegen verschlüsselt in der App – über den sicheren Speicher
-  des Systems: Windows: DPAPI (an dein Windows-Konto gebunden) · macOS: Schlüsselbund · Linux: Secret Service bzw. KWallet
-  (ohne Schlüsselbund nur einfach verschlüsselt, das Log weist darauf hin). Sie werden nach dem Speichern nie wieder angezeigt –
+* Der **FACEIT-Schlüssel** sowie **Nutzer-ID und Key für DACH CS** liegen nur im Schlüsselbund des Systems – Windows:
+  Anmeldeinformationsverwaltung (an dein Windows-Konto gebunden) · macOS: Schlüsselbund · Linux: Secret Service bzw. KWallet.
+  Im Datenordner der App liegt nichts davon. Gibt es keinen Schlüsselbund (manche Linux-Systeme), gelten sie nur bis zum
+  Beenden der App und müssen danach neu eingetragen werden – das Log weist darauf hin. Sie werden nach dem Speichern nie wieder angezeigt –
   nicht in der App, nicht in Sicherungen, Sitzungen, Exporten oder im Log – und keine Schnittstelle gibt sie heraus.
   Die App setzt sie nur intern ein (FACEIT-Abfragen, Weiterleitung zu den DACH-CS-Browserquellen).
 * Im App-Fenster laufen nur die eigenen Seiten; Links nach draußen öffnet der Standardbrowser. Kamera und Mikrofon dürfen nur

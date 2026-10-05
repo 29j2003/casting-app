@@ -56,7 +56,11 @@ DACH_PAGES = {"overview", "singlecast", "duocast", "lineup", "mapveto", "ingame"
               "singleinteraction", "duointeraction", "solo_interview", "duointerview", "endscreen"}
 DACH_MISSING_PAGE = ('<body style="margin:0;background:transparent;font:600 28px Segoe UI,sans-serif;color:#fff;'
                      'display:grid;place-items:center;height:100vh"><div style="background:rgba(0,0,0,.6);padding:24px 32px;'
-                     'border-radius:12px">DACH-CS-Zugang fehlt – in der Casting-App unter Setup → Aussehen eintragen</div></body>')
+                     'border-radius:12px">{text}</div></body>')
+# shown in OBS instead of the DACH page, in the overlay language of the cast
+DACH_MISSING_TEXT = {"de": "DACH-CS-Zugang fehlt – in der Casting-App unter Setup → Aussehen eintragen",
+                     "en": "DACH CS access missing – enter it in the Casting-App under Setup → Appearance"}
+OVERLAY_LANGUAGE = re.compile(r'"overlayLanguage"\s*:\s*"(de|en)"')
 
 
 # file names of version 2.1 and older -> new names (OBS browser sources may still use the old ones)
@@ -169,6 +173,11 @@ class CastingServer:
             except OSError as error:
                 self.log.error(f"Speichern fehlgeschlagen: {error}")
 
+    def overlay_language(self) -> str:
+        """Language of the overlays ("de"/"en"), as chosen on the control page (part of the state)."""
+        match = OVERLAY_LANGUAGE.search(self._state_text or "")
+        return match.group(1) if match else "de"
+
     # --- images ---
 
     def _schedule_image_cleanup(self, delay: float) -> None:
@@ -258,7 +267,8 @@ class CastingServer:
             return request.send_json(404, {"error": "unbekannte DACH-CS-Seite"})
         user_id, key = self.secrets.get(secret_store.DACH_USER_ID), self.secrets.get(secret_store.DACH_KEY)
         if not user_id or not key:
-            return request.send_body(409, DACH_MISSING_PAGE.encode(), "text/html; charset=utf-8")
+            page_text = DACH_MISSING_PAGE.replace("{text}", DACH_MISSING_TEXT[self.overlay_language()])
+            return request.send_body(409, page_text.encode(), "text/html; charset=utf-8")
         target = (f"https://user.dachcs.de/castingoverlay/{page}.php?"
                   + urllib.parse.urlencode({"userid": user_id, "key": key}))
         request.send_plain(302, {"Location": target, "Cache-Control": "no-store", "Referrer-Policy": "no-referrer"})

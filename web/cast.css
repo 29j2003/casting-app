@@ -196,13 +196,13 @@ body > * { position: absolute; }
 .veto-side { position: absolute; left: 0; right: 0; top: 14px; z-index: 1; text-align: center; font-weight: 700; font-size: 20px; letter-spacing: .06em; color: #fff; text-transform: uppercase; }
 .veto-side span { background: rgba(0, 0, 0, .55); padding: 3px 10px; }
 .veto-card.ban .veto-image img { filter: grayscale(1) brightness(.45); }
-.veto-card.ban:not(.isOpen) .veto-map { color: rgba(255, 255, 255, .55); text-decoration: line-through; text-decoration-thickness: 4px; }
+.veto-card.ban:not(.open) .veto-map { color: rgba(255, 255, 255, .55); text-decoration: line-through; text-decoration-thickness: 4px; }
 .veto-team { height: 64px; flex: none; background: var(--light); color: var(--text-dark); border-top: var(--line) solid var(--accent);
   display: flex; align-items: center; gap: 10px; padding: 0 12px; font-weight: 800; font-size: 24px; text-transform: uppercase; letter-spacing: .03em; overflow: hidden; white-space: nowrap; }
 .veto-team .team-logo { height: 46px; width: 46px; flex: none; font-size: 18px; }
 .veto-team span { overflow: hidden; text-overflow: ellipsis; }
-.veto-card.isOpen .veto-image { background: repeating-linear-gradient(135deg, rgba(255, 255, 255, .03) 0 10px, transparent 10px 20px), var(--dark); }
-.veto-card.isOpen .veto-map { color: rgba(255, 255, 255, .25); }
+.veto-card.open .veto-image { background: repeating-linear-gradient(135deg, rgba(255, 255, 255, .03) 0 10px, transparent 10px 20px), var(--dark); }
+.veto-card.open .veto-map { color: rgba(255, 255, 255, .25); }
 .veto-card.upnext { outline: 4px solid var(--accent); outline-offset: 0; }
 .veto-card.upnext .veto-map { color: var(--accent); animation: blink 1.2s ease-in-out infinite; }
 .veto-card.fresh { animation: cardNew .7s var(--soft); }
@@ -273,7 +273,7 @@ body > * { position: absolute; }
 .series-score { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); z-index: 1; text-align: center;
   color: #fff; font-weight: 800; font-size: 96px; letter-spacing: .02em; text-shadow: 0 4px 20px rgba(0, 0, 0, .7); -webkit-text-stroke: var(--bold) currentColor; }
 .series-score .lost { opacity: .45; }
-.series-card.isOpen .veto-image img { filter: grayscale(.6) brightness(.55); }
+.series-card.pending .veto-image img { filter: grayscale(.6) brightness(.55); }
 .series-score { color: var(--accent-readable); padding: 0 .3em; }
 .series-mini { display: flex; gap: 12px; justify-content: center; }
 .series-chip { display: flex; align-items: center; background: var(--light); color: var(--text-dark); font-weight: 800; font-size: 26px; text-transform: uppercase; box-shadow: 0 10px 24px rgba(0, 0, 0, .35); }
@@ -364,9 +364,9 @@ body > * { position: absolute; }
 .theme-regular .gfx-mapinfo-map { background: var(--light); color: var(--text-dark); }
 .gfx-mapinfo-next { display: grid; place-items: center; padding: 0 14px; background: var(--dark); color: var(--accent); opacity: .95; }
 /* Map-Fakt */
-.gfx-mapfakt { width: 560px; }
-.gfx-mapfakt .box-head { --kh: 44px; --kf: 24px; letter-spacing: .08em; }
-.gfx-mapfakt .box-field { height: auto; min-height: 70px; padding: 14px 22px; font-size: 26px; font-weight: 600; text-transform: none; line-height: 1.25; text-align: center; }
+.gfx-mapfact { width: 560px; }
+.gfx-mapfact .box-head { --kh: 44px; --kf: 24px; letter-spacing: .08em; }
+.gfx-mapfact .box-field { height: auto; min-height: 70px; padding: 14px 22px; font-size: 26px; font-weight: 600; text-transform: none; line-height: 1.25; text-align: center; }
 /* Ingame-Seite: durchsichtig */
 body[data-scene="ingame"] { background: transparent; }
 
@@ -465,7 +465,7 @@ body[data-scene="ingame"] { background: transparent; }
 .bracket-team span { padding: 0 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bracket-team b { text-align: center; font-size: 24px; height: 100%; display: grid; place-items: center; background: rgba(0,0,0,.06); }
 .bracket-team.winner b { background: var(--accent); color: var(--dark); }
-.bracket-team.isOpen, .bracket-team.free { opacity: .45; } .bracket-team.focused span { color: var(--accent-readable); }
+.bracket-team.open, .bracket-team.free { opacity: .45; } .bracket-team.focused span { color: var(--accent-readable); }
 .bracket-match.done .bracket-team:not(.winner) { opacity: .55; }
 .bracket-logo { width: 52px; height: 52px; background: var(--dark); color: var(--accent); display: grid; place-items: center; font-size: 15px; letter-spacing: .04em; }
 .bracket-logo img { max-width: 80%; max-height: 80%; }

@@ -14,6 +14,7 @@ from PySide6.QtGui import QCloseEvent, QIcon
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QMainWindow, QMessageBox
 
+from ..texts import text
 from ..version import APP_NAME
 from .audio import AppWindowAudio
 from .web_page import AppWebPage
@@ -79,11 +80,12 @@ class MainWindow(QMainWindow):
         if request_id != self._close_request_id or self._close_request_confirmed or not self.isVisible():
             return
         self._system_dialog_open = True
-        box = QMessageBox(QMessageBox.Icon.Question, f"{APP_NAME} schließen?", f"{APP_NAME} schließen?", parent=self)
-        box.setInformativeText("Bei „Nur Fenster schließen“ laufen die Overlays in OBS weiter.")
-        quit_button = box.addButton("Ganz beenden", QMessageBox.ButtonRole.DestructiveRole)
-        hide_button = box.addButton("Nur Fenster schließen", QMessageBox.ButtonRole.AcceptRole)
-        box.addButton("Abbrechen", QMessageBox.ButtonRole.RejectRole)
+        title = text("close.title", app=APP_NAME)
+        box = QMessageBox(QMessageBox.Icon.Question, title, title, parent=self)
+        box.setInformativeText(text("close.text"))
+        quit_button = box.addButton(text("close.quit"), QMessageBox.ButtonRole.DestructiveRole)
+        hide_button = box.addButton(text("close.hide"), QMessageBox.ButtonRole.AcceptRole)
+        box.addButton(text("close.cancel"), QMessageBox.ButtonRole.RejectRole)
         box.setDefaultButton(hide_button)
         box.exec()
         self._system_dialog_open = False

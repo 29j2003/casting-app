@@ -22,7 +22,7 @@ from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication
 
-from .. import instance, update_check
+from .. import instance, texts, update_check
 from ..app_log import AppLog
 from ..paths import DATA_DIR, IS_WINDOWS, WEB_DIR, create_folders
 from .. import password_vault
@@ -49,6 +49,7 @@ class ServerRequests(QObject):
     quit_requested = Signal()
     open_folder_requested = Signal(str)
     update_found = Signal(dict)
+    language_changed = Signal(str)
 
 
 class DesktopApp(QObject):
@@ -80,6 +81,7 @@ class DesktopApp(QObject):
         server_requests.quit_requested.connect(lambda: self.quit(None))
         server_requests.open_folder_requested.connect(lambda folder: QDesktopServices.openUrl(QUrl.fromLocalFile(folder)))
         server_requests.update_found.connect(self._announce_update)
+        server_requests.language_changed.connect(self._change_language)
         self._server_requests = server_requests
         self._update_url = ""
         self.tray.message_clicked.connect(lambda: self._update_url and QDesktopServices.openUrl(QUrl(self._update_url)))
@@ -110,7 +112,12 @@ class DesktopApp(QObject):
             self._server.available_update = release
         self._update_url = release.get("url", "")
         self._log.info(f"Neue Version {release['version']} verfügbar: {self._update_url}")
-        self.tray.tell(f"{APP_NAME} {release['version']} ist da", "Klicke hier, um die neue Version herunterzuladen.")
+        self.tray.tell(texts.text("update.title", app=APP_NAME, version=release["version"]), texts.text("update.text"))
+
+    def _change_language(self, language: str) -> None:
+        """The app language was changed on the control page: tray and dialogs follow (the page reloads itself)."""
+        texts.set_language(language)
+        self.tray.retranslate()
 
     # --- window ---
 
@@ -139,7 +146,7 @@ class DesktopApp(QObject):
             return
         self._reload_request_id += 1               # answered – no fallback
         if via_obs:
-            self.tray.tell("Overlays neu laden", "Die Browserquellen in OBS werden neu geladen.")
+            self.tray.tell(texts.text("reload.title"), texts.text("reload.via_obs"))
         else:
             self._reload_without_obs(self._reload_request_id, force=True)
 
@@ -148,7 +155,7 @@ class DesktopApp(QObject):
             return
         self._reload_request_id += 1
         count = self._server.reload_overlays() if self._server else 0
-        self.tray.tell("Overlays neu laden", f"{count} Overlay(s) neu geladen." if count else "Kein Overlay verbunden.")
+        self.tray.tell(texts.text("reload.title"), texts.text("reload.count", count=count) if count else texts.text("reload.none"))
 
     # --- quitting ---
 
@@ -276,8 +283,11 @@ def start_desktop_app(qt_app: QApplication, log: AppLog) -> DesktopApp | None:
     folders = create_folders()
     server_requests = ServerRequests()
     server = None
+    settings = AppSettings(folders.data)
+    texts.set_language(settings.get("app_language"))
+    settings.listeners.append(lambda changed: "app_language" in changed
+                              and server_requests.language_changed.emit(changed["app_language"]))
     if running is None:
-        settings = AppSettings(folders.data)
         server = CastingServer(folders, SecretStore(folders.data, log.write, keyring_backend=_secret_backend(folders.data, settings, log)),
                                log, on_quit_requested=server_requests.quit_requested.emit,
                                open_folder=lambda folder: server_requests.open_folder_requested.emit(str(folder)),
@@ -304,7 +314,7 @@ def run_desktop(no_gpu: bool = False) -> int:
         desktop = start_desktop_app(qt_app, log)
     except OSError as error:
         from PySide6.QtWidgets import QMessageBox
-        QMessageBox.critical(None, APP_NAME, f"Der Server konnte nicht starten:\n{error}\n\nLäuft ein anderes Programm auf Port 8787?")
+        QMessageBox.critical(None, APP_NAME, texts.text("server_failed", error=error))
         return 1
     if desktop is None:
         return 0

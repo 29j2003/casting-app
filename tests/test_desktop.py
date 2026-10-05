@@ -106,6 +106,13 @@ def test_power_button_opens_same_dialog_and_hide_keeps_server(qtbot, desktop):
     assert ping() is not None, "Server/Overlays laufen weiter"
 
 
+def test_tray_follows_the_app_language(qtbot, desktop):
+    desktop._server.settings.update({"app_language": "en"})
+    qtbot.waitUntil(lambda: desktop.tray._actions["tray.quit"].text() == "Quit completely", timeout=3000)
+    desktop._server.settings.update({"app_language": "de"})
+    qtbot.waitUntil(lambda: desktop.tray._actions["tray.quit"].text() == "Ganz beenden", timeout=3000)
+
+
 def test_second_start_shows_existing_window(qtbot, desktop):
     assert not desktop.window.isVisible()
     second = subprocess.Popen([sys.executable, "-m", "casting_app"], cwd=ROOT)

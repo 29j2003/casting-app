@@ -1,10 +1,11 @@
-"""Tray icon (29 logo) with the menu: Öffnen · Overlays in OBS neu laden · Ganz beenden."""
+"""Tray icon (29 logo) with the menu: Öffnen · Overlays in OBS neu laden · Ganz beenden (texts in the app language)."""
 
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
 from ..paths import IS_MAC
+from ..texts import text
 from ..version import APP_NAME, VERSION
 
 
@@ -19,21 +20,29 @@ class TrayIcon(QObject):
     def __init__(self, icon: QIcon, parent=None):
         super().__init__(parent)
         self._icon = QSystemTrayIcon(icon, self)
-        self._icon.setToolTip(f"{APP_NAME} {VERSION} – Overlays laufen")
         menu = QMenu()
-        for text, signal in (("Öffnen", self.open_requested), ("Overlays in OBS neu laden", self.reload_overlays_requested)):
-            action = QAction(text, menu)
+        self._actions = {}
+        for key, signal in (("tray.open", self.open_requested), ("tray.reload_overlays", self.reload_overlays_requested),
+                            (None, None), ("tray.quit", self.quit_requested)):
+            if key is None:
+                menu.addSeparator()
+                continue
+            action = QAction(menu)
             action.triggered.connect(signal.emit)
             menu.addAction(action)
-        menu.addSeparator()
-        quit_action = QAction("Ganz beenden", menu)
-        quit_action.triggered.connect(self.quit_requested.emit)
-        menu.addAction(quit_action)
+            self._actions[key] = action
         self._menu = menu                  # keep a reference: Qt does not own the menu
+        self.retranslate()
         self._icon.setContextMenu(menu)
         self._icon.activated.connect(self._clicked)
         self._icon.messageClicked.connect(self.message_clicked.emit)
         self._hint_shown = False
+
+    def retranslate(self) -> None:
+        """Menu and tooltip in the current app language (called again when it changes)."""
+        self._icon.setToolTip(text("tray.tooltip", app=APP_NAME, version=VERSION))
+        for key, action in self._actions.items():
+            action.setText(text(key))
 
     @property
     def available(self) -> bool:
@@ -54,8 +63,7 @@ class TrayIcon(QObject):
     def tell_once_that_app_keeps_running(self) -> None:
         if not self._hint_shown:
             self._hint_shown = True
-            self.tell(f"{APP_NAME} läuft weiter",
-                      "Die Overlays in OBS laufen weiter. Über dieses Symbol öffnest du das Fenster wieder oder beendest die App.")
+            self.tell(text("tray.keeps_running.title", app=APP_NAME), text("tray.keeps_running.text"))
 
     def _clicked(self, reason: QSystemTrayIcon.ActivationReason) -> None:
         # a click opens the window (on macOS a click shows the menu instead)

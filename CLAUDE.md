@@ -17,7 +17,7 @@ Nutzer: Julius (Twitch 29_THE_P4TCH3R), castet DACH CS Masters, ESEA, Uniliga.
 - `casting_app/secret_store.py` – FACEIT-Key, DACH-CS-ID/-Key nur im Schlüsselbund (`keyring`), keine Dateien;
   ohne Schlüsselbund nur Sitzung; einmalige Übernahme der 1.x-Dateien (DPAPI über ctypes, Base64, dach.json).
 - `casting_app/password_vault.py` – Passwort-Tresor für Systeme ohne Schlüsselbund (scrypt + AES-GCM, Passwort wird nie gespeichert).
-- `casting_app/settings.py` (settings.json: Update-Prüfung, Sprache, Tresor-Angebot) · `update_check.py` (GitHub Releases).
+- `casting_app/settings.py` (settings.json: Update-Prüfung, App-Sprache `app_language`, Tresor-Angebot) · `update_check.py` (GitHub Releases).
 - `casting_app/legacy.py` + `web/legacy.js` – Übernahme der Daten aus 2.1 und älter (deutsche Namen): Datenordner
   (zustand.json → state.json …), Browser-Speicher, Bilder-/Sitzungs-Datenbanken, importierte Dateien. Gemeinsame Tabelle
   alt → neu in `web/legacy.js` (zwischen `/*BEGIN*/` und `/*END*/`, nicht von Hand ändern; Test: `tests/test_legacy.py`).
@@ -34,6 +34,8 @@ Nutzer: Julius (Twitch 29_THE_P4TCH3R), castet DACH CS Masters, ESEA, Uniliga.
 - `web/cast-core.js` – gemeinsamer Kern (Standardzustand, Kanal, Turnier-Logik SE/DE/Swiss/GSL/Tabelle, DACH-Rahmen).
 - `web/themes.js` – Themes (Regulär, DACH CS eigener Stil, DACH CS – Offiziell, ESEA, Uniliga).
 - `web/connection.js` – Startwerte der OBS-Verbindung.
+- `web/i18n.js` + `web/lang-en.js` – Sprache der Steuerseite (übersetzt beim Anzeigen, Wörterbuch Deutsch → Englisch);
+  `casting_app/texts.py` – Texte der Python-Seite (Tray, Dialoge) in beiden Sprachen.
 - `web/<scene>.html` – Szenen-Vorlagen, **erzeugt** von `tools/generate_scenes.py` (dort ändern, dann ausführen).
 
 ## Regeln
@@ -48,6 +50,9 @@ Nutzer: Julius (Twitch 29_THE_P4TCH3R), castet DACH CS Masters, ESEA, Uniliga.
 - Nach Änderungen an Übergängen: `tests/test_uebergaenge.py` und `tests/test_blitze.py` müssen sauber bleiben.
 - Nach Änderungen an `casting_app/`: `python -m pytest` (unter Linux mit `xvfb-run -a`) muss sauber bleiben.
 - `LIESMICH.md` und `web/ANLEITUNG.md` sind dieselbe Anleitung – beide gleich halten.
+- **Zwei Sprachen** (App und Overlays, unabhängig): neuer sichtbarer Text in der Steuerseite → Übersetzung in
+  `web/lang-en.js`; feste Overlay-Texte → `OVERLAY_TEXTS`/`OVERLAY_WORDS` in `web/cast-core.js` (beide Sprachen);
+  Texte aus Python → `casting_app/texts.py`. Werte, die der Code vergleicht, nie aus sichtbarem Text ableiten.
 - Gespeichertes Datenformat ändern (Zustand, Theme-/Sitzungs-Export): alte Daten müssen weiter laden – ggf. Übernahme in
   `web/legacy.js`/`casting_app/legacy.py` ergänzen.
 

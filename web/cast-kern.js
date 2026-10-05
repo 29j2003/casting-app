@@ -177,8 +177,17 @@ window.CastKern = (function () {
         if (m.op === 0) {
           const d = { rpcVersion: 1, eventSubscriptions: opt.ereignisse || 1 };
           if (m.d.authentication) {
-            const geheim = await sha256b64((e.passwort || "") + m.d.authentication.salt);
-            d.authentication = await sha256b64(geheim + m.d.authentication.challenge);
+            const { salt, challenge } = m.d.authentication;
+            if (e.passwort || !SERVER) {
+              const geheim = await sha256b64((e.passwort || "") + salt);
+              d.authentication = await sha256b64(geheim + challenge);
+            } else {
+              // App: das Passwort liegt im Schlüsselbund – der Server rechnet die Anmeldung aus, das Passwort bleibt dort
+              try {
+                const r = await fetch("/api/obs-anmeldung", { method: "POST", body: JSON.stringify({ salt, challenge }) });
+                if (r.ok) d.authentication = (await r.json()).authentication;
+              } catch (err) {}
+            }
           }
           ws.send(JSON.stringify({ op: 1, d }));
         } else if (m.op === 2) {

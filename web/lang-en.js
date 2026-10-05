@@ -880,5 +880,6 @@ window.CastLanguages.en = {
  "nur auf deinem Kopfhörer, nicht im Stream": "only on your headphones, not in the stream",
  "im Stream und auf deinem Kopfhörer": "in the stream and on your headphones",
  "In OBS gibt es noch keine Quelle mit Ton – Setup → Szenen & OBS → „In OBS anlegen“.": "OBS has no source with audio yet – Setup → Scenes & OBS → “Create in OBS”.",
- "Die App antwortet nicht.": "The app does not respond."
+ "Die App antwortet nicht.": "The app does not respond.",
+ "Bilanz {}": "Record {}"
 };

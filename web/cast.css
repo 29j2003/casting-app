@@ -182,7 +182,7 @@ body > * { position: absolute; }
    Map-Veto
    --------------------------------------------------------------------- */
 .veto { display: flex; gap: 16px; justify-content: center; }
-.veto-card { flex: 0 0 var(--kb, 244px); display: flex; flex-direction: column; box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
+.veto-card { flex: 0 0 var(--kb, 244px); min-width: 0; display: flex; flex-direction: column; box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
 .veto-card .box-head { --kh: 56px; --kf: 34px; }
 .veto-card.pick .box-head, .veto-card.decider .box-head { background: var(--accent); color: var(--dark); }
 .theme-regular .veto-card.pick .box-head, .theme-regular .veto-card.decider .box-head { background: var(--light); color: var(--text-dark); }
@@ -266,7 +266,7 @@ body > * { position: absolute; }
 .veto-result.running { background: var(--accent); color: var(--dark); font-size: 20px; animation: blink 1.6s ease-in-out infinite; }
 .veto-card:has(.veto-result) .veto-side { top: 58px; }
 .series-cards { display: flex; gap: 20px; justify-content: center; }
-.series-card { flex: 0 0 var(--kb, 340px); display: flex; flex-direction: column; box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
+.series-card { flex: 0 0 var(--kb, 340px); min-width: 0; display: flex; flex-direction: column; box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
 .series-card .box-head { --kh: 56px; --kf: 30px; }
 .series-card.running .box-head { background: var(--accent); color: var(--dark); }
 .series-card .veto-image { flex: 1; }
@@ -523,3 +523,5 @@ body.dach-official .backdrop { display: none !important; }
 body.idle.dach-frame-show .dach-cam { outline: 3px dashed #FCC659; outline-offset: -3px; background: rgba(252,198,89,.12); }
 body.idle.dach-frame-show .dach-frame-name { display: block; position: absolute; left: 8px; top: 8px; z-index: 3; font: 700 22px Rajdhani, sans-serif; color: #101526; background: #FCC659; padding: 2px 10px; }
 .dach-cam { background: #000 !important; border: 0 !important; box-shadow: none !important; }
+/* Hinweise wie „Kamera nicht verfügbar“ nur in der Vorschau – im Stream bleibt das Feld schwarz */
+body:not(.idle) .preview-only { visibility: hidden; }

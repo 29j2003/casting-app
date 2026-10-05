@@ -1488,7 +1488,7 @@ function themesDraw() {
     const m = Object.assign({}, t, (Z.themeData || {})[k] || {});
     const color = v => /^#[0-9a-f]{3,8}$/i.test(v || "") ? v : "#888";
     b.innerHTML = `<span style="background:${color(m.dark)};border:2px solid ${color(m.accent)};color:${color(m.accent)};font-weight:800">${m.icon ? `<img src="${esc(m.icon)}" alt="">` : esc((m.name || k)[0])}</span>${esc(m.name || k)}`;
-    b.onclick = () => { Z.theme = k; localStorage.setItem("cast-theme-chosen", "1"); themesDraw(); themeAdjust(); sponsorsDraw(); scenesDraw(); send(); };
+    b.onclick = () => themeChoose(k);
     $("themes").appendChild(b);
   });
   $("themeDelete").disabled = !isOwn(Z.theme);
@@ -1733,7 +1733,7 @@ function mbarDraw() {
   try {
     const maps = steps().filter(x => x.action !== "ban" && x.map);
     $("mbarSeries").innerHTML = maps.map(x => { const r = x.result || {}, st = r.status || "pending";
-      return `<span class="${st === "running" ? "running" : st === "pending" ? "pending" : ""}">${esc(x.map)}${st === "done" ? ` ${esc(r.a)}:${esc(r.b)}` : st === "running" ? " läuft" : ""}</span>`; }).join("");
+      return `<span class="${st === "running" ? "running" : st === "pending" ? "pending" : ""}">${esc(x.map)}${st === "done" ? ` ${esc(r.a)}:${esc(r.b)}` : st === "running" ? " <span>läuft</span>" : ""}</span>`; }).join("");
     const run = maps.findIndex(x => (x.result || {}).status === "running");
     $("mbarMap").textContent = maps.length ? `Map ${run >= 0 ? run + 1 : Math.min(maps.length, maps.filter(x => (x.result || {}).status === "done").length + 1)} von ${maps.length}${run >= 0 ? " · " + maps[run].map : ""}` : "";
   } catch (err) {}
@@ -1741,7 +1741,7 @@ function mbarDraw() {
   $("mbarNameA").textContent = Z.teams.a.name || "Team A"; $("mbarNameB").textContent = Z.teams.b.name || "Team B";
   $("mbarScoreA").textContent = Z.teams.a.score || 0; $("mbarScoreB").textContent = Z.teams.b.score || 0;
   $("mbarTimer").textContent = K.time(K.timerRest(Z.timer)); $("mbarStart").textContent = Z.timer.running ? "Pause" : "Start";
-  const T = Z.tournament || {}, B = K.tournamentBuild(T);
+  const T = Z.tournament || {}, B = K.tournamentBuild(T, CastI18n.language);
   const groups = `<option value="">Alle Gruppen</option>` + (B.groups || []).map((g, i) => `<option value="${i}"${String(T.showGroup ?? "") === String(i) ? " selected" : ""}>${esc(g.name)}</option>`).join("");
   if ($("mbarGroup")._h !== groups) { $("mbarGroup").innerHTML = groups; $("mbarGroup")._h = groups; }
   $("mbarGroup").hidden = !(B.groups || []).length;
@@ -3567,7 +3567,7 @@ function tournamentDraw() {
   tournamentTreeDraw();
 }
 function tournamentTreeDraw() {
-  const T = tour(), B = K.tournamentBuild(T), box = $("tourTree"); box.innerHTML = "";
+  const T = tour(), B = K.tournamentBuild(T, CastI18n.language), box = $("tourTree"); box.innerHTML = "";
   const name = id => id === "BYE" ? "Freilos" : ((T.teams.find(t => t.id === id) || {}).name || (id ? "?" : "–"));
   const card = (m, title) => {
     const d = document.createElement("div"); d.className = "tour-m" + (m.done ? " done" : "");
@@ -3608,7 +3608,7 @@ function pointsDraw() {
   const template = [...$("tourPointsTemplate").options].some(o => o.value === cacheKey) && P.draws === 1 ? cacheKey : "own";
   $("tourPointsTemplate").value = template; $("tourPointsOwn").hidden = template !== "own";
   document.querySelectorAll("#tourPointsOwn [data-p]").forEach(f => { f.value = P[f.dataset.p]; });
-  const B = K.tournamentBuild(T), s = $("tourShowGroup"), value = T.showGroup ?? "";
+  const B = K.tournamentBuild(T, CastI18n.language), s = $("tourShowGroup"), value = T.showGroup ?? "";
   s.innerHTML = `<option value="">Alle Gruppen</option>` + B.groups.map((g, i) => `<option value="${i}"${String(i) === String(value) ? " selected" : ""}>${esc(g.name)}</option>`).join("");
 }
 $("tourPointsTemplate").onchange = () => {
@@ -3745,7 +3745,7 @@ $("tourFaceitResult").onclick = async () => {
     const fid = tid => (T.teams.find(t => t.id === tid) || {}).faceitId;
     let n = 0;
     for (let round = 0; round < 10; round++) {                   // mehrfach: jedes Ergebnis legt die nächsten Paarungen fest
-      const B = K.tournamentBuild(T), all = [...B.rounds.flatMap(r => r.matches), ...B.bottom.flatMap(r => r.matches), ...(B.finale ? [B.finale] : []), ...B.groups.flatMap(g => g.matches)];
+      const B = K.tournamentBuild(T, CastI18n.language), all = [...B.rounds.flatMap(r => r.matches), ...B.bottom.flatMap(r => r.matches), ...(B.finale ? [B.finale] : []), ...B.groups.flatMap(g => g.matches)];
       let fresh = 0;
       all.forEach(m => {
         const fa = fid(m.a), fb = fid(m.b); if (!fa || !fb || (T.res[m.id] || {}).done) return;

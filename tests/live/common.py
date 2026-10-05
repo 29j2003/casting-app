@@ -23,12 +23,12 @@ DACH_PAGES = {"dach-duocast": "duocast", "dach-singlecast": "singlecast", "dach-
 async def access_key() -> str:
     """The app's access key, read from its own window (the app runs with QTWEBENGINE_REMOTE_DEBUGGING=9222).
 
-    The key never appears in a file or the log; the window's control page keeps it for its tab.
+    The key never appears in a file, the log or browser storage; the window gets it through window.castApp.
     """
     from cdp import PageConnection
     page = await PageConnection.open()
     try:
-        key = await page.evaluate("sessionStorage.getItem('casting-access') || ''")
+        key = await page.evaluate("(window.castApp && window.castApp.accessKey) || ''")
     finally:
         await page.close()
     if not key:

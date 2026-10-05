@@ -137,7 +137,8 @@
     const list = (Z.texts.ticker || []).filter(Boolean);
     const S = Z.sponsors || {};
     if (S.on !== false && S.inTicker) sponsorList().forEach(s => { if (s.name) list.push(`${Z.texts.sponsorTicker} ${s.name}`); });
-    const keyName = list.join("\u0001") + "|" + Z.texts.tickerTempo;
+    const th = themeData();                              // Schrift ändert die Breite – dann neu messen
+    const keyName = list.join("\u0001") + "|" + Z.texts.tickerTempo + "|" + [th.font, th.fontFile, th.bold].join("|");
     $$(".ticker").forEach(t => {
       if (!newNeeded(t, keyName)) return;
       t.getAnimations({ subtree: true }).forEach(a => a.cancel());
@@ -258,7 +259,8 @@
         const e = x.result || {}, pool = mapImage(x.map), image = x.image || pool.image || "";
         const status = e.status || "pending";
         const winner = status === "done" ? (+e.a > +e.b ? "a" : +e.b > +e.a ? "b" : "") : "";
-        const score = status === "pending" ? "" : `<div class="series-score"><span class="${winner === "b" ? "lost" : ""}">${esc(e.a ?? 0)}</span><span class="dp">:</span><span class="${winner === "a" ? "lost" : ""}">${esc(e.b ?? 0)}</span></div>`;
+        const noScore = status === "pending" || (status === "running" && (e.a === "" || e.a == null));
+        const score = noScore ? "" : `<div class="series-score"><span class="${winner === "b" ? "lost" : ""}">${esc(e.a ?? 0)}</span><span class="dp">:</span><span class="${winner === "a" ? "lost" : ""}">${esc(e.b ?? 0)}</span></div>`;
         const foot = winner ? `<div class="team-logo ${winner}"></div><span data-team-name="${winner}"></span>`
                    : `<span>${esc(status === "running" ? Z.texts.running : Z.texts.pending)}</span>`;
         return `<div class="box series-card ${status}"><div class="box-head">${esc(Z.texts.map)} ${i + 1}</div>
@@ -268,7 +270,8 @@
     }
     if (mini) {
       mini.innerHTML = maps.filter(x => (x.result || {}).status && x.result.status !== "pending").map(x =>
-        `<div class="series-chip ${x.result.status}"><b>${esc(x.map)}</b><span>${esc(x.result.a ?? 0)}<span class="dp">:</span>${esc(x.result.b ?? 0)}</span></div>`).join("");
+        `<div class="series-chip ${x.result.status}"><b>${esc(x.map)}</b><span>${x.result.a === "" || x.result.a == null ? esc(Z.texts.running)
+          : `${esc(x.result.a)}<span class="dp">:</span>${esc(x.result.b ?? 0)}`}</span></div>`).join("");
     }
   }
 
@@ -328,6 +331,7 @@
   function tournamentDraw() {
     const boxes = $$(".tournament-tree"); if (!boxes.length) return;
     const T = Z.tournament || {}, B = K.tournamentBuild(T, Z.overlayLanguage), S = T.visible || {};
+    const W = key => esc(K.word(Z, key));            // feste Wörter in der Sprache der Overlays
     const teamFrom = id => (T.teams || []).find(t => t.id === id);
     const row = (id, points, winner, hidden) => {
       if (id === "BYE") return `<div class="bracket-team free"><div class="bracket-logo"></div><span>${esc(K.word(Z, "bye"))}</span><b></b></div>`;
@@ -349,7 +353,7 @@
       const shown = B.groups.filter((g, i) => choice === null || i === choice);
       const columns = shown.length <= 1 ? 1 : shown.length <= 4 ? 2 : shown.length <= 6 ? 3 : 4;
       h = `<div class="bracket-tables" style="grid-template-columns:repeat(${columns}, 860px)">${shown.map(g => `<div class="bracket-tab"><div class="bracket-title">${esc(g.name)}</div>
-        <div class="bracket-tz head"><span>#</span><span></span><span>TEAM</span><span>SP</span><span>S</span><span>N</span><span>${g.withRounds ? "RD" : "+/−"}</span><span>PKT</span></div>` +
+        <div class="bracket-tz head"><span>#</span><span></span><span>${W("tableTeam")}</span><span>${W("tableGames")}</span><span>${W("tableWins")}</span><span>${W("tableLosses")}</span><span>${g.withRounds ? "RD" : "+/−"}</span><span>${W("tablePoints")}</span></div>` +
         g.table.map((r, i) => { const t = teamFrom(r.id) || {};
           return `<div class="bracket-tz${i < (+T.nextPlaces || 0) ? " proceed" : ""}${T.focused === r.id ? " focused" : ""}"><span>${i + 1}</span><div class="bracket-logo">${t.logo ? `<img src="${esc(t.logo)}" alt="">` : esc((t.short || t.name || "?").slice(0, 3))}</div>` +
             `<span class="bracket-tname">${esc(t.name || "")}</span><span>${r.sponsor}</span><span>${r.s}</span><span>${r.n}</span><span>${r.bracket > 0 ? "+" : ""}${r.bracket}</span><b>${r.pts}</b></div>`; }).join("") +
@@ -369,14 +373,14 @@
       const st = f.stats || {};
       profile += `<div class="bracket-profile box"><div class="box-head">${esc(f.name || "")}</div><div class="box-field">` +
         (f.players && f.players.length ? `<div class="bracket-players">${f.players.slice(0, 7).map(n => `<span>${esc(n)}</span>`).join("")}</div>` : "") +
-        (st.matches ? `<div class="bracket-stats"><div><b>${esc(st.winrate)}%</b><span>SIEGQUOTE</span></div><div><b>${esc(st.matches)}</b><span>SPIELE</span></div><div><b>${esc(st.series || 0)}</b><span>SERIE</span></div></div>` +
-          (st.last && st.last.length ? `<div class="bracket-form">${st.last.slice(0, 5).map(x => `<i class="${x === "1" ? "s" : "n"}">${x === "1" ? "S" : "N"}</i>`).join("")}</div>` : "") : "") +
+        (st.matches ? `<div class="bracket-stats"><div><b>${esc(st.winrate)}%</b><span>${W("winRate")}</span></div><div><b>${esc(st.matches)}</b><span>${W("matches")}</span></div><div><b>${esc(st.series || 0)}</b><span>${W("streak")}</span></div></div>` +
+          (st.last && st.last.length ? `<div class="bracket-form">${st.last.slice(0, 5).map(x => `<i class="${x === "1" ? "s" : "n"}">${x === "1" ? W("formWin") : W("formLoss")}</i>`).join("")}</div>` : "") : "") +
         `</div></div>`;
     }
+    $$(".tournament-name").forEach(e => { const n = T.name || Z.texts.title || ""; if (e.textContent !== n) e.textContent = n; });
     boxes.forEach(box => {
       if (!newNeeded(box, h + profile)) return;
       box.innerHTML = `<div class="bracket-inner">${h}</div>${profile}`;
-      $$(".tournament-name").forEach(e => { e.textContent = T.name || Z.texts.title || ""; });
       // auf die verfügbare Fläche einpassen
       requestAnimationFrame(() => { const i = box.querySelector(".bracket-inner"); if (!i) return; i.style.transform = "";
         const s = Math.min(1.6, box.clientWidth / i.scrollWidth, box.clientHeight / i.scrollHeight);
@@ -632,7 +636,8 @@
       if (stream.getAudioTracks().length) { const c = audioctx(); if (c) audioChain(c.createMediaStreamSource(stream), box.closest(".cam").dataset.source, () => box.isConnected); }
       levelMeasure(box.closest(".cam"), stream);
     } catch (e) {
-      box.innerHTML = `<div class="cam-error">${esc(K.word(Z, "cameraMissing"))}<small>${esc(e && (e.name || e.message) || e)}</small></div>`;
+      // im Stream nur ein neutrales schwarzes Feld – der Hinweis mit Grund steht nur in der Vorschau (body.idle)
+      box.innerHTML = `<div class="cam-error preview-only">${esc(K.word(Z, "cameraMissing"))}<small>${esc(e && (e.name || e.message) || e)}</small></div>`;
     }
   }
   /* Sprecher-Anzeige: Pegel messen und das Schild aufleuchten lassen */
@@ -718,16 +723,16 @@
   setInterval(timer, 250);
 
   /* ---------- Diagnose (in der Steuerseite einschaltbar) ---------- */
-  let receivedFrom = "gespeicherter Stand", receivedUm = 0;
+  let receivedFrom = "gespeicherter Stand", receivedUm = 0, diagnoseTimer = 0;
   function diagnose() {
     if (EMBEDDED) return;
     let box = document.querySelector(".diagnose");
-    if (!Z.diagnose) { if (box) box.remove(); return; }
+    if (!Z.diagnose) { if (box) box.remove(); clearInterval(diagnoseTimer); diagnoseTimer = 0; return; }
     if (!box) {
       box = document.createElement("div"); box.className = "diagnose";
       box.style.cssText = "position:absolute;left:12px;top:12px;z-index:99;max-width:1100px;padding:12px 16px;background:rgba(0,0,0,.88);color:#9f9;font:16px/1.45 Consolas,monospace;white-space:pre-wrap;border:2px solid #9f9";
       document.body.appendChild(box);
-      setInterval(diagnose, 1000);
+      if (!diagnoseTimer) diagnoseTimer = setInterval(diagnose, 1000);
     }
     const H = Z.background || {}, t = document.createElement("video");
     const rows = [
@@ -952,7 +957,7 @@
     });
   }
   function draw() {
-    diagnose(); theme(); graphics(); veto(); series(); players(); texts(); teams(); timer(); ticker(); background(); sources(); sponsors();
+    diagnose(); theme(); graphics(); veto(); series(); players(); texts(); teams(); fit(); timer(); ticker(); background(); sources(); sponsors();
     if (!(Z.speaker || {}).on) $$(".cam.speaks").forEach(k => k.classList.remove("speaks"));
     $$(".music").forEach(m => m.classList.toggle("off", Z.music.displayed === false));
     if (musicData && $$(".music").some(b => !b._music)) musicShow(musicData);

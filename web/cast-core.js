@@ -139,12 +139,16 @@ window.CastCore = (function () {
           roundOf16: "ACHTELFINALE", round: "RUNDE", upperRound: "OBEN R", lowerRound: "UNTEN R", group: "GRUPPE", table: "TABELLE",
           opening: "ERÖFFNUNG", winners: "GEWINNER", elimination: "AUSSCHEIDUNG", decider: "ENTSCHEIDUNG", bye: "Freilos",
           noMaps: "Noch keine gespielten Maps – erst das Map-Veto ausfüllen", noSponsors: "Noch keine Sponsoren für dieses Theme",
-          noTournament: "Noch kein Turnier angelegt", cameraMissing: "Kamera nicht verfügbar" },
+          noTournament: "Noch kein Turnier angelegt", cameraMissing: "Kamera nicht verfügbar",
+          tableTeam: "TEAM", tableGames: "SP", tableWins: "S", tableLosses: "N", tablePoints: "PKT",
+          winRate: "SIEGQUOTE", matches: "SPIELE", streak: "SERIE", formWin: "S", formLoss: "N" },
     en: { final: "FINAL", upperFinal: "UPPER FINAL", lowerFinal: "LOWER FINAL", semifinal: "SEMIFINAL", quarterfinal: "QUARTERFINAL",
           roundOf16: "ROUND OF 16", round: "ROUND", upperRound: "UPPER R", lowerRound: "LOWER R", group: "GROUP", table: "TABLE",
           opening: "OPENING", winners: "WINNERS", elimination: "ELIMINATION", decider: "DECIDER", bye: "Bye",
           noMaps: "No maps played yet – fill in the map veto first", noSponsors: "No sponsors for this theme yet",
-          noTournament: "No tournament set up yet", cameraMissing: "Camera not available" }
+          noTournament: "No tournament set up yet", cameraMissing: "Camera not available",
+          tableTeam: "TEAM", tableGames: "P", tableWins: "W", tableLosses: "L", tablePoints: "PTS",
+          winRate: "WIN RATE", matches: "MATCHES", streak: "STREAK", formWin: "W", formLoss: "L" }
   };
   /** A fixed overlay word in the overlay language of the state. */
   const word = (Z, key) => (OVERLAY_WORDS[(Z || {}).overlayLanguage] || OVERLAY_WORDS.de)[key];

@@ -767,6 +767,8 @@ class CastingServer:
             return request.send_plain(301, {"Location": "/" + legacy_name + ("?" + query if query else "")})
         if re.search(r"(^|/)\.|\\|:|\x00", relative):
             return request.send_json(404, {"error": "nicht gefunden"})
+        if relative == "control.js":
+            return request.send_body(200, control_script(), CONTENT_TYPES[".js"])
         suffix = Path(relative).suffix.lower()
         if suffix not in CONTENT_TYPES:
             return request.send_json(404, {"error": "nicht gefunden"})
@@ -782,6 +784,18 @@ class CastingServer:
         # pages may only be embedded by our own pages
         extra = {"Content-Security-Policy": "frame-ancestors 'self'"} if suffix == ".html" else {}
         send_file(request, full, CONTENT_TYPES[suffix], VERSION, extra)
+
+
+def control_script() -> bytes:
+    """The control page's logic: web/control/*.js joined in file-name order into one script.
+
+    Humans edit the numbered files; the browser gets one script, so a function may be used before the file that
+    declares it (as if it were one big file). A marker line in front of each part shows where it came from.
+    """
+    parts = []
+    for file in sorted((WEB_DIR / "control").glob("*.js")):
+        parts.append(f"\n// ===== control/{file.name} =====\n" + file.read_text(encoding="utf-8"))
+    return "".join(parts).encode("utf-8")
 
 
 class _IPv6Server(ExclusiveHTTPServer):

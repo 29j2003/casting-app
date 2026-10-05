@@ -56,7 +56,7 @@ JSON-Felder). Texte, die Nutzer sehen, sind deutsch und bekommen eine englische 
 | `casting_app/desktop/` | Fenster, Tray, Brücke `window.castApp`, Ton im App-Fenster |
 | `web/control.html` | Steuerseite: Aufbau (Reiter, Karten, Dialoge) |
 | `web/control.css` | Steuerseite: Aussehen (Farben als Variablen in `:root`) |
-| `web/control.js` | Steuerseite: Logik, in Abschnitte gegliedert (Lageplan oben in der Datei) |
+| `web/control/01-core.js` … `13-app.js` | Steuerseite: Logik nach Themen (Lageplan in `01-core.js`); der Server liefert sie verbunden als `/control.js` |
 | `web/cast-core.js` | gemeinsamer Kern: Standardzustand, Übertragung, Turnier-Logik, Overlay-Texte |
 | `web/cast.js` | Zeichnen aller Overlay-Teile |
 | `web/broadcast.js` | Szenenwechsel und Übergänge in `overlay.html` |
@@ -66,7 +66,7 @@ JSON-Felder). Texte, die Nutzer sehen, sind deutsch und bekommen eine englische 
 | `web/legacy.js`, `casting_app/legacy.py` | Übernahme alter Daten (Version 2.1 und älter) |
 | `tests/` | pytest-Tests; `tests/live/` Skripte gegen die laufende App |
 
-Große Dateien haben oben einen Kopfkommentar mit ihrem Aufbau. In `web/control.js` und `web/cast-core.js` sind die
+Große Dateien haben oben einen Kopfkommentar mit ihrem Aufbau. In `web/control/*.js` und `web/cast-core.js` sind die
 Abschnitte mit `/* ---------- Name ---------- */` markiert – danach suchen.
 
 ## Einrichten, starten, testen
@@ -141,8 +141,8 @@ Die Dateien `web/<scene>.html` werden erzeugt – nie von Hand ändern.
    beim Wechsel stehen).
 2. `python3 tools/generate_scenes.py` ausführen.
 3. Nur für eine **neue** Szene:
-   * `web/control.js` → `OVERLAY_SCENES` (Schlüssel = Dateiname ohne `.html`, Name zum Anzeigen)
-   * `web/control.js` → `SCENE_DEFAULT` (wo sie in der Reihenfolge im Reiter Live steht)
+   * `web/control/…` → `OVERLAY_SCENES` (Schlüssel = Dateiname ohne `.html`, Name zum Anzeigen)
+   * `web/control/…` → `SCENE_DEFAULT` (wo sie in der Reihenfolge im Reiter Live steht)
    * `web/control.html` → `<select id="scene">` (Auswahl der Vorschau)
    * den Namen in `web/lang-en.js` übersetzen.
 4. Neue Szene auch in `tests/live/common.py` → `SCENES` eintragen; dann `tests/live/transitions.py` und `flicker.py` laufen lassen.
@@ -152,9 +152,9 @@ Die Dateien `web/<scene>.html` werden erzeugt – nie von Hand ändern.
 2. `web/cast.js` → `gfxContent()`: was die Einblendung zeigt.
 3. `web/cast.css`: Aussehen als `.gfx-<art>`. Die Position kommt von `.pos-…`.
 4. Steuerseite:
-   * `web/control.js` → `GFX_NAMES` (Name in der Liste)
+   * `web/control/…` → `GFX_NAMES` (Name in der Liste)
    * `web/control.html` → ein Knopf `<button class="button" data-gfx-new="<art>">+ Name</button>`
-   * `web/control.js` → eigene Eingabefelder im Abschnitt „Einblendungen“ (`x.type === "<art>"`).
+   * `web/control/…` → eigene Eingabefelder im Abschnitt „Einblendungen“ (`x.type === "<art>"`).
 5. Übersetzungen in `web/lang-en.js`. `tests/test_control_page.py` prüft die neue Art im Overlay automatisch mit,
    sobald eine Einblendung dieser Art im Standardzustand steht.
 
@@ -175,7 +175,7 @@ Die Dateien `web/<scene>.html` werden erzeugt – nie von Hand ändern.
 ### Eine neue Einstellung der App (gehört zur App, nicht zur Sendung)
 1. `casting_app/settings.py`: Standardwert in `DEFAULTS`, Prüfung in `update()`.
 2. Die Steuerseite liest und schreibt sie über `/api/app-settings`. Die Oberfläche steht unter ⚙ App-Einstellungen
-   in `web/control.html` (Dialog `#appDialog`), die Logik in `web/control.js` (Abschnitt „App-Einstellungen (Sprache, Update-Suche)“).
+   in `web/control.html` (Dialog `#appDialog`), die Logik in `web/control/13-app.js` (Abschnitt „App-Einstellungen (Sprache, Update-Suche)“).
 3. Soll Python sofort reagieren: `settings.listeners` (Beispiel: der Tray folgt der App-Sprache, `desktop/app.py`).
 
 ## Texte und Sprachen
@@ -184,7 +184,7 @@ Es gibt zwei unabhängige Sprachen: die **Sprache der App** und die **Sprache de
 
 | Text | Wo er steht | Englisch |
 |---|---|---|
-| Steuerseite (Beschriftungen, Meldungen, Dialoge) | deutsch direkt in `web/control.html` / `web/control.js` | `web/lang-en.js` (deutscher Text → englischer) |
+| Steuerseite (Beschriftungen, Meldungen, Dialoge) | deutsch direkt in `web/control.html` / `web/control/*.js` | `web/lang-en.js` (deutscher Text → englischer) |
 | Python (Tray, Fenster-Dialoge, Startfehler) | `casting_app/texts.py` | daneben im selben Eintrag |
 | feste Texte im Overlay | `OVERLAY_TEXTS`/`OVERLAY_WORDS` in `web/cast-core.js` | daneben (`en`) |
 
@@ -334,7 +334,7 @@ deinstallieren).
 ## Update aus der App
 
 `casting_app/updater.py` (Server-Routen `/api/update`, `/api/update-check`, `/api/update-install`, Oberfläche unter
-⚙ → Update: `control.html` `#updateArea`, Logik in `control.js`, Abschnitt „Update“):
+⚙ → Update: `control.html` `#updateArea`, Logik in `control/13-app.js`, Abschnitt „Update“):
 1. GitHub-API `releases/latest` → Version und die Datei für dieses System (`install_kind()`, `asset_suffix()`).
    Nur Dateien unter `github.com/29j2003/casting-app/releases/download/` mit `sha256`-Prüfsumme der API werden angeboten.
 2. Download in den Datenordner (`update/`), SHA-256 prüfen – stimmt sie nicht, wird nichts installiert.

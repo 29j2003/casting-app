@@ -223,3 +223,13 @@ def test_update_status_check_and_install_need_the_key(server, monkeypatch):
         time.sleep(0.05)
     assert status["version"] == "99.0.0" and status["canInstall"] is False
     assert request("POST", "/api/update-install")[0] == 409        # nothing that installs with one click (no checked file)
+
+
+def test_control_script_joins_all_parts_in_order(server):
+    from casting_app.paths import WEB_DIR
+    status, headers, body = request("GET", "/control.js", access=False)
+    names = sorted(f.name for f in (WEB_DIR / "control").glob("*.js"))
+    markers = [f"// ===== control/{name} =====".encode() for name in names]
+    assert status == 200 and headers["Content-Type"].startswith("text/javascript")
+    assert len(names) >= 10 and all(m in body for m in markers)
+    assert [body.index(m) for m in markers] == sorted(body.index(m) for m in markers)

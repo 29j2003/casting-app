@@ -1,5 +1,5 @@
 // =====================================================================
-//  CAST-OVERLAY · THEMES (Grundeinstellungen)
+//  CASTING-APP · THEMES (Grundeinstellungen)
 //  Alles hier lässt sich auch in der Steuerseite unter „Theme anpassen"
 //  ändern – das hier sind nur die Startwerte.
 //    dark = Balken   light = Felder   textDark = Schrift auf den Feldern

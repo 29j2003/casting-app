@@ -6,5 +6,6 @@
     bridge.py       – messages between the control page and Python
     audio.py        – "Ton im App-Fenster": mute and volume for everything in the window
     tray.py         – tray icon with its menu
+    vault_dialog.py – password dialogs for the vault (systems without a keyring)
     scripts/        – JavaScript injected into the window (bridge and volume)
 """

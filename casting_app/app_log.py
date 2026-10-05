@@ -18,6 +18,7 @@ class AppLog:
     """Thread-safe log with a memory ring buffer and a log file."""
 
     def __init__(self, log_file: Path | None = None, echo_to_console: bool = False):
+        """log_file: where entries are appended (None = memory only); echo_to_console: also print them."""
         self._entries: deque = deque(maxlen=MAX_ENTRIES_IN_MEMORY)
         self._lock = threading.Lock()
         self._file = log_file
@@ -46,12 +47,15 @@ class AppLog:
             print(f"[{level}] {entry['text']}", flush=True)
 
     def info(self, text: str) -> None:
+        """Normal event."""
         self.write(text, "info")
 
     def warn(self, text: str) -> None:
+        """Something the user may want to know (shown in yellow)."""
         self.write(text, "warn")
 
     def error(self, text: str) -> None:
+        """Something failed (shown in red)."""
         self.write(text, "error")
 
     def latest(self, count: int = 200) -> list[dict]:

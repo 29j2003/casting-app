@@ -30,6 +30,7 @@ class MainWindow(QMainWindow):
     hide_requested = Signal()          # "Nur Fenster schließen"
 
     def __init__(self, profile, url: str, icon: QIcon, geometry_file: Path):
+        """Window with the control page at `url`; size and position are kept in `geometry_file`."""
         super().__init__()
         self.setWindowTitle(APP_NAME)
         self.setWindowIcon(icon)
@@ -55,6 +56,7 @@ class MainWindow(QMainWindow):
     # --- closing ---
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        """Clicking X never closes directly: the control page shows its own close question."""
         if self.quitting:
             self._save_geometry()
             event.accept()
@@ -73,10 +75,12 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(PAGE_CONFIRM_TIMEOUT_MS, lambda: self._fall_back_to_system_dialog(request_id))
 
     def _page_shows_close_dialog(self, request_id: int) -> None:
+        """The page confirmed that its dialog is open – no system dialog needed."""
         if request_id == self._close_request_id:
             self._close_request_confirmed = True
 
     def _fall_back_to_system_dialog(self, request_id: int) -> None:
+        """The page did not answer in time (e.g. still loading): ask with a system dialog."""
         if request_id != self._close_request_id or self._close_request_confirmed or not self.isVisible():
             return
         self._system_dialog_open = True
@@ -93,6 +97,7 @@ class MainWindow(QMainWindow):
         self.handle_close_choice("quit" if clicked is quit_button else "window" if clicked is hide_button else "")
 
     def handle_close_choice(self, choice: str) -> None:
+        """Answer of the close question: "quit", "window" (hide) or "" (cancel)."""
         self._close_request_id += 1     # an answer ends the pending request
         if choice == "quit":
             self.quit_requested.emit()
@@ -102,6 +107,7 @@ class MainWindow(QMainWindow):
     # --- showing again ---
 
     def bring_to_front(self) -> None:
+        """Show the window again (tray, second start) and give it focus."""
         if self.isMinimized():
             self.showNormal()
         self.show()
@@ -111,6 +117,7 @@ class MainWindow(QMainWindow):
     # --- size and position ---
 
     def _restore_geometry(self) -> None:
+        """Size and position from the last session, if the file exists."""
         try:
             saved = json.loads(self._geometry_file.read_text(encoding="utf-8"))
             if not self.restoreGeometry(QByteArray.fromBase64(saved["geometry"].encode())):
@@ -119,6 +126,7 @@ class MainWindow(QMainWindow):
             self.resize(1500, 950)
 
     def _save_geometry(self) -> None:
+        """Remember size and position for the next start."""
         try:
             self._geometry_file.write_text(json.dumps({"geometry": bytes(self.saveGeometry().toBase64()).decode()}),
                                            encoding="utf-8")
@@ -126,5 +134,6 @@ class MainWindow(QMainWindow):
             pass
 
     def hideEvent(self, event) -> None:
+        """Save the geometry whenever the window is hidden."""
         self._save_geometry()
         super().hideEvent(event)

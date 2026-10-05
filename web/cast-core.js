@@ -1,16 +1,25 @@
 /* =====================================================================
-   CAST-OVERLAY · Kern
-   Zustand (Texte, Teams, Timer …) und die Übertragung zwischen
-   Steuerseite und Overlays:
-     1. OBS-WebSocket   (Steuerseite im Browser/Dock  ->  Browserquellen in OBS)
-     2. BroadcastChannel + localStorage (alles im selben Browser, z. B. Vorschau)
+   CASTING-APP · Kern (Steuerseite und alle Overlays laden diese Datei)
+   Inhalt (Abschnitte mit „/* ---------- Name“ suchen):
+     · Feste Overlay-Texte in beiden Sprachen (OVERLAY_TEXTS, OVERLAY_WORDS)
+     · DEFAULT – der Standardzustand „Z“: alles, was eine Sendung ausmacht
+       (Texte, Teams, Szenen, Einblendungen, Turnier …). Neues Feld → hier
+       mit Standardwert eintragen; ältere Stände bekommen es beim Laden (merge).
+     · Laden/Speichern im Browser, Bilder (IndexedDB), Timer, Turnier-Logik
+       (SE/DE/Swiss/GSL/Tabelle), DACH-CS-Seiten und -Rahmen
+     · channel() – wie der Zustand von der Steuerseite zu den Overlays kommt:
+         1. App (Normalfall): Steuerseite schickt ihn an den Server
+            (POST /api/state), Overlays bekommen ihn live per Server-Sent
+            Events (/api/events: state, live, reload, status)
+         2. ohne App: BroadcastChannel + localStorage (gleicher Browser) bzw.
+            OBS-WebSocket an die Browserquellen in OBS
    ===================================================================== */
 window.CastCore = (function () {
   "use strict";
 
   const KEY = "cast-state-v1";
   const VERSION = "2.2.1";                     // muss zur App passen – sonst lädt sich die Seite neu
-  // Läuft die Seite über den Cast-Dienst (http://localhost:8787)?
+  // Läuft die Seite über den Server der App (http://localhost:8787)?
   const SERVER = /^https?:$/.test(location.protocol) && location.port === "8787" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
 
@@ -116,6 +125,11 @@ window.CastCore = (function () {
     }
     Z.overlayLanguage = language;
   }
+
+  // Einblendungen: Arten und wo sie stehen, wenn nichts anderes gewählt ist
+  // (Positionen: t/c/b = oben/Mitte/unten, l/c/r = links/Mitte/rechts; CSS-Klassen .pos-… in cast.css)
+  const GFX_POSITIONS = ["bl", "bc", "br", "tl", "tc", "tr", "cl", "cr"];
+  const GFX_DEFAULT_POS = { lowerthird: "bl", caster: "bl", hint: "tc", score: "tc", mapinfo: "tl", mapfact: "tr", scoreboard: "bc", players: "bl" };
 
   const DEFAULT = {
     theme: "regular",                             // neutral für den ersten Start – Liga-Themes per Klick
@@ -362,7 +376,7 @@ window.CastCore = (function () {
       send(d) {
         if (bc) bc.postMessage(d);
         serviceSend(d);
-        // über den Dienst holen sich die Overlays den Stand selbst – OBS-Umweg nur ohne Dienst
+        // mit dem Server holen sich die Overlays den Stand selbst – der Umweg über OBS nur ohne Server
         if (obs && !SERVER) { obs.onBrowsersources("cast-state", d); obs.send(d); }
       },
       obs
@@ -399,7 +413,7 @@ window.CastCore = (function () {
     return { small, images };
   }
   function resolve(z, images) {
-    // Über den Cast-Dienst lädt der Browser fehlende Bilder direkt von /api/image/…
+    // Mit dem Server lädt der Browser fehlende Bilder direkt von /api/image/…
     return JSON.parse(JSON.stringify(z), (cacheKey, v) => (typeof v === "string" && v.startsWith("asset:"))
       ? (images[v.slice(6)] || (SERVER ? "/api/image/" + v.slice(6) : "")) : v);
   }
@@ -651,5 +665,5 @@ window.CastCore = (function () {
     return e.until && e.until > now ? e.until : 0;
   }
 
-  return { VERSION, SERVER, OVERLAY_TEXTS, OVERLAY_WORDS, word, overlayLanguageSet, split, gfxVisible, gfxNextSwitch, DACH_PAGES, DACH_FRAME, dachFrame, tournamentBuild, swissDraw, resolve, Images, cssUrl, DEFAULT, KEY, clone, merge, load, save, savedRevision, channel, timerRest, time };
+  return { VERSION, SERVER, GFX_POSITIONS, GFX_DEFAULT_POS, OVERLAY_TEXTS, OVERLAY_WORDS, word, overlayLanguageSet, split, gfxVisible, gfxNextSwitch, DACH_PAGES, DACH_FRAME, dachFrame, tournamentBuild, swissDraw, resolve, Images, cssUrl, DEFAULT, KEY, clone, merge, load, save, savedRevision, channel, timerRest, time };
 })();

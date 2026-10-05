@@ -4,7 +4,7 @@ Steuerung und Overlays für CS2-Casts in OBS – eine Desktop-App in Python (PyS
 und macOS, eine Browserquelle. Szenen mit Übergängen, Einblendungen, Themes (u. a. DACH CS – Offiziell), FACEIT-Import,
 CS2-Livedaten (GSI), Turnierbaum/Tabellen, Ton-Steuerung über OBS.
 
-Ausführliche Anleitung für Nutzer: [LIESMICH.md](LIESMICH.md)
+Ausführliche Anleitung für Nutzer: [LIESMICH.md](LIESMICH.md) · Änderungen am Code (Aufbau, Rezepte): [ENTWICKLUNG.md](ENTWICKLUNG.md)
 
 ## Aufbau (ab 2.0)
 
@@ -38,7 +38,7 @@ web/                              Steuerseite (control.html) und Overlays (overl
  └─ legacy.js                     Tabelle alter (deutscher) Namen → neue Namen für die Daten-Übernahme
 tools/generate_scenes.py          erzeugt die Szenen-Vorlagen web/<scene>.html
 tools/build.py                    Bauen mit PyInstaller (+ installer.nsi für Windows)
-tests/                            pytest-Tests und Skripte gegen die laufende App
+tests/                            pytest-Tests; tests/live/ Skripte gegen die laufende App
 ```
 
 * **Overlays in OBS** laden wie bisher `http://localhost:8787/overlay.html`.
@@ -125,7 +125,7 @@ von Qt WebEngine bei jedem Start erst entpacken.
 * **macOS:** ohne Apple-Konto ad-hoc signiert. Notarisierung ist vorbereitet, aber aus: `MAC_NOTARIZE=1` plus
   `MAC_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID` (gehärtete Laufzeit, `build/entitlements.mac.plist`).
 
-**GitHub Actions** (`.github/workflows/bauen.yml`): jeder Push baut für Windows, Linux, macOS Apple Silicon und Intel
+**GitHub Actions** (`.github/workflows/build.yml`): jeder Push baut für Windows, Linux, macOS Apple Silicon und Intel
 (Artefakte je System) und führt unter Linux und Windows alle Tests aus (Windows zusätzlich: echtes DPAPI, Anmeldeinformations-
 verwaltung, Installer still installieren/starten/deinstallieren). **Release:** Actions → Bauen → „Run workflow“ auf `main` mit
 „Release erstellen“ – der Workflow legt den Tag `v<Version>` an und lädt alle Dateien hoch (oder einen passenden Tag pushen).
@@ -137,13 +137,14 @@ pip install -e ".[test]" && python -m playwright install chromium
 python -m pytest                 # Schlüsselbund, Server und Desktop-App (Linux ohne Bildschirm: xvfb-run -a python -m pytest)
 ```
 
-Die Overlay-Tests steuern die laufende App – vorher `QTWEBENGINE_REMOTE_DEBUGGING=9222 python -m casting_app` starten
-(oder nur `python -m casting_app --no-window`; `test_speicher.py` braucht das Fenster):
+Die Live-Tests steuern die laufende App – vorher `QTWEBENGINE_REMOTE_DEBUGGING=9222 python -m casting_app` starten
+(oder nur `python -m casting_app --no-window`; `memory.py` braucht das Fenster). Jedes Skript endet bei einem Problem
+mit Fehlercode 1; Details in [tests/live/README.md](tests/live/README.md):
 
 ```
-python tests/test_uebergaenge.py        # alle Szenen × alle Übergangsarten
-python tests/test_blitze.py [art]       # Bild für Bild: kein Aufblitzen bei Szenenwechseln
-python tests/test_schnelle_wechsel.py   # schnelle Wechsel, Ton über (nachgebautes) OBS
-python tests/test_speicher.py [runden]  # lange Sitzung im App-Fenster: Speicher bleibt stabil
-python tests/cs2_simulation.py          # schickt simulierte CS2-Spielstände an die App
+python tests/live/transitions.py         # alle Szenen × alle Übergangsarten
+python tests/live/flicker.py [art]       # Bild für Bild: kein Aufblitzen bei Szenenwechseln
+python tests/live/fast_switching.py      # schnelle Wechsel (auch DACH CS), Ton über ein nachgebautes OBS
+python tests/live/memory.py [runden]     # lange Sitzung im App-Fenster: Speicher bleibt stabil
+python tests/live/cs2_simulation.py      # schickt simulierte CS2-Spielstände an die App
 ```

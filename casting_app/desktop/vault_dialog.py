@@ -18,6 +18,7 @@ ATTEMPTS = 3
 
 
 def _ask(title: str, text: str) -> str | None:
+    """Password input dialog; None if the user cancels."""
     value, ok = QInputDialog.getText(None, title, text, QLineEdit.EchoMode.Password)
     return value if ok else None
 

@@ -42,7 +42,6 @@
   body.is-dragging .middle .divider-h, body.is-dragging #divider2 { display: block; }
   .dock-target { display: none; flex: 1; border: 2px dashed var(--line); border-radius: 6px; padding: 16px; place-items: center; text-align: center; color: var(--muted); font-size: 12px; min-height: 80px; }
   .dock.empty .dock-target, body.is-dragging .dock-target { display: grid; }
-  .dock.over-target { outline: 2px solid var(--accent); outline-offset: -2px; }
   .dock > details { border-radius: 4px; border: 1px solid var(--line); background: var(--f1); }
   .dock > details > summary { padding: 7px 10px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; background: var(--f2);
     border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; border-radius: 4px 4px 0 0; }
@@ -101,7 +100,6 @@
   .tools { display: flex; gap: 4px; align-items: center; }
   .tool { min-width: 30px; height: 28px; padding: 0 7px; border: 1px solid var(--line); border-radius: 6px; background: var(--f1); cursor: pointer; font-size: 13px; }
   .tool:hover { border-color: var(--accent); }
-  .tool-divider { width: 1px; height: 20px; background: var(--line); margin: 0 4px; }
   @media (max-width: 900px) { .page { flex-direction: column; height: auto; overflow: visible; } .column, .dock { flex: none; } .divider { display: none; } .preview { order: -1; } }
   header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
   h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: .02em; }
@@ -221,7 +219,6 @@
   .vb-map { width: 36px; height: 65px; }
   .row .line input, .row .line select { min-width: 0; }
   .row .hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .mini-image { width: 44px; height: 44px; border-radius: 5px; background: #0e0f11 center / cover no-repeat; border: 1px dashed var(--line); cursor: pointer; }
   .x { padding: 4px 0; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 16px; }
   .x:hover { color: var(--red); }
   .veto-upnext { padding: 10px; background: var(--f2); border-radius: 8px; display: grid; gap: 8px; }
@@ -399,10 +396,7 @@
   body.layout-edit .page details, body.layout-edit .tabgroup { outline: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
   /* Match-Leiste */
   .mbar { display: grid; gap: 10px; }
-  .mbar-teams { display: grid; gap: 6px; }
-  .mbar-team { display: flex; align-items: center; gap: 6px; }
   .mbar-name { flex: 1; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } 
-  .mbar-team b { font: 700 30px Rajdhani, sans-serif; min-width: 26px; text-align: center; }
   .mbar-k { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line); background: var(--f2); cursor: pointer; font-size: 18px; color: var(--text); }
   .mbar-k.main { background: var(--accent); border-color: var(--accent); color: #fff; }
   .mbar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
@@ -415,7 +409,7 @@
   body.large .scenes-buttons { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)) !important; }
   body.large .scenes-buttons button { height: 64px !important; font-size: 18px !important; }
   body.large .gfx-card .gfx-show { height: 46px; min-width: 96px; font-size: 16px; }
-  body.large .mbar-k { width: 52px; height: 52px; font-size: 24px; } body.large .mbar-team b { font-size: 44px; }
+  body.large .mbar-k { width: 52px; height: 52px; font-size: 24px; }
   /* ===== Konzept 3: Live 1:1 ===== */
   .topbar #allClose, .topbar #allOpen, .topbar #zoomSmall, .topbar #zoomValue, .topbar #zoomLarge { display: none; }
   .bracket-program { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 12px; border-radius: 8px; background: var(--f2); border: 1px solid var(--line); white-space: nowrap; }
@@ -1228,6 +1222,32 @@
 <script src="legacy.js"></script>
 <script src="cast-core.js"></script>
 <script>
+/* =====================================================================
+   CASTING-APP · Steuerseite (im App-Fenster, läuft auch im normalen Browser)
+   Aufbau dieser Datei:
+     1. <style>  – Aussehen; Farben als Variablen in :root (hell: data-design=light)
+     2. HTML     – Kopfzeile, Reiterleiste (#tabs), je Reiter eine Gruppe
+                   (.group[data-group=live|match|tournament|setup|log]) mit Karten
+                   <details data-area="…">, Vorschau, Docks, Dialoge
+     3. <script> – die Logik in Abschnitten: nach „/* ---------- “ suchen
+   Wichtigste Bausteine:
+     Z              Zustand der Sendung (Standard und Felder: cast-core.js, DEFAULT)
+     send()         Z an Server/Overlays schicken und im Browser sichern;
+     laterSend()    dasselbe gebündelt (beim Tippen)
+     everything()   alle Bereiche neu aus Z zeichnen (nach Laden, Import, Sprachwechsel)
+     ui             Einstellungen der Oberfläche (Docks, Reiter, Zoom) – nicht Teil der Sendung
+     $("id")        document.getElementById
+     data-field="texts.title" data-kind="number|bool|list" (ohne data-kind: Text)
+                    Eingabefeld, das automatisch mit Z verbunden ist (Abschnitt „Felder“)
+   Häufige Änderungen:
+     · neue Karte: <details data-area="englischer-schluessel"><summary>Titel</summary>
+       <div class="content">…</div></details> in die Gruppe des Reiters; der Schlüssel
+       bleibt fest (gespeicherte Docks hängen daran)
+     · neuer sichtbarer Text: deutsch hier schreiben, Übersetzung in lang-en.js
+     · neues Feld der Sendung: Standardwert in cast-core.js (DEFAULT), Eingabe hier
+       mit data-field, Anzeige in cast.js
+   Mehr dazu: ENTWICKLUNG.md im Projektordner.
+   ===================================================================== */
 "use strict";
 const K = window.CastCore, BUNDLED = window.CAST_THEMES || {};
 // alle Themes: mitgelieferte + eigene (eigene liegen im Stand und wandern mit Sicherung/Sitzung)
@@ -2234,7 +2254,7 @@ const SCENE_DEFAULT = ["#pregame", "intro", "cast-solo", "cast-duo", "players", 
   "#stats", "scoreboard", "team-a", "team-b", "h2h", "bracket", "series",
   "#pause", "pause", "sponsors", "cast-duo-clips", "cast-solo-clips",
   "#post", "cast-duo-interview", "cast-solo-interview", "end"];
-const SCENE_GROUPS = { "#pregame": "Vor dem Spiel", "#during": "Im Spiel", "#stats": "Stats & Turnier", "#pause": "Pause", "#post": "Nach dem Spiel", "#zwischen": "Zwischen den Maps" };
+const SCENE_GROUPS = { "#pregame": "Vor dem Spiel", "#during": "Im Spiel", "#stats": "Stats & Turnier", "#pause": "Pause", "#post": "Nach dem Spiel", "#between": "Zwischen den Maps" };
 let sceneArrange = false;
 function scenesRow() {
   const custom = (typeof ui !== "undefined" && ui.sceneRow) || SCENE_DEFAULT;
@@ -2521,7 +2541,6 @@ function sponsorsDraw() {
 }
 $("sponsorPlus").onclick = () => { sponsorEntries().push({ name: "", logo: "" }); sponsorsDraw(); };
 
-/* ---------- Live-Spieldaten CS2 (Vorbereitung) ---------- */
 /* ---------- CS2-Livedaten ---------- */
 let gsiInfo = {}, liveLast = null, liveTimer = null;
 async function gsiInfoFetch() {
@@ -2705,7 +2724,7 @@ function transitionChoiceDraw() {
 /* ---------- Einblendungen ---------- */
 const GFX_NAMES = { caster: "Caster", lowerthird: "Bauchbinde", hint: "Hinweis", score: "Punktestand", mapinfo: "Map-Info", mapfact: "Map-Fakt", scoreboard: "Scoreboard (live)", players: "Spieler (live)" };
 const GFX_POS = [["bl", "Links unten"], ["bc", "Mitte unten"], ["br", "Rechts unten"], ["tl", "Links oben"], ["tc", "Mitte oben"], ["tr", "Rechts oben"], ["cl", "Links Mitte"], ["cr", "Rechts Mitte"]];
-const GFX_DEFAULT = { lowerthird: "bl", caster: "bl", hint: "tc", score: "tc", mapinfo: "tl", mapfact: "tr", scoreboard: "bc", players: "bl" };
+const GFX_DEFAULT = K.GFX_DEFAULT_POS;            // Standardposition je Art (cast-core.js)
 const opts = (list, value) => list.map(([v, n]) => `<option value="${esc(v)}"${String(v) === String(value) ? " selected" : ""}>${esc(n)}</option>`).join("");
 const gfxOpen = new Set();
 const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return s >= 60 ? Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") + " min" : s + " s"; };
@@ -3721,7 +3740,7 @@ $("workspaceButton") && document.querySelector(".topbar .tools").insertAdjacentH
 $("quitButton").onclick = quitAsk;
 
 
-/* ---------- Konzept 3: Kopfzeile, Übergang, Verbindungen ---------- */
+/* ---------- Kopfzeile: Übergang, Verbindungen, Schließen ---------- */
 document.body.appendChild($("workspaceMenu")); document.body.appendChild($("statusPop")); document.body.appendChild($("transPop"));
 const beside = (button, pop, right) => { const r = button.getBoundingClientRect(), z = parseFloat(document.body.style.zoom) || 1;
   pop.style.top = (r.bottom / z + 6) + "px"; if (right) { pop.style.left = ""; pop.style.right = Math.max(8, innerWidth / z - r.right / z) + "px"; } else { pop.style.right = ""; pop.style.left = (r.left / z) + "px"; } };
@@ -4002,7 +4021,7 @@ $("dframeSide") && ($("dframeSide").onchange = () => { dframeDraw(); const k = D
 $("dframeShow") && ($("dframeShow").onchange = () => { Z.dach = Object.assign({}, Z.dach, { frameShow: $("dframeShow").checked }); send(); });
 $("dframeDefault") && ($("dframeDefault").onclick = () => { if (Z.dachFrame) delete Z.dachFrame[$("dframeSide").value]; dframeDraw(); send(); });
 
-/* ---------- Statusleiste, Cast-Dienst, Erste Schritte ---------- */
+/* ---------- Statusleiste, Verbindung zur App, Erste Schritte ---------- */
 let helperRunning = false, musicRunning = null;
 function pill(id, text, state) { const p = $(id); p.className = "pill " + (state || ""); p.lastElementChild.textContent = text; }
 // zu einem Bereich springen: passenden Reiter öffnen, Bereich aufklappen, hinscrollen, kurz leuchten
@@ -4255,7 +4274,7 @@ function everything() { languageDraw(); if (typeof dachCardShow === "function") 
 everything();
 helperCheck(); musicCheck();
 (async () => {
-  // Über den Dienst: dessen gespeicherten Stand übernehmen, falls er neuer ist
+  // Mit dem Server: dessen gespeicherten Stand übernehmen, falls er neuer ist
   if (K.SERVER) {
     try {
       const r = await fetch("/api/state?after=0", { cache: "no-store" });

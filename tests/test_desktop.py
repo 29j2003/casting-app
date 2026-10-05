@@ -154,7 +154,10 @@ def test_secrets_stay_in_keyring_only(qtbot, desktop):
     assert MEMORY_KEYRING.passwords[("Casting-App", "faceit-key")] == faceit_key
     for file in TEST_HOME.rglob("*"):
         if file.is_file() and file.stat().st_size < 5_000_000:
-            content = file.read_bytes()
+            try:
+                content = file.read_bytes()
+            except PermissionError:                       # files the web engine keeps locked (Windows)
+                continue
             assert faceit_key.encode() not in content and dach_key.encode() not in content, f"Geheimnis in {file}"
 
 

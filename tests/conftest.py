@@ -10,6 +10,10 @@ import tempfile
 from pathlib import Path
 
 TEST_HOME = Path(tempfile.mkdtemp(prefix="casting-app-test-"))
+# Playwright finds its browsers relative to the home folder: keep pointing at the real one
+if "PLAYWRIGHT_BROWSERS_PATH" not in os.environ and sys.platform != "win32":
+    cache = Path.home() / ("Library/Caches" if sys.platform == "darwin" else ".cache") / "ms-playwright"
+    os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(cache)
 os.environ["HOME"] = str(TEST_HOME)
 os.environ["APPDATA"] = str(TEST_HOME / "AppData")
 os.environ["XDG_DATA_HOME"] = str(TEST_HOME / ".local" / "share")

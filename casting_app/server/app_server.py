@@ -134,6 +134,7 @@ class CastingServer:
 
         self._state_file = folders.data / "state.json"
         self._state_lock = threading.Lock()
+        self._save_lock = threading.Lock()
         self._state_text: str | None = None      # app state as JSON text (kept as sent by the control page)
         self._state_revision = 0                 # "revision": increases with every change
         self._public_state_text: str | None = None   # the same without camera links (overlays without the key)
@@ -218,12 +219,14 @@ class CastingServer:
             if self._save_timer:
                 self._save_timer.cancel()
                 self._save_timer = None
-            text = self._state_text
-        if text:
-            try:
-                write_atomic(self._state_file, text)
-            except OSError as error:
-                self.log.error(f"Speichern fehlgeschlagen: {error}")
+        with self._save_lock:                    # one writer at a time; it reads the newest state inside the lock
+            with self._state_lock:
+                text = self._state_text
+            if text:
+                try:
+                    write_atomic(self._state_file, text)
+                except OSError as error:
+                    self.log.error(f"Speichern fehlgeschlagen: {error}")
 
     def overlay_language(self) -> str:
         """Language of the overlays ("de"/"en"), as chosen on the control page (part of the state)."""

@@ -13,6 +13,7 @@ SetCompressor /SOLID lzma
 !define MUI_ICON "${ICON}"
 !define MUI_UNICON "${ICON}"
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\Casting-App"
+InstallDirRegKey HKCU "${UNINSTALL_KEY}" "InstallLocation"   ; a new version installs where the old one is
 
 VIProductVersion "${VERSION}.0"
 VIAddVersionKey /LANG=1031 "ProductName" "Casting-App"
@@ -42,6 +43,7 @@ Section "Casting-App"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayName" "Casting-App"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayVersion" "${VERSION}"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "Publisher" "29_THE_P4TCH3R"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayIcon" "$INSTDIR\Casting-App.exe"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "UninstallString" "$\"$INSTDIR\Deinstallieren.exe$\""
   WriteRegDWORD HKCU "${UNINSTALL_KEY}" "NoModify" 1

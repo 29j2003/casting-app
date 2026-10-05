@@ -26,4 +26,4 @@ class ExclusiveHTTPServer(ThreadingHTTPServer):
 def content_length(headers) -> int | None:
     """Content-Length as a number (0 if missing); None if it is not a plain non-negative number."""
     value = (headers.get("Content-Length") or "0").strip()
-    return int(value) if value.isdigit() and len(value) < 12 else None
+    return int(value) if value.isascii() and value.isdigit() and len(value) < 12 else None

@@ -49,3 +49,16 @@ def test_unlock_dialog_allows_three_tries(tmp_path, qapp, monkeypatch):
     assert vault.get_password("Casting-App", FACEIT_KEY) == "abcdefgh-1234"
     answers = iter(["falsch-0001", "falsch-0002", "falsch-0003"])
     assert vault_dialog.open_or_offer_vault(tmp_path, AppSettings(tmp_path)) is None   # then: session only
+
+
+def test_environment_variable_opens_the_vault_without_dialog(tmp_path, monkeypatch):
+    PasswordVault(tmp_path, "richtig-123").set_password("Casting-App", FACEIT_KEY, "abcdefgh-1234")
+    warnings = []
+    monkeypatch.delenv(password_vault.ENVIRONMENT_VARIABLE, raising=False)
+    assert password_vault.vault_from_environment(tmp_path, lambda text, level: warnings.append(text)) is None
+    monkeypatch.setenv(password_vault.ENVIRONMENT_VARIABLE, "richtig-123")
+    vault = password_vault.vault_from_environment(tmp_path, lambda text, level: warnings.append(text))
+    assert vault.get_password("Casting-App", FACEIT_KEY) == "abcdefgh-1234"
+    monkeypatch.setenv(password_vault.ENVIRONMENT_VARIABLE, "falsch-0001")
+    assert password_vault.vault_from_environment(tmp_path, lambda text, level: warnings.append(text)) is None
+    assert len(warnings) == 1 and "falsch" not in warnings[0]

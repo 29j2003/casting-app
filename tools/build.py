@@ -34,6 +34,10 @@ WORK = ROOT / "pyinstaller-work"
 ICONS = ROOT / "build"
 APPIMAGETOOL_URL = "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
 BUNDLE_ID = "de.casting-app.desktop"
+# Qt parts the app never uses (PyInstaller's hooks would pull them in with Qt WebEngine)
+UNUSED_MODULES = ["PySide6.QtQuick", "PySide6.QtQml", "PySide6.QtQuickWidgets", "PySide6.QtPositioning",
+                  "PySide6.QtOpenGL", "PySide6.QtWebEngineQuick", "tkinter"]
+KEPT_LANGUAGES = ("de", "en")          # translations of Qt and of the web engine that stay in the build
 
 
 def check_versions() -> None:
@@ -78,12 +82,28 @@ def run_pyinstaller() -> Path:
                "--add-data", f"{ROOT / 'web'}{separator}web",
                "--add-data", f"{ROOT / 'casting_app' / 'desktop' / 'scripts'}{separator}casting_app/desktop/scripts",
                "--collect-submodules", "keyring.backends"]
+    for module in UNUSED_MODULES:
+        command += ["--exclude-module", module]
     if sys.platform == "win32":
         command += ["--icon", ICONS / "icon.ico", "--version-file", windows_version_file()]
     elif sys.platform == "darwin":
         command += ["--icon", ICONS / "icon.png", "--osx-bundle-identifier", BUNDLE_ID]
     run(*command, ROOT / "tools" / "launcher.py")
-    return DIST / (f"{APP_NAME}.app" if sys.platform == "darwin" else APP_NAME)
+    app = DIST / (f"{APP_NAME}.app" if sys.platform == "darwin" else APP_NAME)
+    remove_unused_translations(app)
+    return app
+
+
+def remove_unused_translations(app: Path) -> None:
+    """Keep only German and English translations of Qt and Qt WebEngine (saves about 50 MB)."""
+    removed = 0
+    for folder in [p for p in app.rglob("*") if p.is_dir() and p.name in ("translations", "qtwebengine_locales")]:
+        for file in folder.iterdir():
+            language = file.stem.split("_")[-1] if file.suffix == ".qm" else file.stem.split("-")[0]
+            if file.is_file() and language not in KEPT_LANGUAGES:
+                removed += file.stat().st_size
+                file.unlink()
+    print(f"✓ {removed / 1048576:.0f} MB ungenutzte Übersetzungen entfernt")
 
 
 # --- Windows ---

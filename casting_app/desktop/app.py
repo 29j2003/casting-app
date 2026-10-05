@@ -14,6 +14,7 @@ Quitting
 import os
 import shutil
 import sys
+import threading
 
 import shiboken6
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
@@ -21,10 +22,12 @@ from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication
 
-from .. import instance
+from .. import instance, update_check
 from ..app_log import AppLog
 from ..paths import DATA_DIR, IS_WINDOWS, WEB_DIR, create_folders
-from ..secret_store import SecretStore
+from .. import password_vault
+from ..secret_store import SecretStore, system_keyring_or_none
+from ..settings import AppSettings
 from ..server.app_server import BASE_URL, CastingServer
 from ..version import APP_NAME, VERSION
 from .main_window import MainWindow
@@ -41,10 +44,11 @@ WINDOW_STORAGE = DATA_DIR / "app-fenster"
 
 
 class ServerRequests(QObject):
-    """Requests from the server's threads, delivered to the Qt main thread as signals."""
+    """Requests from background threads (server, update check), delivered to the Qt main thread as signals."""
 
     quit_requested = Signal()
     open_folder_requested = Signal(str)
+    update_found = Signal(dict)
 
 
 class DesktopApp(QObject):
@@ -75,6 +79,10 @@ class DesktopApp(QObject):
         self.tray.quit_requested.connect(lambda: self.quit("Über das Tray-Menü beendet"))
         server_requests.quit_requested.connect(lambda: self.quit(None))
         server_requests.open_folder_requested.connect(lambda folder: QDesktopServices.openUrl(QUrl.fromLocalFile(folder)))
+        server_requests.update_found.connect(self._announce_update)
+        self._server_requests = server_requests
+        self._update_url = ""
+        self.tray.message_clicked.connect(lambda: self._update_url and QDesktopServices.openUrl(QUrl(self._update_url)))
         qt_app.commitDataRequest.connect(self._system_logs_off)
         qt_app.aboutToQuit.connect(self._shut_down)
 
@@ -86,6 +94,23 @@ class DesktopApp(QObject):
         self.window.show()
         if self.tray.available:
             self.tray.show()
+        if self._server and self._server.settings.get("check_for_updates"):
+            threading.Thread(target=self._check_for_update, name="update-check", daemon=True).start()
+
+    # --- update check ---
+
+    def _check_for_update(self) -> None:
+        release = update_check.newer_release()
+        if release:
+            self._server_requests.update_found.emit(release)
+
+    def _announce_update(self, release: dict) -> None:
+        """A newer version exists: note it in the log, the settings dialog and the tray."""
+        if self._server:
+            self._server.available_update = release
+        self._update_url = release.get("url", "")
+        self._log.info(f"Neue Version {release['version']} verfügbar: {self._update_url}")
+        self.tray.tell(f"{APP_NAME} {release['version']} ist da", "Klicke hier, um die neue Version herunterzuladen.")
 
     # --- window ---
 
@@ -212,6 +237,20 @@ def take_over_window_settings_from_version_1() -> None:
         pass
 
 
+def _secret_backend(data_dir, settings, log: AppLog):
+    """System keyring; without one (some Linux systems) optionally a password-protected vault.
+
+    CASTING_APP_VAULT_PASSWORD opens the vault without a dialog (unattended starts, tests).
+    """
+    if system_keyring_or_none() is not None or not password_vault.is_available():
+        return "system"
+    vault = password_vault.vault_from_environment(data_dir, log.write)
+    if vault:
+        return vault
+    from .vault_dialog import open_or_offer_vault
+    return open_or_offer_vault(data_dir, settings)       # None: secrets for this session only
+
+
 def prepare_qt(no_gpu: bool = False) -> None:
     """Settings that must be made before the QApplication exists."""
     flags = CHROMIUM_FLAGS + (["--disable-gpu"] if no_gpu else [])
@@ -238,9 +277,11 @@ def start_desktop_app(qt_app: QApplication, log: AppLog) -> DesktopApp | None:
     server_requests = ServerRequests()
     server = None
     if running is None:
-        server = CastingServer(folders, SecretStore(folders.data, log.write), log,
-                               on_quit_requested=server_requests.quit_requested.emit,
-                               open_folder=lambda folder: server_requests.open_folder_requested.emit(str(folder)))
+        settings = AppSettings(folders.data)
+        server = CastingServer(folders, SecretStore(folders.data, log.write, keyring_backend=_secret_backend(folders.data, settings, log)),
+                               log, on_quit_requested=server_requests.quit_requested.emit,
+                               open_folder=lambda folder: server_requests.open_folder_requested.emit(str(folder)),
+                               settings=settings)
         log.info(f"{APP_NAME} {VERSION} startet · Daten: {folders.data} · Videos: {folders.videos}")
         server.start()                            # OSError if the port is taken
     else:

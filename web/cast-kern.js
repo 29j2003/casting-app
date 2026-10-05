@@ -9,7 +9,7 @@ window.CastKern = (function () {
   "use strict";
 
   const SCHLUESSEL = "cast-zustand-v1";
-  const VERSION = "2.0.0";                     // muss zur App passen – sonst lädt sich die Seite neu
+  const VERSION = "2.1.0";                     // muss zur App passen – sonst lädt sich die Seite neu
   // Läuft die Seite über den Cast-Dienst (http://localhost:8787)?
   const SERVER = /^https?:$/.test(location.protocol) && location.port === "8787" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
@@ -177,8 +177,17 @@ window.CastKern = (function () {
         if (m.op === 0) {
           const d = { rpcVersion: 1, eventSubscriptions: opt.ereignisse || 1 };
           if (m.d.authentication) {
-            const geheim = await sha256b64((e.passwort || "") + m.d.authentication.salt);
-            d.authentication = await sha256b64(geheim + m.d.authentication.challenge);
+            const { salt, challenge } = m.d.authentication;
+            if (e.passwort || !SERVER) {
+              const geheim = await sha256b64((e.passwort || "") + salt);
+              d.authentication = await sha256b64(geheim + challenge);
+            } else {
+              // App: das Passwort liegt im Schlüsselbund – der Server rechnet die Anmeldung aus, das Passwort bleibt dort
+              try {
+                const r = await fetch("/api/obs-anmeldung", { method: "POST", body: JSON.stringify({ salt, challenge }) });
+                if (r.ok) d.authentication = (await r.json()).authentication;
+              } catch (err) {}
+            }
           }
           ws.send(JSON.stringify({ op: 1, d }));
         } else if (m.op === 2) {

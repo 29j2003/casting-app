@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "casting-app"
-version = "2.0.0"                     # keep equal to casting_app/version.py and web/cast-kern.js
+version = "2.1.0"                     # keep equal to casting_app/version.py and web/cast-kern.js
 description = "Steuerung und Overlays für CS2-Casts in OBS"
 requires-python = ">=3.11"
 dependencies = [
     "PySide6-Essentials>=6.8,<7",     # Qt widgets + Qt WebEngine (window, tray, per-page audio mute)
     "PySide6-Addons>=6.8,<7",
-    "keyring>=25",                    # system keyring for the FACEIT key and DACH CS access
+    "keyring>=25",                    # system keyring for the FACEIT key, DACH CS access and OBS password
+    "cryptography>=42; sys_platform == 'linux'",   # password vault for Linux systems without a keyring
 ]
 
 [project.optional-dependencies]
@@ -29,5 +30,5 @@ include = ["casting_app*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # only these files are pytest tests; the other scripts in tests/ are run directly against a running app
-python_files = ["test_secret_store.py", "test_server.py", "test_desktop.py"]
+python_files = ["test_secret_store.py", "test_password_vault.py", "test_update_check.py", "test_server.py", "test_obs_password.py", "test_desktop.py"]
 qt_api = "pyside6"

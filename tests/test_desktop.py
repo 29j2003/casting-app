@@ -8,7 +8,6 @@ No other Casting-App may run on this PC during the test.
 
 import itertools
 import json
-import os
 import ssl
 import subprocess
 import sys
@@ -26,18 +25,11 @@ from casting_app import instance
 from casting_app.app_log import AppLog
 from casting_app.desktop import app as desktop_app
 from casting_app.paths import DATA_DIR
+from casting_app.version import VERSION
 
 ROOT = Path(__file__).resolve().parent.parent
 _RESULT_NUMBERS = itertools.count(1)
 CLOSE_BUTTONS = "[...document.querySelectorAll('.frage:not(#frage) button')].map(b => b.textContent)"
-
-
-@pytest.fixture(scope="session")
-def qapp_args():
-    # only for the test: accept the self-made certificate of the HTTPS test page
-    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--ignore-certificate-errors"
-    desktop_app.prepare_qt()
-    return [sys.argv[0]]
 
 
 @pytest.fixture(scope="module")
@@ -83,7 +75,7 @@ def test_window_shows_control_page(qtbot, desktop):
     page = wait_for_page(qtbot, desktop)
     assert desktop.window.isVisible()
     assert page.url().toString() == "http://localhost:8787/steuerung.html"
-    assert ping()["version"] == "2.0.0"
+    assert ping()["version"] == VERSION
     # the connection to Python is invisible to the page (isolated world)
     assert run_js(qtbot, page, "typeof window.qt + ' ' + typeof window.castAppSend") == "undefined undefined"
 
@@ -162,7 +154,10 @@ def test_secrets_stay_in_keyring_only(qtbot, desktop):
     assert MEMORY_KEYRING.passwords[("Casting-App", "faceit-key")] == faceit_key
     for file in TEST_HOME.rglob("*"):
         if file.is_file() and file.stat().st_size < 5_000_000:
-            content = file.read_bytes()
+            try:
+                content = file.read_bytes()
+            except PermissionError:                       # files the web engine keeps locked (Windows)
+                continue
             assert faceit_key.encode() not in content and dach_key.encode() not in content, f"Geheimnis in {file}"
 
 

@@ -29,6 +29,9 @@ jobs:
           - { os: macos-latest, name: macos-arm64 }    # Apple Silicon
           - { os: macos-15-intel, name: macos-x64 }    # Intel
     runs-on: ${{ matrix.os }}
+    env:
+      # Windows wird mit SignPath signiert, sobald das Secret eingetragen ist (siehe tools/signpath/README.md)
+      SIGNPATH: ${{ secrets.SIGNPATH_API_TOKEN != '' && matrix.name == 'windows' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -41,10 +44,71 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libfuse2 libegl1 libxkbcommon-x11-0 libxcb-cursor0 libnss3
       # prüft die Version in casting_app/version.py, pyproject.toml und web/cast-kern.js und baut dann nach dist/
-      - run: python tools/build.py
+      - name: Bauen (ohne SignPath)
+        if: env.SIGNPATH != 'true'
+        run: python tools/build.py
         env:
           # Notarisierung (macOS) ist vorbereitet, aber aus – siehe tools/build.py
           MAC_NOTARIZE: "0"
+
+      # --- nur mit SignPath (Windows): erst die App signieren, dann den Installer daraus bauen und signieren ---
+      - name: App bauen (Runde 1)
+        if: env.SIGNPATH == 'true'
+        run: python tools/build.py app
+      - id: unsigned-app
+        if: env.SIGNPATH == 'true'
+        uses: actions/upload-artifact@v4
+        with: { name: unsigned-app, path: dist/Casting-App }
+      - name: Casting-App.exe signieren
+        if: env.SIGNPATH == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: app-folder
+          github-artifact-id: ${{ steps.unsigned-app.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: dist/Casting-App
+      - name: Installer bauen (Runde 2)
+        if: env.SIGNPATH == 'true'
+        run: python tools/build.py package
+      - id: unsigned-installer
+        if: env.SIGNPATH == 'true'
+        uses: actions/upload-artifact@v4
+        with: { name: unsigned-installer, path: dist/*-Setup.exe }
+      - name: Installer signieren
+        if: env.SIGNPATH == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: installer
+          github-artifact-id: ${{ steps.unsigned-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: dist
+      - name: Installer prüfen (Windows) – still installieren, starten, beenden, deinstallieren
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist/*-Setup.exe | Select-Object -First 1
+          Start-Process $setup.FullName -ArgumentList "/S" -Wait
+          $exe = "$env:LOCALAPPDATA\Programs\Casting-App\Casting-App.exe"
+          if (!(Test-Path $exe)) { throw "nicht installiert: $exe" }
+          Start-Process $exe -ArgumentList "--no-window"
+          $ok = $false
+          for ($i = 0; $i -lt 60 -and -not $ok; $i++) {
+            Start-Sleep 1
+            try { $ping = Invoke-RestMethod http://127.0.0.1:8787/api/ping -Headers @{Host = "localhost:8787"}; $ok = $ping.dienst -eq "cast" } catch {}
+          }
+          if (-not $ok) { throw "installierte App antwortet nicht" }
+          Write-Host "Installierte App läuft: Version $($ping.version)"
+          Invoke-RestMethod -Method Post http://127.0.0.1:8787/api/beenden -Headers @{Host = "localhost:8787"} | Out-Null
+          Start-Sleep 3
+          Start-Process "$env:LOCALAPPDATA\Programs\Casting-App\Deinstallieren.exe" -ArgumentList "/S" -Wait
       - uses: actions/upload-artifact@v4
         with:
           name: casting-app-${{ matrix.name }}
@@ -69,7 +133,8 @@ jobs:
         run: xvfb-run -a -s "-screen 0 1920x1080x24" python -m pytest -v
       - name: Overlay-Tests gegen die laufende Desktop-App
         run: |
-          QTWEBENGINE_REMOTE_DEBUGGING=9222 xvfb-run -a -s "-screen 0 1920x1080x24" python -m casting_app > app.log 2>&1 &
+          # ohne Schlüsselbund würde der Tresor-Dialog den Start anhalten
+          CASTING_APP_VAULT_PASSWORD=nur-fuer-tests QTWEBENGINE_REMOTE_DEBUGGING=9222 xvfb-run -a -s "-screen 0 1920x1080x24" python -m casting_app > app.log 2>&1 &
           for i in $(seq 1 60); do curl -sf http://localhost:8787/api/ping && break; sleep 1; done
           python tests/test_uebergaenge.py | tee uebergaenge.txt
           grep -qE "^([0-9]+)/\1 Wechsel sauber · Fehler: \[\]" uebergaenge.txt
@@ -82,9 +147,19 @@ jobs:
       - if: failure()
         run: cat app.log || true
 
+  testen-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON_VERSION }}", cache: pip }
+      - run: pip install -e ".[test]" && python -m playwright install chromium
+      # Schlüsselbund (echte Anmeldeinformationsverwaltung + echtes DPAPI), Server, OBS-Passwort und Desktop-App unter Windows
+      - run: python -m pytest -v
+
   release:
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release && github.ref == 'refs/heads/main')
-    needs: [bauen, testen]
+    needs: [bauen, testen, testen-windows]
     runs-on: ubuntu-latest
     permissions: { contents: write }
     steps:

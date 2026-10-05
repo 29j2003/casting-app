@@ -82,7 +82,7 @@ Setup → Szenen & OBS → „In OBS anlegen“.
 
 ```
 pip install -e ".[build]"
-python tools/build.py        # baut für das laufende System nach dist/
+python tools/build.py        # baut für das laufende System nach dist/ (Teilschritte: app, package)
 ```
 
 | System | Ergebnis |
@@ -95,7 +95,9 @@ python tools/build.py        # baut für das laufende System nach dist/
 Windows braucht NSIS (`makensis`). Die portable Version ist ein zip mit Ordner: PyInstaller als Einzeldatei müsste die ~200 MB
 von Qt WebEngine bei jedem Start erst entpacken.
 
-* **Windows signieren:** `WINDOWS_CERTIFICATE` (Pfad zur .pfx) und `WINDOWS_CERTIFICATE_PASSWORD` setzen (signtool).
+* **Windows signieren:** kostenlos über die SignPath Foundation (Open Source) – Einrichtung in
+  [tools/signpath/README.md](tools/signpath/README.md); danach signiert die CI `Casting-App.exe` und den Installer selbst.
+  Alternativ mit eigenem Zertifikat: `WINDOWS_CERTIFICATE` (Pfad zur .pfx) und `WINDOWS_CERTIFICATE_PASSWORD` setzen (signtool).
 * **macOS:** ohne Apple-Konto ad-hoc signiert. Notarisierung ist vorbereitet, aber aus: `MAC_NOTARIZE=1` plus
   `MAC_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID` (gehärtete Laufzeit, `build/entitlements.mac.plist`).
 

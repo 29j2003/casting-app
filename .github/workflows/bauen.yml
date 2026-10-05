@@ -29,6 +29,9 @@ jobs:
           - { os: macos-latest, name: macos-arm64 }    # Apple Silicon
           - { os: macos-15-intel, name: macos-x64 }    # Intel
     runs-on: ${{ matrix.os }}
+    env:
+      # Windows wird mit SignPath signiert, sobald das Secret eingetragen ist (siehe tools/signpath/README.md)
+      SIGNPATH: ${{ secrets.SIGNPATH_API_TOKEN != '' && matrix.name == 'windows' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -41,10 +44,52 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libfuse2 libegl1 libxkbcommon-x11-0 libxcb-cursor0 libnss3
       # prüft die Version in casting_app/version.py, pyproject.toml und web/cast-kern.js und baut dann nach dist/
-      - run: python tools/build.py
+      - name: Bauen (ohne SignPath)
+        if: env.SIGNPATH != 'true'
+        run: python tools/build.py
         env:
           # Notarisierung (macOS) ist vorbereitet, aber aus – siehe tools/build.py
           MAC_NOTARIZE: "0"
+
+      # --- nur mit SignPath (Windows): erst die App signieren, dann den Installer daraus bauen und signieren ---
+      - name: App bauen (Runde 1)
+        if: env.SIGNPATH == 'true'
+        run: python tools/build.py app
+      - id: unsigned-app
+        if: env.SIGNPATH == 'true'
+        uses: actions/upload-artifact@v4
+        with: { name: unsigned-app, path: dist/Casting-App }
+      - name: Casting-App.exe signieren
+        if: env.SIGNPATH == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: app-folder
+          github-artifact-id: ${{ steps.unsigned-app.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: dist/Casting-App
+      - name: Installer bauen (Runde 2)
+        if: env.SIGNPATH == 'true'
+        run: python tools/build.py package
+      - id: unsigned-installer
+        if: env.SIGNPATH == 'true'
+        uses: actions/upload-artifact@v4
+        with: { name: unsigned-installer, path: dist/*-Setup.exe }
+      - name: Installer signieren
+        if: env.SIGNPATH == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: installer
+          github-artifact-id: ${{ steps.unsigned-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: dist
       - name: Installer prüfen (Windows) – still installieren, starten, beenden, deinstallieren
         if: runner.os == 'Windows'
         shell: pwsh

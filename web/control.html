@@ -498,6 +498,7 @@
           Hast du schon eigene Szenen, wählst du sie einfach in der Liste aus.</p>
         <div class="line">
           <button class="button main" id="sceneCreate">In OBS anlegen</button>
+          <button class="button" id="overlayAddressCopy" title="Für eine Browserquelle, die du selbst in OBS anlegst (1920 × 1080)">Overlay-Adresse kopieren</button>
           <label id="sceneDefaultField">Übergang, wenn nichts anderes gewählt<select id="sceneDefault"></select></label>
         </div>
         <p class="small" id="sceneStatus"></p>
@@ -557,7 +558,7 @@
       <summary>Status</summary>
       <div class="content">
         <div id="logStatus" class="list"></div>
-        <label class="toggleSwitch"><input type="checkbox" data-field="diagnose" data-kind="bool"> Diagnose in allen Overlays einblenden (zur Fehlersuche, danach wieder aus)</label>
+        <label class="toggleSwitch"><input type="checkbox" data-field="diagnose" data-kind="bool"> Diagnose in allen Overlays einblenden – ⚠ auch im Stream sichtbar (nur zur Fehlersuche, danach wieder aus)</label>
         <div class="line"><button class="button" id="obsNew2">Overlays in OBS neu laden</button></div>
         <p class="small" id="obsNewStatus">Nach einem Update lädt die App die Overlays in OBS automatisch neu, sobald sie mit OBS verbunden ist.</p>
       </div>

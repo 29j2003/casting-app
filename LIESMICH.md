@@ -35,9 +35,10 @@ Sicherungen (`.json`) und Theme-Dateien aus 2.1 lassen sich weiter laden.
 1. **Casting-App** starten.
 2. Es öffnet sich das Fenster **Casting-App**. Die Karte **„Erste Schritte"** führt durch alles Weitere:
    * **OBS verbinden:** OBS → Werkzeuge → WebSocket-Server-Einstellungen → „WebSocket-Server aktivieren".
-     Port und Passwort („Verbindungsinformationen anzeigen") in der App unter **Setup → Verbindung** eintragen.
-   * **Szenen einrichten:** Setup → **Szenen einrichten** → „Eine Browserquelle für alles" →
-     **„Szene ‚Cast – Sendung' in OBS anlegen"**. In OBS gibt es dann eine Szene mit einer Browserquelle.
+     Port und Passwort („Verbindungsinformationen anzeigen") in der App unter **⚙ App-Einstellungen → Verbindung zu OBS** eintragen.
+   * **Szenen einrichten:** Setup → **Szenen & OBS** → **„In OBS anlegen"**. In OBS gibt es dann die Szene „Cast – Sendung"
+     mit einer Browserquelle (mit dem Zugangsschlüssel der App). Wer die Browserquelle lieber selbst anlegt:
+     **„Overlay-Adresse kopieren"** und in OBS als Browserquelle (1920 × 1080) einfügen.
    * Theme, Teams und Caster eintragen.
    * **Spielbild:** In OBS die Spielaufnahme in der Szene „Cast – Sendung" **unter** die Browserquelle legen.
      In der Szene **Ingame** ist das Overlay durchsichtig, nur Sponsor und Einblendungen sind zu sehen.

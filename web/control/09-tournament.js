@@ -103,7 +103,7 @@ $("tourDraw").onclick = () => {
   if (last && last.some(m => m.b !== "BYE" && !(T.res[m.id] || {}).done)) return tourStatus("Erst alle Spiele der aktuellen Runde als fertig markieren.");
   const fresh = K.swissDraw(T);
   if (!fresh.length) return tourStatus("Alle Teams sind fertig – keine weitere Runde nötig.");
-  T.swiss.rounds.push(fresh); tournamentTreeDraw(); send(); tourStatus(`✓ Runde ${T.swiss.rounds.length} ausgelost (${fresh.length} Spiele).`);
+  T.swiss.rounds.push(fresh); tournamentTreeDraw(); send(); tourStatus(fresh.length === 1 ? `✓ Runde ${T.swiss.rounds.length} ausgelost (1 Spiel).` : `✓ Runde ${T.swiss.rounds.length} ausgelost (${fresh.length} Spiele).`);
 };
 $("tourNewTeam").onclick = () => {
   const T = tour(); if (T.teams.length >= 32) return tourStatus("Höchstens 32 Teams.");

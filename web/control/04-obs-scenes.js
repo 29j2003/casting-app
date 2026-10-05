@@ -104,6 +104,10 @@ function scenesDraw() {
   if (typeof dachMode === "function" && dachMode()) { box.innerHTML = ""; dachScenesDraw(box); return; }
   box.classList.toggle("arrange", sceneArrange);
   box.classList.toggle("columns", !sceneArrange);
+  // sagen, warum die Knöpfe grau sind – statt still nichts zu tun
+  const why = sceneArrange ? "" : !c.on ? "Szenenwechsel ist aus – oben den Haken setzen."
+    : !single && !connected ? "Mehrere OBS-Szenen: erst mit OBS verbinden (⚙ App-Einstellungen) – oder unter Setup → Szenen & OBS „eine Browserquelle“ nutzen." : "";
+  if (why) box.insertAdjacentHTML("beforeend", `<p class="small scene-why">${esc(why)}</p>`);
   let column = null;
   $("sceneArrange").textContent = sceneArrange ? "✓ Fertig" : "✎ Anordnen"; $("sceneDefault").hidden = !sceneArrange;
   const line = scenesRow();
@@ -245,4 +249,13 @@ $("sceneCreate").onclick = async () => {
   $("sceneStatus").innerHTML = (error.length ? `⚠ ${error.length} Problem(e): ` + error.map(x => esc(x[0] + " – " + x[1])).join(" · ") + "<br>" : "✓ ")
     + esc(result.filter(x => !x[1].startsWith("Fehler")).map(x => `${x[0]}: ${x[1] === "fresh" ? "angelegt" : "auf die App umgestellt"}`).join(" · "))
     + (onSource() ? "<br>Spielbild: in OBS die Spielaufnahme in „Cast – Sendung“ unter die Browserquelle legen." : "");
+};
+
+// Browserquelle von Hand anlegen: Adresse mit Zugangsschlüssel in die Zwischenablage (nie anzeigen – sie ist geheim)
+$("overlayAddressCopy").hidden = !(K.SERVER && K.ACCESS);
+$("overlayAddressCopy").onclick = async () => {
+  try {
+    await navigator.clipboard.writeText(location.origin + K.withAccess("/overlay.html"));
+    $("sceneStatus").textContent = "✓ Adresse kopiert – in OBS als Browserquelle (1920 × 1080) einfügen. Sie enthält den Zugangsschlüssel: nicht weitergeben.";
+  } catch (err) { $("sceneStatus").textContent = "Kopieren nicht möglich – „In OBS anlegen“ nutzen."; }
 };

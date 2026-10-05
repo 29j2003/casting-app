@@ -180,8 +180,7 @@ window.CastLanguages.en = {
  "Der aktuelle Stand (Teams, Veto, Texte …) wird ersetzt. Die OBS-Einrichtung bleibt.": "The current state (teams, veto, texts …) is replaced. The OBS setup stays.",
  "der Gruppe": "of the group",
  "Der Schlüssel wird im Schlüsselbund des Systems gespeichert und nie wieder angezeigt – weder hier noch in Sicherungen, Sitzungen, Exporten oder im Log. Die App setzt ihn nur intern für FACEIT-Abfragen ein.": "The key is stored in the system keyring and never shown again – neither here nor in backups, sessions, exports or the log. The app only uses it internally for FACEIT requests.",
- "Diagnose in allen Overlays einblenden (zur Fehlersuche, danach wieder aus)": "Show diagnostics in all overlays (for troubleshooting, switch off afterwards)",
- "Die App öffnet Port 8788 im lokalen Netzwerk – ausschließlich für CS2-Spielstände mit deinem Schlüssel. Alles andere bleibt nur auf diesem PC erreichbar.": "The app opens port 8788 in the local network – only for CS2 game states with your key. Everything else stays reachable from this PC only.",
+  "Die App öffnet Port 8788 im lokalen Netzwerk – ausschließlich für CS2-Spielstände mit deinem Schlüssel. Alles andere bleibt nur auf diesem PC erreichbar.": "The app opens port 8788 in the local network – only for CS2 game states with your key. Everything else stays reachable from this PC only.",
  "Die Browserquelle in OBS gibt Videos nicht zuverlässig wieder (in der Vorschau hier läuft es). Lass OBS das Video selbst abspielen – so wie eine normale Medienquelle, auch H.265 und AV1.": "The browser source in OBS does not play videos reliably (it plays in the preview here). Let OBS play the video itself – like a normal media source, also H.265 and AV1.",
  "Die Casting-App wurde beendet. Du kannst dieses Fenster schließen.": "The Casting-App has been closed. You can close this window.",
  "Die Datei auf dem Observer-PC in dessen CS2-Ordner": "Put the file on the observer PC into its CS2 folder",
@@ -898,5 +897,13 @@ window.CastLanguages.en = {
  "Update fehlgeschlagen: {}": "Update failed: {}",
  "Jetzt aktualisieren?": "Update now?",
  "Die App lädt die neue Version, beendet sich und startet neu. Overlays in OBS sind dabei kurz weg – nicht während einer laufenden Sendung.": "The app downloads the new version, quits and starts again. Overlays in OBS are gone for a moment – not during a live show.",
- "aktualisiert von v{}": "updated from v{}"
+ "aktualisiert von v{}": "updated from v{}",
+ "Szenenwechsel ist aus – oben den Haken setzen.": "Scene switching is off – tick the box above.",
+ "Mehrere OBS-Szenen: erst mit OBS verbinden (⚙ App-Einstellungen) – oder unter Setup → Szenen & OBS „eine Browserquelle“ nutzen.": "Several OBS scenes: connect to OBS first (⚙ App settings) – or use “one browser source” under Setup → Scenes & OBS.",
+ "✓ Runde {} ausgelost (1 Spiel).": "✓ Round {} drawn (1 match).",
+ "Diagnose in allen Overlays einblenden – ⚠ auch im Stream sichtbar (nur zur Fehlersuche, danach wieder aus)": "Show diagnostics in all overlays – ⚠ also visible in the stream (for troubleshooting only, switch off afterwards)",
+ "Overlay-Adresse kopieren": "Copy overlay address",
+ "Für eine Browserquelle, die du selbst in OBS anlegst (1920 × 1080)": "For a browser source you create yourself in OBS (1920 × 1080)",
+ "✓ Adresse kopiert – in OBS als Browserquelle (1920 × 1080) einfügen. Sie enthält den Zugangsschlüssel: nicht weitergeben.": "✓ Address copied – paste it into OBS as a browser source (1920 × 1080). It contains the access key: do not share it.",
+ "Kopieren nicht möglich – „In OBS anlegen“ nutzen.": "Copying is not possible – use “Create in OBS”."
 };

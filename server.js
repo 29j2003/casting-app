@@ -701,7 +701,14 @@ function alteBeenden() {
     r.on("error", ok); r.on("timeout", () => { r.destroy(); ok(); }); r.end();
   });
 }
-// Ältere/andere Version abloesen: sie wird über /api/beenden beendet, dann warten, bis der Port frei ist
+// Versionen vergleichen: > 0, wenn a neuer ist als b („alt“ = Version ohne Nummer gilt als älter)
+function versionVergleichen(a, b) {
+  const t = v => /^\d+(\.\d+)*$/.test(String(v)) ? String(v).split(".").map(Number) : [-1];
+  const x = t(a), y = t(b);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; }
+  return 0;
+}
+// Ältere Version ablösen: sie wird über /api/beenden beendet, dann warten, bis der Port frei ist
 async function abloesen(laufend) {
   log(`Version ${laufend} läuft noch – wird durch ${VERSION} ersetzt`, "warn");
   await alteBeenden();
@@ -719,7 +726,8 @@ function starten(optionen = {}) {
   OPT = Object.assign({}, optionen);
   gestartet = (async () => {
     const laufend = await laeuftSchon();
-    if (laufend === VERSION) return { art: "laeuft-schon" };
+    // gleiche oder neuere Version läuft schon: nichts starten (eine ältere löst nie eine neuere ab)
+    if (laufend && versionVergleichen(laufend, VERSION) >= 0) return { art: "laeuft-schon", version: laufend };
     if (laufend) await abloesen(laufend);
     ordnerAnlegen();
     zustandLaden();
@@ -748,11 +756,11 @@ function starten(optionen = {}) {
 
 process.on("uncaughtException", e => log("Unerwarteter Fehler: " + (e && e.stack || e), "fehler"));
 
-module.exports = { starten, beenden, speichernSofort, overlaysNeuLaden, laeuftSchon, alteBeenden, log, VERSION, NAME, PORT, BASIS, DATEN };
+module.exports = { starten, beenden, speichernSofort, overlaysNeuLaden, laeuftSchon, alteBeenden, versionVergleichen, log, VERSION, NAME, PORT, BASIS, DATEN };
 
 // „node server.js“: nur der Server, ohne Fenster (Entwicklung, Tests)
 if (require.main === module) {
   starten({ konsole: true }).then(r => {
-    if (r.art === "laeuft-schon") { console.log(`${NAME} ${VERSION} läuft bereits: ${BASIS}`); process.exit(0); }
+    if (r.art === "laeuft-schon") { console.log(`${NAME} ${r.version} läuft bereits: ${BASIS}`); process.exit(0); }
   }).catch(e => { console.error(e.message); process.exit(1); });
 }

@@ -231,9 +231,10 @@ ipcMain.on("overlays-neu-geladen", (ev, nr, perObs) => {
    Stumm: webContents.setAudioMuted – gilt für ALLES im Fenster, auch fremde iframes (VDO.Ninja, Clips, DACH CS).
    Lautstärke: Electron hat dafür keine Schnittstelle. Der Preload (läuft in jedem Rahmen des Fensters)
    regelt deshalb Video/Audio-Elemente und Web Audio in allen Seiten mit einem gemeinsamen Faktor (siehe preload.js). */
-function tonAnwenden() {
+function tonAnwenden(nurStumm) {
   if (!fenster || fenster.isDestroyed()) return;
   fenster.webContents.setAudioMuted(!tonStand.an);
+  if (nurStumm === true) return;                       // neu geladene Rahmen holen sich den Faktor selbst
   const faktor = Math.max(0, Math.min(1, tonStand.vol / 100));
   for (const f of fenster.webContents.mainFrame.framesInSubtree) { try { f.send("ton-faktor", faktor); } catch (e) {} }
 }
@@ -275,9 +276,10 @@ function menueSetzen() {
 
 /* ---------- Start ---------- */
 async function eineInstanz() {
-  // Läuft schon eine Casting-App? Eine andere Version wird abgelöst, die gleiche bekommt den Fokus.
+  // Läuft schon eine Casting-App? Eine ältere Version wird abgelöst, die gleiche oder eine neuere bekommt den Fokus.
   const laufend = await server.laeuftSchon();
-  if (laufend && laufend !== VERSION) {
+  const aelter = laufend && server.versionVergleichen(laufend, VERSION) < 0;
+  if (aelter) {
     server.log(`Version ${laufend} läuft noch – wird durch ${VERSION} ersetzt`, "warn");
     await server.alteBeenden();
     for (let i = 0; i < 40 && await server.laeuftSchon(); i++) await warte(250);
@@ -286,14 +288,14 @@ async function eineInstanz() {
   // Die Sperre hält die laufende Desktop-App; nach einer Ablösung kann sie noch kurz belegt sein
   for (let i = 0; i < 12; i++) {
     if (app.requestSingleInstanceLock({ version: VERSION })) return true;
-    if (!laufend || laufend === VERSION) return false;   // gleiche Version: sie holt ihr Fenster nach vorn
+    if (!aelter) return false;                            // gleiche/neuere Version: sie holt ihr Fenster nach vorn
     await warte(250);
   }
   return false;
 }
 
 app.on("second-instance", (ev, argv, cwd, daten) => {
-  if (daten && daten.version && daten.version !== VERSION) return;   // neuere Version löst uns gleich ab
+  if (daten && daten.version && server.versionVergleichen(daten.version, VERSION) > 0) return;   // neuere Version löst uns gleich ab
   zeigen();
 });
 app.on("activate", () => { if (!OHNE_FENSTER) zeigen(); });   // macOS: Klick aufs Dock-Symbol
@@ -323,12 +325,12 @@ app.on("activate", () => { if (!OHNE_FENSTER) zeigen(); });   // macOS: Klick au
     app.exit(1); return;
   }
   if (OHNE_FENSTER) {
-    if (start.art === "laeuft-schon") { console.log(`${NAME} ${VERSION} läuft bereits: ${BASIS}`); app.exit(0); }
+    if (start.art === "laeuft-schon") { console.log(`${NAME} ${start.version} läuft bereits: ${BASIS}`); app.exit(0); }
     else console.log(`${NAME} ${VERSION} läuft ohne Fenster: ${BASIS} · Overlays: ${BASIS}/overlay.html`);
     return;
   }
   powerMonitor.on("shutdown", () => { wirdBeendet = true; server.speichernSofort(); });
-  fenster.webContents.on("did-finish-load", tonAnwenden);
+  fenster.webContents.on("did-finish-load", () => tonAnwenden(true));
   fenster.loadURL(BASIS + "/steuerung.html");
   trayAnlegen();
 })();

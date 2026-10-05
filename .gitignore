@@ -1,6 +1,10 @@
-node_modules/
+# build output (tools/build.py)
 dist/
-*.exe
-node-*-casting*
-.DS_Store
+pyinstaller-work/
+# Python
 __pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+# system files
+.DS_Store

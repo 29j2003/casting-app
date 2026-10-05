@@ -275,7 +275,8 @@ def test_series_cards_keep_their_own_map_results(server, browser):
 def test_css_variables_of_the_control_page_are_defined():
     """Every var(--name) the control page uses (also in JavaScript strings) is defined in its styles (or set from JS)."""
     web = Path(__file__).parent.parent / "web"
-    text = "".join((web / name).read_text(encoding="utf-8") for name in ("control.html", "control.css", "control.js"))
+    files = [web / "control.html", web / "control.css", *sorted((web / "control").glob("*.js"))]
+    text = "".join(f.read_text(encoding="utf-8") for f in files)
     used = set(re.findall(r"var\(--([a-z0-9-]+)", text))
     defined = set(re.findall(r"--([a-z0-9-]+)\s*:", text))
     defined |= set(re.findall(r"setProperty\([\"']--([a-z0-9-]+)", text))      # set from JavaScript

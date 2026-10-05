@@ -8,6 +8,7 @@ Without a system keyring, the server-only mode opens the password vault with CAS
 """
 
 import argparse
+import os
 import signal
 import sys
 import threading
@@ -27,6 +28,8 @@ def parse_arguments(arguments: list[str] | None = None) -> argparse.Namespace:
                         help="nur den Server für die Overlays starten (kein Fenster, kein Tray)")
     parser.add_argument("--no-gpu", "--ohne-gpu", dest="no_gpu", action="store_true",
                         help="Grafikbeschleunigung aus (nur bei Problemen mit dem Grafiktreiber)")
+    parser.add_argument("--debug", action="store_true",
+                        help="für Entwickler: Entwicklerwerkzeuge des Fensters unter http://localhost:9222")
     parser.add_argument("--version", action="version", version=f"{APP_NAME} {VERSION}")
     known, _ = parser.parse_known_args(arguments)       # Qt/Chromium options are passed through
     return known
@@ -83,6 +86,8 @@ def main(arguments: list[str] | None = None) -> int:
     if sys.stdout:                               # a windowed build on Windows has no console at all
         sys.stdout.reconfigure(errors="replace")
     options = parse_arguments(arguments)
+    if options.debug:                            # Chrome/Edge → http://localhost:9222 (also used by tests/live)
+        os.environ.setdefault("QTWEBENGINE_REMOTE_DEBUGGING", "9222")
     if options.no_window:
         return run_server_only()
     from .desktop.app import run_desktop                 # Qt is only loaded for the desktop app

@@ -97,7 +97,7 @@ schnelle Klicks und über lange Sitzungen. Jedes gibt am Ende `OK: …` oder `PR
 mit Fehlercode 1. Vorher die App starten (unter Linux als root zusätzlich `QTWEBENGINE_DISABLE_SANDBOX=1`):
 
 ```
-QTWEBENGINE_REMOTE_DEBUGGING=9222 python -m casting_app
+python -m casting_app --debug          # = QTWEBENGINE_REMOTE_DEBUGGING=9222
 ```
 
 | Skript | Prüft |
@@ -363,8 +363,9 @@ kommen aus `tools/build.py` – wer sie ändert, muss `asset_suffix()` anpassen.
   aus den Overlays, z. B. aus OBS.
 * **Diagnose im Overlay:** Log-Reiter → „Diagnose in allen Overlays einblenden“. Zeigt Version, Zustand, Bilder und
   Videos direkt in der Browserquelle.
-* **Entwicklerwerkzeuge des App-Fensters:** die App mit `QTWEBENGINE_REMOTE_DEBUGGING=9222 python -m casting_app`
-  starten und in Chrome/Edge `http://localhost:9222` öffnen.
+* **Entwicklerwerkzeuge des App-Fensters:** die App mit `python -m casting_app --debug` starten (dasselbe wie
+  `QTWEBENGINE_REMOTE_DEBUGGING=9222`) und in Chrome/Edge `http://localhost:9222` öffnen. Fehler in der Steuerseite
+  zeigen auf `/control.js` – die Zeilen davor `// ===== control/<datei>.js =====` sagen, aus welcher Datei sie stammen.
 * **Overlays im normalen Browser:** `http://localhost:8787/overlay.html` oder eine einzelne Szene, z. B.
   `http://localhost:8787/players.html?preview=1`.
 

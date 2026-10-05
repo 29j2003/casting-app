@@ -64,7 +64,7 @@ Aufbau und Rezepte für Änderungen: `ENTWICKLUNG.md` (bei neuen Bausteinen dort
 - Einrichten: `pip install -e ".[test]"` (Python 3.11+); bauen zusätzlich `pip install -e ".[build]"`
 - Starten: `python -m casting_app` (Desktop-App) · `python -m casting_app --no-window` (nur Server)
 - Bauen: `python tools/build.py` → `dist/` (für das laufende System; PyInstaller, Windows-Installer `tools/installer.nsi`)
-- Tests: `xvfb-run -a python -m pytest` · Skripte gegen die laufende App (`QTWEBENGINE_REMOTE_DEBUGGING=9222 python -m casting_app`,
+- Tests: `xvfb-run -a python -m pytest` · Skripte gegen die laufende App (`python -m casting_app --debug`,
   als root zusätzlich `QTWEBENGINE_DISABLE_SANDBOX=1`): `tests/live/` (`transitions.py`, `flicker.py`, `fast_switching.py`, `memory.py`)
 - Szenen neu erzeugen: `python3 tools/generate_scenes.py`
 

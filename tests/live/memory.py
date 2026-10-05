@@ -3,7 +3,7 @@
     python tests/live/memory.py [rounds]          (default 8)
 
 Drives the control page inside the desktop app window (preview included) through DevTools, so the app
-must run with remote debugging: QTWEBENGINE_REMOTE_DEBUGGING=9222 python -m casting_app
+must run with remote debugging: python -m casting_app --debug
 
 Each round: 60 scene switches with random transitions, 10 DACH page switches, audio on/off. After each
 round (and a garbage collection) it measures JS heap, DOM elements and listeners of the control page and

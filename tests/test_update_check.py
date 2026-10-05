@@ -47,7 +47,7 @@ def test_foreign_links_are_not_offered(monkeypatch):
 
 def test_settings_are_saved_and_validated(tmp_path):
     settings = AppSettings(tmp_path)
-    assert settings.as_dict() == {"check_for_updates": True, "language": "de"}
+    assert settings.as_dict() == {"check_for_updates": True, "language": "de", "offer_password_vault": True}
     settings.update({"check_for_updates": False, "language": "en", "unknown": 1})
     settings.update({"language": "fr"})                  # not supported: ignored
-    assert AppSettings(tmp_path).as_dict() == {"check_for_updates": False, "language": "en"}
+    assert AppSettings(tmp_path).as_dict() == {"check_for_updates": False, "language": "en", "offer_password_vault": True}

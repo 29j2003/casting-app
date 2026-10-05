@@ -8,7 +8,6 @@ No other Casting-App may run on this PC during the test.
 
 import itertools
 import json
-import os
 import ssl
 import subprocess
 import sys
@@ -30,14 +29,6 @@ from casting_app.paths import DATA_DIR
 ROOT = Path(__file__).resolve().parent.parent
 _RESULT_NUMBERS = itertools.count(1)
 CLOSE_BUTTONS = "[...document.querySelectorAll('.frage:not(#frage) button')].map(b => b.textContent)"
-
-
-@pytest.fixture(scope="session")
-def qapp_args():
-    # only for the test: accept the self-made certificate of the HTTPS test page
-    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--ignore-certificate-errors"
-    desktop_app.prepare_qt()
-    return [sys.argv[0]]
 
 
 @pytest.fixture(scope="module")

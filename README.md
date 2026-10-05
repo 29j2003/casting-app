@@ -13,7 +13,9 @@ casting_app/                      Python-Paket (Code und Kommentare englisch)
  ├─ __main__.py                   Start: Desktop-App oder --no-window (nur Server)
  ├─ version.py                    Version (gleich in pyproject.toml und web/cast-kern.js)
  ├─ paths.py, app_log.py          Ordner der App, Log (log.txt + Reiter „Log“)
- ├─ secret_store.py               FACEIT-Key, DACH-CS-ID/-Key – nur im Schlüsselbund des Systems
+ ├─ secret_store.py               FACEIT-Key, DACH-CS-ID/-Key, OBS-Passwort – nur im Schlüsselbund des Systems
+ ├─ password_vault.py             Passwort-Tresor für Systeme ohne Schlüsselbund
+ ├─ settings.py, update_check.py  App-Einstellungen (einstellungen.json), Suche nach neuer Version
  ├─ instance.py                   laufende Version erkennen, ältere ablösen
  ├─ server/                       HTTP-Server http://localhost:8787 (nur dieser PC)
  │   ├─ app_server.py             Prüfung jeder Anfrage, alle /api-Routen, Zustand, Bilder
@@ -61,8 +63,10 @@ bisher selbst. Der Ton für OBS (obs-websocket: Lautstärke, Stumm, Verzögerung
 
 FACEIT-Key, DACH-CS-Nutzer-ID und -Key liegen **nur im Schlüsselbund des Systems** (Paket `keyring`: Windows-Anmeldeinformations-
 verwaltung, macOS-Schlüsselbund, Linux Secret Service/KWallet), Dienstname „Casting-App“. Es gibt keine Geheimnis-Dateien.
-Ohne Schlüsselbund gelten sie nur für die laufende Sitzung (Hinweis im Log) – eine „verschlüsselte“ Datei mit danebenliegendem
-Schlüssel wäre nur scheinbar sicher. Sie stehen nie im Zustand, im Log, in Exporten oder API-Antworten (`/api/dach-zugang` meldet nur
+Ohne Schlüsselbund (manche Linux-Systeme) bietet die App einen Passwort-Tresor an (`password_vault.py`: Schlüssel per scrypt
+aus dem Passwort, Inhalt AES-GCM; das Passwort wird nie gespeichert) – sonst gelten sie nur für die laufende Sitzung. Eine
+„verschlüsselte“ Datei mit danebenliegendem Schlüssel wäre nur scheinbar sicher und gibt es deshalb nicht. Auch das
+**OBS-Passwort** liegt im Schlüsselbund; die obs-websocket-Anmeldung rechnet der Server aus (`/api/obs-anmeldung`). Sie stehen nie im Zustand, im Log, in Exporten oder API-Antworten (`/api/dach-zugang` meldet nur
 `idGesetzt`/`keyGesetzt`). Dateien aus 1.x (`faceit.schluessel`, `dach.schluessel` per DPAPI bzw. Base64, `dach.json`) werden beim
 ersten Start einmalig in den Schlüsselbund übernommen und gelöscht (DPAPI direkt über die Windows-API, ohne PowerShell).
 

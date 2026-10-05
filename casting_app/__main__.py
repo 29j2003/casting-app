@@ -3,17 +3,20 @@
     python -m casting_app                 desktop app (window, tray, server)
     python -m casting_app --no-window     server only, for OBS overlays (alias: --ohne-fenster)
     python -m casting_app --no-gpu        desktop app without graphics acceleration (alias: --ohne-gpu)
+
+Without a system keyring, the server-only mode opens the password vault with CASTING_APP_VAULT_PASSWORD.
 """
 
 import argparse
+import os
 import signal
 import sys
 import threading
 
-from . import instance, update_check
+from . import instance, password_vault, update_check
 from .app_log import AppLog
 from .paths import DATA_DIR, create_folders
-from .secret_store import SecretStore
+from .secret_store import SecretStore, system_keyring_or_none
 from .server.app_server import BASE_URL, CastingServer
 from .version import APP_NAME, VERSION
 
@@ -42,7 +45,8 @@ def run_server_only() -> int:
 
     quit_event = threading.Event()
     folders = create_folders()
-    server = CastingServer(folders, SecretStore(folders.data, log.write), log, on_quit_requested=quit_event.set)
+    server = CastingServer(folders, SecretStore(folders.data, log.write, keyring_backend=_secret_backend(folders.data, log)),
+                           log, on_quit_requested=quit_event.set)
     log.info(f"{APP_NAME} {VERSION} startet · Daten: {folders.data} · Videos: {folders.videos}")
     try:
         server.start()
@@ -61,6 +65,18 @@ def run_server_only() -> int:
     server.stop()
     log.info(f"{APP_NAME} beendet")
     return 0
+
+
+def _secret_backend(data_dir, log: AppLog):
+    """System keyring; without one, a password vault opened with CASTING_APP_VAULT_PASSWORD (if set)."""
+    password = os.environ.get("CASTING_APP_VAULT_PASSWORD")
+    if system_keyring_or_none() is not None or not password or not password_vault.is_available():
+        return "system"
+    try:
+        return password_vault.PasswordVault(data_dir, password)
+    except (password_vault.WrongPassword, ValueError):
+        log.warn("CASTING_APP_VAULT_PASSWORD öffnet den Schlüssel-Tresor nicht – Schlüssel gelten nur für diese Sitzung")
+        return "system"
 
 
 def _note_update(server: CastingServer, log: AppLog) -> None:

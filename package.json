@@ -1,6 +1,6 @@
 {
   "name": "casting-app",
-  "version": "1.9.7",
+  "version": "2.0.0",
   "description": "Casting-App – eine Datei, ein Fenster",
   "main": "server.js",
   "bin": "server.js",

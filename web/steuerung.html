@@ -875,7 +875,7 @@
             <label style="flex:1">Key<input type="text" id="dachKey" autocomplete="off" spellcheck="false" placeholder="Key einfügen …" style="-webkit-text-security: disc"></label>
             <button class="knopf" id="dachSpeichern">Speichern</button><button class="knopf" id="dachLoeschen">Löschen</button>
           </div>
-          <p class="klein" id="dachStatus">ID und Key findest du im DACH-CS-Nutzerbereich unter Casting → Browserquellen. Der Key wird verschlüsselt gespeichert und nie wieder angezeigt.</p>
+          <p class="klein" id="dachStatus">ID und Key findest du im DACH-CS-Nutzerbereich unter Casting → Browserquellen. Beide werden verschlüsselt gespeichert und nie wieder angezeigt.</p>
           <p class="klein" id="dachObsStatus">Alles läuft in deiner einen Browserquelle („Cast – Overlay“). Die Inhalte (Teams, Spielstand, Tabelle …) steuerst du im DACH-CS-Live-Dashboard – die App schaltet die Seiten um, setzt Kameras und Inhalt in die Rahmen und legt ihre Einblendungen darüber.</p>
           <details class="dach-rahmen-edit"><summary>Kamera- und Inhalts-Rahmen anpassen</summary>
             <div class="reihe" style="align-items:end"><label>Seite<select id="drSeite"></select></label>
@@ -1927,7 +1927,7 @@ async function fcSchluesselSetzen(k) {
   const j = await r.json().catch(() => ({}));
   $("fcKey").value = "";                                  // Feld sofort leeren – der Schlüssel steht nirgends mehr in der Seite
   await fcSchluesselStatus();
-  $("fcKeyStatus").textContent = r.ok ? "✓ Gespeichert. Der Schlüssel wird nicht wieder angezeigt." : (j.fehler || "Speichern fehlgeschlagen");
+  $("fcKeyStatus").textContent = r.ok ? (j.dauerhaft === false ? "✓ Gespeichert – nur für diese Sitzung (keine Verschlüsselung verfügbar)." : "✓ Verschlüsselt gespeichert. Der Schlüssel wird nicht wieder angezeigt.") : (j.fehler || "Speichern fehlgeschlagen");
 }
 $("fcKeySpeichern").onclick = () => { const k = $("fcKey").value.trim(); if (k) fcSchluesselSetzen(k); };
 $("fcKey").addEventListener("keydown", ev => { if (ev.key === "Enter") $("fcKeySpeichern").click(); });
@@ -3889,18 +3889,19 @@ const DACH_SZENEN = [
 const DACH_GRUPPEN = { vor: "Vor dem Spiel", im: "Im Spiel", stats: "Stats & Liga", pause: "Pause", nach: "Nach dem Spiel" };
 let dachModus = () => Z.theme === "dachcs-offiziell";
 const dachObsName = n => "DACH – " + n;
-let dachInfo = { userid: "", keyGesetzt: false };
+// Nutzer-ID und Key verlassen die App nie wieder – die Seite erfährt nur, OB sie gespeichert sind
+let dachInfo = { idGesetzt: false, keyGesetzt: false };
 async function dachInfoHolen() {
   try { dachInfo = await (await fetch("/api/dach-zugang", { cache: "no-store" })).json(); } catch (err) {}
-  $("dachId").value = dachInfo.userid || "";
+  $("dachId").value = ""; $("dachId").placeholder = dachInfo.idGesetzt ? "✓ gespeichert" : "z. B. 123";
   $("dachKey").value = ""; $("dachKey").placeholder = dachInfo.keyGesetzt ? "✓ Key gespeichert – zum Ersetzen neuen einfügen" : "Key einfügen …";
-  $("dachLoeschen").disabled = !dachInfo.userid && !dachInfo.keyGesetzt;
+  $("dachLoeschen").disabled = !dachInfo.idGesetzt && !dachInfo.keyGesetzt;
 }
 $("dachSpeichern").onclick = async () => {
   const r = await fetch("/api/dach-zugang", { method: "POST", body: JSON.stringify({ userid: $("dachId").value.trim(), key: $("dachKey").value.trim() }) });
   const j = await r.json().catch(() => ({}));
-  $("dachKey").value = "";                                     // Key sofort aus der Seite entfernen
-  $("dachStatus").textContent = r.ok ? `✓ Gespeichert (Nutzer-ID ${j.userid}${j.keyGesetzt ? ", Key verschlüsselt" : ", Key fehlt noch"}).` : (j.fehler || "Speichern fehlgeschlagen");
+  $("dachKey").value = ""; if (r.ok) $("dachId").value = "";    // ID und Key sofort aus der Seite entfernen
+  $("dachStatus").textContent = r.ok ? `✓ Gespeichert (${j.dauerhaft === false ? "nur für diese Sitzung" : "verschlüsselt"}${j.keyGesetzt ? "" : ", Key fehlt noch"}).` : (j.fehler || "Speichern fehlgeschlagen");
   dachInfoHolen();
 };
 $("dachKey").addEventListener("keydown", ev => { if (ev.key === "Enter") $("dachSpeichern").click(); });

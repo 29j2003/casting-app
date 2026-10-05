@@ -220,8 +220,8 @@
     if (!dachLayer) {
       dachLayer = document.createElement("div"); dachLayer.className = "dach-layer";
       dachLayer.innerHTML = '<iframe class="dach-page" scrolling="no" tabindex="-1"></iframe>'.repeat(3) + '<div class="dach-cams"></div>';
-      const preview = /[?&]preview=1/.test(location.search);
-      dachLayer.querySelectorAll("iframe").forEach(f => { f.setAttribute("sandbox", "allow-scripts allow-same-origin"); f.referrerPolicy = "no-referrer"; f.allow = preview ? "autoplay 'none'" : "autoplay"; });
+      // Videos der DACH-Seiten laufen immer; den Ton im App-Fenster regelt die App (stumm/Lautstärke), nie ein Neuladen
+      dachLayer.querySelectorAll("iframe").forEach(f => { f.setAttribute("sandbox", "allow-scripts allow-same-origin"); f.referrerPolicy = "no-referrer"; f.allow = "autoplay"; });
       document.body.insertBefore(dachLayer, document.body.firstChild);
       if (currentLayer) { currentLayer.remove(); currentLayer = null; }
     }
@@ -235,7 +235,7 @@
       const brand = fresh._brand;                              // nur der neueste Auftrag für diesen Rahmen zählt
       let done = false;
       const toggle = () => { dachChain = dachChain.then(async () => {   // Übergänge laufen nacheinander, nie gleichzeitig
-        if (done || fresh._brand !== brand || dachPage !== page || fresh.getAttribute("src") !== "/dach/" + page) return;
+        if (done || fresh._brand !== brand || dachPage !== page || fresh.getAttribute("src") !== window.CastCore.dachUrl(page)) return;
         done = true;
         if (fresh === dachActive) return;                      // zeigt diese Seite schon – kein Übergang auf sich selbst
         const S = (C().Z || Z).broadcast || {}, previous = dachActive, kind = previous ? (S.transition || "fade") : "cut", d = Math.max(0, +S.duration || 0);
@@ -244,11 +244,11 @@
         all.forEach(x => { if (x !== fresh) { x.classList.remove("on"); x.style.zIndex = ""; } });
         fresh.style.zIndex = ""; dachActive = fresh; dachRunning = null;
         all.forEach(x => { if (x === fresh) return; const m = x._brand;
-          x._clear = setTimeout(() => { if (x._brand === m && x !== dachActive && x.getAttribute("src") !== "/dach/" + dachPage) x.src = "about:blank"; }, 300); });
+          x._clear = setTimeout(() => { if (x._brand === m && x !== dachActive && x.getAttribute("src") !== window.CastCore.dachUrl(dachPage)) x.src = "about:blank"; }, 300); });
       }).catch(() => {}); };
-      fresh.onload = () => { if (fresh.getAttribute("src") === "/dach/" + page) setTimeout(toggle, 600); };   // erst zeigen, wenn DIESE Seite geladen ist
+      fresh.onload = () => { if (fresh.getAttribute("src") === window.CastCore.dachUrl(page)) setTimeout(toggle, 600); };   // erst zeigen, wenn DIESE Seite geladen ist
       setTimeout(toggle, 6000);                                 // spätestens nach 6 s
-      fresh.src = "/dach/" + page;
+      fresh.src = window.CastCore.dachUrl(page);
     }
     // Rahmen von Hand verschoben (gleiche Seite): sofort übernehmen
     else dachFrameSet(Z, page, 0);

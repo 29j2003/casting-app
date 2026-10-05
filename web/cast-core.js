@@ -18,9 +18,39 @@ window.CastCore = (function () {
   "use strict";
 
   const KEY = "cast-state-v1";
-  const VERSION = "2.2.1";                     // muss zur App passen – sonst lädt sich die Seite neu
+  const VERSION = "2.3.0";                     // muss zur App passen – sonst lädt sich die Seite neu
   // Läuft die Seite über den Server der App (http://localhost:8787)?
   const SERVER = /^https?:$/.test(location.protocol) && location.port === "8787" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+
+  // Zugangsschlüssel der App: kommt einmal in der Adresse (?access=…, App-Fenster bzw. OBS-Quelle), bleibt für
+  // diesen Tab in sessionStorage (gilt auch für Szenen und Vorschau darin) und verschwindet aus der Adresszeile.
+  // Jede Anfrage an /api/… bekommt ihn als Kopfzeile mit; ohne ihn liefert der Server nur, was ein Overlay braucht.
+  const ACCESS = (() => {
+    if (!SERVER) return "";
+    try {
+      const u = new URL(location.href), a = u.searchParams.get("access");
+      if (a) {
+        sessionStorage.setItem("casting-access", a);
+        u.searchParams.delete("access");
+        history.replaceState(history.state, "", u.pathname + u.search + u.hash);
+        return a;
+      }
+      return sessionStorage.getItem("casting-access") || "";
+    } catch (e) { return ""; }
+  })();
+  if (ACCESS && !window.__castingFetch) {
+    window.__castingFetch = window.fetch;
+    window.fetch = (input, init) => {
+      if (typeof input === "string" && input.startsWith("/api/")) {
+        init = Object.assign({}, init);
+        init.headers = Object.assign({}, init.headers, { "X-Casting-Access": ACCESS });
+      }
+      return window.__castingFetch(input, init);
+    };
+  }
+  // Adresse für eine eigene Seite mit Schlüssel (OBS-Quellen, DACH-Rahmen)
+  const withAccess = path => path + (ACCESS ? (path.includes("?") ? "&" : "?") + "access=" + encodeURIComponent(ACCESS) : "");
+  const dachUrl = page => withAccess("/dach/" + page);
 
 
   // Feste Texte der Overlays in beiden Sprachen (⚙ App-Einstellungen → Sprache der Overlays).
@@ -665,5 +695,5 @@ window.CastCore = (function () {
     return e.until && e.until > now ? e.until : 0;
   }
 
-  return { VERSION, SERVER, GFX_POSITIONS, GFX_DEFAULT_POS, OVERLAY_TEXTS, OVERLAY_WORDS, word, overlayLanguageSet, split, gfxVisible, gfxNextSwitch, DACH_PAGES, DACH_FRAME, dachFrame, tournamentBuild, swissDraw, resolve, Images, cssUrl, DEFAULT, KEY, clone, merge, load, save, savedRevision, channel, timerRest, time };
+  return { VERSION, SERVER, ACCESS, withAccess, dachUrl, GFX_POSITIONS, GFX_DEFAULT_POS, OVERLAY_TEXTS, OVERLAY_WORDS, word, overlayLanguageSet, split, gfxVisible, gfxNextSwitch, DACH_PAGES, DACH_FRAME, dachFrame, tournamentBuild, swissDraw, resolve, Images, cssUrl, DEFAULT, KEY, clone, merge, load, save, savedRevision, channel, timerRest, time };
 })();

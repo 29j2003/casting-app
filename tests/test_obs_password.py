@@ -35,14 +35,23 @@ def obs_login_answer(password: str, salt: str, challenge: str) -> str:
 class FakeObs:
     """Minimal obs-websocket server that only accepts the right password."""
 
-    def __init__(self):
+    def __init__(self, sources: dict | None = None):
         self.logins = []                       # True/False per login attempt
+        self.sources = dict(sources or {})     # browser sources: name -> url
+        self.changed = {}                      # SetInputSettings: name -> new url
         self._loop = asyncio.new_event_loop()
         threading.Thread(target=self._loop.run_forever, daemon=True).start()
         asyncio.run_coroutine_threadsafe(self._start(), self._loop).result(5)
 
     async def _start(self):
         self._server = await websockets.serve(self._connection, "127.0.0.1", OBS_PORT)
+
+    def stop(self) -> None:
+        """Free the port for the next test."""
+        async def close():
+            self._server.close()
+            await self._server.wait_closed()
+        asyncio.run_coroutine_threadsafe(close(), self._loop).result(5)
 
     async def _connection(self, socket):
         salt, challenge = "salzig", "herausforderung"
@@ -56,8 +65,15 @@ class FakeObs:
         await socket.send(json.dumps({"op": 2, "d": {"negotiatedRpcVersion": 1}}))
         async for raw in socket:
             request = json.loads(raw)["d"]
-            await socket.send(json.dumps({"op": 7, "d": {"requestType": request["requestType"], "requestId": request["requestId"],
-                                                         "requestStatus": {"result": True, "code": 100}, "responseData": {}}}))
+            kind, data, answer = request["requestType"], request.get("requestData") or {}, {}
+            if kind == "GetInputList":
+                answer = {"inputs": [{"inputName": n, "inputKind": "browser_source"} for n in self.sources]}
+            elif kind == "GetInputSettings":
+                answer = {"inputSettings": {"url": self.sources.get(data.get("inputName"), ""), "is_local_file": False}}
+            elif kind == "SetInputSettings" and "url" in (data.get("inputSettings") or {}):
+                self.changed[data["inputName"]] = self.sources[data["inputName"]] = data["inputSettings"]["url"]
+            await socket.send(json.dumps({"op": 7, "d": {"requestType": kind, "requestId": request["requestId"],
+                                                         "requestStatus": {"result": True, "code": 100}, "responseData": answer}}))
 
 
 @pytest.fixture(scope="module")
@@ -76,7 +92,7 @@ def test_server_answers_obs_login_without_revealing_the_password(server):
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
         page = browser.new_page()
-        page.goto("http://localhost:8787/control.html")
+        page.goto(f"http://localhost:8787/control.html?access={server.access_key}")
         answer = page.evaluate("""async () => {
             const before = await (await fetch('/api/obs-auth', { method: 'POST', body: JSON.stringify({ salt: 's', challenge: 'c' }) })).status;
             await fetch('/api/obs-password', { method: 'POST', body: JSON.stringify({ password: 'abc' }) });
@@ -97,7 +113,7 @@ def test_control_page_logs_in_to_obs_with_password_from_keyring(server):
         browser = playwright.chromium.launch()
         page = browser.new_page()
         # an old version kept the password in the browser: it must move into the keyring
-        page.goto("http://localhost:8787/control.html")
+        page.goto(f"http://localhost:8787/control.html?access={server.access_key}")
         page.evaluate(f"localStorage.setItem('cast-verbindung', JSON.stringify({{ port: {OBS_PORT}, passwort: '{OBS_PASSWORD}' }}))")
         page.reload()
         page.wait_for_function("() => document.getElementById('obsPassword').placeholder === '✓ gespeichert'", timeout=10_000)
@@ -105,6 +121,28 @@ def test_control_page_logs_in_to_obs_with_password_from_keyring(server):
         page.wait_for_function("() => channel.obs && channel.obs.isOpen", timeout=15_000)
         storage = page.evaluate("JSON.stringify(localStorage)")
         browser.close()
+    obs.stop()
     assert True in obs.logins, "OBS hat die Anmeldung nicht angenommen"
     assert OBS_PASSWORD not in storage, "das Passwort darf nicht mehr im Browser-Speicher stehen"
     assert server.secrets.get("obs-password") == OBS_PASSWORD
+
+
+def test_old_obs_sources_get_the_access_key_after_asking(server):
+    """Browser sources of an older version (no key) are updated only after the user confirms – others stay untouched."""
+    server.secrets.set("obs-password", OBS_PASSWORD)
+    obs = FakeObs({"Cast – Overlay": "http://localhost:8787/overlay.html", "Fremd": "https://example.com/widget"})
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page()
+        page.goto(f"http://localhost:8787/control.html?access={server.access_key}")
+        page.evaluate(f"localStorage.setItem('cast-verbindung', JSON.stringify({{ port: {OBS_PORT} }}))")
+        page.reload()                                                          # the key stays for the tab
+        page.wait_for_function("() => typeof channel !== 'undefined' && channel.obs && channel.obs.isOpen", timeout=15_000)
+        page.wait_for_function("() => !document.getElementById('question').hidden", timeout=10_000)
+        assert "Cast – Overlay" in page.inner_text("#questionList") and "Fremd" not in page.inner_text("#questionList")
+        assert server.access_key not in page.inner_text("#question")          # the key is never shown
+        page.click("#questionYes")
+        page.wait_for_timeout(1000)
+        browser.close()
+    obs.stop()
+    assert obs.changed == {"Cast – Overlay": f"http://localhost:8787/overlay.html?access={server.access_key}"}

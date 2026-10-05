@@ -12,8 +12,10 @@ are kept as aliases: see LEGACY_PAGES and the last entries of _api_routes().
 
 import base64
 import hashlib
+import hmac
 import json
 import re
+import secrets
 import socket
 import threading
 import time
@@ -60,6 +62,16 @@ DACH_MISSING_PAGE = ('<body style="margin:0;background:transparent;font:600 28px
 # shown in OBS instead of the DACH page, in the overlay language of the cast
 DACH_MISSING_TEXT = {"de": "DACH-CS-Zugang fehlt – in der Casting-App unter Setup → Aussehen eintragen",
                      "en": "DACH CS access missing – enter it in the Casting-App under Setup → Appearance"}
+DACH_NO_ACCESS_TEXT = {"de": "Diese Browserquelle braucht den Zugangsschlüssel der App – Casting-App mit OBS verbinden und „Umstellen“ wählen",
+                       "en": "This browser source needs the app's access key – connect the Casting-App to OBS and choose “Update”"}
+
+# The access key: only pages that know it (the app window, OBS sources set up by the app) may read or change
+# anything beyond what an overlay needs. It travels as ?access=… (page addresses, /dach/…) or as the
+# X-Casting-Access header (fetch from the pages, see cast-core.js). Without it a program on this PC gets nothing.
+ACCESS_HEADER = "X-Casting-Access"
+# /api paths an overlay in OBS needs – open without the key (nothing secret, nothing that changes the cast)
+OPEN_API = {("GET", "/api/ping"), ("GET", "/api/events"), ("GET", "/api/ereignisse"), ("GET", "/api/state"),
+            ("POST", "/api/report"), ("POST", "/api/quit"), ("POST", "/api/beenden")}
 OVERLAY_LANGUAGE = re.compile(r'"overlayLanguage"\s*:\s*"(de|en)"')
 
 
@@ -92,6 +104,7 @@ class CastingServer:
         self._servers: list[ThreadingHTTPServer] = []
         self._log_message_times: list[float] = []
         self._routes = self._api_routes()
+        self.access_key = self._load_access_key()
 
         self._state_file = folders.data / "state.json"
         self._state_lock = threading.Lock()
@@ -255,7 +268,7 @@ class CastingServer:
 
         dach_match = re.match(r"^/dach/([a-z0-9_]{2,30})$", path)
         if dach_match and request.command == "GET":
-            return self._redirect_to_dach(request, dach_match.group(1), fetch_site)
+            return self._redirect_to_dach(request, dach_match.group(1), fetch_site, query)
 
         # 3) everything else: only our own pages, no websites from the internet
         if (fetch_site and fetch_site not in SAME_SITE) or (origin and origin not in ALLOWED_ORIGINS):
@@ -263,15 +276,45 @@ class CastingServer:
         request.extra_headers = {"X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer"}
 
         if path.startswith("/api/"):
+            open_path = (request.command, path) in OPEN_API or (
+                request.command == "GET" and re.match(r"^/api/image/[a-z0-9]{4,40}$", path))
+            if not open_path and not self.has_access(request, query):
+                return request.send_json(403, {"error": "kein Zugang"})
             return self._route_api(request, path, query)
         return self._serve_file(request, path)
 
-    def _redirect_to_dach(self, request, page: str, fetch_site: str | None) -> None:
-        """Forward OBS/the preview to the official DACH CS browser source (ID and key added here only)."""
+    def has_access(self, request, query: dict) -> bool:
+        """True if the request carries the access key (header from the pages, or ?access= in an address)."""
+        given = request.headers.get(ACCESS_HEADER) or query.get("access") or ""
+        return hmac.compare_digest(given.encode(), self.access_key.encode())
+
+    def _load_access_key(self) -> str:
+        """The access key from the keyring (or vault); a new one is created on the first start.
+
+        Without a keyring it lives for this session only – the control page then offers to update the OBS sources.
+        """
+        key = self.secrets.get(secret_store.ACCESS_KEY)
+        if key:
+            return key
+        key = secrets.token_urlsafe(32)
+        try:
+            self.secrets.set(secret_store.ACCESS_KEY, key)
+        except OSError:
+            self.log.warn("Zugangsschlüssel konnte nicht gespeichert werden – gilt nur bis zum Beenden")
+        return key
+
+    def _redirect_to_dach(self, request, page: str, fetch_site: str | None, query: dict) -> None:
+        """Forward OBS/the preview to the official DACH CS browser source (ID and key added here only).
+
+        Only with the app's access key: the redirect address contains the DACH ID and key.
+        """
         if fetch_site and fetch_site not in SAME_SITE:
             return request.send_plain(403)
         if page not in DACH_PAGES:
             return request.send_json(404, {"error": "unbekannte DACH-CS-Seite"})
+        if not self.has_access(request, query):
+            page_text = DACH_MISSING_PAGE.replace("{text}", DACH_NO_ACCESS_TEXT[self.overlay_language()])
+            return request.send_body(403, page_text.encode(), "text/html; charset=utf-8")
         user_id, key = self.secrets.get(secret_store.DACH_USER_ID), self.secrets.get(secret_store.DACH_KEY)
         if not user_id or not key:
             page_text = DACH_MISSING_PAGE.replace("{text}", DACH_MISSING_TEXT[self.overlay_language()])

@@ -77,7 +77,7 @@ python -m casting_app --no-window                 # nur der Server (Overlays in 
 ```
 
 Die Dateien in `web/` liest der Server bei jeder Anfrage neu. Nach einer Änderung dort reicht ein Neuladen der Seite.
-Am bequemsten ist die Steuerseite im normalen Browser (`http://localhost:8787/control.html`, F5); das App-Fenster
+Am bequemsten ist die Steuerseite im normalen Browser (⚙ App-Einstellungen → „Steuerseite im Browser öffnen“, dann F5); das App-Fenster
 lädt sie beim nächsten Start neu. Änderungen an Python brauchen einen Neustart der App.
 
 | Test | Wann |
@@ -251,13 +251,32 @@ Datei mit danebenliegendem Schlüssel wäre nur scheinbar sicher und gibt es des
 * Dateien aus 1.x (`faceit.schluessel`, `dach.schluessel` per DPAPI bzw. Base64, `dach.json`) werden beim ersten Start
   einmalig in den Schlüsselbund übernommen und gelöscht.
 * Im Repository liegen keine Zugangsdaten. Die CI liest den SignPath-Token nur aus den GitHub-Secrets.
+* **Zugangsschlüssel (ab 2.3):** Beim ersten Start erzeugt der Server einen Zufallsschlüssel (`access-key` im
+  Schlüsselbund). Ohne ihn liefert er nur, was ein Overlay braucht (`OPEN_API` in `app_server.py`: Zustand lesen,
+  Live-Verbindung, Bilder, Meldungen, Ping, Beenden) – kein `/dach/…`, keine OBS-Anmeldung, keine Änderung, keine
+  Tokens oder Pfade. So kommt auch ein Programm auf diesem PC, das Browser-Kopfzeilen fälscht, an nichts heran.
+  - Das App-Fenster lädt `control.html?access=…`; `cast-core.js` merkt sich den Schlüssel für den Tab (`sessionStorage`),
+    entfernt ihn aus der Adresse und hängt ihn an jede `/api/…`-Anfrage (Kopfzeile `X-Casting-Access`).
+  - OBS-Quellen bekommen ihn in der Adresse („In OBS anlegen“). Ältere Quellen ohne Schlüssel findet die Steuerseite
+    beim Verbinden mit OBS und stellt sie nach Rückfrage um (`accessCheck`).
+  - Ohne Fenster steht die Adresse mit Schlüssel nur in der Konsole, nie im Log.
+  - Neue Route, die ein Overlay ohne Schlüssel braucht → in `OPEN_API` eintragen (nur, wenn nichts Geheimes drin ist).
+  - Tests: `server.access_key`; Live-Skripte lesen ihn aus dem App-Fenster (`tests/live/common.py`).
 * **Grenzen:** DACH CS nimmt ID und Key nur als URL-Parameter an. `/dach/<page>` leitet deshalb mit beiden weiter
   (`no-store`, `no-referrer`, nicht geloggt); die Adresse steht danach im iframe in OBS bzw. im App-Fenster.
-  Der Server prüft Adresse, Host, `Origin` und `Sec-Fetch-Site`, aber kein Passwort: Ein Programm auf **diesem PC**, das
-  Browser-Kopfzeilen fälscht, käme an `/dach/…` und `/api/obs-auth`. Programme unter demselben Nutzerkonto können
-  ohnehin den Schlüsselbund lesen – dagegen schützt keine App.
+  Programme unter demselben Nutzerkonto können den Schlüsselbund (und damit auch den Zugangsschlüssel) lesen –
+  dagegen schützt keine App, das ist die Grenze des Betriebssystems.
 * Die Vorschau bekommt Zustand und Live-Daten per `postMessage(…, location.origin)` – nie eine fremde Seite.
 * FACEIT-Abfragen folgen keiner Weiterleitung (der Key ginge sonst an den Ziel-Host mit).
+
+### Privatsphäre (E-Mail-Adressen)
+
+Commits tragen die E-Mail-Adresse des Autors – im öffentlichen Repository für alle sichtbar. Deshalb:
+* GitHub → Settings → Emails: „Keep my email addresses private“ und „Block command line pushes that expose my email“ an.
+* Lokal `git config user.email "<id>+<name>@users.noreply.github.com"` (die Adresse steht auf derselben GitHub-Seite).
+* `tools/check_privacy.py` (CI-Job `privacy`) schlägt fehl, sobald ein Commit eine andere als eine noreply-Adresse
+  trägt oder eine Datei eine E-Mail-Adresse enthält; die Adresse selbst gibt es nie aus. `KNOWN_OLD_COMMITS` nennt den
+  einen Commit von vor dieser Prüfung.
 
 ## Bauen und signieren
 

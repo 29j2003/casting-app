@@ -28,13 +28,19 @@ def server(tmp_path_factory):
     app_server = CastingServer(folders, SecretStore(folders.data, log.write, keyring_backend=MemoryKeyring()), log,
                                on_quit_requested=lambda: None)
     app_server.start()
+    ACCESS["key"] = app_server.access_key
     yield app_server
     app_server.stop()
 
 
-def request(method, path, body=None, headers=None, host="localhost:8787"):
+ACCESS = {}          # the server's access key (set by the fixture)
+
+
+def request(method, path, body=None, headers=None, host="localhost:8787", access=True):
+    """One request like the app's own pages make it (with the access key) – access=False: like a foreign program."""
     connection = http.client.HTTPConnection("127.0.0.1", 8787, timeout=5)
-    connection.request(method, path, body=body, headers={"Host": host, **(headers or {})})
+    key = {"X-Casting-Access": ACCESS.get("key", "")} if access else {}
+    connection.request(method, path, body=body, headers={"Host": host, **key, **(headers or {})})
     answer = connection.getresponse()
     data = answer.read()
     connection.close()
@@ -111,8 +117,9 @@ def test_game_state_needs_token(server):
 def test_obs_login_only_for_the_control_page(server):
     server.secrets.set("obs-password", "geheim-obs-123")
     challenge = json.dumps({"salt": "s", "challenge": "c"})
-    assert request("POST", "/api/obs-auth", challenge)[0] == 403              # a program without browser headers
     own_page = {"Origin": "http://localhost:8787", "Sec-Fetch-Site": "same-origin"}
+    assert request("POST", "/api/obs-auth", challenge)[0] == 403              # a program without browser headers
+    assert request("POST", "/api/obs-auth", challenge, headers=own_page, access=False)[0] == 403   # forged, no key
     status, _, body = request("POST", "/api/obs-auth", challenge, headers=own_page)
     assert status == 200 and "authentication" in json.loads(body)
     server.secrets.delete("obs-password")
@@ -148,7 +155,20 @@ def test_dach_notice_follows_the_overlay_language(server):
     server.secrets.delete("dach-user-id")
     newer = int(time.time() * 1000) * 10 + 100
     request("POST", "/api/state", json.dumps({"revision": newer, "overlayLanguage": "en"}))
-    status, _, body = request("GET", "/dach/pause")
+    status, _, body = request("GET", "/dach/pause", access=False)               # an old OBS source without the key
+    assert status == 403 and b"needs the app's access key" in body
+    status, _, body = request("GET", "/dach/pause?access=" + ACCESS["key"], access=False)
     assert status == 409 and b"DACH CS access missing" in body
     request("POST", "/api/state", json.dumps({"revision": newer + 1, "overlayLanguage": "de"}))
     assert "DACH-CS-Zugang fehlt" in request("GET", "/dach/pause")[2].decode()
+
+
+def test_without_the_access_key_only_what_an_overlay_needs(server):
+    """A program on this PC without the key can neither read secrets nor change anything."""
+    for method, path in [("POST", "/api/state"), ("GET", "/api/gsi-info"), ("GET", "/api/gsi-cfg"), ("GET", "/api/log"),
+                         ("GET", "/api/dach-access"), ("POST", "/api/faceit-key"), ("GET", "/api/folder-list?path=/"),
+                         ("GET", "/api/app-settings"), ("POST", "/api/image/abcd1234"), ("GET", "/api/faceit/data/v4/matches/x")]:
+        assert request(method, path, "{}", access=False)[0] == 403, path
+    assert request("GET", "/api/state", access=False, headers={"X-Casting-Access": "falsch"})[0] == 200   # overlays read the state
+    assert request("GET", "/api/ping", access=False)[0] == 200
+    assert request("GET", "/overlay.html", access=False)[0] == 200

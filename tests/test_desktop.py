@@ -41,6 +41,14 @@ def desktop(qapp):
         app.quit("Testende")
 
 
+def _wait_for_volume(qtbot, frame, inspect: str, expected: float, seconds: float = 3) -> None:
+    """Wait until the frame plays at `expected` volume (the factor reaches frames asynchronously)."""
+    for _ in range(int(seconds * 10)):
+        if abs((run_js(qtbot, frame, inspect) or 0) - expected) < 1e-6:
+            return
+        qtbot.wait(100)
+
+
 def run_js(qtbot, target, code: str, world=0):
     """Run JavaScript in a page or frame and wait for the result."""
     box = {}
@@ -131,7 +139,10 @@ def test_app_window_audio_is_off_by_default_and_regulates_foreign_frames(qtbot, 
             f.id = 'fremd'; f.src = {json.dumps(https_url)}; d.body.appendChild(f); }})()""")
         frame = _wait_for_frame(qtbot, page, https_url)
         run_js(qtbot, page, "(() => { if (!ui.appAudio) $('appAudio').click(); const r = $('appAudioVol'); r.value = 40; r.dispatchEvent(new Event('input')); })()")
-        qtbot.wait(500)
+        # Python hands the new factor to every frame asynchronously – wait for it instead of a fixed pause
+        inspect = "window[Symbol.for('casting-app-volume')].inspect(document.querySelector('video')).actualVolume"
+        run_js(qtbot, frame, "document.querySelector('video').volume = 0.5")
+        _wait_for_volume(qtbot, frame, inspect, 0.2)
         assert not page.isAudioMuted()
         measured = run_js(qtbot, frame, """(() => { const v = document.querySelector('video'); v.volume = 0.5;
             const c = new AudioContext(); c.createOscillator().connect(c.destination);
@@ -140,9 +151,7 @@ def test_app_window_audio_is_off_by_default_and_regulates_foreign_frames(qtbot, 
         assert frame_origin.startswith("https://127.0.0.1"), "Rahmen muss fremd (cross-origin) sein"
         assert page_value == 0.5 and abs(audible - 0.2) < 1e-6 and abs(context_gain - 0.4) < 1e-6
         run_js(qtbot, page, "(() => { const r = $('appAudioVol'); r.value = 100; r.dispatchEvent(new Event('input')); })()")
-        qtbot.wait(400)
-        audible = run_js(qtbot, frame, "window[Symbol.for('casting-app-volume')].inspect(document.querySelector('video')).actualVolume")
-        assert abs(audible - 0.5) < 1e-6
+        _wait_for_volume(qtbot, frame, inspect, 0.5)
         run_js(qtbot, page, "$('appAudio').click()")
         qtbot.wait(300)
         assert page.isAudioMuted()

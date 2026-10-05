@@ -53,7 +53,10 @@ def run_server_only() -> int:
     except OSError as error:
         print(f"Port belegt: {error}", file=sys.stderr)
         return 1
-    print(f"{APP_NAME} {VERSION} läuft ohne Fenster: {BASE_URL} · Overlays: {BASE_URL}/overlay.html", flush=True)
+    # only on the console (never in the log): the addresses with the access key
+    print(f"{APP_NAME} {VERSION} läuft ohne Fenster.\n"
+          f"  Steuerseite: {BASE_URL}/control.html?access={server.access_key}\n"
+          f"  Overlay für OBS: {BASE_URL}/overlay.html?access={server.access_key}", flush=True)
     if server.settings.get("check_for_updates"):
         threading.Thread(target=_note_update, args=(server, log), name="update-check", daemon=True).start()
     signal.signal(signal.SIGTERM, lambda *_: quit_event.set())

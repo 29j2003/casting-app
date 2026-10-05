@@ -580,16 +580,14 @@
     });
   }
   setInterval(() => { $$(".cam[data-source] iframe").forEach(f => { f._vol = null; }); audioApply(); }, 3000);
-  // App-Fenster: eigene Videos/Audios direkt regeln, fremde Seiten (Clips, VDO, DACH) ohne Freigabe stumm halten
+  // Vorschau: eigene Videos/Audios direkt regeln, fremde Seiten (Clips, VDO, DACH) über Lautstärke-Nachricht.
+  // Nie neu laden – Bild und Videos laufen weiter, nur der Ton geht an/aus. Im App-Fenster schaltet die App
+  // zusätzlich die ganze Seite stumm (wirkt auch in fremden Seiten).
   function previewAudio() {
     if (!PREVIEW) return;
-    const on = monitorOn(), vol = Math.max(0, Math.min(1, monitor.vol / 100));
+    const on = monitorOn(), vol = on ? Math.max(0, Math.min(1, monitor.vol / 100)) : 0;
     $$("video, audio").forEach(m => { if (m._audio) return; m.muted = !on; m.volume = vol; });
-    $$("iframe").forEach(f => {
-      const should = on ? "autoplay" : "autoplay 'none'";
-      if (f.getAttribute("allow") !== should) { f.setAttribute("allow", should); if (f.src && !/about:blank$/.test(f.src)) f.src = f.src; }
-      if (on) try { f.contentWindow.postMessage({ volume: vol }, "*"); } catch (e) {}
-    });
+    $$("iframe").forEach(f => { if (f.closest(".cam[data-source]")) return; try { f.contentWindow.postMessage({ volume: vol }, "*"); } catch (e) {} });
   }
   if (PREVIEW) setInterval(previewAudio, 1000);
 
@@ -605,7 +603,6 @@
         if (!p.has("cleanoutput")) p.set("cleanoutput", "");
         if (Q.adjust !== "whole" && !p.has("cover")) p.set("cover", "");
         if (Q.audio === false && !p.has("noaudio")) p.set("noaudio", "");
-        if (PREVIEW && !monitorOn() && !p.has("noaudio")) p.set("noaudio", "");     // Vorschau: nur mit Abhören hörbar
         const delayMs = +audioSettings(key).delay || 0;
         if (delayMs > 0) p.set("buffer", String(Math.round(delayMs)));          // Bild + Ton verzögern (z. B. passend zum Spiel)
         return url.toString().replace(/=(&|$)/g, "$1");
@@ -684,7 +681,7 @@
   function sources() {
     $$(".cam[data-source]").forEach(k => {
       const Q = ((Z.sources || {})[k.dataset.source]) || { type: "empty" };
-      const keyName = JSON.stringify([Q, !!(Z.speaker || {}).on, Q.type === "link" ? +audioSettings(k.dataset.source).delay || 0 : 0, PREVIEW && Q.type === "link" ? monitorOn() : 0]);
+      const keyName = JSON.stringify([Q, !!(Z.speaker || {}).on, Q.type === "link" ? +audioSettings(k.dataset.source).delay || 0 : 0]);
       if (k._source === keyName) return;
       k._source = keyName;
       const oldSource = k.querySelector(".cam-source");
@@ -1063,8 +1060,7 @@
     if (d && d.cast === "state" && d.z) { Z = rawState = K.merge(K.clone(K.DEFAULT), d.z); receivedFrom = "Vorschau der Steuerseite"; receivedUm = Date.now(); draw(); }
     if (d && d.cast === "live") { liveData = d.live; liveDraw(); }
     if (d && d.cast === "monitor") {
-      const before = monitorOn(); monitor = { mode: d.mode || "off", vol: +d.vol || 0 }; audioctx(); audioApply(); previewAudio();
-      if (before !== monitorOn()) { $$(".cam").forEach(k => { k._cacheKey = null; }); $$(".dach-page").forEach(f => { f.allow = monitorOn() ? "autoplay" : "autoplay 'none'"; if (f.src && !f.src.endsWith("about:blank")) f.src = f.src; }); newDraw(); }
+      monitor = { mode: d.mode || "off", vol: +d.vol || 0 }; audioctx(); audioApply(); previewAudio();   // nichts neu laden
     }
   });
 

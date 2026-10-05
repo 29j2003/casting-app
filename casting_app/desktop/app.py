@@ -70,7 +70,9 @@ class DesktopApp(QObject):
         qt_app.setWindowIcon(icon)
         from .web_page import create_profile        # needs the QApplication
         self._profile = create_profile(WINDOW_STORAGE, self)
-        self.window = MainWindow(self._profile, f"{BASE_URL}/control.html", icon, DATA_DIR / "window.json")
+        # the control page gets the access key once in its address (it keeps it for the tab and removes it from the address)
+        address = f"{BASE_URL}/control.html" + (f"?access={server.access_key}" if server else "")
+        self.window = MainWindow(self._profile, address, icon, DATA_DIR / "window.json")
         self.tray = TrayIcon(QIcon(str(WEB_DIR / "media" / "app-logo-32.png")), self)
 
         self.window.quit_requested.connect(lambda: self.quit("Über das Fenster-Kreuz beendet"))

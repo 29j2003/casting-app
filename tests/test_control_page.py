@@ -60,7 +60,7 @@ def watch(page) -> list[str]:
 def test_every_area_and_button_of_the_control_page(server, browser):
     page = browser.new_page(viewport={"width": 1600, "height": 1000})
     errors = watch(page)
-    page.goto(f"{BASE_URL}/control.html")
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
     page.wait_for_timeout(1500)
     clicked = 0
     for target in page.eval_on_selector_all("#tabs button[data-target]", "l => l.map(b => b.dataset.target)"):
@@ -112,7 +112,7 @@ def test_control_page_in_english(server, browser):
     """App language English: the whole control page (all areas, settings, palette) shows no German text."""
     page = browser.new_page(viewport={"width": 1600, "height": 1000})
     errors = watch(page)
-    page.goto(f"{BASE_URL}/control.html")
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
     page.evaluate("localStorage.setItem('casting-app-language', 'en')")
     server.settings.update({"app_language": "en"})
     page.reload()
@@ -165,7 +165,7 @@ def test_scene_pages_load_without_errors(server, browser, scene):
 def test_overlay_switches_scenes_without_errors(server, browser):
     control, overlay = browser.new_page(), browser.new_page(viewport={"width": 1920, "height": 1080})
     control_errors, overlay_errors = watch(control), watch(overlay)
-    control.goto(f"{BASE_URL}/control.html")
+    control.goto(f"{BASE_URL}/control.html?access={server.access_key}")
     overlay.goto(f"{BASE_URL}/overlay.html")
     control.wait_for_timeout(1500)
     for scene in ("intro", "cast-duo", "players", "series", "sponsors", "end", "scoreboard", "bracket"):
@@ -179,7 +179,7 @@ def test_overlay_language_is_independent_of_the_app_language(server, browser):
     """Overlay language English with a German app: fixed overlay texts switch, own texts stay."""
     control, overlay = browser.new_page(), browser.new_page(viewport={"width": 1920, "height": 1080})
     errors = watch(control) + []
-    control.goto(f"{BASE_URL}/control.html")
+    control.goto(f"{BASE_URL}/control.html?access={server.access_key}")
     control.wait_for_timeout(1200)
     control.evaluate("Z.texts.endTitle = 'Bis morgen!'; send()")
     control.evaluate("document.querySelector('#overlayLanguage [data-language=en]').click()")
@@ -200,7 +200,7 @@ def test_every_graphic_appears_in_the_overlay_at_its_position(server, browser):
     control, overlay = browser.new_page(), browser.new_page(viewport={"width": 1920, "height": 1080})
     errors = watch(control) + []
     overlay_errors = watch(overlay)
-    control.goto(f"{BASE_URL}/control.html")
+    control.goto(f"{BASE_URL}/control.html?access={server.access_key}")
     control.wait_for_timeout(1200)
     overlay.goto(f"{BASE_URL}/cast-solo.html")
     overlay.wait_for_timeout(1000)
@@ -216,3 +216,34 @@ def test_every_graphic_appears_in_the_overlay_at_its_position(server, browser):
         assert "pos-tr" in shown["classes"] and float(shown["opacity"]) > 0
         assert shown["right"] < 200, f"Einblendung {kind} steht nicht rechts oben: {shown}"
     assert errors == [] and overlay_errors == []
+
+
+def test_dach_pages_keep_running_when_app_audio_changes(server, browser):
+    """DACH CS – official in the preview: videos may play, switching app audio reloads nothing, empty cam slots are black."""
+    page = browser.new_page(viewport={"width": 1920, "height": 1080})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/overlay.html?access={server.access_key}")      # stands in for the control page around the preview
+    page.wait_for_timeout(800)
+    page.evaluate("""(() => { const f = document.createElement('iframe'); f.id = 'p'; f.src = '/overlay.html?preview=1';
+        f.style.cssText = 'position:fixed;inset:0;width:1920px;height:1080px;z-index:99'; document.body.appendChild(f); })()""")
+    page.wait_for_timeout(1500)
+    page.evaluate("""(() => { const z = JSON.parse(JSON.stringify(CastCore.DEFAULT)); z.theme = 'dachcs-official';
+        z.broadcast.scene = 'dach-singlecast'; z.broadcast.active = true;
+        document.getElementById('p').contentWindow.postMessage({ cast: 'state', z }, location.origin); })()""")
+    page.wait_for_timeout(1500)
+    before = page.evaluate("""(() => { const d = document.getElementById('p').contentDocument;
+        const pages = [...d.querySelectorAll('.dach-page')];
+        pages.forEach(f => { f._loads = 0; f.addEventListener('load', () => f._loads++); });
+        return { allow: pages.map(f => f.getAttribute('allow')), src: pages.map(f => f.getAttribute('src')),
+                 cams: [...d.querySelectorAll('.dach-cam')].map(k => getComputedStyle(k).backgroundColor) }; })()""")
+    assert before["allow"] == ["autoplay"] * 3, "DACH-Seiten dürfen Videos abspielen"
+    assert any(s and "/dach/singlecast" in s for s in before["src"])
+    assert before["cams"] and all(c == "rgb(0, 0, 0)" for c in before["cams"]), f"leere Kamera-Rahmen müssen schwarz sein: {before['cams']}"
+    for mode in ("app", "off", "app"):
+        page.evaluate(f"document.getElementById('p').contentWindow.postMessage({{ cast: 'monitor', mode: '{mode}', vol: 100 }}, location.origin)")
+        page.wait_for_timeout(1200)
+    after = page.evaluate("""(() => { const pages = [...document.getElementById('p').contentDocument.querySelectorAll('.dach-page')];
+        return { loads: pages.map(f => f._loads), src: pages.map(f => f.getAttribute('src')), allow: pages.map(f => f.getAttribute('allow')) }; })()""")
+    assert after["loads"] == [0, 0, 0] and after["src"] == before["src"], "Ton umschalten darf keine DACH-Seite neu laden"
+    assert after["allow"] == ["autoplay"] * 3
+    assert errors == []

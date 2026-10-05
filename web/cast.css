@@ -517,9 +517,9 @@ body.dach-official .backdrop { display: none !important; }
 .dach-page { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; overflow: hidden; visibility: hidden; background: transparent; }
 .dach-page.on { visibility: visible; }
 .dach-cams { position: absolute; inset: 0; pointer-events: none; }
-.dach-cam { position: absolute; overflow: hidden; background: transparent; }
+.dach-cam { position: absolute; overflow: hidden; background: #000; }   /* leer = schwarz, nie der DACH-Hintergrund */
 .dach-cam .cam-source { position: absolute; inset: 0; }
 .dach-frame-name { display: none; }
 body.idle.dach-frame-show .dach-cam { outline: 3px dashed #FCC659; outline-offset: -3px; background: rgba(252,198,89,.12); }
 body.idle.dach-frame-show .dach-frame-name { display: block; position: absolute; left: 8px; top: 8px; z-index: 3; font: 700 22px Rajdhani, sans-serif; color: #101526; background: #FCC659; padding: 2px 10px; }
-.dach-cam { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+.dach-cam { background: #000 !important; border: 0 !important; box-shadow: none !important; }

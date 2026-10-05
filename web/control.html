@@ -42,7 +42,6 @@
   body.is-dragging .middle .divider-h, body.is-dragging #divider2 { display: block; }
   .dock-target { display: none; flex: 1; border: 2px dashed var(--line); border-radius: 6px; padding: 16px; place-items: center; text-align: center; color: var(--muted); font-size: 12px; min-height: 80px; }
   .dock.empty .dock-target, body.is-dragging .dock-target { display: grid; }
-  .dock.over-target { outline: 2px solid var(--accent); outline-offset: -2px; }
   .dock > details { border-radius: 4px; border: 1px solid var(--line); background: var(--f1); }
   .dock > details > summary { padding: 7px 10px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; background: var(--f2);
     border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; border-radius: 4px 4px 0 0; }
@@ -101,7 +100,6 @@
   .tools { display: flex; gap: 4px; align-items: center; }
   .tool { min-width: 30px; height: 28px; padding: 0 7px; border: 1px solid var(--line); border-radius: 6px; background: var(--f1); cursor: pointer; font-size: 13px; }
   .tool:hover { border-color: var(--accent); }
-  .tool-divider { width: 1px; height: 20px; background: var(--line); margin: 0 4px; }
   @media (max-width: 900px) { .page { flex-direction: column; height: auto; overflow: visible; } .column, .dock { flex: none; } .divider { display: none; } .preview { order: -1; } }
   header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
   h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: .02em; }
@@ -221,7 +219,6 @@
   .vb-map { width: 36px; height: 65px; }
   .row .line input, .row .line select { min-width: 0; }
   .row .hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .mini-image { width: 44px; height: 44px; border-radius: 5px; background: #0e0f11 center / cover no-repeat; border: 1px dashed var(--line); cursor: pointer; }
   .x { padding: 4px 0; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 16px; }
   .x:hover { color: var(--red); }
   .veto-upnext { padding: 10px; background: var(--f2); border-radius: 8px; display: grid; gap: 8px; }
@@ -399,10 +396,7 @@
   body.layout-edit .page details, body.layout-edit .tabgroup { outline: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
   /* Match-Leiste */
   .mbar { display: grid; gap: 10px; }
-  .mbar-teams { display: grid; gap: 6px; }
-  .mbar-team { display: flex; align-items: center; gap: 6px; }
   .mbar-name { flex: 1; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } 
-  .mbar-team b { font: 700 30px Rajdhani, sans-serif; min-width: 26px; text-align: center; }
   .mbar-k { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line); background: var(--f2); cursor: pointer; font-size: 18px; color: var(--text); }
   .mbar-k.main { background: var(--accent); border-color: var(--accent); color: #fff; }
   .mbar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
@@ -415,7 +409,7 @@
   body.large .scenes-buttons { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)) !important; }
   body.large .scenes-buttons button { height: 64px !important; font-size: 18px !important; }
   body.large .gfx-card .gfx-show { height: 46px; min-width: 96px; font-size: 16px; }
-  body.large .mbar-k { width: 52px; height: 52px; font-size: 24px; } body.large .mbar-team b { font-size: 44px; }
+  body.large .mbar-k { width: 52px; height: 52px; font-size: 24px; }
   /* ===== Konzept 3: Live 1:1 ===== */
   .topbar #allClose, .topbar #allOpen, .topbar #zoomSmall, .topbar #zoomValue, .topbar #zoomLarge { display: none; }
   .bracket-program { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 12px; border-radius: 8px; background: var(--f2); border: 1px solid var(--line); white-space: nowrap; }

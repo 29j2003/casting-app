@@ -187,7 +187,8 @@ def test_windows_helper_runs_the_installer_after_the_app_quit(tmp_path, monkeypa
     folder.mkdir()
     marker = folder / "installiert.txt"
     installer = folder / "Casting-App-99.0.0-Setup.cmd"                    # stands in for the NSIS installer
-    installer.write_text(f'@echo %1> "{marker}"\r\n', encoding="utf-8")
+    installer.write_text('@echo %1> "%CA_TEST_MARKER%"\r\n', encoding="ascii")   # path via the environment, like the helper
+    monkeypatch.setenv("CA_TEST_MARKER", str(marker))
     monkeypatch.setattr(sys, "executable", r"C:\Windows\System32\whoami.exe")   # "restart" something harmless
     monkeypatch.setattr(updater.tempfile, "gettempdir", lambda: str(folder))
     old_app = subprocess.Popen(["ping", "-n", "3", "127.0.0.1"], stdout=subprocess.DEVNULL)   # ~2 s

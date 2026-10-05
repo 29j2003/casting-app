@@ -15,6 +15,8 @@ import os
 import threading
 from pathlib import Path
 
+from .files import set_aside, write_atomic
+
 FILE_NAME = "secrets.vault"
 SCRYPT = {"n": 2 ** 15, "r": 8, "p": 1, "maxmem": 64 * 1024 * 1024}
 MIN_PASSWORD_LENGTH = 8
@@ -23,6 +25,10 @@ ENVIRONMENT_VARIABLE = "CASTING_APP_VAULT_PASSWORD"
 
 class WrongPassword(Exception):
     """The password does not open the vault."""
+
+
+class DamagedVault(Exception):
+    """The vault file is not readable at all (cut off, edited) – no password can open it."""
 
 
 def _aes_gcm():
@@ -38,6 +44,11 @@ def is_available() -> bool:
         return True
     except ImportError:
         return False
+
+
+def vault_file(data_dir: Path) -> Path:
+    """Path of the vault file in the data folder."""
+    return data_dir / FILE_NAME
 
 
 def vault_exists(data_dir: Path) -> bool:
@@ -57,6 +68,9 @@ def vault_from_environment(data_dir: Path, log) -> "PasswordVault | None":
         return PasswordVault(data_dir, password)
     except (WrongPassword, ValueError):
         log(f"{ENVIRONMENT_VARIABLE} öffnet den Schlüssel-Tresor nicht – Schlüssel gelten nur für diese Sitzung", "warn")
+        return None
+    except DamagedVault:
+        set_aside(vault_file(data_dir), log)
         return None
 
 
@@ -83,10 +97,14 @@ class PasswordVault:
 
     def _open(self) -> None:
         """Read and decrypt the vault file; raises WrongPassword if the password does not fit."""
-        stored = json.loads(self._file.read_text(encoding="utf-8"))
-        self._salt = base64.b64decode(stored["salt"])
         try:
-            plain = _aes_gcm()(self._key()).decrypt(base64.b64decode(stored["nonce"]), base64.b64decode(stored["data"]), None)
+            stored = json.loads(self._file.read_text(encoding="utf-8"))
+            self._salt = base64.b64decode(stored["salt"])
+            nonce, data = base64.b64decode(stored["nonce"]), base64.b64decode(stored["data"])
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            raise DamagedVault from error
+        try:
+            plain = _aes_gcm()(self._key()).decrypt(nonce, data, None)
         except Exception as error:                # cryptography raises InvalidTag for a wrong password
             raise WrongPassword from error
         self._entries = json.loads(plain)
@@ -97,10 +115,7 @@ class PasswordVault:
         data = _aes_gcm()(self._key()).encrypt(nonce, json.dumps(self._entries).encode(), None)
         content = {"version": 1, "salt": base64.b64encode(self._salt).decode(),
                    "nonce": base64.b64encode(nonce).decode(), "data": base64.b64encode(data).decode()}
-        temporary = self._file.with_suffix(".tmp")
-        temporary.write_text(json.dumps(content), encoding="utf-8")
-        temporary.chmod(0o600)
-        temporary.replace(self._file)
+        write_atomic(self._file, json.dumps(content), private=True)
 
     # --- keyring backend interface used by SecretStore ---
 

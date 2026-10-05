@@ -20,17 +20,19 @@ import socket
 import threading
 import time
 import urllib.parse
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from typing import Callable
 
 from .. import legacy, secret_store
+from ..files import set_aside, write_atomic
 from ..app_log import AppLog
 from ..paths import IS_WINDOWS, WEB_DIR, AppFolders
 from ..settings import AppSettings
 from ..version import VERSION
 from . import cs2_setup, faceit
 from .event_hub import EventClient, EventHub
+from .net import ExclusiveHTTPServer, content_length
 from .game_state import LAN_PORT, GameStateReceiver, lan_addresses
 from .static_files import CONTENT_TYPES, path_inside, send_file
 from .video_info import video_info
@@ -69,6 +71,9 @@ DACH_NO_ACCESS_TEXT = {"de": "Diese Browserquelle braucht den Zugangsschlüssel 
 # anything beyond what an overlay needs. It travels as ?access=… (page addresses, /dach/…) or as the
 # X-Casting-Access header (fetch from the pages, see cast-core.js). Without it a program on this PC gets nothing.
 ACCESS_HEADER = "X-Casting-Access"
+ACCESS_CODE_SECONDS = 120
+OPEN_EXPIRED_TEXT = {"de": "Dieser Link ist abgelaufen oder wurde schon benutzt – in der App erneut auf „Steuerseite im Browser öffnen“ klicken.",
+                     "en": "This link has expired or was already used – click “Open control page in browser” in the app again."}
 # /api paths an overlay in OBS needs – open without the key (nothing secret, nothing that changes the cast)
 OPEN_API = {("GET", "/api/ping"), ("GET", "/api/events"), ("GET", "/api/ereignisse"), ("GET", "/api/state"),
             ("POST", "/api/report"), ("POST", "/api/quit"), ("POST", "/api/beenden")}
@@ -78,6 +83,25 @@ OVERLAY_LANGUAGE = re.compile(r'"overlayLanguage"\s*:\s*"(de|en)"')
 # file names of version 2.1 and older -> new names (OBS browser sources may still use the old ones)
 LEGACY_PAGES = {"steuerung.html": "control.html", "ende.html": "end.html", "serie.html": "series.html",
                 "spieler.html": "players.html", "sponsoren.html": "sponsors.html"}
+
+
+# parts of the state that only pages with the access key get (camera links can carry passwords)
+PRIVATE_SOURCE_FIELDS = ("url", "device", "deviceName")
+
+
+def public_state(text: str) -> str:
+    """The state without camera links and device names – for overlays that do not have the access key."""
+    try:
+        state = json.loads(text)
+        for source in (state.get("sources") or {}).values():
+            if isinstance(source, dict):
+                for field in PRIVATE_SOURCE_FIELDS:
+                    if field in source:
+                        source[field] = ""
+        return json.dumps(state, ensure_ascii=False)
+    except (ValueError, AttributeError):
+        match = STATE_REVISION.search(text)
+        return json.dumps({"revision": int(match.group(1)) if match else 0})
 
 
 class CastingServer:
@@ -101,15 +125,17 @@ class CastingServer:
         self._on_quit_requested = on_quit_requested
         self._open_folder = open_folder
         self._started_at = int(time.time() * 1000)
-        self._servers: list[ThreadingHTTPServer] = []
+        self._servers: list[ExclusiveHTTPServer] = []
         self._log_message_times: list[float] = []
         self._routes = self._api_routes()
         self.access_key = self._load_access_key()
+        self._access_codes: dict[str, float] = {}    # one-time codes for "open the control page in the browser"
 
         self._state_file = folders.data / "state.json"
         self._state_lock = threading.Lock()
         self._state_text: str | None = None      # app state as JSON text (kept as sent by the control page)
         self._state_revision = 0                 # "revision": increases with every change
+        self._public_state_text: str | None = None   # the same without camera links (overlays without the key)
         self._save_timer: threading.Timer | None = None
         self._load_state()
 
@@ -118,7 +144,7 @@ class CastingServer:
     def start(self) -> None:
         """Listen on 127.0.0.1 and ::1. Raises OSError if the port is taken."""
         handler = self._handler_class()
-        main_server = ThreadingHTTPServer(("127.0.0.1", PORT), handler)
+        main_server = ExclusiveHTTPServer(("127.0.0.1", PORT), handler)
         self._servers = [main_server]
         try:
             ipv6_server = _IPv6Server(("::1", PORT), handler)
@@ -151,12 +177,19 @@ class CastingServer:
 
     def _load_state(self) -> None:
         """Read state.json from the last session (the overlays get it on connect)."""
+        self._state_text = None
         try:
-            self._state_text = self._state_file.read_text(encoding="utf-8")
-            match = STATE_REVISION.search(self._state_text)
-            self._state_revision = int(match.group(1)) if match else 0
-        except OSError:
-            self._state_text = None
+            text = self._state_file.read_text(encoding="utf-8")
+            if not isinstance(json.loads(text), dict):   # a half-written file must not stop the app (it is set aside)
+                raise ValueError("kein Zustand")
+        except FileNotFoundError:
+            return
+        except (OSError, ValueError):
+            set_aside(self._state_file, self.log.write)
+            return
+        match = STATE_REVISION.search(text)
+        self._state_text, self._state_revision = text, (int(match.group(1)) if match else 0)
+        self._public_state_text = public_state(text)
 
     def _store_state(self, text: str) -> bool:
         """Take a new state from the control page; older states (lower "revision") are ignored."""
@@ -166,14 +199,16 @@ class CastingServer:
         number = int(match.group(1))
         with self._state_lock:
             if number < self._state_revision:
-                return True
+                return False
             self._state_text, self._state_revision = text, number
+            self._public_state_text = public_state(text)
             if self._save_timer:
                 self._save_timer.cancel()
             self._save_timer = threading.Timer(STATE_SAVE_DELAY, self.save_state_now)
             self._save_timer.daemon = True
             self._save_timer.start()
-        self.events.broadcast("state", text.replace("\n", " "), overlays_only=True)
+        self.events.broadcast("state", text.replace("\n", " "), overlays_only=True,
+                              public_data=self._public_state_text.replace("\n", " "))
         return True
 
     def save_state_now(self) -> None:
@@ -185,7 +220,7 @@ class CastingServer:
             text = self._state_text
         if text:
             try:
-                self._state_file.write_text(text, encoding="utf-8")
+                write_atomic(self._state_file, text)
             except OSError as error:
                 self.log.error(f"Speichern fehlgeschlagen: {error}")
 
@@ -234,6 +269,9 @@ class CastingServer:
     def handle(self, request: "_JsonHandler") -> None:
         """Entry point for every HTTP request: route it, never let an error stop the server."""
         request.body_was_read = False
+        if content_length(request.headers) is None:    # "-1", "abc" …: refuse before anything reads the body
+            request.close_connection = True
+            return request.send_plain(400)
         try:
             self._route(request)
         except (BrokenPipeError, ConnectionResetError):
@@ -245,7 +283,7 @@ class CastingServer:
             except OSError:
                 pass
         # a body nobody read would be mistaken for the next request on this connection
-        if not request.body_was_read and int(request.headers.get("Content-Length") or 0) > 0:
+        if not request.body_was_read and content_length(request.headers):
             request.close_connection = True
 
     def _route(self, request: "_JsonHandler") -> None:
@@ -265,6 +303,9 @@ class CastingServer:
                 return request.send_plain(403)
             status, answer = self.game_state.accept(request.read_body(2_000_000), "local")
             return request.send_json(status, answer)
+
+        if path == "/open" and request.command == "GET":
+            return self._open_with_code(request, str(query.get("code", "")))
 
         dach_match = re.match(r"^/dach/([a-z0-9_]{2,30})$", path)
         if dach_match and request.command == "GET":
@@ -288,6 +329,31 @@ class CastingServer:
         given = request.headers.get(ACCESS_HEADER) or query.get("access") or ""
         return hmac.compare_digest(given.encode(), self.access_key.encode())
 
+    def issue_access_code(self) -> str:
+        """A one-time code that opens the control page in a browser (valid for ACCESS_CODE_SECONDS, once)."""
+        code = secrets.token_urlsafe(24)
+        now = time.time()
+        with self._state_lock:
+            self._access_codes = {c: t for c, t in self._access_codes.items() if t > now}
+            self._access_codes[code] = now + ACCESS_CODE_SECONDS
+        return code
+
+    def _open_with_code(self, request, code: str) -> None:
+        """/open?code=…: hand the key to this browser tab (sessionStorage) and show the control page.
+
+        The code works once, so the address in the browser history is worthless afterwards.
+        """
+        with self._state_lock:
+            valid_until = self._access_codes.pop(code, 0)
+        if valid_until < time.time():
+            text = OPEN_EXPIRED_TEXT[self.settings.get("app_language")]
+            return request.send_body(403, f'<!doctype html><meta charset="utf-8"><p style="font:18px sans-serif">{text}</p>'.encode(),
+                                     "text/html; charset=utf-8")
+        page = ('<!doctype html><meta charset="utf-8"><meta name="referrer" content="no-referrer"><script>'
+                f'sessionStorage.setItem("casting-access", {json.dumps(self.access_key)}); location.replace("/control.html");'
+                '</script>')
+        request.send_body(200, page.encode(), "text/html; charset=utf-8", {"Referrer-Policy": "no-referrer"})
+
     def _load_access_key(self) -> str:
         """The access key from the keyring (or vault); a new one is created on the first start.
 
@@ -297,6 +363,9 @@ class CastingServer:
         if key:
             return key
         key = secrets.token_urlsafe(32)
+        if self.secrets.load_failed:                  # never overwrite a stored key we merely could not read
+            self.log.warn("Zugangsschlüssel nicht lesbar – ein vorläufiger gilt bis zum Neustart")
+            return key
         try:
             self.secrets.set(secret_store.ACCESS_KEY, key)
         except OSError:
@@ -351,6 +420,7 @@ class CastingServer:
             "/api/faceit-key": (None, lambda request, query: self._api_faceit_key(request)),
             "/api/obs-password": (None, lambda request, query: self._api_obs_password(request)),
             "/api/obs-auth": ("POST", lambda request, query: self._api_obs_login(request)),
+            "/api/access-code": ("POST", lambda request, query: request.send_json(200, {"code": self.issue_access_code()})),
             # app settings, overlays, user files
             "/api/app-settings": (None, self._api_app_settings),
             "/api/report": ("POST", lambda request, query: self._api_overlay_message(request)),
@@ -433,7 +503,7 @@ class CastingServer:
         """Live connection: state, live data, client list and reload requests."""
         client = EventClient(page=str(query.get("page", "?"))[:40],
                              from_obs="OBS/" in request.headers.get("User-Agent", ""),
-                             version=str(query.get("v", "old"))[:20])
+                             version=str(query.get("v", "old"))[:20], trusted=self.has_access(request, query))
         if not self.events.add(client):
             return request.send_json(503, {"error": "zu viele Verbindungen"})
         label = f"{client.page}{' (OBS)' if client.from_obs else ''}"
@@ -445,7 +515,8 @@ class CastingServer:
                 request.wfile.write(b"event: reload\ndata: {}\n\n")
                 self.log.warn(f"{label} läuft mit alter Version {client.version} – wird neu geladen")
             if not client.is_control_page and self._state_text:
-                request.wfile.write(f"event: state\ndata: {self._state_text.replace(chr(10), ' ')}\n\n".encode())
+                state = self._state_text if client.trusted else (self._public_state_text or "{}")
+                request.wfile.write(f"event: state\ndata: {state.replace(chr(10), ' ')}\n\n".encode())
             request.wfile.flush()
             self.log.info(f"verbunden: {label} · Version {client.version}")
             while not client.closed:
@@ -461,13 +532,18 @@ class CastingServer:
     def _api_state(self, request, query: dict) -> None:
         """GET: the state (only if newer than ?after=); POST: a new state from the control page."""
         if request.command == "POST":
-            if not self._store_state(request.read_body(MAX_STATE_SIZE)):
+            text = request.read_body(MAX_STATE_SIZE)
+            if not STATE_REVISION.search(text):
                 return request.send_json(400, {"error": "keine Revision"})
+            if not self._store_state(text):
+                # older than what the server has (e.g. the PC clock went back): the page continues above it
+                return request.send_json(409, {"error": "veraltet", "revision": self._state_revision})
             return request.send_json(200, {"ok": True})
         newer_than = int(query["after"]) if str(query.get("after", "")).isdigit() else 0
         if not self._state_text or self._state_revision <= newer_than:
             return request.send_plain(204)
-        return request.send_body(200, self._state_text.encode())
+        full = self.has_access(request, query)
+        return request.send_body(200, (self._state_text if full else self._public_state_text or "{}").encode())
 
     def _api_image(self, request, image_id: str) -> None:
         """GET: an uploaded image; POST: store an image sent as data URL."""
@@ -475,9 +551,15 @@ class CastingServer:
             match = IMAGE_DATA_URL.match(request.read_body(MAX_IMAGE_SIZE))
             if not match:
                 return request.send_json(400, {"error": "kein Bild"})
+            try:
+                data = base64.b64decode(match.group(2), validate=True)
+            except ValueError:
+                return request.send_json(400, {"error": "kein Bild"})
+            target = self.folders.images / f"{image_id}{IMAGE_TYPES[match.group(1)]}"
+            write_atomic(target, data)                 # the old image stays until the new one is complete
             for old in self.folders.images.glob(f"{image_id}.*"):
-                old.unlink()
-            (self.folders.images / f"{image_id}{IMAGE_TYPES[match.group(1)]}").write_bytes(base64.b64decode(match.group(2)))
+                if old != target:
+                    old.unlink(missing_ok=True)
             return request.send_json(200, {"ok": True})
         image = next(self.folders.images.glob(f"{image_id}.*"), None)
         if not image:
@@ -696,7 +778,7 @@ class CastingServer:
         send_file(request, full, CONTENT_TYPES[suffix], VERSION, extra)
 
 
-class _IPv6Server(ThreadingHTTPServer):
+class _IPv6Server(ExclusiveHTTPServer):
     """Same server on ::1 (some systems resolve "localhost" to IPv6 first)."""
 
     address_family = socket.AF_INET6
@@ -737,7 +819,7 @@ class _JsonHandler(BaseHTTPRequestHandler):
 
     def read_body(self, max_size: int) -> str:
         """The request body as text; raises ValueError if it is larger than `max_size`."""
-        length = int(self.headers.get("Content-Length") or 0)
+        length = content_length(self.headers) or 0
         if length > max_size:
             raise ValueError("zu groß")
         self.body_was_read = True

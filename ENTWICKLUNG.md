@@ -255,11 +255,17 @@ Datei mit danebenliegendem Schlüssel wäre nur scheinbar sicher und gibt es des
   Schlüsselbund). Ohne ihn liefert er nur, was ein Overlay braucht (`OPEN_API` in `app_server.py`: Zustand lesen,
   Live-Verbindung, Bilder, Meldungen, Ping, Beenden) – kein `/dach/…`, keine OBS-Anmeldung, keine Änderung, keine
   Tokens oder Pfade. So kommt auch ein Programm auf diesem PC, das Browser-Kopfzeilen fälscht, an nichts heran.
-  - Das App-Fenster lädt `control.html?access=…`; `cast-core.js` merkt sich den Schlüssel für den Tab (`sessionStorage`),
-    entfernt ihn aus der Adresse und hängt ihn an jede `/api/…`-Anfrage (Kopfzeile `X-Casting-Access`).
-  - OBS-Quellen bekommen ihn in der Adresse („In OBS anlegen“). Ältere Quellen ohne Schlüssel findet die Steuerseite
-    beim Verbinden mit OBS und stellt sie nach Rückfrage um (`accessCheck`).
+  - **App-Fenster:** Python gibt den Schlüssel beim Anlegen der Seite in `window.castApp.accessKey` (`page_bridge.js`) –
+    nie in einer Adresse, im Verlauf oder im Browser-Speicher. Vorschau-Rahmen lesen ihn vom Fenster (`window.top`).
+  - **Browser** („Steuerseite im Browser öffnen“): die Seite holt einen Einmal-Code (`/api/access-code`, 2 Minuten gültig)
+    und öffnet `/open?code=…`; der Server legt den Schlüssel für diesen Tab in `sessionStorage`. Der Code im Verlauf ist danach wertlos.
+  - **OBS-Quellen** bekommen ihn in der Adresse („In OBS anlegen“) – OBS speichert ihn in seiner Szenen-Datei.
+    Ältere Quellen ohne Schlüssel findet die Steuerseite beim Verbinden mit OBS und stellt sie nach Rückfrage um (`accessCheck`).
+  - `cast-core.js` hängt ihn an jede `/api/…`-Anfrage (Kopfzeile `X-Casting-Access`) und an die Live-Verbindung (`?access=`).
+  - **Ohne Schlüssel** bekommt ein Overlay den Zustand ohne Kamera-Links und Geräte (`public_state` – VDO.Ninja-Links
+    können Passwörter enthalten); `/api/quit` bleibt offen, weil der Windows-Installer eine laufende App beenden muss.
   - Ohne Fenster steht die Adresse mit Schlüssel nur in der Konsole, nie im Log.
+  - Ist der Schlüsselbund beim Start gesperrt, gilt ein vorläufiger Schlüssel – der gespeicherte wird nie überschrieben.
   - Neue Route, die ein Overlay ohne Schlüssel braucht → in `OPEN_API` eintragen (nur, wenn nichts Geheimes drin ist).
   - Tests: `server.access_key`; Live-Skripte lesen ihn aus dem App-Fenster (`tests/live/common.py`).
 * **Grenzen:** DACH CS nimmt ID und Key nur als URL-Parameter an. `/dach/<page>` leitet deshalb mit beiden weiter
@@ -277,6 +283,19 @@ Commits tragen die E-Mail-Adresse des Autors – im öffentlichen Repository fü
 * `tools/check_privacy.py` (CI-Job `privacy`) schlägt fehl, sobald ein Commit eine andere als eine noreply-Adresse
   trägt oder eine Datei eine E-Mail-Adresse enthält; die Adresse selbst gibt es nie aus. `KNOWN_OLD_COMMITS` nennt den
   einen Commit von vor dieser Prüfung.
+
+### Stabilität (Dateien, Fehler)
+
+* Eigene Dateien (Zustand, Einstellungen, CS2-Einstellungen, Fenster, Bilder, Tresor) immer mit `files.write_atomic`
+  schreiben: erst `<name>.tmp`, dann in einem Schritt ersetzen – ein Absturz hinterlässt nie eine halbe Datei.
+* Lesen mit `files.read_json_object`: eine beschädigte Datei wird als `<name>.damaged` beiseitegelegt (Log-Eintrag),
+  die App startet mit Standardwerten. Nie eine Datei überschreiben, die sich nicht lesen ließ.
+* Der Zustand hat eine laufende Nummer (`revision`, `K.nextRevision`). Ein älterer Stand bekommt 409 mit der Nummer des
+  Servers; die Steuerseite macht darüber weiter (wichtig, wenn die Uhr des PCs zurückgestellt wurde).
+* Unerwartete Fehler (auch in Threads) landen im Log (`AppLog.catch_unhandled_errors`); stürzt die Steuerseite im
+  Fenster ab, lädt die App sie neu.
+* Server-Sockets: `server/net.py` (`ExclusiveHTTPServer` – unter Windows bekommt ein zweiter Server den Port wirklich nicht;
+  `content_length` lehnt „-1“ und Unsinn ab).
 
 ## Bauen und signieren
 

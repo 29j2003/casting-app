@@ -79,8 +79,11 @@ def _script(name: str, source: str, world, injection_point) -> QWebEngineScript:
 class AppWebPage(QWebEnginePage):
     """Web page of the app window with the bridge to Python."""
 
-    def __init__(self, profile: QWebEngineProfile, parent=None):
-        """Page with the injected bridge and volume scripts and the Python side of the bridge."""
+    def __init__(self, profile: QWebEngineProfile, parent=None, access_key: str = ""):
+        """Page with the injected bridge and volume scripts and the Python side of the bridge.
+
+        access_key: the server's key, given to the control page as window.castApp.accessKey (main frame only).
+        """
         super().__init__(profile, parent)
         self.bridge = PageBridge(self)
         self._channel = QWebChannel(self)
@@ -89,8 +92,9 @@ class AppWebPage(QWebEnginePage):
         created = QWebEngineScript.InjectionPoint.DocumentCreation
         app_bridge = _read_qt_resource(":/qtwebchannel/qwebchannel.js") + "\n" + (SCRIPTS / "app_bridge.js").read_text(encoding="utf-8")
         self.scripts().insert(_script("casting-app-bridge", app_bridge, BRIDGE_WORLD, created))
-        self.scripts().insert(_script("casting-app-page-bridge", (SCRIPTS / "page_bridge.js").read_text(encoding="utf-8"),
-                                      QWebEngineScript.ScriptWorldId.MainWorld, created))
+        page_bridge = (SCRIPTS / "page_bridge.js").read_text(encoding="utf-8")
+        page_bridge = page_bridge.replace('"__CASTING_APP_ACCESS_KEY__"', json.dumps(access_key))
+        self.scripts().insert(_script("casting-app-page-bridge", page_bridge, QWebEngineScript.ScriptWorldId.MainWorld, created))
         self.permissionRequested.connect(self._decide_permission)
 
     def send_to_page(self, message: dict) -> None:

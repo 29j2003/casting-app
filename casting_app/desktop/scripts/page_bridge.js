@@ -13,6 +13,7 @@
 
   let onCloseRequested = null;     // the page's close dialog
   let onReloadOverlays = null;     // the page's "reload browser sources in OBS"
+  let onShowUpdate = null;         // the page's update area (tray message "new version")
 
   document.addEventListener(TO_PAGE, async event => {
     let message;
@@ -22,6 +23,7 @@
       toApp({ type: "close-dialog-shown", requestId: message.requestId });
       try { onCloseRequested(); } catch (error) {}
     }
+    if (message.type === "show-update" && onShowUpdate) { try { onShowUpdate(); } catch (error) {} }
     if (message.type === "reload-overlays") {
       let viaObs = false;
       try { viaObs = onReloadOverlays ? !!(await onReloadOverlays()) : false; } catch (error) {}
@@ -39,6 +41,8 @@
     // "Ton im App-Fenster": on/off and volume 0–100
     audio: (on, volume) => toApp({ type: "audio", on: on === true, volume: Number(volume) }),
     // tray "Overlays in OBS neu laden": the handler returns true when OBS did it
-    onReloadOverlays: handler => { if (typeof handler === "function") onReloadOverlays = handler; }
+    onReloadOverlays: handler => { if (typeof handler === "function") onReloadOverlays = handler; },
+    // tray message "new version": open the update area of the settings
+    onShowUpdate: handler => { if (typeof handler === "function") onShowUpdate = handler; }
   }) });
 })();

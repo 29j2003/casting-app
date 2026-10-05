@@ -14,7 +14,6 @@ Quitting
 import os
 import shutil
 import sys
-import threading
 
 import shiboken6
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
@@ -22,7 +21,7 @@ from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication
 
-from .. import instance, texts, update_check
+from .. import instance, texts
 from ..app_log import AppLog
 from ..paths import DATA_DIR, IS_WINDOWS, WEB_DIR, create_folders
 from .. import password_vault, secret_store
@@ -89,7 +88,7 @@ class DesktopApp(QObject):
         server_requests.language_changed.connect(self._change_language)
         self._server_requests = server_requests
         self._update_url = ""
-        self.tray.message_clicked.connect(lambda: self._update_url and QDesktopServices.openUrl(QUrl(self._update_url)))
+        self.tray.message_clicked.connect(self._open_update_settings)
         qt_app.commitDataRequest.connect(self._system_logs_off)
         qt_app.aboutToQuit.connect(self._shut_down)
 
@@ -102,24 +101,22 @@ class DesktopApp(QObject):
         self.window.show()
         if self.tray.available:
             self.tray.show()
-        if self._server and self._server.settings.get("check_for_updates"):
-            threading.Thread(target=self._check_for_update, name="update-check", daemon=True).start()
+        if self._server:
+            self._server.updater.on_found = self._server_requests.update_found.emit     # thread → Qt main thread
+            if self._server.settings.get("check_for_updates"):
+                self._server.updater.check_in_background()
 
     # --- update check ---
 
-    def _check_for_update(self) -> None:
-        """Runs in a thread: asks GitHub for the latest release (see update_check.py)."""
-        release = update_check.newer_release()
-        if release:
-            self._server_requests.update_found.emit(release)
-
     def _announce_update(self, release: dict) -> None:
-        """A newer version exists: note it in the log, the settings dialog and the tray."""
-        if self._server:
-            self._server.available_update = release
+        """A newer version exists: tell it in the tray (installing: Setup → ⚙ App-Einstellungen → Update)."""
         self._update_url = release.get("url", "")
-        self._log.info(f"Neue Version {release['version']} verfügbar: {self._update_url}")
         self.tray.tell(texts.text("update.title", app=APP_NAME, version=release["version"]), texts.text("update.text"))
+
+    def _open_update_settings(self) -> None:
+        """Click on the tray message: show the window with the update area of the settings."""
+        self.show_window()
+        self.window.page.send_to_page({"type": "show-update"})
 
     def _change_language(self, language: str) -> None:
         """The app language was changed on the control page: tray and dialogs follow (the page reloads itself)."""

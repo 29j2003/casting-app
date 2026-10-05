@@ -18,7 +18,7 @@ Aufbau und Rezepte für Änderungen: `ENTWICKLUNG.md` (bei neuen Bausteinen dort
 - `casting_app/secret_store.py` – FACEIT-Key, DACH-CS-ID/-Key nur im Schlüsselbund (`keyring`), keine Dateien;
   ohne Schlüsselbund nur Sitzung; einmalige Übernahme der 1.x-Dateien (DPAPI über ctypes, Base64, dach.json).
 - `casting_app/password_vault.py` – Passwort-Tresor für Systeme ohne Schlüsselbund (scrypt + AES-GCM, Passwort wird nie gespeichert).
-- `casting_app/settings.py` (settings.json: Update-Prüfung, App-Sprache `app_language`, Tresor-Angebot) · `update_check.py` (GitHub Releases).
+- `casting_app/settings.py` (settings.json: Update-Prüfung, App-Sprache `app_language`, Tresor-Angebot) · `updater.py` (Update aus der App: GitHub Releases, Prüfsumme, ersetzen und neu starten) · `files.py` (atomares Schreiben).
 - `casting_app/legacy.py` + `web/legacy.js` – Übernahme der Daten aus 2.1 und älter (deutsche Namen): Datenordner
   (zustand.json → state.json …), Browser-Speicher, Bilder-/Sitzungs-Datenbanken, importierte Dateien. Gemeinsame Tabelle
   alt → neu in `web/legacy.js` (zwischen `/*BEGIN*/` und `/*END*/`, nicht von Hand ändern; Test: `tests/test_legacy.py`).

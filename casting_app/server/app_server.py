@@ -29,6 +29,7 @@ from ..files import set_aside, write_atomic
 from ..app_log import AppLog
 from ..paths import IS_WINDOWS, WEB_DIR, AppFolders
 from ..settings import AppSettings
+from ..updater import Updater
 from ..version import VERSION
 from . import cs2_setup, faceit
 from .event_hub import EventClient, EventHub
@@ -120,7 +121,7 @@ class CastingServer:
         self.log = log
         self.events = EventHub()
         self.settings = settings or AppSettings(folders.data)
-        self.available_update: dict | None = None   # set by the update check: {"version", "url"}
+        self.updater = Updater(folders.data, log.write, quit_app=on_quit_requested)   # Setup → ⚙ → Update
         self.game_state = GameStateReceiver(folders.data, self.events.broadcast, log.write)
         self._on_quit_requested = on_quit_requested
         self._open_folder = open_folder
@@ -423,6 +424,11 @@ class CastingServer:
             "/api/access-code": ("POST", lambda request, query: request.send_json(200, {"code": self.issue_access_code()})),
             # app settings, overlays, user files
             "/api/app-settings": (None, self._api_app_settings),
+            "/api/update": (None, lambda request, query: request.send_json(200, self.updater.snapshot())),
+            "/api/update-check": ("POST", lambda request, query: (self.updater.check_in_background(),
+                                                                   request.send_json(200, self.updater.snapshot()))),
+            "/api/update-install": ("POST", lambda request, query: request.send_json(
+                200 if self.updater.install_in_background() else 409, self.updater.snapshot())),
             "/api/report": ("POST", lambda request, query: self._api_overlay_message(request)),
             "/api/videos": (None, lambda request, query: self._api_videos(request)),
             "/api/fonts": (None, self._api_fonts),
@@ -479,10 +485,10 @@ class CastingServer:
         request.send_json(200, {"ok": True, "network": self.game_state.lan_receiver_running})
 
     def _api_app_settings(self, request, query: dict) -> None:
-        """GET: app settings plus a found update; POST: change settings (settings.py validates)."""
+        """GET: app settings plus the update status; POST: change settings (settings.py validates)."""
         if request.command == "POST":
             self.settings.update(request.read_json(1000))
-        request.send_json(200, {**self.settings.as_dict(), "update": self.available_update})
+        request.send_json(200, {**self.settings.as_dict(), "update": self.updater.snapshot()})
 
     def _api_fonts(self, request, query: dict) -> None:
         """The user's own font files (Documents/Casting-App/Schriften)."""

@@ -42,6 +42,7 @@ VS_FIELD = '<span data-team-name="a"></span>&nbsp;<span class="vs-small">vs</spa
 
 
 def timer_box(x, y, label, d, w=228):
+    """Box with a countdown (head line texts.<label>), e.g. „START IN“."""
     return f'''<div class="box enter" data-part="timer" style="left:{x}px;top:{y}px;width:{w}px;height:126px;--d:{d}s">
   <div class="box-head" data-t="texts.{label}"></div>
   <div class="box-field timer"></div>
@@ -50,6 +51,7 @@ def timer_box(x, y, label, d, w=228):
 
 
 def title_box(x, y, w, d, h=126, font_size=66, field='<span data-t="texts.title" data-matching></span>'):
+    """Box with the big title (texts.title) under a ticker head line."""
     return f'''<div class="box enter" data-part="title" style="left:{x}px;top:{y}px;width:{w}px;height:{h}px;--d:{d}s">
   <div class="box-head ticker" style="--kh:46px;--kf:23px"></div>
   <div class="box-field" style="font-size:{font_size}px">{field}</div>
@@ -58,6 +60,7 @@ def title_box(x, y, w, d, h=126, font_size=66, field='<span data-t="texts.title"
 
 
 def head_box(x, y, w, d, head, field, h=126, font_size=58):
+    """Box with a head line texts.<head> and any field content (e.g. team names)."""
     return f'''<div class="box enter" data-part="head" style="left:{x}px;top:{y}px;width:{w}px;height:{h}px;--d:{d}s">
   <div class="box-head" data-t="texts.{head}"></div>
   <div class="box-field" style="font-size:{font_size}px">{field}</div>
@@ -66,6 +69,7 @@ def head_box(x, y, w, d, head, field, h=126, font_size=58):
 
 
 def matchup(x, y, w, d, h=126):
+    """Box with both team logos and „vs“."""
     return f'''<div class="box enter" data-part="matchup" style="left:{x}px;top:{y}px;width:{w}px;height:{h}px;--d:{d}s">
   <div class="box-head" data-t="texts.matchUp"></div>
   <div class="box-field" style="padding:0"><div class="matchup"><div class="team-logo a"></div><div class="vs">vs</div><div class="team-logo b"></div></div></div>
@@ -94,10 +98,12 @@ def cam(x, y, w, h, name, d, who=None, guest=False):
 
 
 def bottom_cast(d=.5):
+    """Title and match-up at the bottom – the usual footer of the cast scenes."""
     return title_box(254, 868, 1100, d) + matchup(1386, 868, 280, d + .1)
 
 
 def sponsor(x, y, w, h, d=.6, right=None):
+    """Sponsor box at `x` (or `right` px from the right edge)."""
     position = f"right:{right}px" if right is not None else f"left:{x}px"
     return f'''<div class="box sponsor" data-part="sponsor" style="{position};top:{y}px;width:{w}px;height:{h}px"><div class="box-head" data-t="texts.sponsorLabel"></div><div class="sponsor-field"></div></div>
 '''
@@ -178,6 +184,7 @@ scene('ingame.html', 'Ingame', sponsor(0, 480, 340, 100, right=30), without_back
 
 # CS2 live data: scoreboard (both teams), team A, team B, head-to-head
 def live_head(head, d=.2):
+    """Head box of the CS2 live scenes (shows map and round while live data arrives)."""
     return head_box(482, 47, 956, d, head, '<span class="live-info"></span>', h=126, font_size=46)
 
 

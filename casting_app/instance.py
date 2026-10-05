@@ -34,6 +34,7 @@ def running_version() -> str | None:
 def compare_versions(a: str, b: str) -> int:
     """> 0 if a is newer than b, < 0 if older, 0 if equal ("old" counts as oldest)."""
     def parts(version):
+        """Version as a list of numbers; anything unreadable counts as oldest."""
         try:
             return [int(p) for p in str(version).split(".")]
         except ValueError:

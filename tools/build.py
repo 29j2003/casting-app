@@ -14,7 +14,7 @@ Requirements: pip install -e ".[build]"; Windows additionally NSIS (makensis), L
 Signing
     Windows: unsigned unless WINDOWS_CERTIFICATE (path to .pfx) and WINDOWS_CERTIFICATE_PASSWORD are set (signtool).
              In CI the app can instead be signed by SignPath (free for open source): "app" → sign the folder →
-             "package" → sign the installer; see .github/workflows/bauen.yml.
+             "package" → sign the installer; see .github/workflows/build.yml.
     macOS:   ad-hoc signed ("-") so Apple Silicon starts it. Notarization is prepared but off:
              set MAC_NOTARIZE=1, MAC_SIGNING_IDENTITY ("Developer ID Application: …"), APPLE_ID,
              APPLE_APP_PASSWORD and APPLE_TEAM_ID to sign with hardened runtime and notarize.
@@ -57,6 +57,7 @@ def check_versions() -> None:
 
 
 def run(*command, **options) -> None:
+    """Run a command and stop the build if it fails (prints it first, so the CI log shows each step)."""
     print("▶", " ".join(str(part) for part in command), flush=True)
     subprocess.run([str(part) for part in command], check=True, **options)
 
@@ -113,6 +114,7 @@ def remove_unused_translations(app: Path) -> None:
 # --- Windows ---
 
 def sign_windows(file: Path) -> None:
+    """Sign an .exe with signtool – only when a certificate is configured (see module docstring)."""
     certificate = os.environ.get("WINDOWS_CERTIFICATE")
     if certificate:
         run("signtool", "sign", "/f", certificate, "/p", os.environ.get("WINDOWS_CERTIFICATE_PASSWORD", ""),
@@ -120,6 +122,7 @@ def sign_windows(file: Path) -> None:
 
 
 def package_windows(app_folder: Path) -> None:
+    """Portable zip and NSIS installer (tools/installer.nsi) from the app folder; both signed if possible."""
     sign_windows(app_folder / f"{APP_NAME}.exe")
     portable = DIST / f"{APP_NAME}-{VERSION}-windows-portable"
     shutil.make_archive(str(portable), "zip", app_folder.parent, app_folder.name)
@@ -153,6 +156,7 @@ def package_linux(app_folder: Path) -> None:
 # --- macOS ---
 
 def package_mac(app_bundle: Path) -> None:
+    """Sign the .app (ad-hoc or Developer ID), pack it as zip and dmg, notarize when MAC_NOTARIZE=1."""
     architecture = "arm64" if platform.machine() == "arm64" else "x64"
     if os.environ.get("MAC_NOTARIZE") == "1":
         identity = os.environ["MAC_SIGNING_IDENTITY"]
@@ -171,6 +175,7 @@ def package_mac(app_bundle: Path) -> None:
 
 
 def main() -> None:
+    """Run the requested stage: all (default), app or package."""
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")    # Windows consoles default to cp1252
     stage = sys.argv[1] if len(sys.argv) > 1 else "all"
     if stage not in ("all", "app", "package"):

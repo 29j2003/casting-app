@@ -7,7 +7,7 @@ Security rules (unchanged from version 1.x):
   - secrets are used inside the server only (see secret_store.py)
 
 Version 2.1 and older used German paths. The few that other programs or old pages still call
-are kept as aliases: see LEGACY_PAGES and _route_legacy().
+are kept as aliases: see LEGACY_PAGES and the last entries of _api_routes().
 """
 
 import base64
@@ -91,6 +91,7 @@ class CastingServer:
         self._started_at = int(time.time() * 1000)
         self._servers: list[ThreadingHTTPServer] = []
         self._log_message_times: list[float] = []
+        self._routes = self._api_routes()
 
         self._state_file = folders.data / "state.json"
         self._state_lock = threading.Lock()
@@ -136,6 +137,7 @@ class CastingServer:
     # --- app state ---
 
     def _load_state(self) -> None:
+        """Read state.json from the last session (the overlays get it on connect)."""
         try:
             self._state_text = self._state_file.read_text(encoding="utf-8")
             match = STATE_REVISION.search(self._state_text)
@@ -162,6 +164,7 @@ class CastingServer:
         return True
 
     def save_state_now(self) -> None:
+        """Write the state to state.json immediately (also called when the app quits)."""
         with self._state_lock:
             if self._save_timer:
                 self._save_timer.cancel()
@@ -181,6 +184,7 @@ class CastingServer:
     # --- images ---
 
     def _schedule_image_cleanup(self, delay: float) -> None:
+        """Run the image cleanup after `delay` seconds (it then repeats every 6 hours)."""
         timer = threading.Timer(delay, self._clean_up_images)
         timer.daemon = True
         timer.start()
@@ -203,6 +207,7 @@ class CastingServer:
     # --- request handling ---
 
     def _handler_class(self):
+        """Request handler class that hands every request to this server."""
         server = self
 
         class RequestHandler(_JsonHandler):
@@ -214,6 +219,7 @@ class CastingServer:
         return RequestHandler
 
     def handle(self, request: "_JsonHandler") -> None:
+        """Entry point for every HTTP request: route it, never let an error stop the server."""
         request.body_was_read = False
         try:
             self._route(request)
@@ -230,6 +236,7 @@ class CastingServer:
             request.close_connection = True
 
     def _route(self, request: "_JsonHandler") -> None:
+        """Security checks (this PC, own address, own pages), then the API or a file."""
         # 1) only this PC and only our own address
         if request.client_address[0] not in LOCAL_ADDRESSES or request.headers.get("Host", "") not in ALLOWED_HOSTS:
             return request.send_plain(403)
@@ -273,78 +280,101 @@ class CastingServer:
                   + urllib.parse.urlencode({"userid": user_id, "key": key}))
         request.send_plain(302, {"Location": target, "Cache-Control": "no-store", "Referrer-Policy": "no-referrer"})
 
+    def _api_routes(self) -> dict:
+        """The API: path → (allowed HTTP method, or None for any; handler(request, query)).
+
+        A new route is one line here plus its handler below. The security checks in _route() have
+        already run for every request that gets this far. Paths with a value inside (/api/image/<id>,
+        /api/faceit/<path>) are handled in _route_api() itself.
+        """
+        return {
+            "/api/ping": (None, self._api_ping),
+            "/api/events": (None, self._stream_events),
+            "/api/state": (None, self._api_state),
+            "/api/log": (None, self._api_log),
+            "/api/quit": ("POST", self._api_quit),
+            # CS2 live data and its setup
+            "/api/gsi": (None, self._api_last_game_state),
+            "/api/gsi-info": (None, lambda request, query: request.send_json(200, self.game_state.info())),
+            "/api/gsi-settings": ("POST", self._api_gsi_settings),
+            "/api/gsi-cfg": (None, self._api_gsi_cfg_download),
+            "/api/gsi-path": ("POST", lambda request, query: self._api_gsi_cfg_into_folder(request)),
+            "/api/gsi-setup": ("POST", lambda request, query: self._api_gsi_set_up(request)),
+            "/api/folder-list": (None, lambda request, query: request.send_json(
+                200, cs2_setup.list_subfolders(str(query.get("path", "")).strip()))),
+            "/api/cs2-search": (None, lambda request, query: request.send_json(200, {"finds": cs2_setup.search_cfg_folders()})),
+            # secrets (set, delete, ask whether stored – never read)
+            "/api/dach-access": (None, lambda request, query: self._api_dach_access(request)),
+            "/api/faceit-key": (None, lambda request, query: self._api_faceit_key(request)),
+            "/api/obs-password": (None, lambda request, query: self._api_obs_password(request)),
+            "/api/obs-auth": ("POST", lambda request, query: self._api_obs_login(request)),
+            # app settings, overlays, user files
+            "/api/app-settings": (None, self._api_app_settings),
+            "/api/report": ("POST", lambda request, query: self._api_overlay_message(request)),
+            "/api/videos": (None, lambda request, query: self._api_videos(request)),
+            "/api/fonts": (None, self._api_fonts),
+            "/api/folder": ("POST", lambda request, query: self._api_open_folder(request, query.get("which"))),
+            # names of version 2.1 and older, still used by old pages and old versions
+            "/api/beenden": ("POST", self._api_quit),
+            "/api/ereignisse": (None, lambda request, query: self._reload_legacy_page(request)),
+        }
+
     def _route_api(self, request, path: str, query: dict) -> None:
-        method = request.command
-        if path == "/api/ping":
-            # "dienst" lets version 2.1 and older recognise a newer running app (and leave it alone)
-            return request.send_json(200, {"ok": True, "service": "cast", "dienst": "cast", "version": VERSION})
-        if path == "/api/events":
-            return self._stream_events(request, query)
-        if path == "/api/state":
-            return self._api_state(request, query)
+        """Hand an /api request to its handler (see _api_routes); unknown paths and wrong methods get 404."""
         image_match = re.match(r"^/api/image/([a-z0-9]{4,40})$", path)
         if image_match:
             return self._api_image(request, image_match.group(1))
-        if path == "/api/gsi-info":
-            return request.send_json(200, self.game_state.info())
-        if path == "/api/gsi-settings" and method == "POST":
-            self.game_state.apply_settings(request.read_json(4000))
-            return request.send_json(200, {"ok": True, "network": self.game_state.lan_receiver_running})
-        if path == "/api/gsi-cfg":
-            return self._api_gsi_cfg_download(request, query)
-        if path == "/api/folder-list":
-            return request.send_json(200, cs2_setup.list_subfolders(str(query.get("path", "")).strip()))
-        if path == "/api/cs2-search":
-            return request.send_json(200, {"finds": cs2_setup.search_cfg_folders()})
-        if path == "/api/gsi-path" and method == "POST":
-            return self._api_gsi_cfg_into_folder(request)
-        if path == "/api/gsi-setup" and method == "POST":
-            return self._api_gsi_set_up(request)
-        if path == "/api/gsi":
-            if not self.game_state.last_raw:
-                return request.send_json(200, {"data": None})
-            age = int((time.time() - self.game_state.last_time) * 1000)
-            return request.send_body(200, f'{{"ageMs":{age},"data":{self.game_state.last_raw}}}'.encode())
-        if path == "/api/dach-access":
-            return self._api_dach_access(request)
-        if path == "/api/faceit-key":
-            return self._api_faceit_key(request)
-        if path == "/api/app-settings":
-            if method == "POST":
-                self.settings.update(request.read_json(1000))
-            return request.send_json(200, {**self.settings.as_dict(), "update": self.available_update})
-        if path == "/api/obs-password":
-            return self._api_obs_password(request)
-        if path == "/api/obs-auth" and method == "POST":
-            return self._api_obs_login(request)
         if path.startswith("/api/faceit/"):
             return self._api_faceit(request, path[len("/api/faceit/"):], query)
-        if path == "/api/report" and method == "POST":
-            return self._api_overlay_message(request)
-        if path == "/api/videos":
-            return self._api_videos(request)
-        if path == "/api/fonts":
-            fonts = sorted(f.name for f in self.folders.fonts.iterdir() if f.suffix.lower() in (".ttf", ".otf", ".woff", ".woff2"))
-            return request.send_json(200, {"folder": str(self.folders.fonts), "fonts": fonts})
-        if path == "/api/folder" and method == "POST":
-            return self._api_open_folder(request, query.get("which"))
-        if path == "/api/log":
-            return request.send_json(200, {
-                "version": VERSION, "start": self._started_at, "folder": self.folders.as_dict(), "log": self.log.latest(200),
-                "clients": [c.describe() for c in self.events.clients()],
-                "gsi": int((time.time() - self.game_state.last_time) * 1000) if self.game_state.last_raw else None})
-        if path in ("/api/quit", "/api/beenden") and method == "POST":     # /api/beenden: name in 2.1 and older
-            request.send_json(200, {"ok": True})
-            self.log.info("Beendet über die Steuerseite")
-            timer = threading.Timer(0.2, self._on_quit_requested)
-            timer.daemon = True
-            timer.start()
-            return None
-        if path == "/api/ereignisse":
-            return self._reload_legacy_page(request)
-        return request.send_json(404, {"error": "unbekannt"})
+        method, handler = self._routes.get(path, (None, None))
+        if handler is None or (method and request.command != method):
+            return request.send_json(404, {"error": "unbekannt"})
+        return handler(request, query)
 
     # --- API endpoints ---
+
+    def _api_ping(self, request, query: dict) -> None:
+        """Who is running here: newer versions use it to replace older ones (instance.py)."""
+        # "dienst" lets version 2.1 and older recognise a newer running app (and leave it alone)
+        request.send_json(200, {"ok": True, "service": "cast", "dienst": "cast", "version": VERSION})
+
+    def _api_quit(self, request, query: dict) -> None:
+        """Quit the app (control page or a newer version); answers first, quits 0.2 s later."""
+        request.send_json(200, {"ok": True})
+        self.log.info("Beendet über die Steuerseite")
+        timer = threading.Timer(0.2, self._on_quit_requested)
+        timer.daemon = True
+        timer.start()
+
+    def _api_log(self, request, query: dict) -> None:
+        """Everything the Log tab shows: version, folders, log entries, connected pages, CS2 data age."""
+        request.send_json(200, {
+            "version": VERSION, "start": self._started_at, "folder": self.folders.as_dict(), "log": self.log.latest(200),
+            "clients": [c.describe() for c in self.events.clients()],
+            "gsi": int((time.time() - self.game_state.last_time) * 1000) if self.game_state.last_raw else None})
+
+    def _api_last_game_state(self, request, query: dict) -> None:
+        """The last post from CS2 as received (for troubleshooting), with its age."""
+        if not self.game_state.last_raw:
+            return request.send_json(200, {"data": None})
+        age = int((time.time() - self.game_state.last_time) * 1000)
+        request.send_body(200, f'{{"ageMs":{age},"data":{self.game_state.last_raw}}}'.encode())
+
+    def _api_gsi_settings(self, request, query: dict) -> None:
+        """Network receiver on/off, side of team A, team names (POST from the setup page)."""
+        self.game_state.apply_settings(request.read_json(4000))
+        request.send_json(200, {"ok": True, "network": self.game_state.lan_receiver_running})
+
+    def _api_app_settings(self, request, query: dict) -> None:
+        """GET: app settings plus a found update; POST: change settings (settings.py validates)."""
+        if request.command == "POST":
+            self.settings.update(request.read_json(1000))
+        request.send_json(200, {**self.settings.as_dict(), "update": self.available_update})
+
+    def _api_fonts(self, request, query: dict) -> None:
+        """The user's own font files (Documents/Casting-App/Schriften)."""
+        fonts = sorted(f.name for f in self.folders.fonts.iterdir() if f.suffix.lower() in (".ttf", ".otf", ".woff", ".woff2"))
+        request.send_json(200, {"folder": str(self.folders.fonts), "fonts": fonts})
 
     def _reload_legacy_page(self, request) -> None:
         """A page of version 2.1 or older (still open in OBS) asks for events: tell it to reload once.
@@ -386,6 +416,7 @@ class CastingServer:
         request.close_connection = True
 
     def _api_state(self, request, query: dict) -> None:
+        """GET: the state (only if newer than ?after=); POST: a new state from the control page."""
         if request.command == "POST":
             if not self._store_state(request.read_body(MAX_STATE_SIZE)):
                 return request.send_json(400, {"error": "keine Revision"})
@@ -396,6 +427,7 @@ class CastingServer:
         return request.send_body(200, self._state_text.encode())
 
     def _api_image(self, request, image_id: str) -> None:
+        """GET: an uploaded image; POST: store an image sent as data URL."""
         if request.command == "POST":
             match = IMAGE_DATA_URL.match(request.read_body(MAX_IMAGE_SIZE))
             if not match:
@@ -420,6 +452,7 @@ class CastingServer:
                           {"Content-Disposition": f'attachment; filename="{cs2_setup.CFG_FILE_NAME}"'})
 
     def _local_cfg_text(self) -> str:
+        """cfg file content for CS2 on this PC."""
         return cs2_setup.cfg_text(f"http://127.0.0.1:{PORT}/api/gsi", self.game_state.settings["token"])
 
     def _api_gsi_cfg_into_folder(self, request) -> None:
@@ -530,6 +563,7 @@ class CastingServer:
         request.send_json(200, {"authentication": answer})
 
     def _api_faceit(self, request, resource: str, query: dict) -> None:
+        """Forward an allowed FACEIT request; the API key is added here and never leaves the server."""
         if not faceit.ALLOWED_PATH.match(resource):
             return request.send_json(404, {"error": "unbekannt"})
         if faceit.needs_api_key(resource) and not self.secrets.has(secret_store.FACEIT_KEY):
@@ -557,6 +591,7 @@ class CastingServer:
         request.send_json(200, {"ok": True})
 
     def _api_videos(self, request) -> None:
+        """The user's background videos with codec, size and resolution."""
         videos = []
         for video in sorted(self.folders.videos.iterdir()):
             if video.suffix.lower() in (".mp4", ".m4v", ".webm", ".mov"):
@@ -567,6 +602,7 @@ class CastingServer:
         request.send_json(200, {"folder": str(self.folders.videos), "videos": videos})
 
     def _api_open_folder(self, request, which: str | None) -> None:
+        """Show the videos, fonts or data folder in the file manager."""
         folder = {"videos": self.folders.videos, "fonts": self.folders.fonts, "data": self.folders.data}.get(which or "")
         if not folder:
             return request.send_json(400, {"error": "unbekannt"})
@@ -639,15 +675,18 @@ class _JsonHandler(BaseHTTPRequestHandler):
 
     def send_body(self, status: int, body: bytes, content_type: str = "application/json; charset=utf-8",
                   headers: dict | None = None) -> None:
+        """Status, headers and body (JSON by default)."""
         self.send_plain(status, {"Content-Type": content_type, "Content-Length": str(len(body)), "Cache-Control": "no-store",
                                  **(headers or {})}, end_headers_only=True)
         if self.command != "HEAD":
             self.wfile.write(body)
 
     def send_json(self, status: int, data) -> None:
+        """Answer with `data` as JSON."""
         self.send_body(status, json.dumps(data, ensure_ascii=False).encode("utf-8"))
 
     def read_body(self, max_size: int) -> str:
+        """The request body as text; raises ValueError if it is larger than `max_size`."""
         length = int(self.headers.get("Content-Length") or 0)
         if length > max_size:
             raise ValueError("zu groß")
@@ -655,6 +694,7 @@ class _JsonHandler(BaseHTTPRequestHandler):
         return self.rfile.read(length).decode("utf-8", "replace")
 
     def read_json(self, max_size: int) -> dict:
+        """The request body as a dict ({} if it is missing or not a JSON object)."""
         try:
             data = json.loads(self.read_body(max_size) or "{}")
             return data if isinstance(data, dict) else {}

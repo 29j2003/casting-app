@@ -8,7 +8,6 @@ Without a system keyring, the server-only mode opens the password vault with CAS
 """
 
 import argparse
-import os
 import signal
 import sys
 import threading
@@ -22,6 +21,7 @@ from .version import APP_NAME, VERSION
 
 
 def parse_arguments(arguments: list[str] | None = None) -> argparse.Namespace:
+    """Command line options (English names, German aliases from version 1.x)."""
     parser = argparse.ArgumentParser(prog=APP_NAME, description="Steuerung und Overlays für CS2-Casts in OBS")
     parser.add_argument("--no-window", "--ohne-fenster", dest="no_window", action="store_true",
                         help="nur den Server für die Overlays starten (kein Fenster, kein Tray)")
@@ -83,6 +83,7 @@ def _note_update(server: CastingServer, log: AppLog) -> None:
 
 
 def main(arguments: list[str] | None = None) -> int:
+    """Entry point of `python -m casting_app` and of the built app; returns the exit code."""
     if sys.stdout:                               # a windowed build on Windows has no console at all
         sys.stdout.reconfigure(errors="replace")
     options = parse_arguments(arguments)

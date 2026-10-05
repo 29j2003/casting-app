@@ -72,6 +72,7 @@ def decrypt_legacy_file(content: str) -> str:
     from ctypes import wintypes
 
     class DataBlob(ctypes.Structure):
+        """DATA_BLOB of the Windows API: size and pointer of a byte buffer."""
         _fields_ = [("size", wintypes.DWORD), ("data", ctypes.POINTER(ctypes.c_char))]
 
     buffer = ctypes.create_string_buffer(raw, len(raw))
@@ -129,6 +130,7 @@ class SecretStore:
         return self._backend is not None
 
     def has(self, name: str) -> bool:
+        """True if the secret `name` is stored (the control page may ask this – never for the value)."""
         with self._lock:
             return name in self._values
 
@@ -150,6 +152,7 @@ class SecretStore:
             self._values[name] = value
 
     def delete(self, name: str) -> None:
+        """Forget the secret `name` (memory and keyring)."""
         with self._lock:
             self._values.pop(name, None)
         if self._backend is not None:
@@ -161,6 +164,7 @@ class SecretStore:
     # --- internals ---
 
     def _load(self) -> None:
+        """Read all known secrets from the keyring into memory."""
         if self._backend is None:
             return
         for name in VALID_VALUE:
@@ -173,6 +177,7 @@ class SecretStore:
                 self._values[name] = value
 
     def _migrate_legacy_files(self) -> None:
+        """Move the secret files of version 1.x into the keyring once (see module docstring)."""
         for name, file_name, file_format in LEGACY_FILES:
             path = self._data_dir / file_name
             if not path.exists():

@@ -168,7 +168,7 @@ scene('players.html', 'Line-ups',
       '<div class="lineup enter" data-team="b" data-part="lineup-b" style="left:57px;top:530px;--d:.5s"></div>\n' +
       bottom_cast(.7), max_brand=400)
 
-SERIES_FIELD = '<span data-team-name="a"></span><span class="series-score"></span><span data-team-name="b"></span>'
+SERIES_FIELD = '<span data-team-name="a"></span><span class="series-total"></span><span data-team-name="b"></span>'
 scene('series.html', 'Serie',
       head_box(482, 47, 1381, .2, 'series', SERIES_FIELD) +
       '<div class="series-cards enter" data-part="series-cards" style="left:57px;right:57px;top:236px;height:590px;--d:.35s"></div>\n' +

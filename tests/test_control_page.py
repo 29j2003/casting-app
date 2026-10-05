@@ -228,7 +228,8 @@ def test_dach_pages_keep_running_when_app_audio_changes(server, browser):
         f.style.cssText = 'position:fixed;inset:0;width:1920px;height:1080px;z-index:99'; document.body.appendChild(f); })()""")
     page.wait_for_timeout(1500)
     page.evaluate("""(() => { const z = JSON.parse(JSON.stringify(CastCore.DEFAULT)); z.theme = 'dachcs-official';
-        z.broadcast.scene = 'dach-singlecast'; z.broadcast.active = true;
+        z.broadcast.scene = 'dach-singlecast'; z.broadcast.active = true; z.revision = Date.now();
+        fetch('/api/state', { method: 'POST', body: JSON.stringify(z) });            // the server's state wins in the overlay
         document.getElementById('p').contentWindow.postMessage({ cast: 'state', z }, location.origin); })()""")
     page.wait_for_timeout(1500)
     before = page.evaluate("""(() => { const d = document.getElementById('p').contentDocument;
@@ -247,3 +248,34 @@ def test_dach_pages_keep_running_when_app_audio_changes(server, browser):
     assert after["loads"] == [0, 0, 0] and after["src"] == before["src"], "Ton umschalten darf keine DACH-Seite neu laden"
     assert after["allow"] == ["autoplay"] * 3
     assert errors == []
+
+
+def test_series_cards_keep_their_own_map_results(server, browser):
+    """Series scene: each map card shows its own result, the header shows the series total (2.2 had mixed them up)."""
+    control, overlay = browser.new_page(), browser.new_page(viewport={"width": 1920, "height": 1080})
+    errors = watch(control) + watch(overlay)
+    control.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    control.wait_for_timeout(1200)
+    overlay.goto(f"{BASE_URL}/series.html")
+    overlay.wait_for_timeout(1000)
+    control.evaluate("""(() => { Z.veto.steps = [
+        { action: 'pick', team: 'a', map: 'Mirage', result: { a: 13, b: 7, status: 'done' } },
+        { action: 'pick', team: 'b', map: 'Inferno', result: { a: 5, b: 13, status: 'done' } },
+        { action: 'decider', map: 'Nuke', result: { a: 4, b: 2, status: 'running' } }]; send(); })()""")
+    overlay.wait_for_timeout(900)
+    control.evaluate("Z.texts.title = 'Nur ein anderer Text'; send()")             # any change that does not touch the maps
+    overlay.wait_for_timeout(900)
+    cards = overlay.evaluate("[...document.querySelectorAll('.series-card .series-score')].map(e => e.textContent.replace(/\\s/g, ''))")
+    total = overlay.evaluate("document.querySelector('.series-total').textContent.replace(/\\s/g, '')")
+    assert cards == ["13:7", "5:13", "4:2"], cards
+    assert total == "1:1"
+    assert errors == []
+
+
+def test_css_variables_of_the_control_page_are_defined():
+    """Every var(--name) the control page uses (also in JavaScript strings) is defined in its styles."""
+    text = (Path(__file__).parent.parent / "web" / "control.html").read_text(encoding="utf-8")
+    used = set(re.findall(r"var\(--([a-z0-9-]+)", text))
+    defined = set(re.findall(r"--([a-z0-9-]+)\s*:", text))
+    defined |= set(re.findall(r"setProperty\([\"']--([a-z0-9-]+)", text))      # set from JavaScript
+    assert not used - defined, f"nicht definiert: {sorted(used - defined)}"

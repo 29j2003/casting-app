@@ -1228,6 +1228,32 @@
 <script src="legacy.js"></script>
 <script src="cast-core.js"></script>
 <script>
+/* =====================================================================
+   CASTING-APP · Steuerseite (im App-Fenster, läuft auch im normalen Browser)
+   Aufbau dieser Datei:
+     1. <style>  – Aussehen; Farben als Variablen in :root (hell: data-design=light)
+     2. HTML     – Kopfzeile, Reiterleiste (#tabs), je Reiter eine Gruppe
+                   (.group[data-group=live|match|tournament|setup|log]) mit Karten
+                   <details data-area="…">, Vorschau, Docks, Dialoge
+     3. <script> – die Logik in Abschnitten: nach „/* ---------- “ suchen
+   Wichtigste Bausteine:
+     Z              Zustand der Sendung (Standard und Felder: cast-core.js, DEFAULT)
+     send()         Z an Server/Overlays schicken und im Browser sichern;
+     laterSend()    dasselbe gebündelt (beim Tippen)
+     everything()   alle Bereiche neu aus Z zeichnen (nach Laden, Import, Sprachwechsel)
+     ui             Einstellungen der Oberfläche (Docks, Reiter, Zoom) – nicht Teil der Sendung
+     $("id")        document.getElementById
+     data-field="texts.title" data-kind="number|bool|list" (ohne data-kind: Text)
+                    Eingabefeld, das automatisch mit Z verbunden ist (Abschnitt „Felder“)
+   Häufige Änderungen:
+     · neue Karte: <details data-area="englischer-schluessel"><summary>Titel</summary>
+       <div class="content">…</div></details> in die Gruppe des Reiters; der Schlüssel
+       bleibt fest (gespeicherte Docks hängen daran)
+     · neuer sichtbarer Text: deutsch hier schreiben, Übersetzung in lang-en.js
+     · neues Feld der Sendung: Standardwert in cast-core.js (DEFAULT), Eingabe hier
+       mit data-field, Anzeige in cast.js
+   Mehr dazu: ENTWICKLUNG.md im Projektordner.
+   ===================================================================== */
 "use strict";
 const K = window.CastCore, BUNDLED = window.CAST_THEMES || {};
 // alle Themes: mitgelieferte + eigene (eigene liegen im Stand und wandern mit Sicherung/Sitzung)
@@ -2234,7 +2260,7 @@ const SCENE_DEFAULT = ["#pregame", "intro", "cast-solo", "cast-duo", "players", 
   "#stats", "scoreboard", "team-a", "team-b", "h2h", "bracket", "series",
   "#pause", "pause", "sponsors", "cast-duo-clips", "cast-solo-clips",
   "#post", "cast-duo-interview", "cast-solo-interview", "end"];
-const SCENE_GROUPS = { "#pregame": "Vor dem Spiel", "#during": "Im Spiel", "#stats": "Stats & Turnier", "#pause": "Pause", "#post": "Nach dem Spiel", "#zwischen": "Zwischen den Maps" };
+const SCENE_GROUPS = { "#pregame": "Vor dem Spiel", "#during": "Im Spiel", "#stats": "Stats & Turnier", "#pause": "Pause", "#post": "Nach dem Spiel", "#between": "Zwischen den Maps" };
 let sceneArrange = false;
 function scenesRow() {
   const custom = (typeof ui !== "undefined" && ui.sceneRow) || SCENE_DEFAULT;
@@ -2521,7 +2547,6 @@ function sponsorsDraw() {
 }
 $("sponsorPlus").onclick = () => { sponsorEntries().push({ name: "", logo: "" }); sponsorsDraw(); };
 
-/* ---------- Live-Spieldaten CS2 (Vorbereitung) ---------- */
 /* ---------- CS2-Livedaten ---------- */
 let gsiInfo = {}, liveLast = null, liveTimer = null;
 async function gsiInfoFetch() {
@@ -2705,7 +2730,7 @@ function transitionChoiceDraw() {
 /* ---------- Einblendungen ---------- */
 const GFX_NAMES = { caster: "Caster", lowerthird: "Bauchbinde", hint: "Hinweis", score: "Punktestand", mapinfo: "Map-Info", mapfact: "Map-Fakt", scoreboard: "Scoreboard (live)", players: "Spieler (live)" };
 const GFX_POS = [["bl", "Links unten"], ["bc", "Mitte unten"], ["br", "Rechts unten"], ["tl", "Links oben"], ["tc", "Mitte oben"], ["tr", "Rechts oben"], ["cl", "Links Mitte"], ["cr", "Rechts Mitte"]];
-const GFX_DEFAULT = { lowerthird: "bl", caster: "bl", hint: "tc", score: "tc", mapinfo: "tl", mapfact: "tr", scoreboard: "bc", players: "bl" };
+const GFX_DEFAULT = K.GFX_DEFAULT_POS;            // Standardposition je Art (cast-core.js)
 const opts = (list, value) => list.map(([v, n]) => `<option value="${esc(v)}"${String(v) === String(value) ? " selected" : ""}>${esc(n)}</option>`).join("");
 const gfxOpen = new Set();
 const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return s >= 60 ? Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") + " min" : s + " s"; };
@@ -3721,7 +3746,7 @@ $("workspaceButton") && document.querySelector(".topbar .tools").insertAdjacentH
 $("quitButton").onclick = quitAsk;
 
 
-/* ---------- Konzept 3: Kopfzeile, Übergang, Verbindungen ---------- */
+/* ---------- Kopfzeile: Übergang, Verbindungen, Schließen ---------- */
 document.body.appendChild($("workspaceMenu")); document.body.appendChild($("statusPop")); document.body.appendChild($("transPop"));
 const beside = (button, pop, right) => { const r = button.getBoundingClientRect(), z = parseFloat(document.body.style.zoom) || 1;
   pop.style.top = (r.bottom / z + 6) + "px"; if (right) { pop.style.left = ""; pop.style.right = Math.max(8, innerWidth / z - r.right / z) + "px"; } else { pop.style.right = ""; pop.style.left = (r.left / z) + "px"; } };
@@ -4002,7 +4027,7 @@ $("dframeSide") && ($("dframeSide").onchange = () => { dframeDraw(); const k = D
 $("dframeShow") && ($("dframeShow").onchange = () => { Z.dach = Object.assign({}, Z.dach, { frameShow: $("dframeShow").checked }); send(); });
 $("dframeDefault") && ($("dframeDefault").onclick = () => { if (Z.dachFrame) delete Z.dachFrame[$("dframeSide").value]; dframeDraw(); send(); });
 
-/* ---------- Statusleiste, Cast-Dienst, Erste Schritte ---------- */
+/* ---------- Statusleiste, Verbindung zur App, Erste Schritte ---------- */
 let helperRunning = false, musicRunning = null;
 function pill(id, text, state) { const p = $(id); p.className = "pill " + (state || ""); p.lastElementChild.textContent = text; }
 // zu einem Bereich springen: passenden Reiter öffnen, Bereich aufklappen, hinscrollen, kurz leuchten
@@ -4255,7 +4280,7 @@ function everything() { languageDraw(); if (typeof dachCardShow === "function") 
 everything();
 helperCheck(); musicCheck();
 (async () => {
-  // Über den Dienst: dessen gespeicherten Stand übernehmen, falls er neuer ist
+  // Mit dem Server: dessen gespeicherten Stand übernehmen, falls er neuer ist
   if (K.SERVER) {
     try {
       const r = await fetch("/api/state?after=0", { cache: "no-store" });

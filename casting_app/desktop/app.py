@@ -56,6 +56,7 @@ class DesktopApp(QObject):
     """Connects window, tray and server."""
 
     def __init__(self, qt_app: QApplication, log: AppLog, server: CastingServer | None, server_requests: ServerRequests):
+        """Create window and tray and connect them with the server; `server` is None when an older server-only app runs."""
         super().__init__()
         self._qt_app = qt_app
         self._log = log
@@ -93,6 +94,7 @@ class DesktopApp(QObject):
         self._auto_quit_timer.start(AUTO_QUIT_CHECK_MS)
 
     def start(self) -> None:
+        """Show window and tray; look for a new version in the background if that is switched on."""
         self.window.show()
         if self.tray.available:
             self.tray.show()
@@ -102,6 +104,7 @@ class DesktopApp(QObject):
     # --- update check ---
 
     def _check_for_update(self) -> None:
+        """Runs in a thread: asks GitHub for the latest release (see update_check.py)."""
         release = update_check.newer_release()
         if release:
             self._server_requests.update_found.emit(release)
@@ -129,6 +132,7 @@ class DesktopApp(QObject):
             self.tray.tell_once_that_app_keeps_running()
 
     def show_window(self) -> None:
+        """Tray "Öffnen" or a second start: bring the window back."""
         if self.window is not None:
             self.window.bring_to_front()
 
@@ -142,6 +146,7 @@ class DesktopApp(QObject):
         QTimer.singleShot(RELOAD_FALLBACK_MS, lambda: self._reload_without_obs(request_id))
 
     def _overlays_reloaded_by_page(self, request_id: int, via_obs: bool) -> None:
+        """Answer of the control page to "reload overlays" from the tray."""
         if request_id != self._reload_request_id:
             return
         self._reload_request_id += 1               # answered – no fallback
@@ -151,6 +156,7 @@ class DesktopApp(QObject):
             self._reload_without_obs(self._reload_request_id, force=True)
 
     def _reload_without_obs(self, request_id: int, force: bool = False) -> None:
+        """Fallback without OBS: overlays reload themselves through the live connection."""
         if not force and request_id != self._reload_request_id:
             return
         self._reload_request_id += 1
@@ -160,6 +166,7 @@ class DesktopApp(QObject):
     # --- quitting ---
 
     def quit(self, reason: str | None) -> None:
+        """Quit the app (server, window, tray); `reason` goes to the log."""
         if self._quitting:
             return
         self._quitting = True
@@ -220,6 +227,7 @@ class SingleInstance(QObject):
         return True
 
     def listen(self) -> None:
+        """Become the running instance: later starts connect here."""
         QLocalServer.removeServer(INSTANCE_NAME)      # left over after a crash
         self._server = QLocalServer(self)
         self._server.setSocketOptions(QLocalServer.SocketOption.UserAccessOption)
@@ -227,6 +235,7 @@ class SingleInstance(QObject):
         self._server.listen(INSTANCE_NAME)
 
     def _second_start(self) -> None:
+        """Another start of the app connected: show our window instead."""
         connection = self._server.nextPendingConnection()
         connection.readyRead.connect(lambda: (connection.readAll(), self.show_requested.emit()))
         connection.disconnected.connect(connection.deleteLater)

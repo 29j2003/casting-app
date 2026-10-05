@@ -64,6 +64,7 @@ def set_language(language: str) -> None:
 
 
 def language() -> str:
+    """The current app language ("de" or "en")."""
     return _language
 
 

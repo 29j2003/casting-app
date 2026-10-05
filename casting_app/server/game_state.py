@@ -46,6 +46,7 @@ def lan_addresses() -> list[str]:
 
 
 def _number(value) -> int:
+    """int of a GSI value; anything missing or invalid counts as 0."""
     try:
         return int(float(value))
     except (TypeError, ValueError):
@@ -82,6 +83,7 @@ class GameStateReceiver:
     # --- settings ---
 
     def save_settings(self) -> None:
+        """Write gsi.json (token, network receiver, sides, team names)."""
         try:
             self._settings_file.write_text(json.dumps(self.settings), encoding="utf-8")
             self._settings_file.chmod(0o600)
@@ -127,6 +129,7 @@ class GameStateReceiver:
         return 200, {"ok": True}
 
     def _process(self, state: dict, source: str) -> None:
+        """Turn one CS2 post into the compact live state for the overlays."""
         game_map, round_info = state.get("map") or {}, state.get("round") or {}
         all_players = state.get("allplayers") or {}
         round_number = _number(game_map.get("round"))
@@ -189,6 +192,7 @@ class GameStateReceiver:
     def _match_team_names(self, ct: dict, t: dict) -> None:
         """If the server's team names (e.g. FACEIT) match team A/B, assign the sides automatically."""
         def similar(a, b):
+            """Team names match if one contains the other (ignoring case)."""
             return bool(a and b) and (a.lower() in b.lower() or b.lower() in a.lower())
         team_a, team_b = self.settings["teamA"], self.settings["teamB"]
         if similar(ct.get("name"), team_a) or similar(t.get("name"), team_b):
@@ -197,6 +201,7 @@ class GameStateReceiver:
             self.settings["sideA"] = "T"
 
     def _player_line(self, player_id: str, player: dict, rounds_played: int) -> dict:
+        """Statistics of one player as shown in scoreboard and head-to-head."""
         match_stats, state = player.get("match_stats") or {}, player.get("state") or {}
         stats = self._players.get(player_id, {})
         damage = stats.get("dmg", 0) + stats.get("round_dmg", 0)
@@ -210,6 +215,7 @@ class GameStateReceiver:
                 "roundKills": _number(state.get("round_kills"))}
 
     def _send_live(self) -> None:
+        """Send the newest live state to all pages (timer: at most five times per second)."""
         with self._lock:
             self._send_timer = None
             data = json.dumps(self.live)
@@ -219,6 +225,7 @@ class GameStateReceiver:
 
     @property
     def lan_receiver_running(self) -> bool:
+        """True while the receiver for an observer PC (port 8788) is on."""
         return self._lan_server is not None
 
     def set_lan_receiver(self, on: bool) -> None:
@@ -227,6 +234,7 @@ class GameStateReceiver:
             receiver = self
 
             class LanHandler(BaseHTTPRequestHandler):
+                """Accepts only POST /api/gsi with the token – everything else is refused."""
                 timeout = 10
 
                 def do_POST(self):
@@ -242,6 +250,7 @@ class GameStateReceiver:
                     self._answer(403, {})
 
                 def _answer(self, status, answer):
+                    """Send a small JSON answer."""
                     body = json.dumps(answer).encode()
                     self.send_response(status)
                     self.send_header("Content-Type", "application/json")

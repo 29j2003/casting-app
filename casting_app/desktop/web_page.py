@@ -46,6 +46,7 @@ def create_profile(storage_dir: Path, parent=None) -> QWebEngineProfile:
 
 
 def _ask_where_to_save(download: QWebEngineDownloadRequest) -> None:
+    """Downloads (exports, cfg file) go where the user chooses in a save dialog."""
     folder = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation) or str(Path.home())
     target, _ = QFileDialog.getSaveFileName(None, "Speichern unter", str(Path(folder) / download.suggestedFileName()))
     if not target:
@@ -57,6 +58,7 @@ def _ask_where_to_save(download: QWebEngineDownloadRequest) -> None:
 
 
 def _read_qt_resource(path: str) -> str:
+    """Text of a file bundled with Qt (qwebchannel.js)."""
     resource = QFile(path)
     if not resource.open(QIODevice.OpenModeFlag.ReadOnly):
         raise FileNotFoundError(path)
@@ -64,6 +66,7 @@ def _read_qt_resource(path: str) -> str:
 
 
 def _script(name: str, source: str, world, injection_point) -> QWebEngineScript:
+    """A script injected into every page load (see the module docstring for which world it runs in)."""
     script = QWebEngineScript()
     script.setName(name)
     script.setSourceCode(source)
@@ -77,6 +80,7 @@ class AppWebPage(QWebEnginePage):
     """Web page of the app window with the bridge to Python."""
 
     def __init__(self, profile: QWebEngineProfile, parent=None):
+        """Page with the injected bridge and volume scripts and the Python side of the bridge."""
         super().__init__(profile, parent)
         self.bridge = PageBridge(self)
         self._channel = QWebChannel(self)
@@ -94,6 +98,7 @@ class AppWebPage(QWebEnginePage):
         self.runJavaScript(f"window.castAppSend && window.castAppSend({json.dumps(message)})", BRIDGE_WORLD)
 
     def _decide_permission(self, permission: QWebEnginePermission) -> None:
+        """Camera and microphone (for the camera picker) are allowed for the app's own pages only."""
         if permission.permissionType() in ALLOWED_PERMISSIONS and is_own_page(permission.origin()):
             permission.grant()
         else:

@@ -26,6 +26,7 @@ class WrongPassword(Exception):
 
 
 def _aes_gcm():
+    """AES-GCM from the `cryptography` package (imported late: only needed for the vault)."""
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
     return AESGCM
 
@@ -40,6 +41,7 @@ def is_available() -> bool:
 
 
 def vault_exists(data_dir: Path) -> bool:
+    """True if a vault file was created earlier in this data folder."""
     return (data_dir / FILE_NAME).exists()
 
 
@@ -64,6 +66,7 @@ class PasswordVault:
     priority = 1                                  # looks like a usable keyring backend to SecretStore
 
     def __init__(self, data_dir: Path, password: str):
+        """Open the vault in `data_dir` with `password` (or prepare a new one); raises WrongPassword or ValueError."""
         if len(password) < MIN_PASSWORD_LENGTH:
             raise ValueError(f"Das Passwort braucht mindestens {MIN_PASSWORD_LENGTH} Zeichen.")
         self._file = data_dir / FILE_NAME
@@ -75,9 +78,11 @@ class PasswordVault:
             self._open()
 
     def _key(self) -> bytes:
+        """The AES key derived from the password and the salt of this vault (scrypt)."""
         return hashlib.scrypt(self._password, salt=self._salt, dklen=32, **SCRYPT)
 
     def _open(self) -> None:
+        """Read and decrypt the vault file; raises WrongPassword if the password does not fit."""
         stored = json.loads(self._file.read_text(encoding="utf-8"))
         self._salt = base64.b64decode(stored["salt"])
         try:
@@ -87,6 +92,7 @@ class PasswordVault:
         self._entries = json.loads(plain)
 
     def _save(self) -> None:
+        """Encrypt all entries with a fresh nonce and replace the file atomically (owner-only permissions)."""
         nonce = os.urandom(12)
         data = _aes_gcm()(self._key()).encrypt(nonce, json.dumps(self._entries).encode(), None)
         content = {"version": 1, "salt": base64.b64encode(self._salt).decode(),
@@ -99,15 +105,18 @@ class PasswordVault:
     # --- keyring backend interface used by SecretStore ---
 
     def get_password(self, service: str, name: str) -> str | None:
+        """Stored value of `name`, or None (keyring interface)."""
         with self._lock:
             return self._entries.get(f"{service}/{name}")
 
     def set_password(self, service: str, name: str, value: str) -> None:
+        """Store `value` under `name` and save the vault (keyring interface)."""
         with self._lock:
             self._entries[f"{service}/{name}"] = value
             self._save()
 
     def delete_password(self, service: str, name: str) -> None:
+        """Remove `name` from the vault if it is there (keyring interface)."""
         with self._lock:
             if self._entries.pop(f"{service}/{name}", None) is not None:
                 self._save()

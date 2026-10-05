@@ -20,6 +20,7 @@ class EventClient:
     """One connected page (control page or overlay)."""
 
     def __init__(self, page: str, from_obs: bool, version: str):
+        """page: name the page reported (scene or "control"); from_obs: runs inside OBS; version: its app version."""
         self.page = page
         self.from_obs = from_obs
         self.version = version
@@ -29,6 +30,7 @@ class EventClient:
 
     @property
     def is_control_page(self) -> bool:
+        """True for the control page (it gets the client list; overlays get state and reload)."""
         return self.page == CONTROL_PAGE
 
     def send(self, event: str, data: str) -> None:
@@ -58,10 +60,12 @@ class EventHub:
         self._lock = threading.Lock()
 
     def clients(self) -> list[EventClient]:
+        """All connected pages (a copy)."""
         with self._lock:
             return list(self._clients)
 
     def count(self) -> int:
+        """Number of connected pages."""
         with self._lock:
             return len(self._clients)
 
@@ -75,6 +79,7 @@ class EventHub:
         return True
 
     def remove(self, client: EventClient) -> None:
+        """Forget a page that disconnected and tell the control page."""
         client.closed = True
         with self._lock:
             self._clients.discard(client)

@@ -3,6 +3,7 @@
 Desktop-App in Python (PySide6 / Qt WebEngine, Windows/Linux/macOS) zum Casten von CS2-Matches mit OBS. Ein Python-Server
 liefert die Steuerseite (eigenes App-Fenster) und die Overlays aus; OBS zeigt alles in **einer** Browserquelle (`overlay.html`).
 Nutzer: Julius (Twitch 29_THE_P4TCH3R), castet DACH CS Masters, ESEA, Uniliga.
+Aufbau und Rezepte für Änderungen: `ENTWICKLUNG.md` (bei neuen Bausteinen dort mitpflegen).
 **Alle Namen im Code englisch** (Python und `web/`: Variablen, Funktionen, CSS-Klassen, IDs, API-Pfade, JSON-Felder, Dateien).
 **Python-Code: englische Kommentare, sauber dokumentiert (Docstrings je Modul/Klasse).**
 **Oberfläche, Texte für Nutzer und Doku auf Deutsch; Kommentare in `web/` dürfen deutsch bleiben.**
@@ -47,7 +48,7 @@ Nutzer: Julius (Twitch 29_THE_P4TCH3R), castet DACH CS Masters, ESEA, Uniliga.
 - Overlays in OBS dürfen sich durch die Desktop-App nicht ändern – Desktop-Besonderheiten nur in `casting_app/desktop/` bzw. hinter `window.castApp`.
 - Leistung zählt (läuft in OBS): keine Filter auf großen Flächen, Zeichnen nur bei Änderung (`newNeeded`), keine Endlos-Animationen im Leerlauf.
 - Stream-Overlays dürfen keine Bedien-Hinweise zeigen – Hinweise nur in der Vorschau (`body.idle`).
-- Nach Änderungen an Übergängen: `tests/test_uebergaenge.py` und `tests/test_blitze.py` müssen sauber bleiben.
+- Nach Änderungen an Übergängen: `tests/live/transitions.py` und `tests/live/flicker.py` müssen sauber bleiben.
 - Nach Änderungen an `casting_app/`: `python -m pytest` (unter Linux mit `xvfb-run -a`) muss sauber bleiben.
 - `LIESMICH.md` und `web/ANLEITUNG.md` sind dieselbe Anleitung – beide gleich halten.
 - **Zwei Sprachen** (App und Overlays, unabhängig): neuer sichtbarer Text in der Steuerseite → Übersetzung in
@@ -61,7 +62,7 @@ Nutzer: Julius (Twitch 29_THE_P4TCH3R), castet DACH CS Masters, ESEA, Uniliga.
 - Starten: `python -m casting_app` (Desktop-App) · `python -m casting_app --no-window` (nur Server)
 - Bauen: `python tools/build.py` → `dist/` (für das laufende System; PyInstaller, Windows-Installer `tools/installer.nsi`)
 - Tests: `xvfb-run -a python -m pytest` · Skripte gegen die laufende App (`QTWEBENGINE_REMOTE_DEBUGGING=9222 python -m casting_app`,
-  als root zusätzlich `QTWEBENGINE_DISABLE_SANDBOX=1`): `tests/test_uebergaenge.py`, `test_blitze.py`, `test_schnelle_wechsel.py`, `test_speicher.py`
+  als root zusätzlich `QTWEBENGINE_DISABLE_SANDBOX=1`): `tests/live/` (`transitions.py`, `flicker.py`, `fast_switching.py`, `memory.py`)
 - Szenen neu erzeugen: `python3 tools/generate_scenes.py`
 
 ## Geplant

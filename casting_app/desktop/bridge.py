@@ -21,6 +21,7 @@ class PageBridge(QObject):
 
     @Slot(str)
     def receive(self, text: str) -> None:
+        """A message from the control page (JSON text); see page_bridge.js for the types."""
         try:
             message = json.loads(text)
         except ValueError:

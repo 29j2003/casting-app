@@ -25,6 +25,7 @@ class AppWindowAudio:
     """Audio of one web page; off by default."""
 
     def __init__(self, page: QWebEnginePage):
+        """Starts muted: "Ton im App-Fenster" is off by default."""
         self._page = page
         self.enabled = False
         self.volume = DEFAULT_VOLUME             # percent
@@ -40,6 +41,7 @@ class AppWindowAudio:
 
     @property
     def factor(self) -> float:
+        """Volume factor 0…1 that volume.js applies to all media in the window."""
         return max(0.0, min(1.0, self.volume / 100))
 
     def set(self, enabled: bool, volume: float | None = None) -> None:
@@ -56,6 +58,7 @@ class AppWindowAudio:
         self._page.runJavaScript(f"window.castAppSetVolumeFactor && window.castAppSetVolumeFactor({self.factor!r})", BRIDGE_WORLD)
 
     def _update_frames(self, frame) -> None:
+        """Push the current factor into every frame that already exists."""
         if not frame.isValid():
             return
         frame.runJavaScript(f'(window[Symbol.for("casting-app-volume")] || (() => {{}}))({self.factor!r})',

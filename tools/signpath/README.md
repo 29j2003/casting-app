@@ -6,7 +6,7 @@ Damit verschwindet die SmartScreen-Warnung „Windows hat den PC geschützt“.
 ## Einmal einrichten (durch den Inhaber des Repositorys)
 
 1. Voraussetzungen: das Repository ist **öffentlich** und hat eine OSI-anerkannte Lizenz (hier: The Unlicense ✓);
-   die Dateien werden nur in GitHub Actions aus dem Quellcode gebaut (✓, `.github/workflows/bauen.yml`).
+   die Dateien werden nur in GitHub Actions aus dem Quellcode gebaut (✓, `.github/workflows/build.yml`).
 2. Bei <https://signpath.org/apply> bewerben (Projekt: Casting-App, Repository-Link angeben).
 3. Nach der Zusage im SignPath-Konto anlegen:
    * Projekt mit dem Kürzel `casting-app`, GitHub als vertrauenswürdige Build-Quelle verbinden

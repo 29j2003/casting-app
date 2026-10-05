@@ -69,14 +69,9 @@ def run_server_only() -> int:
 
 def _secret_backend(data_dir, log: AppLog):
     """System keyring; without one, a password vault opened with CASTING_APP_VAULT_PASSWORD (if set)."""
-    password = os.environ.get("CASTING_APP_VAULT_PASSWORD")
-    if system_keyring_or_none() is not None or not password or not password_vault.is_available():
+    if system_keyring_or_none() is not None:
         return "system"
-    try:
-        return password_vault.PasswordVault(data_dir, password)
-    except (password_vault.WrongPassword, ValueError):
-        log.warn("CASTING_APP_VAULT_PASSWORD öffnet den Schlüssel-Tresor nicht – Schlüssel gelten nur für diese Sitzung")
-        return "system"
+    return password_vault.vault_from_environment(data_dir, log.write) or "system"
 
 
 def _note_update(server: CastingServer, log: AppLog) -> None:

@@ -133,7 +133,8 @@ jobs:
         run: xvfb-run -a -s "-screen 0 1920x1080x24" python -m pytest -v
       - name: Overlay-Tests gegen die laufende Desktop-App
         run: |
-          QTWEBENGINE_REMOTE_DEBUGGING=9222 xvfb-run -a -s "-screen 0 1920x1080x24" python -m casting_app > app.log 2>&1 &
+          # ohne Schlüsselbund würde der Tresor-Dialog den Start anhalten
+          CASTING_APP_VAULT_PASSWORD=nur-fuer-tests QTWEBENGINE_REMOTE_DEBUGGING=9222 xvfb-run -a -s "-screen 0 1920x1080x24" python -m casting_app > app.log 2>&1 &
           for i in $(seq 1 60); do curl -sf http://localhost:8787/api/ping && break; sleep 1; done
           python tests/test_uebergaenge.py | tee uebergaenge.txt
           grep -qE "^([0-9]+)/\1 Wechsel sauber · Fehler: \[\]" uebergaenge.txt

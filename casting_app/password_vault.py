@@ -18,6 +18,7 @@ from pathlib import Path
 FILE_NAME = "geheimnisse.tresor"
 SCRYPT = {"n": 2 ** 15, "r": 8, "p": 1, "maxmem": 64 * 1024 * 1024}
 MIN_PASSWORD_LENGTH = 8
+ENVIRONMENT_VARIABLE = "CASTING_APP_VAULT_PASSWORD"
 
 
 class WrongPassword(Exception):
@@ -40,6 +41,21 @@ def is_available() -> bool:
 
 def vault_exists(data_dir: Path) -> bool:
     return (data_dir / FILE_NAME).exists()
+
+
+def vault_from_environment(data_dir: Path, log) -> "PasswordVault | None":
+    """The vault opened with CASTING_APP_VAULT_PASSWORD, or None if that variable is not set or does not open it.
+
+    Used by the server-only mode and by unattended starts of the desktop app (no password dialog then).
+    """
+    password = os.environ.get(ENVIRONMENT_VARIABLE)
+    if not password or not is_available():
+        return None
+    try:
+        return PasswordVault(data_dir, password)
+    except (WrongPassword, ValueError):
+        log(f"{ENVIRONMENT_VARIABLE} öffnet den Schlüssel-Tresor nicht – Schlüssel gelten nur für diese Sitzung", "warn")
+        return None
 
 
 class PasswordVault:

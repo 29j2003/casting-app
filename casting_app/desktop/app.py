@@ -237,10 +237,16 @@ def take_over_window_settings_from_version_1() -> None:
         pass
 
 
-def _secret_backend(data_dir, settings):
-    """System keyring; without one (some Linux systems) optionally a password-protected vault."""
+def _secret_backend(data_dir, settings, log: AppLog):
+    """System keyring; without one (some Linux systems) optionally a password-protected vault.
+
+    CASTING_APP_VAULT_PASSWORD opens the vault without a dialog (unattended starts, tests).
+    """
     if system_keyring_or_none() is not None or not password_vault.is_available():
         return "system"
+    vault = password_vault.vault_from_environment(data_dir, log.write)
+    if vault:
+        return vault
     from .vault_dialog import open_or_offer_vault
     return open_or_offer_vault(data_dir, settings)       # None: secrets for this session only
 
@@ -272,7 +278,7 @@ def start_desktop_app(qt_app: QApplication, log: AppLog) -> DesktopApp | None:
     server = None
     if running is None:
         settings = AppSettings(folders.data)
-        server = CastingServer(folders, SecretStore(folders.data, log.write, keyring_backend=_secret_backend(folders.data, settings)),
+        server = CastingServer(folders, SecretStore(folders.data, log.write, keyring_backend=_secret_backend(folders.data, settings, log)),
                                log, on_quit_requested=server_requests.quit_requested.emit,
                                open_folder=lambda folder: server_requests.open_folder_requested.emit(str(folder)),
                                settings=settings)

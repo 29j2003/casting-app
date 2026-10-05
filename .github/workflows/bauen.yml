@@ -45,6 +45,25 @@ jobs:
         env:
           # Notarisierung (macOS) ist vorbereitet, aber aus – siehe tools/build.py
           MAC_NOTARIZE: "0"
+      - name: Installer prüfen (Windows) – still installieren, starten, beenden, deinstallieren
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist/*-Setup.exe | Select-Object -First 1
+          Start-Process $setup.FullName -ArgumentList "/S" -Wait
+          $exe = "$env:LOCALAPPDATA\Programs\Casting-App\Casting-App.exe"
+          if (!(Test-Path $exe)) { throw "nicht installiert: $exe" }
+          Start-Process $exe -ArgumentList "--no-window"
+          $ok = $false
+          for ($i = 0; $i -lt 60 -and -not $ok; $i++) {
+            Start-Sleep 1
+            try { $ping = Invoke-RestMethod http://127.0.0.1:8787/api/ping -Headers @{Host = "localhost:8787"}; $ok = $ping.dienst -eq "cast" } catch {}
+          }
+          if (-not $ok) { throw "installierte App antwortet nicht" }
+          Write-Host "Installierte App läuft: Version $($ping.version)"
+          Invoke-RestMethod -Method Post http://127.0.0.1:8787/api/beenden -Headers @{Host = "localhost:8787"} | Out-Null
+          Start-Sleep 3
+          Start-Process "$env:LOCALAPPDATA\Programs\Casting-App\Deinstallieren.exe" -ArgumentList "/S" -Wait
       - uses: actions/upload-artifact@v4
         with:
           name: casting-app-${{ matrix.name }}
@@ -82,9 +101,19 @@ jobs:
       - if: failure()
         run: cat app.log || true
 
+  testen-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON_VERSION }}", cache: pip }
+      - run: pip install -e ".[test]" && python -m playwright install chromium
+      # Schlüsselbund (echte Anmeldeinformationsverwaltung + echtes DPAPI), Server, OBS-Passwort und Desktop-App unter Windows
+      - run: python -m pytest -v
+
   release:
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release && github.ref == 'refs/heads/main')
-    needs: [bauen, testen]
+    needs: [bauen, testen, testen-windows]
     runs-on: ubuntu-latest
     permissions: { contents: write }
     steps:

@@ -17,7 +17,7 @@ import sys
 
 import shiboken6
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
-from PySide6.QtGui import QDesktopServices, QGuiApplication, QIcon
+from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication
 
@@ -58,6 +58,7 @@ class DesktopApp(QObject):
         self._quitting = False
         self._reload_request_id = 0
         self._idle_since_ms = 0
+        self.single_instance: "SingleInstance | None" = None    # kept alive while the app runs
 
         icon = QIcon(str(WEB_DIR / "medien" / "app-logo-192.png"))
         qt_app.setWindowIcon(icon)

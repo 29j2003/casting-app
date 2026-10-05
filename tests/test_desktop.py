@@ -14,7 +14,6 @@ import subprocess
 import sys
 import tempfile
 import threading
-import time
 import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path

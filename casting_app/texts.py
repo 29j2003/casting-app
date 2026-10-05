@@ -36,11 +36,17 @@ TEXTS = {
     # start
     "server_failed": ("Der Server konnte nicht starten:\n{error}\n\nLäuft ein anderes Programm auf Port 8787?",
                       "The server could not start:\n{error}\n\nIs another program using port 8787?"),
+    "start_failed": ("Die App konnte nicht starten:\n{error}\n\nDetails stehen in log.txt im Datenordner.",
+                     "The app could not start:\n{error}\n\nDetails are in log.txt in the data folder."),
     # password vault (systems without a keyring)
     "vault.unlock.title": ("{app} – gespeicherte Schlüssel", "{app} – saved keys"),
     "vault.unlock.text": ("Passwort für FACEIT-Key, DACH-CS-Zugang und OBS-Passwort:",
                           "Password for the FACEIT key, DACH CS access and OBS password:"),
     "vault.wrong": ("Falsches Passwort. ", "Wrong password. "),
+    "vault.damaged": ("Die Tresor-Datei ist beschädigt und wurde als secrets.vault.damaged beiseitegelegt.\n"
+                      "FACEIT-Key, DACH-CS-Zugang und OBS-Passwort bitte neu eintragen.",
+                      "The vault file is damaged and was set aside as secrets.vault.damaged.\n"
+                      "Please enter the FACEIT key, DACH CS access and OBS password again."),
     "vault.offer.text": ("Auf diesem System gibt es keinen Schlüsselbund.", "This system has no keyring."),
     "vault.offer.details": ("FACEIT-Key, DACH-CS-Zugang und OBS-Passwort gelten dann nur bis zum Beenden der App.\n"
                             "Stattdessen mit einem eigenen Passwort geschützt speichern? Es wird bei jedem Start abgefragt.",

@@ -1332,7 +1332,7 @@ let currentImages = {}, smallerState = null;
 let startDone = false;   // erst senden, wenn der gespeicherte Stand geladen ist
 function send() {
   if (!startDone) return;
-  Z.revision = Date.now();
+  Z.revision = K.nextRevision(Z.revision);
   // große Bilder abtrennen: nur neue Bilder werden übertragen, der Zustand bleibt klein
   const { small, images } = K.split(Z);
   currentImages = images; smallerState = small;
@@ -1355,6 +1355,7 @@ let browsersourcesOk = null;
 channel = K.channel({
   obs: true,
   page: "control",
+  onStale() { send(); },                 // der Server hatte einen neueren Stand: gleich mit höherer Nummer erneut
   onClients(list) { clientsList = list; overlaysPill(); },
   onLive(d) { liveReceived(d); },
   events: 1 | 4 | 16,   // Allgemein, Szenen, Übergänge
@@ -1428,7 +1429,11 @@ async function accessCheck(fromHand) {
 $("accessUpdate").onclick = () => { accessAsked = false; accessCheck(true); };
 // im Standardbrowser öffnen (das App-Fenster gibt neue Fenster an ihn weiter) – mit Schlüssel, sonst ginge dort nichts
 $("openInBrowser").hidden = !(window.castApp && K.ACCESS);
-$("openInBrowser").onclick = () => window.open(location.origin + K.withAccess("/control.html"), "_blank");
+// mit Einmal-Code: der Schlüssel steht so nie in der Adresse oder im Verlauf des Browsers
+$("openInBrowser").onclick = async () => {
+  try { const { code } = await (await fetch("/api/access-code", { method: "POST" })).json(); window.open(location.origin + "/open?code=" + encodeURIComponent(code), "_blank"); }
+  catch (err) { alert("Die App antwortet nicht."); }
+};
 // regelmäßig den kompletten Stand schicken (falls eine Quelle neu geladen wurde)
 if (!K.SERVER) {   // nur ohne App: Stand zusätzlich über OBS an die Browserquellen
   setInterval(() => { if (channel.obs.isOpen && smallerState) channel.obs.onBrowsersources("cast-state", { cast: "state", z: smallerState }); }, 5000);

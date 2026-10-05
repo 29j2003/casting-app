@@ -4,6 +4,7 @@ Starts the server in-process on port 8787 – no other Casting-App may run.
     pytest tests/test_server.py
 """
 
+import base64
 import http.client
 import json
 import os
@@ -172,3 +173,36 @@ def test_without_the_access_key_only_what_an_overlay_needs(server):
     assert request("GET", "/api/state", access=False, headers={"X-Casting-Access": "falsch"})[0] == 200   # overlays read the state
     assert request("GET", "/api/ping", access=False)[0] == 200
     assert request("GET", "/overlay.html", access=False)[0] == 200
+
+
+@pytest.mark.parametrize("length", ["-1", "abc", "99999999999999"])
+def test_odd_content_length_is_refused_before_reading(server, length):
+    assert request("POST", "/api/report", "{}", headers={"Content-Length": length}, access=False)[0] == 400
+
+
+def test_overlays_without_the_key_get_the_state_without_camera_links(server):
+    secret_link = "https://vdo.ninja/?view=abc&password=geheim"
+    newer = int(time.time() * 1000) * 10 + 7
+    request("POST", "/api/state", json.dumps({"revision": newer, "sources": {"c1": {"type": "link", "url": secret_link}}}))
+    assert secret_link.encode() not in request("GET", "/api/state", access=False)[2]
+    assert secret_link.encode() in request("GET", "/api/state")[2]
+    connection = http.client.HTTPConnection("127.0.0.1", 8787, timeout=5)
+    connection.request("GET", "/api/events?page=pause&v=" + VERSION, headers={"Host": "localhost:8787"})
+    first = connection.getresponse().read1(65536)
+    connection.close()
+    assert b"event: state" in first and secret_link.encode() not in first
+
+
+def test_one_time_code_opens_the_control_page_once(server):
+    code = json.loads(request("POST", "/api/access-code")[2])["code"]
+    status, headers, body = request("GET", "/open?code=" + code, access=False)
+    assert status == 200 and server.access_key.encode() in body and headers.get("Cache-Control") == "no-store"
+    assert request("GET", "/open?code=" + code, access=False)[0] == 403          # used once
+    assert request("POST", "/api/access-code", access=False)[0] == 403            # only with the key
+
+
+def test_bad_image_upload_keeps_the_old_image(server):
+    image = "data:image/png;base64," + base64.b64encode(b"\x89PNG old").decode()
+    assert request("POST", "/api/image/test1234", image)[0] == 200
+    assert request("POST", "/api/image/test1234", "data:image/png;base64,@@@kaputt")[0] == 400
+    assert request("GET", "/api/image/test1234")[2] == b"\x89PNG old"

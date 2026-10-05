@@ -10,6 +10,7 @@ from pathlib import Path
 from PySide6.QtWidgets import QInputDialog, QLineEdit, QMessageBox
 
 from .. import password_vault
+from ..files import set_aside
 from ..settings import AppSettings
 from ..texts import text
 from ..version import APP_NAME
@@ -35,6 +36,10 @@ def open_or_offer_vault(data_dir: Path, settings: AppSettings):
                 return password_vault.PasswordVault(data_dir, password)
             except (password_vault.WrongPassword, ValueError):
                 continue
+            except password_vault.DamagedVault:      # no password can open it: keep it aside, start without
+                set_aside(password_vault.vault_file(data_dir))
+                QMessageBox.warning(None, APP_NAME, text("vault.damaged"))
+                return None
         return None
     if not settings.get("offer_password_vault"):
         return None

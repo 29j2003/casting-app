@@ -22,11 +22,14 @@ window.CastCore = (function () {
   // Läuft die Seite über den Server der App (http://localhost:8787)?
   const SERVER = /^https?:$/.test(location.protocol) && location.port === "8787" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
-  // Zugangsschlüssel der App: kommt einmal in der Adresse (?access=…, App-Fenster bzw. OBS-Quelle), bleibt für
-  // diesen Tab in sessionStorage (gilt auch für Szenen und Vorschau darin) und verschwindet aus der Adresszeile.
+  // Zugangsschlüssel der App: im App-Fenster über window.castApp, in OBS-Quellen in der Adresse (?access=…);
+  // im Browser („Steuerseite im Browser öffnen“) legt /open?code=… ihn für den Tab in sessionStorage.
+  // Aus der Adresszeile wird er entfernt.
   // Jede Anfrage an /api/… bekommt ihn als Kopfzeile mit; ohne ihn liefert der Server nur, was ein Overlay braucht.
   const ACCESS = (() => {
     if (!SERVER) return "";
+    // App-Fenster: der Schlüssel kommt über die Brücke (nie in Adresse oder Browser-Speicher); Vorschau-Rahmen fragen das Fenster
+    try { const app = window.top.castApp; if (app && app.accessKey) return app.accessKey; } catch (e) {}
     try {
       const u = new URL(location.href), a = u.searchParams.get("access");
       if (a) {
@@ -353,6 +356,10 @@ window.CastCore = (function () {
     return { send, request, question, onBrowsersources, fresh, get isOpen() { return isOpen; } };
   }
 
+  // Stand-Nummer („revision“): Zeitstempel, aber immer über dem letzten eigenen und dem des Servers
+  let serverRevision = 0;
+  const nextRevision = previous => Math.max(Date.now(), (+previous || 0) + 1, serverRevision + 1);
+
   /* ---------- Kanal: alle Wege zusammen ---------- */
   function channel(opt) {
     // In der App bekommen Overlays ihren Stand ausschließlich über die Live-Verbindung zur App.
@@ -381,7 +388,8 @@ window.CastCore = (function () {
     // App: Änderungen kommen sofort per Live-Verbindung (Server-Sent Events)
     if (SERVER && (opt.query || opt.onClients)) {
       const page = opt.page || document.body.dataset.scene || "page";
-      const es = new EventSource("/api/events?page=" + encodeURIComponent(page) + "&v=" + VERSION);
+      // mit Schlüssel bekommt die Seite den vollen Stand (ohne: ohne Kamera-Links)
+      const es = new EventSource(withAccess("/api/events?page=" + encodeURIComponent(page) + "&v=" + VERSION));
       // App wurde aktualisiert: Seite neu laden (höchstens 3× pro Minute, falls etwas klemmt)
       es.addEventListener("reload", () => {
         try {
@@ -399,7 +407,10 @@ window.CastCore = (function () {
     }
     const serviceSend = d => {
       if (!SERVER) return;
-      if (d.cast === "state") fetch("/api/state", { method: "POST", body: JSON.stringify(d.z) }).catch(() => {});
+      if (d.cast === "state") fetch("/api/state", { method: "POST", body: JSON.stringify(d.z) }).then(async r => {
+        // 409: der Server hat einen neueren Stand (z. B. Uhr des PCs zurückgestellt) – darüber weitermachen
+        if (r.status === 409) { const j = await r.json().catch(() => ({})); serverRevision = Math.max(serverRevision, +j.revision || 0); opt.onStale && opt.onStale(); }
+      }).catch(() => {});
       if (d.cast === "images") Object.entries(d.images || {}).forEach(([id, v]) => fetch("/api/image/" + id, { method: "POST", body: v }).catch(() => {}));
     };
     return {
@@ -695,5 +706,5 @@ window.CastCore = (function () {
     return e.until && e.until > now ? e.until : 0;
   }
 
-  return { VERSION, SERVER, ACCESS, withAccess, dachUrl, GFX_POSITIONS, GFX_DEFAULT_POS, OVERLAY_TEXTS, OVERLAY_WORDS, word, overlayLanguageSet, split, gfxVisible, gfxNextSwitch, DACH_PAGES, DACH_FRAME, dachFrame, tournamentBuild, swissDraw, resolve, Images, cssUrl, DEFAULT, KEY, clone, merge, load, save, savedRevision, channel, timerRest, time };
+  return { VERSION, SERVER, ACCESS, withAccess, dachUrl, nextRevision, GFX_POSITIONS, GFX_DEFAULT_POS, OVERLAY_TEXTS, OVERLAY_WORDS, word, overlayLanguageSet, split, gfxVisible, gfxNextSwitch, DACH_PAGES, DACH_FRAME, dachFrame, tournamentBuild, swissDraw, resolve, Images, cssUrl, DEFAULT, KEY, clone, merge, load, save, savedRevision, channel, timerRest, time };
 })();

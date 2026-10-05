@@ -119,6 +119,7 @@ class SecretStore:
         self._legacy_decrypt = legacy_decrypt
         self._values: dict[str, str] = {}
         self._lock = threading.Lock()
+        self.load_failed = False        # the keyring refused to be read (locked, denied): stored values may exist
         if self._backend is None:
             self._log("Kein Schlüsselbund des Systems verfügbar – FACEIT-Key und DACH-CS-Zugang gelten nur für diese Sitzung", "warn")
         self._load()
@@ -173,7 +174,9 @@ class SecretStore:
             try:
                 value = self._backend.get_password(KEYRING_SERVICE, name)
             except Exception:
-                self._log("Schlüsselbund nicht lesbar – FACEIT-Key/DACH-CS-Zugang bitte neu eintragen", "warn")
+                self.load_failed = True
+                self._log("Schlüsselbund nicht lesbar (gesperrt?) – gespeicherte Zugänge fehlen in dieser Sitzung; "
+                          "Schlüsselbund entsperren und die App neu starten", "warn")
                 return
             if value and is_valid(name, value):
                 self._values[name] = value

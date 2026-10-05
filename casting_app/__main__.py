@@ -35,6 +35,7 @@ def parse_arguments(arguments: list[str] | None = None) -> argparse.Namespace:
 def run_server_only() -> int:
     """Server without window: runs until Ctrl+C or until a page/newer version asks it to quit."""
     log = AppLog(DATA_DIR / "log.txt", echo_to_console=True)
+    log.catch_unhandled_errors()
     running = instance.running_version()
     if running and instance.compare_versions(running, VERSION) >= 0:
         print(f"{APP_NAME} {running} läuft bereits: {BASE_URL}")

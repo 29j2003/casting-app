@@ -257,8 +257,12 @@ Die macOS-App ist nur ad-hoc signiert (ohne Apple-Konto); die Beglaubigung durch
   Seiten mit diesem Schlüssel – das App-Fenster und die Browserquellen, die die App in OBS anlegt – dürfen etwas ändern,
   die DACH-CS-Seiten öffnen oder sich bei OBS anmelden. Andere Programme auf dem PC kommen nicht heran.
   Browserquellen aus älteren Versionen findet die App beim Verbinden mit OBS und fragt, ob sie sie umstellen soll
-  (jede lädt dabei einmal kurz neu – nicht während des Streams bestätigen). Bis dahin zeigen sie alles außer den DACH-CS-Seiten.
-  Die Steuerseite im normalen Browser: ⚙ App-Einstellungen → Verbindung zu OBS → „Steuerseite im Browser öffnen“.
+  (jede lädt dabei einmal kurz neu – nicht während des Streams bestätigen). Bis dahin zeigen sie alles außer den
+  DACH-CS-Seiten und den Kameras (Kamera-Links können Passwörter enthalten und gehen nur an Quellen mit Schlüssel).
+  Die Steuerseite im normalen Browser: ⚙ App-Einstellungen → Verbindung zu OBS → „Steuerseite im Browser öffnen“
+  (der Link gilt einmal und 2 Minuten – im Browser-Verlauf ist er danach wertlos).
+* **Kaputte Dateien halten die App nicht auf:** Ist z. B. nach einem Stromausfall eine Datei im Datenordner beschädigt,
+  legt die App sie als `….damaged` beiseite, startet mit Standardwerten und schreibt es ins Log.
 * **Vom PC geht nichts nach außen** außer dem Abholen der FACEIT-Match-Daten (nur Match-ID und dein API-Key) und – beim
   Start der Desktop-App – der Frage an GitHub, ob es eine neuere Version gibt (nur die Versionsnummer wird abgerufen;
   abschaltbar unter ⚙ → App). Gibt es eine, zeigt die App das im Tray und unter ⚙ → App an.

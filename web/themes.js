@@ -2,94 +2,94 @@
 //  CAST-OVERLAY · THEMES (Grundeinstellungen)
 //  Alles hier lässt sich auch in der Steuerseite unter „Theme anpassen"
 //  ändern – das hier sind nur die Startwerte.
-//    dunkel = Balken   hell = Felder   textDunkel = Schrift auf den Feldern
-//    akzent = Theme-Farbe   linie = farbige Linie zwischen Balken und Feld
+//    dark = Balken   light = Felder   textDark = Schrift auf den Feldern
+//    accent = Theme-Farbe   stroke = farbige Linie zwischen Balken und Feld
 //    icon = Logo im dunklen Quadrat ("" = kein Logo)
-//    schriftBild = Schriftzug als Bild (ersetzt zeile1/zeile2)
-//    markeBild = komplettes Logo als Bild (ersetzt Quadrat + Schriftzug)
-//    markeBox = das Logo-Bild auf einem dunklen Kasten zeigen (für Logos ohne eigenen Hintergrund)
-//    hintergrundBild = Hintergrund, wenn keine Videos laufen
-//    iconPlatte = Farbe des Logo-Felds (leer = wie die Balken)   ecken = "aussen" | "gerade" | "alle"
-//    kopfText = Schrift in den Balken   markeText = "hell" | "dunkel" (Platte hinter dem Schriftzug)
-//    zeilenTausch = Zeile 1 groß, Zeile 2 klein in Akzentfarbe (z. B. „ESEA / LEAGUE“)   vorlagen = Farbvorlagen
-//    schrift = Schriftart (Rajdhani ist mitgeliefert)   schriftDatei = eigene Schriftdatei aus fonts/
-//    fett = Schrift zusätzlich verstärken (Umriss), true/false
+//    fontImage = Schriftzug als Bild (ersetzt line1/line2)
+//    brandImage = komplettes Logo als Bild (ersetzt Quadrat + Schriftzug)
+//    brandBox = das Logo-Bild auf einem dunklen Kasten zeigen (für Logos ohne eigenen Hintergrund)
+//    backgroundImage = Hintergrund, wenn keine Videos laufen
+//    iconDisk = Farbe des Logo-Felds (leer = wie die Balken)   corners = "outside" | "straight" | "all"
+//    headText = Schrift in den Balken   brandText = "light" | "dark" (Platte hinter dem Schriftzug)
+//    rowsSwap = Zeile 1 groß, Zeile 2 klein in Akzentfarbe (z. B. „ESEA / LEAGUE“)   templates = Farbvorlagen
+//    font = Schriftart (Rajdhani ist mitgeliefert)   fontFile = eigene Schriftdatei aus fonts/
+//    bold = Schrift zusätzlich verstärken (Umriss), true/false
 // =====================================================================
 window.CAST_THEMES = {
-  regulaer: {
+  regular: {
     name: "Regulär",
     // Nachtviolett · das Logo-Feld bleibt neutral, damit jedes Org- oder Streamer-Logo passt
-    dunkel: "#1E1240", hell: "#EFEDF6", textDunkel: "#120B26", akzent: "#8B6CFF", linie: true,
-    iconPlatte: "#0D0C12", kopfText: "#FFFFFF",
+    dark: "#1E1240", light: "#EFEDF6", textDark: "#120B26", accent: "#8B6CFF", stroke: true,
+    iconDisk: "#0D0C12", headText: "#FFFFFF",
     // Farbvorlagen (Setup → Theme anpassen): Nachtviolett ist Standard, Royal und Orchidee als Alternativen
-    vorlagen: {
-      "Nachtviolett": { dunkel: "#1E1240", akzent: "#8B6CFF", hell: "#EFEDF6", textDunkel: "#120B26", kopfText: "#FFFFFF" },
-      "Royal": { dunkel: "#3A1D8C", akzent: "#A98BFF", hell: "#F1EEF9", textDunkel: "#160D33", kopfText: "#FFFFFF" },
-      "Orchidee": { dunkel: "#4A1670", akzent: "#D59BFF", hell: "#F5F0F9", textDunkel: "#1F0B2E", kopfText: "#FFFFFF" }
+    templates: {
+      "Nachtviolett": { dark: "#1E1240", accent: "#8B6CFF", light: "#EFEDF6", textDark: "#120B26", headText: "#FFFFFF" },
+      "Royal": { dark: "#3A1D8C", accent: "#A98BFF", light: "#F1EEF9", textDark: "#160D33", headText: "#FFFFFF" },
+      "Orchidee": { dark: "#4A1670", accent: "#D59BFF", light: "#F5F0F9", textDark: "#1F0B2E", headText: "#FFFFFF" }
     },
-    icon: "", schriftBild: "",
-    zeile1: "COUNTER-STRIKE", zeile2: "CAST",
-    schrift: "Rajdhani", schriftDatei: "", fett: true
+    icon: "", fontImage: "",
+    line1: "COUNTER-STRIKE", line2: "CAST",
+    font: "Rajdhani", fontFile: "", bold: true
   },
   dachcs: {
     name: "DACH CS – eigener Stil",
     // Farben aus dem Press Kit: Navy #101526, Gelb #FCC659, Hellgrau #ECF0F1
-    dunkel: "#101526", hell: "#EAEAEA", textDunkel: "#101526", akzent: "#FCC659", linie: true,
-    icon: "medien/themes/dachcs/hahn_gelb.svg", schriftBild: "",
-    markeBild: "medien/themes/dachcs/logo_text_rechts_3.svg",     // Press Kit: gelbes Quadrat + Navy-Feld (wie im Konzept)
-    hintergrundBild: "medien/themes/dachcs/blau_1.svg",           // wenn keine Videos laufen
-    zeile1: "DACH CS", zeile2: "MASTERS",
-    schrift: "Rajdhani", schriftDatei: "", fett: true,
+    dark: "#101526", light: "#EAEAEA", textDark: "#101526", accent: "#FCC659", stroke: true,
+    icon: "media/themes/dachcs/rooster_yellow.svg", fontImage: "",
+    brandImage: "media/themes/dachcs/logo_text_right_3.svg",     // Press Kit: gelbes Quadrat + Navy-Feld (wie im Konzept)
+    backgroundImage: "media/themes/dachcs/blue_1.svg",           // wenn keine Videos laufen
+    line1: "DACH CS", line2: "MASTERS",
+    font: "Rajdhani", fontFile: "", bold: true,
     // Auswahl in der Steuerseite (Press Kit)
-    auswahl: {
-      markeBild: {
-        "Gelbes Quadrat · Navy-Feld (Standard)": "medien/themes/dachcs/logo_text_rechts_3.svg",
-        "Gelbes Quadrat · helles Feld": "medien/themes/dachcs/logo_text_rechts_1.svg",
-        "Navy Quadrat · helles Feld": "medien/themes/dachcs/logo_text_rechts_2.svg"
+    selection: {
+      brandImage: {
+        "Gelbes Quadrat · Navy-Feld (Standard)": "media/themes/dachcs/logo_text_right_3.svg",
+        "Gelbes Quadrat · helles Feld": "media/themes/dachcs/logo_text_right_1.svg",
+        "Navy Quadrat · helles Feld": "media/themes/dachcs/logo_text_right_2.svg"
       },
-      hintergrundBild: {
-        "Navy (ruhig)": "medien/themes/dachcs/blau_1.svg",
-        "Navy (gespiegelt)": "medien/themes/dachcs/blau_2.svg",
-        "Gelb (ruhig)": "medien/themes/dachcs/gelb.svg",
-        "Navy/Gelb": "medien/themes/dachcs/blau_gelb.svg",
-        "Gelb/Navy": "medien/themes/dachcs/gelb_blau.svg"
+      backgroundImage: {
+        "Navy (ruhig)": "media/themes/dachcs/blue_1.svg",
+        "Navy (gespiegelt)": "media/themes/dachcs/blue_2.svg",
+        "Gelb (ruhig)": "media/themes/dachcs/yellow.svg",
+        "Navy/Gelb": "media/themes/dachcs/blue_yellow.svg",
+        "Gelb/Navy": "media/themes/dachcs/yellow_blue.svg"
       },
       icon: {
-        "Hahn gelb": "medien/themes/dachcs/hahn_gelb.svg",
-        "Hahn weiß": "medien/themes/dachcs/hahn_weiss.svg",
-        "Hahn navy": "medien/themes/dachcs/hahn_blau.svg"
+        "Hahn gelb": "media/themes/dachcs/rooster_yellow.svg",
+        "Hahn weiß": "media/themes/dachcs/rooster_white.svg",
+        "Hahn navy": "media/themes/dachcs/rooster_blue.svg"
       }
     }
   },
-  "dachcs-offiziell": {
+  "dachcs-official": {
     name: "DACH CS – Offiziell",
     // Grafiken kommen als offizielle Browserquellen von DACH CS (Nutzer-ID + Key) – die App zeigt sie in EINER Quelle,
     // setzt Kameras/Inhalt in die Rahmen und legt ihre Einblendungen darüber. Farben für die Einblendungen wie DACH CS.
-    offiziell: true,
-    dunkel: "#101526", hell: "#EAEAEA", textDunkel: "#101526", akzent: "#FCC659", linie: true,
-    icon: "medien/themes/dachcs/hahn_gelb.svg", schriftBild: "", markeBild: "medien/themes/dachcs/logo_text_rechts_3.svg",
-    zeile1: "DACH CS", zeile2: "OFFIZIELL"
+    official: true,
+    dark: "#101526", light: "#EAEAEA", textDark: "#101526", accent: "#FCC659", stroke: true,
+    icon: "media/themes/dachcs/rooster_yellow.svg", fontImage: "", brandImage: "media/themes/dachcs/logo_text_right_3.svg",
+    line1: "DACH CS", line2: "OFFIZIELL"
   },
   esea: {
     name: "ESEA",
     // Grün aus dem Stern gemessen – bitte mit dem offiziellen Brand-Kit abgleichen
-    dunkel: "#121412", hell: "#F2F4F2", textDunkel: "#0D100D", akzent: "#3EB047", linie: true, kopfText: "#FFFFFF",
+    dark: "#121412", light: "#F2F4F2", textDark: "#0D100D", accent: "#3EB047", stroke: true, headText: "#FFFFFF",
     // Konzept: Stern im dunklen Feld + „ESEA / LEAGUE“ in der Overlay-Schrift auf dunkler Platte (statt des alten Schriftzug-Bilds)
-    icon: "medien/themes/esea-stern.png", schriftBild: "", markeText: "dunkel", zeilenTausch: true,
-    zeile1: "ESEA", zeile2: "LEAGUE",
-    schrift: "Rajdhani", schriftDatei: "", fett: true      // eigene Schrift: Datei in fonts/ legen und in der Steuerseite wählen
+    icon: "media/themes/esea-star.png", fontImage: "", brandText: "dark", rowsSwap: true,
+    line1: "ESEA", line2: "LEAGUE",
+    font: "Rajdhani", fontFile: "", bold: true      // eigene Schrift: Datei in fonts/ legen und in der Steuerseite wählen
   },
   uniliga: {
     name: "Uniliga",
-    dunkel: "#0F1B1B", hell: "#EEF6F5", textDunkel: "#0B1414", akzent: "#00E9C6", linie: true,
-    icon: "medien/themes/uniliga.png", schriftBild: "",
-    markeBild: "medien/themes/uniliga-wortmarke.png",   // offizielle Wortmarke mit Icon
-    markeBox: true,                                     // Logo auf dunklem Kasten zeigen
-    zeile1: "UNILIGA", zeile2: "COUNTER-STRIKE",
-    schrift: "Rajdhani", schriftDatei: "", fett: true,
-    auswahl: {
-      markeBild: {
-        "Wortmarke mit Icon": "medien/themes/uniliga-wortmarke.png"
+    dark: "#0F1B1B", light: "#EEF6F5", textDark: "#0B1414", accent: "#00E9C6", stroke: true,
+    icon: "media/themes/uniliga.png", fontImage: "",
+    brandImage: "media/themes/uniliga-wordmark.png",   // offizielle Wortmarke mit Icon
+    brandBox: true,                                     // Logo auf dunklem Kasten zeigen
+    line1: "UNILIGA", line2: "COUNTER-STRIKE",
+    font: "Rajdhani", fontFile: "", bold: true,
+    selection: {
+      brandImage: {
+        "Wortmarke mit Icon": "media/themes/uniliga-wordmark.png"
       }
     }
   }

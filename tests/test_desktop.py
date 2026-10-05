@@ -29,7 +29,7 @@ from casting_app.version import VERSION
 
 ROOT = Path(__file__).resolve().parent.parent
 _RESULT_NUMBERS = itertools.count(1)
-CLOSE_BUTTONS = "[...document.querySelectorAll('.frage:not(#frage) button')].map(b => b.textContent)"
+CLOSE_BUTTONS = "[...document.querySelectorAll('.question:not(#question) button')].map(b => b.textContent)"
 
 
 @pytest.fixture(scope="module")
@@ -57,7 +57,7 @@ def run_js(qtbot, target, code: str, world=0):
 
 def wait_for_page(qtbot, desktop):
     page = desktop.window.page
-    qtbot.waitUntil(lambda: run_js(qtbot, page, "!!(window.castApp && document.querySelector('#beendenKnopf'))") is True,
+    qtbot.waitUntil(lambda: run_js(qtbot, page, "!!(window.castApp && document.querySelector('#quitButton'))") is True,
                     timeout=30_000)
     return page
 
@@ -74,7 +74,7 @@ def ping() -> dict | None:
 def test_window_shows_control_page(qtbot, desktop):
     page = wait_for_page(qtbot, desktop)
     assert desktop.window.isVisible()
-    assert page.url().toString() == "http://localhost:8787/steuerung.html"
+    assert page.url().toString() == "http://localhost:8787/control.html"
     assert ping()["version"] == VERSION
     # the connection to Python is invisible to the page (isolated world)
     assert run_js(qtbot, page, "typeof window.qt + ' ' + typeof window.castAppSend") == "undefined undefined"
@@ -89,7 +89,7 @@ def test_close_asks_first_and_cancel_keeps_window(qtbot, desktop):
     desktop.window.close()                                    # second click: still one dialog
     qtbot.wait(200)
     assert len(run_js(qtbot, page, CLOSE_BUTTONS)) == 3
-    run_js(qtbot, page, "document.querySelector('.frage:not(#frage) [data-w=\"\"]').click()")
+    run_js(qtbot, page, "document.querySelector('.question:not(#question) [data-w=\"\"]').click()")
     qtbot.wait(1300)                                          # longer than the system-dialog fallback
     assert desktop.window.isVisible()
     assert QApplication.activeModalWidget() is None, "nach Abbrechen darf kein Systemdialog kommen"
@@ -98,12 +98,19 @@ def test_close_asks_first_and_cancel_keeps_window(qtbot, desktop):
 
 def test_power_button_opens_same_dialog_and_hide_keeps_server(qtbot, desktop):
     page = wait_for_page(qtbot, desktop)
-    run_js(qtbot, page, "document.getElementById('beendenKnopf').click()")
+    run_js(qtbot, page, "document.getElementById('quitButton').click()")
     qtbot.wait(150)
     assert len(run_js(qtbot, page, CLOSE_BUTTONS)) == 3
-    run_js(qtbot, page, "document.querySelector('.frage:not(#frage) [data-w=\"fenster\"]').click()")
+    run_js(qtbot, page, "document.querySelector('.question:not(#question) [data-w=\"window\"]').click()")
     qtbot.waitUntil(lambda: not desktop.window.isVisible(), timeout=3000)
     assert ping() is not None, "Server/Overlays laufen weiter"
+
+
+def test_tray_follows_the_app_language(qtbot, desktop):
+    desktop._server.settings.update({"app_language": "en"})
+    qtbot.waitUntil(lambda: desktop.tray._actions["tray.quit"].text() == "Quit completely", timeout=3000)
+    desktop._server.settings.update({"app_language": "de"})
+    qtbot.waitUntil(lambda: desktop.tray._actions["tray.quit"].text() == "Ganz beenden", timeout=3000)
 
 
 def test_second_start_shows_existing_window(qtbot, desktop):
@@ -116,14 +123,14 @@ def test_second_start_shows_existing_window(qtbot, desktop):
 
 def test_app_window_audio_is_off_by_default_and_regulates_foreign_frames(qtbot, desktop):
     page = wait_for_page(qtbot, desktop)
-    run_js(qtbot, page, "ui.appTon && $('appTon').click()")   # start from "off"
+    run_js(qtbot, page, "ui.appAudio && $('appAudio').click()")   # start from "off"
     qtbot.wait(300)
     assert page.isAudioMuted()
     with _https_test_page() as https_url:
         run_js(qtbot, page, f"""(() => {{ const d = $('frame').contentDocument, f = d.createElement('iframe');
             f.id = 'fremd'; f.src = {json.dumps(https_url)}; d.body.appendChild(f); }})()""")
         frame = _wait_for_frame(qtbot, page, https_url)
-        run_js(qtbot, page, "(() => { if (!ui.appTon) $('appTon').click(); const r = $('appTonVol'); r.value = 40; r.dispatchEvent(new Event('input')); })()")
+        run_js(qtbot, page, "(() => { if (!ui.appAudio) $('appAudio').click(); const r = $('appAudioVol'); r.value = 40; r.dispatchEvent(new Event('input')); })()")
         qtbot.wait(500)
         assert not page.isAudioMuted()
         measured = run_js(qtbot, frame, """(() => { const v = document.querySelector('video'); v.volume = 0.5;
@@ -132,11 +139,11 @@ def test_app_window_audio_is_off_by_default_and_regulates_foreign_frames(qtbot, 
         page_value, audible, context_gain, frame_origin = measured
         assert frame_origin.startswith("https://127.0.0.1"), "Rahmen muss fremd (cross-origin) sein"
         assert page_value == 0.5 and abs(audible - 0.2) < 1e-6 and abs(context_gain - 0.4) < 1e-6
-        run_js(qtbot, page, "(() => { const r = $('appTonVol'); r.value = 100; r.dispatchEvent(new Event('input')); })()")
+        run_js(qtbot, page, "(() => { const r = $('appAudioVol'); r.value = 100; r.dispatchEvent(new Event('input')); })()")
         qtbot.wait(400)
         audible = run_js(qtbot, frame, "window[Symbol.for('casting-app-volume')].inspect(document.querySelector('video')).actualVolume")
         assert abs(audible - 0.5) < 1e-6
-        run_js(qtbot, page, "$('appTon').click()")
+        run_js(qtbot, page, "$('appAudio').click()")
         qtbot.wait(300)
         assert page.isAudioMuted()
 
@@ -144,10 +151,10 @@ def test_app_window_audio_is_off_by_default_and_regulates_foreign_frames(qtbot, 
 def test_secrets_stay_in_keyring_only(qtbot, desktop):
     page = wait_for_page(qtbot, desktop)
     faceit_key, dach_key = "abcdef12-3456-7890-abcd-ef1234567890", "dachkey-0815"
-    run_js(qtbot, page, f"""fetch('/api/faceit-schluessel', {{ method: 'POST', body: JSON.stringify({{ schluessel: '{faceit_key}' }}) }}).then(() => 1)""")
-    run_js(qtbot, page, f"""fetch('/api/dach-zugang', {{ method: 'POST', body: JSON.stringify({{ userid: '4242', key: '{dach_key}' }}) }}).then(() => 1)""")
+    run_js(qtbot, page, f"""fetch('/api/faceit-key', {{ method: 'POST', body: JSON.stringify({{ key: '{faceit_key}' }}) }}).then(() => 1)""")
+    run_js(qtbot, page, f"""fetch('/api/dach-access', {{ method: 'POST', body: JSON.stringify({{ userid: '4242', key: '{dach_key}' }}) }}).then(() => 1)""")
     qtbot.wait(300)
-    texts = run_js(qtbot, page, """Promise.all(['/api/log', '/api/dach-zugang', '/api/faceit-schluessel'].map(u => fetch(u).then(r => r.text())))
+    texts = run_js(qtbot, page, """Promise.all(['/api/log', '/api/dach-access', '/api/faceit-key'].map(u => fetch(u).then(r => r.text())))
         .then(t => t.join('\\n') + JSON.stringify(Z))""")
     for secret in (faceit_key, dach_key, "4242"):
         assert secret not in texts
@@ -165,7 +172,7 @@ def test_quit_from_dialog_stops_everything(qtbot, desktop):
     page = wait_for_page(qtbot, desktop)
     desktop.window.close()
     qtbot.wait(200)
-    run_js(qtbot, page, "document.querySelector('.frage:not(#frage) [data-w=\"beenden\"]').click()")
+    run_js(qtbot, page, "document.querySelector('.question:not(#question) [data-w=\"quit\"]').click()")
     qtbot.waitUntil(lambda: desktop._quitting, timeout=3000)
     QApplication.instance().aboutToQuit.emit()                # the event loop of the test does not end by itself
     qtbot.waitUntil(lambda: ping() is None, timeout=5000)

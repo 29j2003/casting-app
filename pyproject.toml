@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "casting-app"
-version = "2.1.0"                     # keep equal to casting_app/version.py and web/cast-kern.js
+version = "2.2.0"                     # keep equal to casting_app/version.py and web/cast-core.js
 description = "Steuerung und Overlays für CS2-Casts in OBS"
 requires-python = ">=3.11"
 dependencies = [
@@ -30,5 +30,5 @@ include = ["casting_app*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # only these files are pytest tests; the other scripts in tests/ are run directly against a running app
-python_files = ["test_secret_store.py", "test_password_vault.py", "test_update_check.py", "test_server.py", "test_obs_password.py", "test_desktop.py"]
+python_files = ["test_secret_store.py", "test_password_vault.py", "test_update_check.py", "test_server.py", "test_obs_password.py", "test_desktop.py", "test_legacy.py", "test_control_page.py", "test_texts.py"]
 qt_api = "pyside6"

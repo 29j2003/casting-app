@@ -15,9 +15,9 @@ CODEC_MARKERS = (
 
 
 def video_info(path: Path) -> dict:
-    """Info shown in the setup page (German keys are part of the page's API)."""
+    """Info shown in the setup page."""
     size = path.stat().st_size
-    info = {"name": path.name, "groesse": size}
+    info = {"name": path.name, "size": size}
     with open(path, "rb") as f:
         head = f.read(min(size, SCAN_BYTES))
         tail = b""
@@ -31,7 +31,7 @@ def video_info(path: Path) -> dict:
         info["faststart"] = moov >= 0 and (mdat < 0 or moov < mdat)
         size_from_track = _resolution(head) or _resolution(tail)
         if size_from_track:
-            info["breite"], info["hoehe"] = size_from_track
+            info["width"], info["height"] = size_from_track
     return info
 
 

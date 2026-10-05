@@ -1,7 +1,8 @@
 """Detecting and replacing an already running Casting-App (also versions 1.x).
 
-Every version answers GET /api/ping with {"dienst": "cast", "version": ...} and quits on
-POST /api/beenden. A newer version replaces an older one; an older version never
+Every version answers GET /api/ping with {"service": "cast", "version": ...} (versions 2.1 and
+older: {"dienst": "cast", ...}) and quits on POST /api/quit (2.1 and older: /api/beenden, which
+newer versions still accept). A newer version replaces an older one; an older version never
 replaces a newer one.
 """
 
@@ -13,23 +14,25 @@ import urllib.request
 from .server.app_server import PORT
 
 PING_URL = f"http://127.0.0.1:{PORT}/api/ping"
-QUIT_URL = f"http://127.0.0.1:{PORT}/api/beenden"
+QUIT_URL = f"http://127.0.0.1:{PORT}/api/beenden"       # the old name: understood by every version
 HOST_HEADER = {"Host": f"localhost:{PORT}"}       # the server only answers to its own address
 
 
 def running_version() -> str | None:
-    """Version of the Casting-App on this PC, "alt" for versions without a number, None if none runs."""
+    """Version of the Casting-App on this PC, "old" for versions without a number, None if none runs."""
     request = urllib.request.Request(PING_URL, headers=HOST_HEADER)
     try:
         with _no_proxy().open(request, timeout=1.5) as answer:
             data = json.loads(answer.read())
     except (OSError, ValueError):
         return None
-    return (data.get("version") or "alt") if data.get("dienst") == "cast" else None
+    if "cast" not in (data.get("service"), data.get("dienst")):
+        return None
+    return data.get("version") or "old"
 
 
 def compare_versions(a: str, b: str) -> int:
-    """> 0 if a is newer than b, < 0 if older, 0 if equal ("alt" counts as oldest)."""
+    """> 0 if a is newer than b, < 0 if older, 0 if equal ("old" counts as oldest)."""
     def parts(version):
         try:
             return [int(p) for p in str(version).split(".")]

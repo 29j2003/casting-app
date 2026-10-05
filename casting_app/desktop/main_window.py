@@ -14,12 +14,13 @@ from PySide6.QtGui import QCloseEvent, QIcon
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QMainWindow, QMessageBox
 
+from ..texts import text
 from ..version import APP_NAME
 from .audio import AppWindowAudio
 from .web_page import AppWebPage
 
 PAGE_CONFIRM_TIMEOUT_MS = 1000
-CLOSE_CHOICES = ("beenden", "fenster", "")        # quit · hide window · cancel
+CLOSE_CHOICES = ("quit", "window", "")        # quit · hide window · cancel
 
 
 class MainWindow(QMainWindow):
@@ -79,22 +80,23 @@ class MainWindow(QMainWindow):
         if request_id != self._close_request_id or self._close_request_confirmed or not self.isVisible():
             return
         self._system_dialog_open = True
-        box = QMessageBox(QMessageBox.Icon.Question, f"{APP_NAME} schließen?", f"{APP_NAME} schließen?", parent=self)
-        box.setInformativeText("Bei „Nur Fenster schließen“ laufen die Overlays in OBS weiter.")
-        quit_button = box.addButton("Ganz beenden", QMessageBox.ButtonRole.DestructiveRole)
-        hide_button = box.addButton("Nur Fenster schließen", QMessageBox.ButtonRole.AcceptRole)
-        box.addButton("Abbrechen", QMessageBox.ButtonRole.RejectRole)
+        title = text("close.title", app=APP_NAME)
+        box = QMessageBox(QMessageBox.Icon.Question, title, title, parent=self)
+        box.setInformativeText(text("close.text"))
+        quit_button = box.addButton(text("close.quit"), QMessageBox.ButtonRole.DestructiveRole)
+        hide_button = box.addButton(text("close.hide"), QMessageBox.ButtonRole.AcceptRole)
+        box.addButton(text("close.cancel"), QMessageBox.ButtonRole.RejectRole)
         box.setDefaultButton(hide_button)
         box.exec()
         self._system_dialog_open = False
         clicked = box.clickedButton()
-        self.handle_close_choice("beenden" if clicked is quit_button else "fenster" if clicked is hide_button else "")
+        self.handle_close_choice("quit" if clicked is quit_button else "window" if clicked is hide_button else "")
 
     def handle_close_choice(self, choice: str) -> None:
         self._close_request_id += 1     # an answer ends the pending request
-        if choice == "beenden":
+        if choice == "quit":
             self.quit_requested.emit()
-        elif choice == "fenster":
+        elif choice == "window":
             self.hide_requested.emit()
 
     # --- showing again ---

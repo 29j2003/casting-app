@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QInputDialog, QLineEdit, QMessageBox
 
 from .. import password_vault
 from ..settings import AppSettings
+from ..texts import text
 from ..version import APP_NAME
 
 ATTEMPTS = 3
@@ -25,9 +26,8 @@ def open_or_offer_vault(data_dir: Path, settings: AppSettings):
     """The opened PasswordVault, or None (secrets then live for this session only)."""
     if password_vault.vault_exists(data_dir):
         for attempt in range(ATTEMPTS):
-            hint = "" if attempt == 0 else "Falsches Passwort. "
-            password = _ask(f"{APP_NAME} – gespeicherte Schlüssel",
-                            f"{hint}Passwort für FACEIT-Key, DACH-CS-Zugang und OBS-Passwort:")
+            hint = "" if attempt == 0 else text("vault.wrong")
+            password = _ask(text("vault.unlock.title", app=APP_NAME), hint + text("vault.unlock.text"))
             if password is None:
                 return None
             try:
@@ -37,12 +37,11 @@ def open_or_offer_vault(data_dir: Path, settings: AppSettings):
         return None
     if not settings.get("offer_password_vault"):
         return None
-    box = QMessageBox(QMessageBox.Icon.Question, APP_NAME, "Auf diesem System gibt es keinen Schlüsselbund.")
-    box.setInformativeText("FACEIT-Key, DACH-CS-Zugang und OBS-Passwort gelten dann nur bis zum Beenden der App.\n"
-                           "Stattdessen mit einem eigenen Passwort geschützt speichern? Es wird bei jedem Start abgefragt.")
-    create = box.addButton("Passwort festlegen", QMessageBox.ButtonRole.AcceptRole)
-    box.addButton("Nur für diese Sitzung", QMessageBox.ButtonRole.RejectRole)
-    never = box.addButton("Nicht mehr fragen", QMessageBox.ButtonRole.DestructiveRole)
+    box = QMessageBox(QMessageBox.Icon.Question, APP_NAME, text("vault.offer.text"))
+    box.setInformativeText(text("vault.offer.details"))
+    create = box.addButton(text("vault.offer.create"), QMessageBox.ButtonRole.AcceptRole)
+    box.addButton(text("vault.offer.session"), QMessageBox.ButtonRole.RejectRole)
+    never = box.addButton(text("vault.offer.never"), QMessageBox.ButtonRole.DestructiveRole)
     box.exec()
     if box.clickedButton() is never:
         settings.update({"offer_password_vault": False})
@@ -50,13 +49,13 @@ def open_or_offer_vault(data_dir: Path, settings: AppSettings):
     if box.clickedButton() is not create:
         return None
     while True:
-        password = _ask(APP_NAME, f"Neues Passwort (mindestens {password_vault.MIN_PASSWORD_LENGTH} Zeichen):")
+        password = _ask(APP_NAME, text("vault.new", length=password_vault.MIN_PASSWORD_LENGTH))
         if password is None:
             return None
-        if _ask(APP_NAME, "Passwort wiederholen:") != password:
-            QMessageBox.warning(None, APP_NAME, "Die Passwörter stimmen nicht überein.")
+        if _ask(APP_NAME, text("vault.repeat")) != password:
+            QMessageBox.warning(None, APP_NAME, text("vault.mismatch"))
             continue
         try:
             return password_vault.PasswordVault(data_dir, password)
-        except ValueError as error:
-            QMessageBox.warning(None, APP_NAME, str(error))
+        except ValueError:
+            QMessageBox.warning(None, APP_NAME, text("vault.too_short", length=password_vault.MIN_PASSWORD_LENGTH))

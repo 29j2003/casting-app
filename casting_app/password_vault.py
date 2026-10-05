@@ -1,6 +1,6 @@
 """Password-protected storage for secrets on systems without a keyring (mainly Linux without Secret Service/KWallet).
 
-The file geheimnisse.tresor in the data folder is useless without the password: the key is derived from the
+The file secrets.vault in the data folder is useless without the password: the key is derived from the
 password with scrypt and the content is encrypted with AES-GCM. The password itself is never stored – the
 user types it when the app starts (desktop) or provides it in CASTING_APP_VAULT_PASSWORD (server without window).
 
@@ -15,7 +15,7 @@ import os
 import threading
 from pathlib import Path
 
-FILE_NAME = "geheimnisse.tresor"
+FILE_NAME = "secrets.vault"
 SCRYPT = {"n": 2 ** 15, "r": 8, "p": 1, "maxmem": 64 * 1024 * 1024}
 MIN_PASSWORD_LENGTH = 8
 ENVIRONMENT_VARIABLE = "CASTING_APP_VAULT_PASSWORD"
@@ -91,7 +91,7 @@ class PasswordVault:
         data = _aes_gcm()(self._key()).encrypt(nonce, json.dumps(self._entries).encode(), None)
         content = {"version": 1, "salt": base64.b64encode(self._salt).decode(),
                    "nonce": base64.b64encode(nonce).decode(), "data": base64.b64encode(data).decode()}
-        temporary = self._file.with_suffix(".neu")
+        temporary = self._file.with_suffix(".tmp")
         temporary.write_text(json.dumps(content), encoding="utf-8")
         temporary.chmod(0o600)
         temporary.replace(self._file)

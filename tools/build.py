@@ -45,15 +45,15 @@ KEPT_LANGUAGES = ("de", "en")          # translations of Qt and of the web engin
 
 
 def check_versions() -> None:
-    """The version must be the same in casting_app/version.py, pyproject.toml and web/cast-kern.js."""
+    """The version must be the same in casting_app/version.py, pyproject.toml and web/cast-core.js."""
     found = {
         "pyproject.toml": re.search(r'^version = "([^"]+)"', (ROOT / "pyproject.toml").read_text(encoding="utf-8"), re.M),
-        "web/cast-kern.js": re.search(r'const VERSION = "([^"]+)"', (ROOT / "web" / "cast-kern.js").read_text(encoding="utf-8")),
+        "web/cast-core.js": re.search(r'const VERSION = "([^"]+)"', (ROOT / "web" / "cast-core.js").read_text(encoding="utf-8")),
     }
     for file, match in found.items():
         if not match or match.group(1) != VERSION:
             sys.exit(f"✗ {file}: Version passt nicht zu casting_app/version.py ({VERSION})")
-    print(f"✓ Version {VERSION} in casting_app/version.py, pyproject.toml und web/cast-kern.js")
+    print(f"✓ Version {VERSION} in casting_app/version.py, pyproject.toml und web/cast-core.js")
 
 
 def run(*command, **options) -> None:

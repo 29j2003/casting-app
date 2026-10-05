@@ -76,13 +76,13 @@ def test_server_answers_obs_login_without_revealing_the_password(server):
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
         page = browser.new_page()
-        page.goto("http://localhost:8787/steuerung.html")
+        page.goto("http://localhost:8787/control.html")
         answer = page.evaluate("""async () => {
-            const before = await (await fetch('/api/obs-anmeldung', { method: 'POST', body: JSON.stringify({ salt: 's', challenge: 'c' }) })).status;
-            await fetch('/api/obs-passwort', { method: 'POST', body: JSON.stringify({ passwort: 'abc' }) });
-            const after = await (await fetch('/api/obs-anmeldung', { method: 'POST', body: JSON.stringify({ salt: 's', challenge: 'c' }) })).json();
-            const status = await (await fetch('/api/obs-passwort')).text();
-            await fetch('/api/obs-passwort', { method: 'DELETE' });
+            const before = await (await fetch('/api/obs-auth', { method: 'POST', body: JSON.stringify({ salt: 's', challenge: 'c' }) })).status;
+            await fetch('/api/obs-password', { method: 'POST', body: JSON.stringify({ password: 'abc' }) });
+            const after = await (await fetch('/api/obs-auth', { method: 'POST', body: JSON.stringify({ salt: 's', challenge: 'c' }) })).json();
+            const status = await (await fetch('/api/obs-password')).text();
+            await fetch('/api/obs-password', { method: 'DELETE' });
             return [before, after.authentication, status];
         }""")
         browser.close()
@@ -97,12 +97,12 @@ def test_control_page_logs_in_to_obs_with_password_from_keyring(server):
         browser = playwright.chromium.launch()
         page = browser.new_page()
         # an old version kept the password in the browser: it must move into the keyring
-        page.goto("http://localhost:8787/steuerung.html")
+        page.goto("http://localhost:8787/control.html")
         page.evaluate(f"localStorage.setItem('cast-verbindung', JSON.stringify({{ port: {OBS_PORT}, passwort: '{OBS_PASSWORD}' }}))")
         page.reload()
-        page.wait_for_function("() => document.getElementById('obsPasswort').placeholder === '✓ gespeichert'", timeout=10_000)
-        page.evaluate("document.getElementById('obsNeu').click()")
-        page.wait_for_function("() => kanal.obs && kanal.obs.offen", timeout=15_000)
+        page.wait_for_function("() => document.getElementById('obsPassword').placeholder === '✓ gespeichert'", timeout=10_000)
+        page.evaluate("document.getElementById('obsNew').click()")
+        page.wait_for_function("() => channel.obs && channel.obs.isOpen", timeout=15_000)
         storage = page.evaluate("JSON.stringify(localStorage)")
         browser.close()
     assert True in obs.logins, "OBS hat die Anmeldung nicht angenommen"

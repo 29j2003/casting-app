@@ -23,6 +23,13 @@ Einfach die neue Version starten – eine noch laufende alte Version wird dabei 
   Fehlt danach etwas: OBS-Verbindung unter ⚙ neu eintragen, Arbeitsbereich neu wählen.
 * Die alte `Casting-App.exe` wird nicht mehr gebraucht. Edge oder Chrome braucht die App nicht mehr.
 
+## Umstieg von Version 2.1 auf 2.2
+
+Ab 2.2 heißen Dateien und gespeicherte Daten intern englisch (z. B. `control.html` statt `steuerung.html`). Beim ersten
+Start übernimmt die App alles einmalig: Zustand, Sitzungen, Bilder, Themes, Arbeitsbereiche und Docks. Browserquellen in
+OBS mit den alten Adressen (z. B. `…/spieler.html`) funktionieren weiter, `overlay.html` bleibt ohnehin gleich.
+Sicherungen (`.json`) und Theme-Dateien aus 2.1 lassen sich weiter laden.
+
 ## Beim ersten Start
 
 1. **Casting-App** starten.
@@ -174,8 +181,17 @@ In der Szene **Ingame** weichen alle Positionen dem Spiel-HUD aus (Minimap, Scor
 
 ## App-Einstellungen (⚙)
 
-Alles, was nur die App betrifft: **Verbindung zu OBS**, **Musik (Tuna)**, **Aussehen** (Dunkel, Hell, wie Windows),
+Alles, was nur die App betrifft: **Sprache**, **Verbindung zu OBS**, **Musik (Tuna)**, **Aussehen** (Dunkel, Hell, wie Windows),
 Größe der Oberfläche, Anordnung zurücksetzen und App beenden. Alles rund um CS bleibt in den Reitern.
+
+## Sprache · Language (ab 2.2)
+
+Unter ⚙ → **Sprache · Language** gibt es zwei Einstellungen, die unabhängig voneinander sind – z. B. die App auf
+Englisch und die Overlays auf Deutsch:
+* **Sprache der App** (Deutsch / English): Steuerseite, Dialoge und Tray-Menü. Die Steuerseite lädt danach kurz neu.
+* **Sprache der Overlays** (Deutsch / English): die festen Texte im Stream – Überschriften wie „PAUSE“/„BREAK“,
+  „ENDSTAND“/„FINAL SCORE“, Turnierrunden, Statistik-Köpfe. Texte, die du selbst geändert hast, bleiben, wie sie sind;
+  nur Texte, die noch auf dem Standard stehen, wechseln die Sprache. Die Overlays in OBS ändern sich sofort mit.
 
 ## Szenenwechsel
 
@@ -237,7 +253,7 @@ Die macOS-App ist nur ad-hoc signiert (ohne Apple-Konto); die Beglaubigung durch
 * Der **FACEIT-Schlüssel** sowie **Nutzer-ID und Key für DACH CS** liegen nur im Schlüsselbund des Systems – Windows:
   Anmeldeinformationsverwaltung (an dein Windows-Konto gebunden) · macOS: Schlüsselbund · Linux: Secret Service bzw. KWallet.
   Im Datenordner der App liegt nichts davon. Gibt es keinen Schlüsselbund (manche Linux-Systeme), fragt die App beim Start,
-  ob sie die Schlüssel stattdessen mit einem **eigenen Passwort** geschützt speichern soll (Datei `geheimnisse.tresor`,
+  ob sie die Schlüssel stattdessen mit einem **eigenen Passwort** geschützt speichern soll (Datei `secrets.vault`,
   ohne das Passwort nicht lesbar; das Passwort wird bei jedem Start abgefragt). Ohne Passwort gelten sie nur bis zum
   Beenden der App. Ohne Fenster (`--no-window`) öffnet die Umgebungsvariable `CASTING_APP_VAULT_PASSWORD` den Tresor. Sie werden nach dem Speichern nie wieder angezeigt –
   nicht in der App, nicht in Sicherungen, Sitzungen, Exporten oder im Log – und keine Schnittstelle gibt sie heraus.

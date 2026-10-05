@@ -1175,6 +1175,8 @@
       <section><h3>App</h3>
         <p class="klein">Schließt du dieses Fenster, laufen verbundene OBS-Overlays weiter. Die App beendet sich von selbst, sobald auch OBS zu ist.
           Fenster wieder öffnen: die App-Datei erneut starten.</p>
+        <label class="schalter"><input type="checkbox" id="updatePruefen"> Beim Start nach neuer Version suchen (fragt nur die Versionsnummer bei GitHub ab)</label>
+        <p class="klein" id="updateHinweis" hidden></p>
         <button class="knopf" id="appBeenden">App ganz beenden</button>
       
         <div class="reihe"><button class="knopf" data-ordner="daten">Daten &amp; Log öffnen</button></div>
@@ -4142,6 +4144,22 @@ async function logZeichnen() {
 setInterval(logZeichnen, 2000);
 $("obsNeu2").onclick = () => obsOverlaysNeuLaden(true);
 $("appVersion").textContent = "v" + K.VERSION;
+// App-Einstellungen (Update-Suche) und Hinweis auf eine neue Version
+async function appEinstellungenHolen() {
+  if (!K.SERVER) { $("updatePruefen").closest("label").hidden = true; return; }
+  try {
+    const e = await (await fetch("/api/app-einstellungen", { cache: "no-store" })).json();
+    $("updatePruefen").checked = e.check_for_updates !== false;
+    const u = e.update;
+    $("updateHinweis").hidden = !u;
+    if (u) {
+      $("updateHinweis").innerHTML = `Neue Version <b>${esc(u.version)}</b> verfügbar` + (u.url ? ` – <a href="${esc(u.url)}" target="_blank" rel="noopener">herunterladen</a>` : "");
+      $("appVersion").textContent = "v" + K.VERSION + " · Update " + u.version;
+    }
+  } catch (err) {}
+}
+$("updatePruefen").onchange = () => fetch("/api/app-einstellungen", { method: "POST", body: JSON.stringify({ check_for_updates: $("updatePruefen").checked }) }).catch(() => {});
+appEinstellungenHolen(); setTimeout(appEinstellungenHolen, 8000);
 $("logKopieren").onclick = () => navigator.clipboard.writeText($("logText").innerText).catch(() => {});
 $("logNurFehler").onchange = logZeichnen;
 $("appBeenden").onclick = async () => {

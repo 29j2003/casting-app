@@ -14,6 +14,7 @@ class TrayIcon(QObject):
     open_requested = Signal()
     reload_overlays_requested = Signal()
     quit_requested = Signal()
+    message_clicked = Signal()          # the user clicked a notification (e.g. "new version")
 
     def __init__(self, icon: QIcon, parent=None):
         super().__init__(parent)
@@ -31,6 +32,7 @@ class TrayIcon(QObject):
         self._menu = menu                  # keep a reference: Qt does not own the menu
         self._icon.setContextMenu(menu)
         self._icon.activated.connect(self._clicked)
+        self._icon.messageClicked.connect(self.message_clicked.emit)
         self._hint_shown = False
 
     @property

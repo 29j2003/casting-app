@@ -10,7 +10,7 @@ import signal
 import sys
 import threading
 
-from . import instance
+from . import instance, update_check
 from .app_log import AppLog
 from .paths import DATA_DIR, create_folders
 from .secret_store import SecretStore
@@ -50,6 +50,8 @@ def run_server_only() -> int:
         print(f"Port belegt: {error}", file=sys.stderr)
         return 1
     print(f"{APP_NAME} {VERSION} läuft ohne Fenster: {BASE_URL} · Overlays: {BASE_URL}/overlay.html", flush=True)
+    if server.settings.get("check_for_updates"):
+        threading.Thread(target=_note_update, args=(server, log), name="update-check", daemon=True).start()
     signal.signal(signal.SIGTERM, lambda *_: quit_event.set())
     try:
         while not quit_event.wait(0.5):
@@ -59,6 +61,14 @@ def run_server_only() -> int:
     server.stop()
     log.info(f"{APP_NAME} beendet")
     return 0
+
+
+def _note_update(server: CastingServer, log: AppLog) -> None:
+    """Server without window: a newer version is only noted in the log and the settings dialog."""
+    release = update_check.newer_release()
+    if release:
+        server.available_update = release
+        log.info(f"Neue Version {release['version']} verfügbar: {release['url']}")
 
 
 def main(arguments: list[str] | None = None) -> int:

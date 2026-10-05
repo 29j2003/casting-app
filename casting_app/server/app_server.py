@@ -7,7 +7,7 @@ Security rules (unchanged from version 1.x):
   - secrets are used inside the server only (see secret_store.py)
 
 Version 2.1 and older used German paths. The few that other programs or old pages still call
-are kept as aliases: see LEGACY_PAGES and _route_legacy().
+are kept as aliases: see LEGACY_PAGES and the last entries of _api_routes().
 """
 
 import base64

@@ -5,7 +5,7 @@ come from here. The control page translates its own texts (web/i18n.js); both fo
 same setting, "app_language" in settings.json (⚙ App-Einstellungen → Sprache der App).
 
     text("tray.open")                     → "Öffnen" / "Open"
-    text("update.title", version="2.3")   → values are filled into {placeholders}
+    text("reload.count", count=3)          → values are filled into {placeholders}
 """
 
 LANGUAGES = ("de", "en")

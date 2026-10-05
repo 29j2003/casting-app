@@ -7,7 +7,7 @@ Start-up
   4. The window opens with the control page; the tray icon appears.
 
 Quitting
-  "Ganz beenden" (dialog or tray), /api/beenden (control page or a newer version), the system
+  "Ganz beenden" (dialog or tray), /api/quit (control page or a newer version), the system
   logging off, or – with the window closed – 30 s without any connected overlay.
 """
 

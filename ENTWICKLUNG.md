@@ -341,7 +341,14 @@ deinstallieren).
    Nur Dateien unter `github.com/29j2003/casting-app/releases/download/` mit `sha256`-Prüfsumme der API werden angeboten.
 2. Download in den Datenordner (`update/`), SHA-256 prüfen – stimmt sie nicht, wird nichts installiert.
 3. `start_replacement()` startet einen kleinen Helfer (Windows: `.cmd`, sonst `/bin/sh`), der wartet, bis die App beendet
-   ist, die neue Version einsetzt (Setup `/S` · AppImage ersetzen · `.app` per `ditto` ersetzen) und sie startet.
+   ist, die neue Version einsetzt und sie startet. Was schiefgehen kann (Kopieren, Entpacken), passiert vorher, solange
+   die App noch läuft – Fehler landen dann im Status statt in einer geschlossenen App. Der Helfer startet immer eine App
+   (die neue oder, wenn der Tausch scheitert, die alte).
+   * Windows: Setup mit `/S /D=<bisheriger Ordner>`; Pfade als Umgebungsvariablen (`!CA_FILE!` – Umlaute, `&`, `%`
+     bleiben heil), Warten mit `ping` (ohne Konsole). Der Installer merkt sich `InstallLocation` (`InstallDirRegKey`).
+   * AppImage: Kopie als `….new` neben die alte, nach dem Beenden `mv`.
+   * macOS: neue `.app` vorher als `….app.new` daneben, danach Tausch mit Rückfall auf die alte. Kein automatisches
+     Update aus dem DMG, aus App Translocation oder ohne Schreibrecht im Ordner (`install_kind()` → „manual“).
 4. Beim nächsten Start notiert `update/installed-version.txt` „aktualisiert von …“ und alte Downloads werden gelöscht.
 
 Die Dateinamen der Releases (`Casting-App-<v>-Setup.exe`, `…-linux-x86_64.AppImage`, `…-mac-arm64.zip`, `…-mac-x64.zip`)

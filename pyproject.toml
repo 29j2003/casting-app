@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "casting-app"
 version = "2.0.0"                     # keep equal to casting_app/version.py and web/cast-kern.js
@@ -10,8 +14,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-build = ["pyinstaller>=6.10"]
+build = ["pyinstaller>=6.10", "pillow>=10"]       # pillow: converts the icon for macOS
 test = ["pytest>=8", "pytest-qt>=4.4", "playwright>=1.45", "websockets>=12"]
+
+[project.scripts]
+casting-app = "casting_app.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["casting_app*"]
+
+[tool.setuptools.package-data]
+"casting_app.desktop" = ["scripts/*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

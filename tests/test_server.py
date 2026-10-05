@@ -72,11 +72,12 @@ def test_secrets_are_never_returned(server):
 
 
 def test_state_is_kept_and_older_states_are_ignored(server):
-    request("POST", "/api/zustand", json.dumps({"stand": 10, "theme": "neu"}))
-    request("POST", "/api/zustand", json.dumps({"stand": 5, "theme": "alt"}))
+    newer = int(time.time() * 1000) * 10                    # "stand" is a time stamp; stay above any earlier state
+    request("POST", "/api/zustand", json.dumps({"stand": newer, "theme": "neu"}))
+    request("POST", "/api/zustand", json.dumps({"stand": newer - 5, "theme": "alt"}))
     status, _, body = request("GET", "/api/zustand?nach=1")
     assert status == 200 and json.loads(body)["theme"] == "neu"
-    assert request("GET", "/api/zustand?nach=10")[0] == 204
+    assert request("GET", f"/api/zustand?nach={newer}")[0] == 204
     time.sleep(0.6)                                          # saving is bundled
     assert json.loads((server.folders.data / "zustand.json").read_text())["theme"] == "neu"
 

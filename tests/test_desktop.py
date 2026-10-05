@@ -6,6 +6,7 @@ app-window audio and secrets. Runs the real app in-process (pytest-qt).
 No other Casting-App may run on this PC during the test.
 """
 
+import itertools
 import json
 import os
 import ssl
@@ -28,6 +29,7 @@ from casting_app.desktop import app as desktop_app
 from casting_app.paths import DATA_DIR
 
 ROOT = Path(__file__).resolve().parent.parent
+_RESULT_NUMBERS = itertools.count(1)
 CLOSE_BUTTONS = "[...document.querySelectorAll('.frage:not(#frage) button')].map(b => b.textContent)"
 
 
@@ -53,7 +55,7 @@ def run_js(qtbot, target, code: str, world=0):
     box = {}
     wrapped = f"Promise.resolve(({code})).then(r => JSON.stringify(r === undefined ? null : r))"
     # Qt does not wait for promises: store the result in the page and poll it
-    key = f"__test_{id(box)}"
+    key = f"__test_result_{next(_RESULT_NUMBERS)}"
     target.runJavaScript(f"{wrapped}.then(t => window['{key}'] = t)", world)
     def done():
         target.runJavaScript(f"window['{key}']", world, lambda result: box.update(result=result) if isinstance(result, str) and result else None)

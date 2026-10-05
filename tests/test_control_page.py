@@ -193,3 +193,26 @@ def test_overlay_language_is_independent_of_the_app_language(server, browser):
     control.evaluate("document.querySelector('#overlayLanguage [data-language=de]').click()")
     assert control.evaluate("[Z.texts.pauseTitle, Z.texts.endTitle]") == ["PAUSE", "Bis morgen!"]
     assert errors == []
+
+
+def test_every_graphic_appears_in_the_overlay_at_its_position(server, browser):
+    """Each graphic type shows up in the overlay with its CSS class and in the chosen corner."""
+    control, overlay = browser.new_page(), browser.new_page(viewport={"width": 1920, "height": 1080})
+    errors = watch(control) + []
+    overlay_errors = watch(overlay)
+    control.goto(f"{BASE_URL}/control.html")
+    control.wait_for_timeout(1200)
+    overlay.goto(f"{BASE_URL}/cast-solo.html")
+    overlay.wait_for_timeout(1000)
+    kinds = control.evaluate("Z.graphics.map(x => x.type)")
+    for kind in kinds:
+        control.evaluate(f"""Z.graphics.forEach(x => {{ x.on = x.type === {kind!r}; x.until = 0; x.pos = 'tr'; x.scenes = []; }});
+                             Z.broadcast.scene = 'cast-solo'; send()""")
+        overlay.wait_for_timeout(900)
+        shown = overlay.evaluate(f"""(() => {{ const e = document.querySelector('.gfx.gfx-{kind}.on');
+            if (!e) return null; const r = e.getBoundingClientRect();
+            return {{ classes: e.className, opacity: getComputedStyle(e).opacity, right: Math.round(innerWidth - r.right) }}; }})()""")
+        assert shown, f"Einblendung {kind} erscheint nicht im Overlay"
+        assert "pos-tr" in shown["classes"] and float(shown["opacity"]) > 0
+        assert shown["right"] < 200, f"Einblendung {kind} steht nicht rechts oben: {shown}"
+    assert errors == [] and overlay_errors == []

@@ -4,20 +4,20 @@
    ===================================================================== */
 (function () {
   "use strict";
-  const K = window.CastKern;
+  const K = window.CastCore;
   const P = new URLSearchParams(location.search);
   const TEST = P.get("test") === "1";
-  const VORSCHAU = P.get("vorschau") === "1";
+  const PREVIEW = P.get("preview") === "1";
   // eingebettet = Szene läuft in overlay.html (eine Browserquelle für alles)
-  const EINGEBETTET = P.get("eingebettet") === "1";
-  if (VORSCHAU) document.body.classList.add("still");
-  if (EINGEBETTET) document.body.classList.add("eingebettet", "wartet");
+  const EMBEDDED = P.get("embedded") === "1";
+  if (PREVIEW) document.body.classList.add("idle");
+  if (EMBEDDED) document.body.classList.add("embedded", "waiting");
 
-  let Zroh = K.laden();                              // Zustand mit Bild-Verweisen (klein)
-  let Z = K.aufloesen(Zroh, K.Bilder.mem);         // Zustand mit echten Bildern (zum Zeichnen)
+  let rawState = K.load();                              // Zustand mit Bild-Verweisen (klein)
+  let Z = K.resolve(rawState, K.Images.mem);         // Zustand mit echten Bildern (zum Zeichnen)
   const $$ = s => [...document.querySelectorAll(s)];
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const hol = pfad => pfad.split(".").reduce((o, k) => (o == null ? o : o[k]), Z);
+  const pull = path => path.split(".").reduce((o, k) => (o == null ? o : o[k]), Z);
 
   /* ---------- Theme ---------- */
   function rgb(hex) {
@@ -28,93 +28,93 @@
   }
   // Jedes Element merkt sich, womit es gezeichnet wurde – so bleiben weiterverwendete Teile
   // beim Szenenwechsel unangetastet (Lauftext läuft weiter, Logos flackern nicht).
-  const neuNoetig = (el, schl) => { if (el._schl === schl) return false; el._schl = schl; return true; };
+  const newNeeded = (el, cacheKey) => { if (el._cacheKey === cacheKey) return false; el._cacheKey = cacheKey; return true; };
   // Akzentfarbe so weit abdunkeln, bis sie auf dem hellen Feld gut lesbar ist (Kontrast ≥ 3)
-  function lesbar(akzent, hell) {
+  function readable(accent, light) {
     const hex = h => { const m = String(h).replace("#", ""); const n = parseInt(m.length === 3 ? m.split("").map(x => x + x).join("") : m, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
     const lum = ([r, g, b]) => { const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(r) + .7152 * f(g) + .0722 * f(b); };
-    const kontrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
-    let farbe = hex(akzent); const bg = hex(hell || "#f6f6f6");
-    for (let i = 0; i < 40 && kontrast(farbe, bg) < 3; i++) farbe = farbe.map(v => Math.round(v * .9));
-    return `rgb(${farbe.join(",")})`;
+    const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+    let color = hex(accent); const bg = hex(light || "#f6f6f6");
+    for (let i = 0; i < 40 && contrast(color, bg) < 3; i++) color = color.map(v => Math.round(v * .9));
+    return `rgb(${color.join(",")})`;
   }
-  const geladeneSchriften = {};
-  function themeDaten() {
-    const basis = (window.CAST_THEMES || {})[Z.theme] || (Z.eigeneThemes || {})[Z.theme] || Object.values(window.CAST_THEMES || {})[0] || {};
-    return Object.assign({}, basis, (Z.themeDaten || {})[Z.theme] || {});
+  const loadedFonts = {};
+  function themeData() {
+    const base = (window.CAST_THEMES || {})[Z.theme] || (Z.ownThemes || {})[Z.theme] || Object.values(window.CAST_THEMES || {})[0] || {};
+    return Object.assign({}, base, (Z.themeData || {})[Z.theme] || {});
   }
-  function schriftSetzen(T) {
+  function fontSet(T) {
     const r = document.documentElement.style;
-    const stapel = '"Rajdhani", "Bahnschrift", "Barlow Ersatz", "Arial Narrow", sans-serif';
-    r.setProperty("--fett", T.fett === false ? "0px" : ".022em");
-    if (T.schriftDatei) {
-      const name = "ThemeSchrift-" + T.schriftDatei.replace(/[^a-z0-9]/gi, "");
-      r.setProperty("--schrift", `"${name}", ${stapel}`);
-      if (!geladeneSchriften[name]) {
-        geladeneSchriften[name] = true;
-        const f = new FontFace(name, `url("${T.schriftDatei}")`, { weight: "100 900" });
-        f.load().then(ff => { document.fonts.add(ff); $$(".ticker").forEach(t => { t._schl = null; }); ticker(); einpassen(); }).catch(() => {});
+    const stack = '"Rajdhani", "Bahnschrift", "Barlow Ersatz", "Arial Narrow", sans-serif';
+    r.setProperty("--bold", T.bold === false ? "0px" : ".022em");
+    if (T.fontFile) {
+      const name = "ThemeSchrift-" + T.fontFile.replace(/[^a-z0-9]/gi, "");
+      r.setProperty("--font", `"${name}", ${stack}`);
+      if (!loadedFonts[name]) {
+        loadedFonts[name] = true;
+        const f = new FontFace(name, `url("${T.fontFile}")`, { weight: "100 900" });
+        f.load().then(ff => { document.fonts.add(ff); $$(".ticker").forEach(t => { t._cacheKey = null; }); ticker(); fit(); }).catch(() => {});
       }
-    } else if (T.schrift) {
-      r.setProperty("--schrift", `"${String(T.schrift).replace(/"/g, "")}", ${stapel}`);
-    } else r.setProperty("--schrift", stapel);
+    } else if (T.font) {
+      r.setProperty("--font", `"${String(T.font).replace(/"/g, "")}", ${stack}`);
+    } else r.setProperty("--font", stack);
   }
-  const aktSzeneName = () => document.body.dataset.aktszene || document.body.dataset.szene || "";
-  function markeZeichnen(m, T, nurIcon) {
-    m.classList.toggle("nur-icon", nurIcon);
-    m.classList.toggle("mit-bild", !nurIcon && !!T.markeBild && !T.markeBox);
-    m.classList.toggle("text-dunkel", T.markeText === "dunkel");
-    m.classList.toggle("zeilen-tausch", !!T.zeilenTausch);
-    m.classList.toggle("box-an", !nurIcon && !!(T.markeBild && T.markeBox));
-    if (nurIcon) { m.classList.remove("ohne-icon"); m.innerHTML = `<div class="marke-icon"><img src="${esc(T.icon)}" alt=""></div>`; return; }
-    if (T.markeBild) { m.classList.remove("ohne-icon"); m.innerHTML = `<img class="marke-bild" src="${esc(T.markeBild)}" alt="">`; return; }
-    m.classList.toggle("ohne-icon", !T.icon);
-    m.innerHTML = `<div class="marke-icon">${T.icon ? `<img src="${esc(T.icon)}" alt="">` : ""}</div><div class="marke-text">` +
-      (T.schriftBild ? `<img src="${esc(T.schriftBild)}" alt="">` : `<div class="z1">${esc(T.zeile1)}</div><div class="z2">${esc(T.zeile2)}</div>`) + `</div>`;
+  const currentSceneName = () => document.body.dataset.currentscene || document.body.dataset.scene || "";
+  function brandDraw(m, T, onlyIcon) {
+    m.classList.toggle("only-icon", onlyIcon);
+    m.classList.toggle("with-image", !onlyIcon && !!T.brandImage && !T.brandBox);
+    m.classList.toggle("text-dark", T.brandText === "dark");
+    m.classList.toggle("rows-swap", !!T.rowsSwap);
+    m.classList.toggle("box-on", !onlyIcon && !!(T.brandImage && T.brandBox));
+    if (onlyIcon) { m.classList.remove("without-icon"); m.innerHTML = `<div class="brand-icon"><img src="${esc(T.icon)}" alt=""></div>`; return; }
+    if (T.brandImage) { m.classList.remove("without-icon"); m.innerHTML = `<img class="brand-image" src="${esc(T.brandImage)}" alt="">`; return; }
+    m.classList.toggle("without-icon", !T.icon);
+    m.innerHTML = `<div class="brand-icon">${T.icon ? `<img src="${esc(T.icon)}" alt="">` : ""}</div><div class="brand-text">` +
+      (T.fontImage ? `<img src="${esc(T.fontImage)}" alt="">` : `<div class="z1">${esc(T.line1)}</div><div class="z2">${esc(T.line2)}</div>`) + `</div>`;
   }
   function theme() {
-    const T = themeDaten();
+    const T = themeData();
     const r = document.documentElement.style;
-    r.setProperty("--dunkel", T.dunkel); r.setProperty("--hell", T.hell);
-    r.setProperty("--text-dunkel", T.textDunkel); r.setProperty("--akzent", T.akzent);
-    r.setProperty("--akzent-rgb", rgb(T.akzent));
-    r.setProperty("--akzent-lesbar", lesbar(T.akzent, T.hell));
-    r.setProperty("--linie", T.linie ? "5px" : "0px");
-    r.setProperty("--icon-platte", T.iconPlatte || T.dunkel);
-    r.setProperty("--kopf-text", T.kopfText || T.akzent);
-    document.body.dataset.ecken = T.ecken || "aussen";
+    r.setProperty("--dark", T.dark); r.setProperty("--light", T.light);
+    r.setProperty("--text-dark", T.textDark); r.setProperty("--accent", T.accent);
+    r.setProperty("--accent-rgb", rgb(T.accent));
+    r.setProperty("--accent-readable", readable(T.accent, T.light));
+    r.setProperty("--line", T.stroke ? "5px" : "0px");
+    r.setProperty("--icon-disk", T.iconDisk || T.dark);
+    r.setProperty("--head-text", T.headText || T.accent);
+    document.body.dataset.corners = T.corners || "outside";
     document.body.className = document.body.className.replace(/\btheme-\S+/g, "").trim() + " theme-" + Z.theme;
-    schriftSetzen(T);
-    const modus = (Z.logoModus || {})[aktSzeneName()] || "auto";
-    const schluessel = JSON.stringify([Z.theme, T.icon, T.schriftBild, T.markeBild, T.markeBox, T.zeile1, T.zeile2, modus]);
-    $$(".marke").forEach(m => {
-      if (!neuNoetig(m, schluessel + "|" + (m.dataset.max || ""))) return;
+    fontSet(T);
+    const mode = (Z.logoMode || {})[currentSceneName()] || "auto";
+    const keyName = JSON.stringify([Z.theme, T.icon, T.fontImage, T.brandImage, T.brandBox, T.line1, T.line2, mode]);
+    $$(".brand").forEach(m => {
+      if (!newNeeded(m, keyName + "|" + (m.dataset.max || ""))) return;
       const max = +m.dataset.max || 0;
-      const nurIcon = modus === "icon" && !!T.icon;
-      markeZeichnen(m, T, nurIcon);
+      const onlyIcon = mode === "icon" && !!T.icon;
+      brandDraw(m, T, onlyIcon);
       // „auto": passt das volle Logo nicht in den freien Platz, nur das Icon zeigen
-      if (modus === "auto" && max && T.icon) {
-        const pruefen = () => { if (m.offsetWidth > max) markeZeichnen(m, T, true); };
-        const bilder = [...m.querySelectorAll("img")].filter(i => !i.complete);
-        if (bilder.length) bilder.forEach(i => i.addEventListener("load", pruefen, { once: true })); else pruefen();
+      if (mode === "auto" && max && T.icon) {
+        const check = () => { if (m.offsetWidth > max) brandDraw(m, T, true); };
+        const images = [...m.querySelectorAll("img")].filter(i => !i.complete);
+        if (images.length) images.forEach(i => i.addEventListener("load", check, { once: true })); else check();
       }
     });
-    $$(".hg-leer").forEach(h => {
-      if (!neuNoetig(h, schluessel + "|" + T.hintergrundBild)) return;
+    $$(".bg-empty").forEach(h => {
+      if (!newNeeded(h, keyName + "|" + T.backgroundImage)) return;
       const i = h.querySelector("img");
-      if (i) { if (T.icon) { i.src = T.icon; i.classList.remove("aus"); } else i.classList.add("aus"); }
-      h.classList.toggle("mit-bild", !!T.hintergrundBild);
-      h.style.backgroundImage = T.hintergrundBild ? K.cssUrl(T.hintergrundBild) : "";
+      if (i) { if (T.icon) { i.src = T.icon; i.classList.remove("off"); } else i.classList.add("off"); }
+      h.classList.toggle("with-image", !!T.backgroundImage);
+      h.style.backgroundImage = T.backgroundImage ? K.cssUrl(T.backgroundImage) : "";
     });
   }
 
   /* ---------- Texte ---------- */
-  function texte() {
-    $$("[data-t]").forEach(e => { const v = hol(e.dataset.t); if (e.textContent !== String(v ?? "")) e.textContent = v ?? ""; });
-    einpassen();
+  function texts() {
+    $$("[data-t]").forEach(e => { const v = pull(e.dataset.t); if (e.textContent !== String(v ?? "")) e.textContent = v ?? ""; });
+    fit();
   }
-  function einpassen() {
-    $$("[data-passend]").forEach(e => {
+  function fit() {
+    $$("[data-matching]").forEach(e => {
       e.style.fontSize = "";
       const box = e.parentElement;
       let s = parseFloat(getComputedStyle(e).fontSize);
@@ -124,29 +124,29 @@
 
   /* ---------- Lauftext ---------- */
   function ticker() {
-    const liste = (Z.texte.ticker || []).filter(Boolean);
-    const S = Z.sponsoren || {};
-    if (S.an !== false && S.imTicker) sponsorListe().forEach(s => { if (s.name) liste.push(`${Z.texte.sponsorTicker} ${s.name}`); });
-    const schluessel = liste.join("\u0001") + "|" + Z.texte.tickerTempo;
+    const list = (Z.texts.ticker || []).filter(Boolean);
+    const S = Z.sponsors || {};
+    if (S.on !== false && S.inTicker) sponsorList().forEach(s => { if (s.name) list.push(`${Z.texts.sponsorTicker} ${s.name}`); });
+    const keyName = list.join("\u0001") + "|" + Z.texts.tickerTempo;
     $$(".ticker").forEach(t => {
-      if (!neuNoetig(t, schluessel)) return;
+      if (!newNeeded(t, keyName)) return;
       t.getAnimations({ subtree: true }).forEach(a => a.cancel());
       t.innerHTML = "";
-      if (!liste.length) return;
+      if (!list.length) return;
       const band = document.createElement("div");
       band.className = "ticker-band";
-      const einmal = liste.map(x => `<span>${esc(x)}</span><i></i>`).join("");
-      band.innerHTML = einmal;
+      const once = list.map(x => `<span>${esc(x)}</span><i></i>`).join("");
+      band.innerHTML = once;
       t.appendChild(band);
       // so oft wiederholen, bis das Band doppelt so breit ist wie der Kasten
-      const breite = band.scrollWidth || 1;
+      const width = band.scrollWidth || 1;
       // für die breiteste mögliche Box reichen (Kästen können beim Szenenwechsel breiter werden)
-      const mal = Math.max(1, Math.ceil(Math.max(t.clientWidth, 1920) / breite));
-      band.innerHTML = einmal.repeat(mal * 2);
-      const weg = breite * mal;
-      const dauer = weg / Math.max(20, Z.texte.tickerTempo || 90) * 1000;
-      band.animate([{ transform: "translate3d(0,0,0)" }, { transform: `translate3d(${-weg}px,0,0)` }],
-        { duration: dauer, iterations: Infinity, easing: "linear" });
+      const times = Math.max(1, Math.ceil(Math.max(t.clientWidth, 1920) / width));
+      band.innerHTML = once.repeat(times * 2);
+      const distance = width * times;
+      const duration = distance / Math.max(20, Z.texts.tickerTempo || 90) * 1000;
+      band.animate([{ transform: "translate3d(0,0,0)" }, { transform: `translate3d(${-distance}px,0,0)` }],
+        { duration: duration, iterations: Infinity, easing: "linear" });
     });
   }
 
@@ -155,220 +155,220 @@
     ["a", "b"].forEach(k => {
       const t = Z.teams[k] || {};
       $$(`.team-logo.${k}`).forEach(e => {
-        const woerter = String(t.name || k).split(/\s+/).filter(Boolean);
-        const kuerzel = (woerter.length > 1 ? woerter.map(w => w[0]).join("") : woerter[0] || k).replace(/[^A-Za-z0-9ÄÖÜäöü]/g, "").slice(0, 3).toUpperCase();
-        const neu = t.logo ? `<img src="${esc(t.logo)}" alt="">` : esc(kuerzel);
-        if (e.dataset.inhalt !== neu) {
-          e.dataset.inhalt = neu; e.innerHTML = neu;
+        const words = String(t.name || k).split(/\s+/).filter(Boolean);
+        const abbrev = (words.length > 1 ? words.map(w => w[0]).join("") : words[0] || k).replace(/[^A-Za-z0-9ÄÖÜäöü]/g, "").slice(0, 3).toUpperCase();
+        const fresh = t.logo ? `<img src="${esc(t.logo)}" alt="">` : esc(abbrev);
+        if (e.dataset.content !== fresh) {
+          e.dataset.content = fresh; e.innerHTML = fresh;
           const img = e.querySelector("img");
-          if (img) img.addEventListener("error", () => { e.innerHTML = esc(kuerzel); e.classList.add("kein"); }, { once: true });
+          if (img) img.addEventListener("error", () => { e.innerHTML = esc(abbrev); e.classList.add("noOne"); }, { once: true });
         }
-        e.classList.toggle("kein", !t.logo);
+        e.classList.toggle("noOne", !t.logo);
       });
       $$(`[data-team-name="${k}"]`).forEach(e => { e.textContent = t.name || ""; });
       $$(`[data-team-score="${k}"]`).forEach(e => { e.textContent = t.score ?? 0; });
     });
     $$(".vs").forEach(e => {
-      const erg = Z.teams.ergebnis;
-      e.classList.toggle("ergebnis", !!erg);
-      e.innerHTML = erg ? `${esc(Z.teams.a.score ?? 0)}<span class="dp">:</span>${esc(Z.teams.b.score ?? 0)}` : "vs";
+      const res = Z.teams.result;
+      e.classList.toggle("result", !!res);
+      e.innerHTML = res ? `${esc(Z.teams.a.score ?? 0)}<span class="dp">:</span>${esc(Z.teams.b.score ?? 0)}` : "vs";
     });
   }
 
   /* ---------- Map-Veto ---------- */
   const normMap = n => String(n || "").toLowerCase().replace(/^de_/, "").replace(/[^a-z0-9]/g, "").replace(/ii$/, "2");
-  function mapBild(name) {
+  function mapImage(name) {
     return (Z.mapPool || []).find(x => normMap(x.name) === normMap(name)) || {};
   }
-  function vetoSchritte() {
+  function vetoSteps() {
     const V = Z.veto || {};
-    if (V.schritte && V.schritte.length) return V.schritte;
-    const p = (Z.vetoPresets || {})[V.format] || K.STANDARD.vetoPresets.bo3;
-    return p.schritte.map(([aktion, team]) => ({ aktion, team, map: "" }));
+    if (V.steps && V.steps.length) return V.steps;
+    const p = (Z.vetoPresets || {})[V.format] || K.DEFAULT.vetoPresets.bo3;
+    return p.steps.map(([action, team]) => ({ action, team, map: "" }));
   }
   let vetoMaps = [];
   function veto() {
-    $$(".veto").forEach(box => vetoZeichnen(box));
+    $$(".veto").forEach(box => vetoDraw(box));
   }
-  function vetoZeichnen(box) {
-    const s = vetoSchritte();
-    const schluessel = JSON.stringify([s, Z.mapPool, Z.texte.ban, Z.texte.pick, Z.texte.decider, Z.texte.amZug, Z.texte.laeuft]);
-    if (!neuNoetig(box, schluessel)) return;
-    const dran = s.findIndex(x => !x.map);
-    const breite = Math.min(262, Math.floor((1806 - (s.length - 1) * 16) / Math.max(1, s.length)));
-    box.style.setProperty("--kb", breite + "px");
-    const label = { ban: Z.texte.ban, pick: Z.texte.pick, decider: Z.texte.decider };
+  function vetoDraw(box) {
+    const s = vetoSteps();
+    const keyName = JSON.stringify([s, Z.mapPool, Z.texts.ban, Z.texts.pick, Z.texts.decider, Z.texts.amTurn, Z.texts.running]);
+    if (!newNeeded(box, keyName)) return;
+    const upnext = s.findIndex(x => !x.map);
+    const width = Math.min(262, Math.floor((1806 - (s.length - 1) * 16) / Math.max(1, s.length)));
+    box.style.setProperty("--kb", width + "px");
+    const label = { ban: Z.texts.ban, pick: Z.texts.pick, decider: Z.texts.decider };
     box.innerHTML = s.map((x, i) => {
-      const pool = x.map ? mapBild(x.map) : {};
-      const bild = x.map ? (x.bild || pool.bild || "") : "";
-      const ganz = pool.bildModus === "ganz" ? ' class="ganz"' : "";
-      const neu = x.map && vetoMaps[i] !== x.map && vetoMaps.length ? " neu" : "";
-      const anderes = x.team === "a" ? "b" : "a";
-      const seite = x.map && x.aktion === "pick" && x.seite
-        ? `<div class="veto-seite"><span><span data-team-name="${anderes}"></span> · ${x.seite.toUpperCase()}</span></div>` : "";
+      const pool = x.map ? mapImage(x.map) : {};
+      const image = x.map ? (x.image || pool.image || "") : "";
+      const whole = pool.imageMode === "whole" ? ' class="whole"' : "";
+      const fresh = x.map && vetoMaps[i] !== x.map && vetoMaps.length ? " fresh" : "";
+      const other = x.team === "a" ? "b" : "a";
+      const side = x.map && x.action === "pick" && x.side
+        ? `<div class="veto-side"><span><span data-team-name="${other}"></span> · ${x.side.toUpperCase()}</span></div>` : "";
       const team = x.team
         ? `<div class="team-logo ${x.team}"></div><span data-team-name="${x.team}"></span>`
-        : `<span>${esc(Z.texte.decider)}</span>`;
-      const text = x.map ? esc(x.map) : (i === dran ? esc(Z.texte.amZug) : "?");
-      const erg = x.map && x.aktion !== "ban" ? ergebnisBadge(x.ergebnis) : "";
-      return `<div class="box veto-karte ${x.aktion}${x.map ? "" : " offen"}${i === dran ? " dran" : ""}${neu}">
-        <div class="box-kopf">${esc(label[x.aktion] || x.aktion)}</div>
-        <div class="veto-bild">${bild ? `<img${ganz} src="${esc(bild)}" alt="">` : `<div class="initial">${x.map ? esc(x.map[0]) : ""}</div>`}${erg}${seite}<div class="veto-map">${text}</div></div>
+        : `<span>${esc(Z.texts.decider)}</span>`;
+      const text = x.map ? esc(x.map) : (i === upnext ? esc(Z.texts.amTurn) : "?");
+      const res = x.map && x.action !== "ban" ? resultBadge(x.result) : "";
+      return `<div class="box veto-card ${x.action}${x.map ? "" : " open"}${i === upnext ? " upnext" : ""}${fresh}">
+        <div class="box-head">${esc(label[x.action] || x.action)}</div>
+        <div class="veto-image">${image ? `<img${whole} src="${esc(image)}" alt="">` : `<div class="initial">${x.map ? esc(x.map[0]) : ""}</div>`}${res}${side}<div class="veto-map">${text}</div></div>
         <div class="veto-team">${team}</div></div>`;
     }).join("");
     vetoMaps = s.map(x => x.map);
   }
 
   /* ---------- Serie ---------- */
-  function ergebnisBadge(e) {
-    if (!e || !e.status || e.status === "offen") return "";
-    if (e.status === "laeuft" && (e.a === "" || e.a == null)) return `<div class="veto-ergebnis laeuft">${esc(Z.texte.laeuft)}</div>`;
-    return `<div class="veto-ergebnis${e.status === "laeuft" ? " laeuft" : ""}">${esc(e.a ?? 0)}<span class="dp">:</span>${esc(e.b ?? 0)}</div>`;
+  function resultBadge(e) {
+    if (!e || !e.status || e.status === "pending") return "";
+    if (e.status === "running" && (e.a === "" || e.a == null)) return `<div class="veto-result running">${esc(Z.texts.running)}</div>`;
+    return `<div class="veto-result${e.status === "running" ? " running" : ""}">${esc(e.a ?? 0)}<span class="dp">:</span>${esc(e.b ?? 0)}</div>`;
   }
-  function gespielteMaps() { return vetoSchritte().filter(x => x.aktion !== "ban" && x.map); }
-  function serienStand() {
+  function playedMaps() { return vetoSteps().filter(x => x.action !== "ban" && x.map); }
+  function seriesScore() {
     let a = 0, b = 0;
-    gespielteMaps().forEach(x => { const e = x.ergebnis || {}; if (e.status === "fertig") { if (+e.a > +e.b) a++; else if (+e.b > +e.a) b++; } });
+    playedMaps().forEach(x => { const e = x.result || {}; if (e.status === "done") { if (+e.a > +e.b) a++; else if (+e.b > +e.a) b++; } });
     return [a, b];
   }
-  function serie() {
-    const [sa, sb] = serienStand();
-    $$(".serie-stand").forEach(e => { e.innerHTML = `${sa}<span class="dp">:</span>${sb}`; });
-    const maps = gespielteMaps();
-    const schluessel = JSON.stringify([maps, Z.mapPool, Z.texte.map, Z.texte.laeuft, Z.texte.ausstehend]);
-    $$(".serie-karten").forEach(k => { if (neuNoetig(k, schluessel)) serieZeichnen(k, null, maps); });
-    $$(".serie-mini").forEach(m => { if (neuNoetig(m, schluessel)) serieZeichnen(null, m, maps); });
+  function series() {
+    const [sa, sb] = seriesScore();
+    $$(".series-score").forEach(e => { e.innerHTML = `${sa}<span class="dp">:</span>${sb}`; });
+    const maps = playedMaps();
+    const keyName = JSON.stringify([maps, Z.mapPool, Z.texts.map, Z.texts.running, Z.texts.pending]);
+    $$(".series-cards").forEach(k => { if (newNeeded(k, keyName)) seriesDraw(k, null, maps); });
+    $$(".series-mini").forEach(m => { if (newNeeded(m, keyName)) seriesDraw(null, m, maps); });
   }
-  function serieZeichnen(karten, mini, maps) {
-    if (karten && !maps.length) karten.innerHTML = `<div class="leer-hinweis">Noch keine gespielten Maps – erst das Map-Veto ausfüllen</div>`;
-    if (karten && maps.length) {
-      const breite = Math.min(360, Math.floor((1806 - (Math.max(1, maps.length) - 1) * 20) / Math.max(1, maps.length)));
-      karten.style.setProperty("--kb", breite + "px");
-      karten.innerHTML = maps.map((x, i) => {
-        const e = x.ergebnis || {}, pool = mapBild(x.map), bild = x.bild || pool.bild || "";
-        const status = e.status || "offen";
-        const sieger = status === "fertig" ? (+e.a > +e.b ? "a" : +e.b > +e.a ? "b" : "") : "";
-        const score = status === "offen" ? "" : `<div class="serie-score"><span class="${sieger === "b" ? "verloren" : ""}">${esc(e.a ?? 0)}</span><span class="dp">:</span><span class="${sieger === "a" ? "verloren" : ""}">${esc(e.b ?? 0)}</span></div>`;
-        const fuss = sieger ? `<div class="team-logo ${sieger}"></div><span data-team-name="${sieger}"></span>`
-                   : `<span>${esc(status === "laeuft" ? Z.texte.laeuft : Z.texte.ausstehend)}</span>`;
-        return `<div class="box serie-karte ${status}"><div class="box-kopf">${esc(Z.texte.map)} ${i + 1}</div>
-          <div class="veto-bild">${bild ? `<img${pool.bildModus === "ganz" ? ' class="ganz"' : ""} src="${esc(bild)}" alt="">` : `<div class="initial">${esc(x.map[0])}</div>`}${score}<div class="veto-map">${esc(x.map)}</div></div>
-          <div class="veto-team">${fuss}</div></div>`;
+  function seriesDraw(cards, mini, maps) {
+    if (cards && !maps.length) cards.innerHTML = `<div class="empty-hint">${esc(K.word(Z, "noMaps"))}</div>`;
+    if (cards && maps.length) {
+      const width = Math.min(360, Math.floor((1806 - (Math.max(1, maps.length) - 1) * 20) / Math.max(1, maps.length)));
+      cards.style.setProperty("--kb", width + "px");
+      cards.innerHTML = maps.map((x, i) => {
+        const e = x.result || {}, pool = mapImage(x.map), image = x.image || pool.image || "";
+        const status = e.status || "pending";
+        const winner = status === "done" ? (+e.a > +e.b ? "a" : +e.b > +e.a ? "b" : "") : "";
+        const score = status === "pending" ? "" : `<div class="series-score"><span class="${winner === "b" ? "lost" : ""}">${esc(e.a ?? 0)}</span><span class="dp">:</span><span class="${winner === "a" ? "lost" : ""}">${esc(e.b ?? 0)}</span></div>`;
+        const foot = winner ? `<div class="team-logo ${winner}"></div><span data-team-name="${winner}"></span>`
+                   : `<span>${esc(status === "running" ? Z.texts.running : Z.texts.pending)}</span>`;
+        return `<div class="box series-card ${status}"><div class="box-head">${esc(Z.texts.map)} ${i + 1}</div>
+          <div class="veto-image">${image ? `<img${pool.imageMode === "whole" ? ' class="whole"' : ""} src="${esc(image)}" alt="">` : `<div class="initial">${esc(x.map[0])}</div>`}${score}<div class="veto-map">${esc(x.map)}</div></div>
+          <div class="veto-team">${foot}</div></div>`;
       }).join("");
     }
     if (mini) {
-      mini.innerHTML = maps.filter(x => (x.ergebnis || {}).status && x.ergebnis.status !== "offen").map(x =>
-        `<div class="serie-chip ${x.ergebnis.status}"><b>${esc(x.map)}</b><span>${esc(x.ergebnis.a ?? 0)}<span class="dp">:</span>${esc(x.ergebnis.b ?? 0)}</span></div>`).join("");
+      mini.innerHTML = maps.filter(x => (x.result || {}).status && x.result.status !== "pending").map(x =>
+        `<div class="series-chip ${x.result.status}"><b>${esc(x.map)}</b><span>${esc(x.result.a ?? 0)}<span class="dp">:</span>${esc(x.result.b ?? 0)}</span></div>`).join("");
     }
   }
 
   /* ---------- Sponsoren ---------- */
 
-  function sponsorListe() { return (((Z.sponsoren || {}).listen || {})[Z.theme] || []).filter(s => s && (s.logo || s.name)); }
-  const sponsorInhalt = s => s.logo ? `<img src="${esc(s.logo)}" alt="${esc(s.name || "")}">` : `<div class="sponsor-name">${esc(s.name)}</div>`;
-  let sponsorTaktSchl = null, sponsorTakt = null, sponsorNr = 0;
-  function sponsoren() {
-    const S = Z.sponsoren || {}, liste = sponsorListe();
-    const boxen = $$(".sponsor");
-    const sichtbar = S.an !== false && (S.szenen || {})[aktSzeneName()] !== false && liste.length > 0;
-    const schluessel = JSON.stringify([liste, S.sekunden, sichtbar]);
-    boxen.forEach(b => {
-      b.classList.toggle("an", sichtbar);
-      if (!neuNoetig(b, schluessel)) return;
-      const feld = b.querySelector(".sponsor-feld");
-      feld.innerHTML = liste.map(sponsorInhalt).join("");
-      const kinder = [...feld.children];
-      if (kinder.length) kinder[sponsorNr % kinder.length].classList.add("an");
+  function sponsorList() { return (((Z.sponsors || {}).listen || {})[Z.theme] || []).filter(s => s && (s.logo || s.name)); }
+  const sponsorContent = s => s.logo ? `<img src="${esc(s.logo)}" alt="${esc(s.name || "")}">` : `<div class="sponsor-name">${esc(s.name)}</div>`;
+  let sponsorTimerCachekey = null, sponsorTimer = null, sponsorNum = 0;
+  function sponsors() {
+    const S = Z.sponsors || {}, list = sponsorList();
+    const boxes = $$(".sponsor");
+    const visible = S.on !== false && (S.sceneList || {})[currentSceneName()] !== false && list.length > 0;
+    const keyName = JSON.stringify([list, S.seconds, visible]);
+    boxes.forEach(b => {
+      b.classList.toggle("on", visible);
+      if (!newNeeded(b, keyName)) return;
+      const field = b.querySelector(".sponsor-field");
+      field.innerHTML = list.map(sponsorContent).join("");
+      const children = [...field.children];
+      if (children.length) children[sponsorNum % children.length].classList.add("on");
     });
-    if (schluessel !== sponsorTaktSchl) {
-      sponsorTaktSchl = schluessel;
-      clearInterval(sponsorTakt); sponsorTakt = null;
-      if (sponsorNr >= liste.length) sponsorNr = 0;
-      if (sichtbar && liste.length > 1) sponsorTakt = setInterval(() => {
-        sponsorNr = (sponsorNr + 1) % liste.length;
-        $$(".sponsor").forEach(b => [...b.querySelector(".sponsor-feld").children].forEach((k, i) => k.classList.toggle("an", i === sponsorNr)));
-      }, Math.max(3, S.sekunden || 8) * 1000);
+    if (keyName !== sponsorTimerCachekey) {
+      sponsorTimerCachekey = keyName;
+      clearInterval(sponsorTimer); sponsorTimer = null;
+      if (sponsorNum >= list.length) sponsorNum = 0;
+      if (visible && list.length > 1) sponsorTimer = setInterval(() => {
+        sponsorNum = (sponsorNum + 1) % list.length;
+        $$(".sponsor").forEach(b => [...b.querySelector(".sponsor-field").children].forEach((k, i) => k.classList.toggle("on", i === sponsorNum)));
+      }, Math.max(3, S.seconds || 8) * 1000);
     }
     {
       // Raster-Szene
-      $$(".sponsor-raster").forEach(r => { if (!neuNoetig(r, schluessel)) return; r.innerHTML = liste.length ? liste.map(s => `<div class="sponsor-kachel">${sponsorInhalt(s)}</div>`).join("") : `<div class="leer-hinweis">Noch keine Sponsoren für dieses Theme</div>`; });
+      $$(".sponsor-grid").forEach(r => { if (!newNeeded(r, keyName)) return; r.innerHTML = list.length ? list.map(s => `<div class="sponsor-tile">${sponsorContent(s)}</div>`).join("") : `<div class="empty-hint">${esc(K.word(Z, "noSponsors"))}</div>`; });
     }
     // große Einblendung (in allen Szenen)
-    let gross = document.querySelector(".sponsor-gross");
-    if (EINGEBETTET) return;
-    if (!gross) {
-      gross = document.createElement("div"); gross.className = "box sponsor-gross";
-      gross.innerHTML = `<div class="box-kopf"></div><div class="sponsor-feld"></div>`;
-      document.body.appendChild(gross);
+    let large = document.querySelector(".sponsor-large");
+    if (EMBEDDED) return;
+    if (!large) {
+      large = document.createElement("div"); large.className = "box sponsor-large";
+      large.innerHTML = `<div class="box-head"></div><div class="sponsor-field"></div>`;
+      document.body.appendChild(large);
     }
-    const E = S.einblendung || {}, s = liste[E.nr];
-    const aktiv = s && E.bis > Date.now();
-    if (aktiv) {
-      gross.querySelector(".box-kopf").textContent = Z.texte.sponsorLabel;
-      const f = gross.querySelector(".sponsor-feld"), neu = sponsorInhalt(s);
-      if (f.dataset.inhalt !== neu) { f.dataset.inhalt = neu; f.innerHTML = neu; }
-      clearTimeout(gross._aus); gross._aus = setTimeout(sponsoren, E.bis - Date.now() + 50);
+    const E = S.gfx || {}, s = list[E.num];
+    const active = s && E.until > Date.now();
+    if (active) {
+      large.querySelector(".box-head").textContent = Z.texts.sponsorLabel;
+      const f = large.querySelector(".sponsor-field"), fresh = sponsorContent(s);
+      if (f.dataset.content !== fresh) { f.dataset.content = fresh; f.innerHTML = fresh; }
+      clearTimeout(large._off); large._off = setTimeout(sponsors, E.until - Date.now() + 50);
     }
-    gross.classList.toggle("an", !!aktiv);
+    large.classList.toggle("on", !!active);
   }
 
 
 
   /* ---------- Turnierbaum ---------- */
-  function turnierZeichnen() {
-    const boxen = $$(".turnier-baum"); if (!boxen.length) return;
-    const T = Z.turnier || {}, B = K.turnierAufbauen(T), S = T.sichtbar || {};
-    const teamVon = id => (T.teams || []).find(t => t.id === id);
-    const zeile = (id, punkte, sieger, verdeckt) => {
-      if (id === "BYE") return `<div class="tb-team frei"><div class="tb-logo"></div><span>Freilos</span><b></b></div>`;
-      const t = teamVon(id);
-      if (!t || verdeckt) return `<div class="tb-team offen"><div class="tb-logo"></div><span>${verdeckt ? "?" : "–"}</span><b></b></div>`;
-      const logo = t.logo ? `<img src="${esc(t.logo)}" alt="">` : esc((t.kurz || t.name || "?").slice(0, 3));
-      return `<div class="tb-team${sieger ? " sieger" : ""}${T.fokus === id ? " fokus" : ""}"><div class="tb-logo">${logo}</div><span>${esc(t.name || "")}</span><b>${S.ergebnisseAus || punkte == null || punkte === "" ? "" : esc(punkte)}</b></div>`;
+  function tournamentDraw() {
+    const boxes = $$(".tournament-tree"); if (!boxes.length) return;
+    const T = Z.tournament || {}, B = K.tournamentBuild(T, Z.overlayLanguage), S = T.visible || {};
+    const teamFrom = id => (T.teams || []).find(t => t.id === id);
+    const row = (id, points, winner, hidden) => {
+      if (id === "BYE") return `<div class="bracket-team free"><div class="bracket-logo"></div><span>${esc(K.word(Z, "bye"))}</span><b></b></div>`;
+      const t = teamFrom(id);
+      if (!t || hidden) return `<div class="bracket-team open"><div class="bracket-logo"></div><span>${hidden ? "?" : "–"}</span><b></b></div>`;
+      const logo = t.logo ? `<img src="${esc(t.logo)}" alt="">` : esc((t.short || t.name || "?").slice(0, 3));
+      return `<div class="bracket-team${winner ? " winner" : ""}${T.focused === id ? " focused" : ""}"><div class="bracket-logo">${logo}</div><span>${esc(t.name || "")}</span><b>${S.resultsOff || points == null || points === "" ? "" : esc(points)}</b></div>`;
     };
     // Sichtbarkeit: „aufdecken“ = nur bis Runde X, „ab“ = erst ab Runde X, sonst alles
-    const zeigen = nr => S.modus === "aufdecken" ? nr <= (+S.runde || 1) : S.modus === "ab" ? nr >= (+S.runde || 1) : true;
-    const karte = (m, verdeckt) => `<div class="tb-match${m.fertig ? " fertig" : ""}${T.fokus && (m.a === T.fokus || m.b === T.fokus) ? " im-fokus" : ""}">` +
-      zeile(m.a, m.sa, m.sieger && m.sieger === m.a, verdeckt) + zeile(m.b, m.sb, m.sieger && m.sieger === m.b, verdeckt) + `</div>`;
-    const spalten = (runden, start) => runden.map((r, i) => !zeigen(start + i) && S.modus === "ab" ? "" :
-      `<div class="tb-runde"><div class="tb-titel">${esc(r.titel)}</div><div class="tb-spiele">${r.matches.map(m => karte(m, !zeigen(start + i))).join("")}</div></div>`).join("");
+    const show = num => S.mode === "reveal" ? num <= (+S.round || 1) : S.mode === "fromRound" ? num >= (+S.round || 1) : true;
+    const card = (m, hidden) => `<div class="bracket-match${m.done ? " done" : ""}${T.focused && (m.a === T.focused || m.b === T.focused) ? " in-focus" : ""}">` +
+      row(m.a, m.sa, m.winner && m.winner === m.a, hidden) + row(m.b, m.sb, m.winner && m.winner === m.b, hidden) + `</div>`;
+    const columns = (rounds, start) => rounds.map((r, i) => !show(start + i) && S.mode === "fromRound" ? "" :
+      `<div class="bracket-round"><div class="bracket-title">${esc(r.title)}</div><div class="bracket-games">${r.matches.map(m => card(m, !show(start + i))).join("")}</div></div>`).join("");
     let h = "";
-    if (!B.teams || B.teams.length < 2) h = `<div class="live-warten">Noch kein Turnier angelegt</div>`;
-    else if (B.format === "tabelle") {
-      const wahl = T.zeigeGruppe === undefined || T.zeigeGruppe === "" ? null : +T.zeigeGruppe;
-      const gezeigt = B.gruppen.filter((g, i) => wahl === null || i === wahl);
-      const spalten = gezeigt.length <= 1 ? 1 : gezeigt.length <= 4 ? 2 : gezeigt.length <= 6 ? 3 : 4;
-      h = `<div class="tb-tabellen" style="grid-template-columns:repeat(${spalten}, 860px)">${gezeigt.map(g => `<div class="tb-tab"><div class="tb-titel">${esc(g.name)}</div>
-        <div class="tb-tz kopf"><span>#</span><span></span><span>TEAM</span><span>SP</span><span>S</span><span>N</span><span>${g.mitRunden ? "RD" : "+/−"}</span><span>PKT</span></div>` +
-        g.tabelle.map((r, i) => { const t = teamVon(r.id) || {};
-          return `<div class="tb-tz${i < (+T.weiterPlaetze || 0) ? " weiter" : ""}${T.fokus === r.id ? " fokus" : ""}"><span>${i + 1}</span><div class="tb-logo">${t.logo ? `<img src="${esc(t.logo)}" alt="">` : esc((t.kurz || t.name || "?").slice(0, 3))}</div>` +
-            `<span class="tb-tn">${esc(t.name || "")}</span><span>${r.sp}</span><span>${r.s}</span><span>${r.n}</span><span>${r.tb > 0 ? "+" : ""}${r.tb}</span><b>${r.pkt}</b></div>`; }).join("") +
-        (T.spieleZeigen ? `<div class="tb-tspiele">${g.matches.filter(m => !m.fertig).slice(0, 4).map(m => karte(m, false)).join("")}</div>` : "") + `</div>`).join("")}</div>`;
+    if (!B.teams || B.teams.length < 2) h = `<div class="live-wait">${esc(K.word(Z, "noTournament"))}</div>`;
+    else if (B.format === "table") {
+      const choice = T.showGroup === undefined || T.showGroup === "" ? null : +T.showGroup;
+      const shown = B.groups.filter((g, i) => choice === null || i === choice);
+      const columns = shown.length <= 1 ? 1 : shown.length <= 4 ? 2 : shown.length <= 6 ? 3 : 4;
+      h = `<div class="bracket-tables" style="grid-template-columns:repeat(${columns}, 860px)">${shown.map(g => `<div class="bracket-tab"><div class="bracket-title">${esc(g.name)}</div>
+        <div class="bracket-tz head"><span>#</span><span></span><span>TEAM</span><span>SP</span><span>S</span><span>N</span><span>${g.withRounds ? "RD" : "+/−"}</span><span>PKT</span></div>` +
+        g.table.map((r, i) => { const t = teamFrom(r.id) || {};
+          return `<div class="bracket-tz${i < (+T.nextPlaces || 0) ? " proceed" : ""}${T.focused === r.id ? " focused" : ""}"><span>${i + 1}</span><div class="bracket-logo">${t.logo ? `<img src="${esc(t.logo)}" alt="">` : esc((t.short || t.name || "?").slice(0, 3))}</div>` +
+            `<span class="bracket-tname">${esc(t.name || "")}</span><span>${r.sponsor}</span><span>${r.s}</span><span>${r.n}</span><span>${r.bracket > 0 ? "+" : ""}${r.bracket}</span><b>${r.pts}</b></div>`; }).join("") +
+        (T.gamesShow ? `<div class="bracket-tspiele">${g.matches.filter(m => !m.done).slice(0, 4).map(m => card(m, false)).join("")}</div>` : "") + `</div>`).join("")}</div>`;
     }
-    else if (B.format === "gsl") h = `<div class="tb-gruppen">${B.gruppen.map(g => `<div class="tb-gruppe"><div class="tb-titel">${esc(g.name)}</div>${g.matches.map(m => `<div class="tb-gm"><span>${esc(m.titel)}</span>${karte(m, false)}</div>`).join("")}</div>`).join("")}</div>`;
-    else if (B.format === "swiss") h = `<div class="tb-zeile">${spalten(B.runden, 1)}</div>` + (B.tabelle.length ? `<div class="tb-swiss">${B.tabelle.map(b => `<div class="tb-sw ${b.status}">${zeile(b.id, `${b.s}–${b.n}`, b.status === "weiter", false)}</div>`).join("")}</div>` : "");
+    else if (B.format === "gsl") h = `<div class="bracket-groups">${B.groups.map(g => `<div class="bracket-group"><div class="bracket-title">${esc(g.name)}</div>${g.matches.map(m => `<div class="bracket-gm"><span>${esc(m.title)}</span>${card(m, false)}</div>`).join("")}</div>`).join("")}</div>`;
+    else if (B.format === "swiss") h = `<div class="bracket-row">${columns(B.rounds, 1)}</div>` + (B.table.length ? `<div class="bracket-swiss">${B.table.map(b => `<div class="bracket-sw ${b.status}">${row(b.id, `${b.s}–${b.n}`, b.status === "proceed", false)}</div>`).join("")}</div>` : "");
     else {
-      h = `<div class="tb-zeile">${spalten(B.runden, 1)}${B.finale && B.unten.length === 0 ? "" : ""}</div>`;
-      if (B.unten.length) h = `<div class="tb-de"><div class="tb-zeile">${spalten(B.runden, 1)}</div><div class="tb-zeile unten">${spalten(B.unten, 1)}</div></div>` +
-        (B.finale ? `<div class="tb-runde tb-gf"><div class="tb-titel">GRAND FINAL</div><div class="tb-spiele">${karte(B.finale, !zeigen(B.runden.length + 1))}</div></div>` : "");
+      h = `<div class="bracket-row">${columns(B.rounds, 1)}${B.finale && B.bottom.length === 0 ? "" : ""}</div>`;
+      if (B.bottom.length) h = `<div class="bracket-de"><div class="bracket-row">${columns(B.rounds, 1)}</div><div class="bracket-row bottom">${columns(B.bottom, 1)}</div></div>` +
+        (B.finale ? `<div class="bracket-round bracket-gf"><div class="bracket-title">GRAND FINAL</div><div class="bracket-games">${card(B.finale, !show(B.rounds.length + 1))}</div></div>` : "");
     }
     // Profil des hervorgehobenen Teams (Klick in der App)
-    const f = T.fokus && teamVon(T.fokus);
-    let profil = "";
+    const f = T.focused && teamFrom(T.focused);
+    let profile = "";
     if (f) {
       const st = f.stats || {};
-      profil += `<div class="tb-profil box"><div class="box-kopf">${esc(f.name || "")}</div><div class="box-feld">` +
-        (f.spieler && f.spieler.length ? `<div class="tb-spieler">${f.spieler.slice(0, 7).map(n => `<span>${esc(n)}</span>`).join("")}</div>` : "") +
-        (st.matches ? `<div class="tb-stats"><div><b>${esc(st.winrate)}%</b><span>SIEGQUOTE</span></div><div><b>${esc(st.matches)}</b><span>SPIELE</span></div><div><b>${esc(st.serie || 0)}</b><span>SERIE</span></div></div>` +
-          (st.letzte && st.letzte.length ? `<div class="tb-form">${st.letzte.slice(0, 5).map(x => `<i class="${x === "1" ? "s" : "n"}">${x === "1" ? "S" : "N"}</i>`).join("")}</div>` : "") : "") +
+      profile += `<div class="bracket-profile box"><div class="box-head">${esc(f.name || "")}</div><div class="box-field">` +
+        (f.players && f.players.length ? `<div class="bracket-players">${f.players.slice(0, 7).map(n => `<span>${esc(n)}</span>`).join("")}</div>` : "") +
+        (st.matches ? `<div class="bracket-stats"><div><b>${esc(st.winrate)}%</b><span>SIEGQUOTE</span></div><div><b>${esc(st.matches)}</b><span>SPIELE</span></div><div><b>${esc(st.series || 0)}</b><span>SERIE</span></div></div>` +
+          (st.last && st.last.length ? `<div class="bracket-form">${st.last.slice(0, 5).map(x => `<i class="${x === "1" ? "s" : "n"}">${x === "1" ? "S" : "N"}</i>`).join("")}</div>` : "") : "") +
         `</div></div>`;
     }
-    boxen.forEach(box => {
-      if (!neuNoetig(box, h + profil)) return;
-      box.innerHTML = `<div class="tb-innen">${h}</div>${profil}`;
-      $$(".turnier-name").forEach(e => { e.textContent = T.name || Z.texte.titel || ""; });
+    boxes.forEach(box => {
+      if (!newNeeded(box, h + profile)) return;
+      box.innerHTML = `<div class="bracket-inner">${h}</div>${profile}`;
+      $$(".tournament-name").forEach(e => { e.textContent = T.name || Z.texts.title || ""; });
       // auf die verfügbare Fläche einpassen
-      requestAnimationFrame(() => { const i = box.querySelector(".tb-innen"); if (!i) return; i.style.transform = "";
+      requestAnimationFrame(() => { const i = box.querySelector(".bracket-inner"); if (!i) return; i.style.transform = "";
         const s = Math.min(1.6, box.clientWidth / i.scrollWidth, box.clientHeight / i.scrollHeight);
         const x = Math.max(0, (box.clientWidth - i.scrollWidth * s) / 2);
         i.style.transform = `translateX(${x}px) scale(${s})`; });
@@ -376,153 +376,153 @@
   }
 
   /* ---------- CS2-Livedaten ---------- */
-  let liveDaten = null;
-  const MAPNAME = n => { const roh = String(n || "").replace(/^(de|cs|ar)_/, ""); const p = (Z.mapPool || []).find(m => normMapName(m.name) === normMapName(roh)); return p ? p.name : roh.charAt(0).toUpperCase() + roh.slice(1); };
+  let liveData = null;
+  const MAPNAME = n => { const raw = String(n || "").replace(/^(de|cs|ar)_/, ""); const p = (Z.mapPool || []).find(m => normMapName(m.name) === normMapName(raw)); return p ? p.name : raw.charAt(0).toUpperCase() + raw.slice(1); };
   const normMapName = s => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "").replace(/^dust2$/, "dustii");
-  const seiteVon = team => !liveDaten ? "" : team === "a" ? liveDaten.seiteA : (liveDaten.seiteA === "CT" ? "T" : "CT");
-  const staerke = p => p.adr + 2 * (p.k - p.d);                  // „stärkster Spieler“: Schaden pro Runde + 2 × (Kills − Tode)
-  const spielerVon = team => !liveDaten ? [] : liveDaten.spieler.filter(p => p.seite === seiteVon(team)).sort((x, y) => y.k - x.k || y.adr - x.adr).slice(0, 5);
-  const punkteVon = team => !liveDaten ? 0 : (seiteVon(team) === "CT" ? liveDaten.ct : liveDaten.t).score;
-  function h2hPaar() {
-    const w = (team) => { const l = spielerVon(team), gewaehlt = ((Z.h2h || {})[team]) || ""; return l.find(p => p.id === gewaehlt) || l.slice().sort((x, y) => staerke(y) - staerke(x))[0]; };
+  const sideFrom = team => !liveData ? "" : team === "a" ? liveData.sideA : (liveData.sideA === "CT" ? "T" : "CT");
+  const strength = p => p.adr + 2 * (p.k - p.d);                  // „stärkster Spieler“: Schaden pro Runde + 2 × (Kills − Tode)
+  const playersFrom = team => !liveData ? [] : liveData.players.filter(p => p.side === sideFrom(team)).sort((x, y) => y.k - x.k || y.adr - x.adr).slice(0, 5);
+  const pointsFrom = team => !liveData ? 0 : (sideFrom(team) === "CT" ? liveData.ct : liveData.t).score;
+  function h2hPair() {
+    const w = (team) => { const l = playersFrom(team), chosen = ((Z.h2h || {})[team]) || ""; return l.find(p => p.id === chosen) || l.slice().sort((x, y) => strength(y) - strength(x))[0]; };
     return [w("a"), w("b")];
   }
-  const warten = () => `<div class="live-warten">${esc(Z.texte.warteCs2 || "")}</div>`;
-  function tabelleHtml(team, kompakt) {
-    const l = spielerVon(team);
-    const kopf = `<div class="lt-kopf"><div class="team-logo ${team}"></div><span data-team-name="${team}"></span><b class="lt-punkte">${punkteVon(team)}</b><span class="lt-seite">${seiteVon(team)}</span></div>`;
-    const spalten = kompakt ? ["K", "D", "ADR"] : ["K", "D", "A", "ADR", "HS %"];
-    const zeilen = l.map(p => `<div class="lt-zeile${p.hp <= 0 ? " tot" : ""}${liveDaten.beobachtet === p.id ? " fokus" : ""}"><span class="lt-name">${esc(p.name)}</span>` +
-      (kompakt ? [p.k, p.d, p.adr] : [p.k, p.d, p.a, p.adr, p.hs]).map(v => `<span>${v}</span>`).join("") + `</div>`).join("");
-    return kopf + `<div class="lt-zeile lt-titel"><span class="lt-name"></span>${spalten.map(s => `<span>${s}</span>`).join("")}</div>` + zeilen;
+  const wait = () => `<div class="live-wait">${esc(Z.texts.waitCs2 || "")}</div>`;
+  function tableHtml(team, compact) {
+    const l = playersFrom(team);
+    const head = `<div class="stat-head"><div class="team-logo ${team}"></div><span data-team-name="${team}"></span><b class="stat-points">${pointsFrom(team)}</b><span class="stat-side">${sideFrom(team)}</span></div>`;
+    const columns = compact ? ["K", "D", "ADR"] : ["K", "D", "A", "ADR", "HS %"];
+    const rows = l.map(p => `<div class="stat-row${p.hp <= 0 ? " dead" : ""}${liveData.observed === p.id ? " focused" : ""}"><span class="stat-name">${esc(p.name)}</span>` +
+      (compact ? [p.k, p.d, p.adr] : [p.k, p.d, p.a, p.adr, p.hs]).map(v => `<span>${v}</span>`).join("") + `</div>`).join("");
+    return head + `<div class="stat-row stat-title"><span class="stat-name"></span>${columns.map(s => `<span>${s}</span>`).join("")}</div>` + rows;
   }
-  function liveZeichnen() {
-    const da = !!liveDaten;
+  function liveDraw() {
+    const da = !!liveData;
     // ohne CS2-Daten steht der Match-Titel im Kopf (nie ein leeres Feld)
-    $$(".live-info").forEach(e => { const t = da ? `${MAPNAME(liveDaten.map)} · ${Z.texte.runde || "RUNDE"} ${liveDaten.runde + 1}` : (Z.texte.titel || ""); if (e.textContent !== t) e.textContent = t; });
-    $$(".live-tabelle").forEach(e => {
-      const team = e.dataset.team, h = da ? tabelleHtml(team, e.classList.contains("kompakt")) : warten();
-      if (neuNoetig(e, h)) e.innerHTML = h;
+    $$(".live-info").forEach(e => { const t = da ? `${MAPNAME(liveData.map)} · ${Z.texts.round || K.word(Z, "round")} ${liveData.round + 1}` : (Z.texts.title || ""); if (e.textContent !== t) e.textContent = t; });
+    $$(".live-table").forEach(e => {
+      const team = e.dataset.team, h = da ? tableHtml(team, e.classList.contains("compact")) : wait();
+      if (newNeeded(e, h)) e.innerHTML = h;
     });
     $$(".live-team").forEach(e => {
       const team = e.dataset.team;
-      const h = !da ? warten() : spielerVon(team).map(p => `<div class="box lt-karte"><div class="box-kopf">${esc(p.name)}</div><div class="box-feld">
-          <div class="lt-gross"><b>${p.k}</b><span>/</span><b>${p.d}</b><span>/</span><b>${p.a}</b></div><div class="lt-klein">K / D / A</div>
-          <div class="lt-werte"><div><b>${p.adr}</b><span>ADR</span></div><div><b>${p.hs}%</b><span>HS</span></div><div><b>${p.mvps}</b><span>MVP</span></div></div></div></div>`).join("");
-      if (neuNoetig(e, h)) e.innerHTML = h;
+      const h = !da ? wait() : playersFrom(team).map(p => `<div class="box stat-card"><div class="box-head">${esc(p.name)}</div><div class="box-field">
+          <div class="stat-large"><b>${p.k}</b><span>/</span><b>${p.d}</b><span>/</span><b>${p.a}</b></div><div class="stat-small">K / D / A</div>
+          <div class="stat-values"><div><b>${p.adr}</b><span>ADR</span></div><div><b>${p.hs}%</b><span>HS</span></div><div><b>${p.mvps}</b><span>MVP</span></div></div></div></div>`).join("");
+      if (newNeeded(e, h)) e.innerHTML = h;
     });
     $$(".live-h2h").forEach(e => {
-      const [pa, pb] = da ? h2hPaar() : [];
-      let h = warten();
+      const [pa, pb] = da ? h2hPair() : [];
+      let h = wait();
       if (pa && pb) {
-        const zeile = (name, va, vb, mehrBesser = true) => {
+        const row = (name, va, vb, moreBetter = true) => {
           const sum = va + vb, wa = sum ? Math.round(100 * va / sum) : 50;   // beide 0: neutral in der Mitte
-          const fuehrt = va === vb ? "" : (va > vb) === mehrBesser ? "a" : "b";
-          return `<div class="h2h-zeile"><b class="${fuehrt === "a" ? "vorn" : ""}">${va}</b><div class="h2h-balken"><i style="width:${wa}%"></i></div><span>${name}</span><div class="h2h-balken b"><i style="width:${100 - wa}%"></i></div><b class="${fuehrt === "b" ? "vorn" : ""}">${vb}</b></div>`;
+          const leads = va === vb ? "" : (va > vb) === moreBetter ? "a" : "b";
+          return `<div class="h2h-row"><b class="${leads === "a" ? "front" : ""}">${va}</b><div class="h2h-bar"><i style="width:${wa}%"></i></div><span>${name}</span><div class="h2h-bar b"><i style="width:${100 - wa}%"></i></div><b class="${leads === "b" ? "front" : ""}">${vb}</b></div>`;
         };
-        h = `<div class="h2h-spieler"><div class="box"><div class="box-kopf"><span data-team-name="a"></span></div><div class="box-feld">${esc(pa.name)}</div></div>
-             <div class="box"><div class="box-kopf"><span data-team-name="b"></span></div><div class="box-feld">${esc(pb.name)}</div></div></div>
-             <div class="h2h-werte">${zeile("KILLS", pa.k, pb.k)}${zeile("DEATHS", pa.d, pb.d, false)}${zeile("ASSISTS", pa.a, pb.a)}${zeile("ADR", pa.adr, pb.adr)}${zeile("HS %", pa.hs, pb.hs)}${zeile("MVPs", pa.mvps, pb.mvps)}</div>`;
+        h = `<div class="h2h-players"><div class="box"><div class="box-head"><span data-team-name="a"></span></div><div class="box-field">${esc(pa.name)}</div></div>
+             <div class="box"><div class="box-head"><span data-team-name="b"></span></div><div class="box-field">${esc(pb.name)}</div></div></div>
+             <div class="h2h-values">${row("KILLS", pa.k, pb.k)}${row("DEATHS", pa.d, pb.d, false)}${row("ASSISTS", pa.a, pb.a)}${row("ADR", pa.adr, pb.adr)}${row("HS %", pa.hs, pb.hs)}${row("MVPs", pa.mvps, pb.mvps)}</div>`;
       }
-      if (neuNoetig(e, h)) e.innerHTML = h;
+      if (newNeeded(e, h)) e.innerHTML = h;
     });
     teams();                                                    // Teamnamen/Logos in neu gezeichneten Teilen
-    if ((Z.einblendungen || []).some(x => x.an && (x.typ === "scoreboard" || x.typ === "spieler"))) einblendungen();
+    if ((Z.graphics || []).some(x => x.on && (x.type === "scoreboard" || x.type === "players"))) graphics();
   }
 
   /* ---------- Einblendungen (über jeder Szene) ---------- */
-  let einblendTakt = null, faktTakt = null, faktNr = 0;
+  let gfxTimer = null, factTimer = null, factNum = 0;
   // welche Map läuft gerade, welche kommt als Nächstes (aus Veto & Serie)
-  function aktuelleMap() {
-    const maps = gespielteMaps();
-    let i = maps.findIndex(x => (x.ergebnis || {}).status === "laeuft");
-    if (i < 0) i = maps.findIndex(x => (x.ergebnis || {}).status !== "fertig");
+  function currentMap() {
+    const maps = playedMaps();
+    let i = maps.findIndex(x => (x.result || {}).status === "running");
+    if (i < 0) i = maps.findIndex(x => (x.result || {}).status !== "done");
     if (i < 0) i = maps.length - 1;
-    return { akt: maps[i] || null, next: maps[i + 1] || null };
+    return { cur: maps[i] || null, next: maps[i + 1] || null };
   }
-  function einblendInhalt(e) {
-    if (e.typ === "punktestand")
-      return `<div class="team-logo a"></div><div class="eb-stand"><span data-team-score="a"></span><span class="dp">:</span><span data-team-score="b"></span></div><div class="team-logo b"></div>`;
-    if (e.typ === "caster") {
-      const wer = ["c1", "c2"].concat(e.gast ? ["gast"] : []).map(k => Z.caster[k] || {}).filter(c => c.name);
-      return `<div class="eb-caster-liste ${e.anordnung === "nebeneinander" ? "neben" : ""}">` +
-        wer.map(c => `<div class="box eb-caster"><div class="box-kopf">${esc(c.name)}</div><div class="box-feld">${esc(c.zusatz || "")}</div></div>`).join("") + `</div>`;
+  function gfxContent(e) {
+    if (e.type === "score")
+      return `<div class="team-logo a"></div><div class="gfx-score"><span data-team-score="a"></span><span class="dp">:</span><span data-team-score="b"></span></div><div class="team-logo b"></div>`;
+    if (e.type === "caster") {
+      const who = ["c1", "c2"].concat(e.guest ? ["guest"] : []).map(k => Z.caster[k] || {}).filter(c => c.name);
+      return `<div class="gfx-caster-list ${e.arrangement === "sidebyside" ? "beside" : ""}">` +
+        who.map(c => `<div class="box gfx-caster"><div class="box-head">${esc(c.name)}</div><div class="box-field">${esc(c.addition || "")}</div></div>`).join("") + `</div>`;
     }
-    if (e.typ === "mapinfo") {
-      const { akt, next } = aktuelleMap();
-      if (!akt) return `<div class="eb-mi"><b>${esc(Z.texte.mapVeto)}</b><span class="eb-mi-map">–</span></div>`;
-      const wer = akt.aktion === "decider" || !akt.team ? `<b>${esc(Z.texte.decider)}</b>`
-        : `<b>${esc(Z.texte.pick)}</b><div class="team-logo ${akt.team}"></div>`;
-      return `<div class="eb-mi">${wer}<span class="eb-mi-map">${esc(akt.map)}</span>${next ? `<span class="eb-mi-next">${esc(Z.texte.next)}: ${esc(next.map)}</span>` : ""}</div>`;
+    if (e.type === "mapinfo") {
+      const { cur, next } = currentMap();
+      if (!cur) return `<div class="gfx-mapinfo"><b>${esc(Z.texts.mapVeto)}</b><span class="gfx-mapinfo-map">–</span></div>`;
+      const who = cur.action === "decider" || !cur.team ? `<b>${esc(Z.texts.decider)}</b>`
+        : `<b>${esc(Z.texts.pick)}</b><div class="team-logo ${cur.team}"></div>`;
+      return `<div class="gfx-mapinfo">${who}<span class="gfx-mapinfo-map">${esc(cur.map)}</span>${next ? `<span class="gfx-mapinfo-next">${esc(Z.texts.next)}: ${esc(next.map)}</span>` : ""}</div>`;
     }
-    if (e.typ === "scoreboard") {
-      if (!liveDaten) return `<div class="box-kopf">${esc(Z.texte.scoreboard)}</div><div class="box-feld">${warten()}</div>`;
-      return `<div class="box-kopf">${esc(Z.texte.scoreboard)} · <span>${esc(MAPNAME(liveDaten.map))}</span></div>
-        <div class="eb-sb"><div class="live-tabelle kompakt" data-team="a">${tabelleHtml("a", true)}</div><div class="live-tabelle kompakt" data-team="b">${tabelleHtml("b", true)}</div></div>`;
+    if (e.type === "scoreboard") {
+      if (!liveData) return `<div class="box-head">${esc(Z.texts.scoreboard)}</div><div class="box-field">${wait()}</div>`;
+      return `<div class="box-head">${esc(Z.texts.scoreboard)} · <span>${esc(MAPNAME(liveData.map))}</span></div>
+        <div class="gfx-sb"><div class="live-table compact" data-team="a">${tableHtml("a", true)}</div><div class="live-table compact" data-team="b">${tableHtml("b", true)}</div></div>`;
     }
-    if (e.typ === "spieler") {
-      const p = liveDaten && (liveDaten.spieler.find(x => x.id === (e.spielerId || liveDaten.beobachtet)) || null);
-      if (!p) return `<div class="box-kopf">SPIELER</div><div class="box-feld">${warten()}</div>`;
-      const team = p.seite === seiteVon("a") ? "a" : "b";
-      return `<div class="box-kopf"><div class="team-logo ${team}"></div><span>${esc(p.name)}</span></div>
-        <div class="box-feld eb-sp"><div><b>${p.k}/${p.d}/${p.a}</b><span>K/D/A</span></div><div><b>${p.adr}</b><span>ADR</span></div><div><b>${p.hs}%</b><span>HS</span></div><div><b>${p.mvps}</b><span>MVP</span></div></div>`;
+    if (e.type === "players") {
+      const p = liveData && (liveData.players.find(x => x.id === (e.playersId || liveData.observed)) || null);
+      if (!p) return `<div class="box-head">${esc(Z.texts.players || "")}</div><div class="box-field">${wait()}</div>`;
+      const team = p.side === sideFrom("a") ? "a" : "b";
+      return `<div class="box-head"><div class="team-logo ${team}"></div><span>${esc(p.name)}</span></div>
+        <div class="box-field gfx-sponsor"><div><b>${p.k}/${p.d}/${p.a}</b><span>K/D/A</span></div><div><b>${p.adr}</b><span>ADR</span></div><div><b>${p.hs}%</b><span>HS</span></div><div><b>${p.mvps}</b><span>MVP</span></div></div>`;
     }
-    if (e.typ === "mapfakt") {
-      const map = e.map || ((aktuelleMap().akt || {}).map) || "";
-      const pool = mapBild(map), fakten = (pool.fakten || []).filter(Boolean);
-      const nr = e.fakt >= 0 ? e.fakt : faktNr;
-      const text = fakten.length ? fakten[nr % fakten.length] : "";
-      return `<div class="box-kopf">${esc(Z.texte.mapFakt)}${map ? " · " + esc(map) : ""}</div><div class="box-feld">${esc(text)}</div>`;
+    if (e.type === "mapfact") {
+      const map = e.map || ((currentMap().cur || {}).map) || "";
+      const pool = mapImage(map), facts = (pool.facts || []).filter(Boolean);
+      const num = e.fact >= 0 ? e.fact : factNum;
+      const text = facts.length ? facts[num % facts.length] : "";
+      return `<div class="box-head">${esc(Z.texts.mapFact)}${map ? " · " + esc(map) : ""}</div><div class="box-field">${esc(text)}</div>`;
     }
-    return `<div class="box-kopf">${esc(e.titel || "")}</div><div class="box-feld">${esc(e.text || "")}</div>`;
+    return `<div class="box-head">${esc(e.title || "")}</div><div class="box-field">${esc(e.text || "")}</div>`;
   }
-  const STANDARD_POS = { bauchbinde: "lu", caster: "lu", hinweis: "mo", punktestand: "mo", mapinfo: "lo", mapfakt: "ro", scoreboard: "mu", spieler: "lu" };
-  function einblendungen() {
-    if (EINGEBETTET) return;
-    let ebene = document.querySelector(".einblend-ebene");
-    if (!ebene) { ebene = document.createElement("div"); ebene.className = "einblend-ebene"; document.body.appendChild(ebene); }
-    const jetzt = Date.now(), liste = Z.einblendungen || [];
-    let naechstesEnde = 0, faktSek = 0;
-    liste.forEach(e => {
-      let d = ebene.querySelector(`[data-id="${CSS.escape(e.id)}"]`);
-      if (!d) { d = document.createElement("div"); d.dataset.id = e.id; ebene.appendChild(d); }
-      const pos = /^(lu|ru|mu|lo|ro|mo|lm|rm)$/.test(e.pos || "") ? e.pos : (STANDARD_POS[e.typ] || "lu");
-      const klasse = `einblendung eb-${e.typ} pos-${pos}` + (e.typ === "caster" ? "" : " box") + (e.titel ? "" : " ohne-titel");
-      const inhalt = einblendInhalt(e);
-      if (d.dataset.schl !== klasse + inhalt) {
-        const war = d.classList.contains("an");
-        d.dataset.schl = klasse + inhalt; d.className = klasse + (war ? " an" : ""); d.innerHTML = inhalt;
+  const DEFAULT_POS = { lowerthird: "bl", caster: "bl", hint: "tc", score: "tc", mapinfo: "tl", mapfact: "tr", scoreboard: "bc", players: "bl" };
+  function graphics() {
+    if (EMBEDDED) return;
+    let stageLayer = document.querySelector(".gfx-layer");
+    if (!stageLayer) { stageLayer = document.createElement("div"); stageLayer.className = "gfx-layer"; document.body.appendChild(stageLayer); }
+    const now = Date.now(), list = Z.graphics || [];
+    let nextEnd = 0, factSec = 0;
+    list.forEach(e => {
+      let d = stageLayer.querySelector(`[data-id="${CSS.escape(e.id)}"]`);
+      if (!d) { d = document.createElement("div"); d.dataset.id = e.id; stageLayer.appendChild(d); }
+      const pos = /^(lu|ru|mu|lo|ro|mo|lm|rm)$/.test(e.pos || "") ? e.pos : (DEFAULT_POS[e.type] || "bl");
+      const cssClass = `einblendung eb-${e.type} pos-${pos}` + (e.type === "caster" ? "" : " box") + (e.title ? "" : " without-title");
+      const content = gfxContent(e);
+      if (d.dataset.cacheKey !== cssClass + content) {
+        const had = d.classList.contains("on");
+        d.dataset.cacheKey = cssClass + content; d.className = cssClass + (had ? " on" : ""); d.innerHTML = content;
       }
-      const sichtbar = K.ebSichtbar(e, jetzt, aktSzeneName());
-      d.classList.toggle("an", sichtbar);
-      const wechsel = K.ebNaechsterWechsel(e, jetzt);
-      if (wechsel) naechstesEnde = naechstesEnde ? Math.min(naechstesEnde, wechsel) : wechsel;
-      if (sichtbar && e.typ === "mapfakt" && !(e.fakt >= 0)) faktSek = Math.max(4, +e.sekunden || 12);
+      const visible = K.gfxVisible(e, now, currentSceneName());
+      d.classList.toggle("on", visible);
+      const switchTo = K.gfxNextSwitch(e, now);
+      if (switchTo) nextEnd = nextEnd ? Math.min(nextEnd, switchTo) : switchTo;
+      if (visible && e.type === "mapfact" && !(e.fact >= 0)) factSec = Math.max(4, +e.seconds || 12);
     });
-    [...ebene.children].forEach(d => { if (!liste.some(e => e.id === d.dataset.id)) d.remove(); });
-    clearTimeout(einblendTakt);
-    if (naechstesEnde) einblendTakt = setTimeout(einblendungen, naechstesEnde - jetzt + 30);
+    [...stageLayer.children].forEach(d => { if (!list.some(e => e.id === d.dataset.id)) d.remove(); });
+    clearTimeout(gfxTimer);
+    if (nextEnd) gfxTimer = setTimeout(graphics, nextEnd - now + 30);
     // Map-Fakten nacheinander zeigen
-    if (faktSek && !faktTakt) faktTakt = setInterval(() => { faktNr++; einblendungen(); teams(); }, faktSek * 1000);
-    if (!faktSek && faktTakt) { clearInterval(faktTakt); faktTakt = null; }
+    if (factSec && !factTimer) factTimer = setInterval(() => { factNum++; graphics(); teams(); }, factSec * 1000);
+    if (!factSec && factTimer) { clearInterval(factTimer); factTimer = null; }
   }
 
   /* ---------- Spieler ---------- */
-  function spieler() {
-    const boxen = $$(".lineup[data-team]");
-    if (!boxen.length) return;
-    const schluessel = JSON.stringify(Z.spieler);
-    boxen.forEach(box => {
-      if (!neuNoetig(box, schluessel)) return;
+  function players() {
+    const boxes = $$(".lineup[data-team]");
+    if (!boxes.length) return;
+    const keyName = JSON.stringify(Z.players);
+    boxes.forEach(box => {
+      if (!newNeeded(box, keyName)) return;
       const k = box.dataset.team;
-      const liste = ((Z.spieler || {})[k] || []).slice(0, 5);
-      while (liste.length < 5) liste.push(null);
-      box.innerHTML = `<div class="box lineup-team"><div class="team-logo ${k}"></div><div class="box-feld"><span data-team-name="${k}" data-passend></span></div></div>` +
-        liste.map(p => {
-          if (!p || !p.name) return `<div class="box spieler-karte leer"><div class="spieler-bild"></div><div class="box-kopf">–</div><div class="box-feld"></div></div>`;
-          const bild = p.bild ? `<img${p.bildModus === "ganz" ? ' class="ganz"' : ""} src="${esc(p.bild)}" alt="">` : `<div class="initial">${esc(p.name[0].toUpperCase())}</div>`;
-          const level = p.level ? `<div class="spieler-level">${esc(p.level)}</div>` : "";
-          return `<div class="box spieler-karte"><div class="spieler-bild">${bild}${level}</div><div class="box-kopf">${esc(p.name)}</div><div class="box-feld">${esc(p.echt || "")}</div></div>`;
+      const list = ((Z.players || {})[k] || []).slice(0, 5);
+      while (list.length < 5) list.push(null);
+      box.innerHTML = `<div class="box lineup-team"><div class="team-logo ${k}"></div><div class="box-field"><span data-team-name="${k}" data-passend></span></div></div>` +
+        list.map(p => {
+          if (!p || !p.name) return `<div class="box players-card empty"><div class="players-image"></div><div class="box-head">–</div><div class="box-field"></div></div>`;
+          const image = p.image ? `<img${p.imageMode === "whole" ? ' class="whole"' : ""} src="${esc(p.image)}" alt="">` : `<div class="initial">${esc(p.name[0].toUpperCase())}</div>`;
+          const level = p.level ? `<div class="players-level">${esc(p.level)}</div>` : "";
+          return `<div class="box players-card"><div class="players-image">${image}${level}</div><div class="box-head">${esc(p.name)}</div><div class="box-field">${esc(p.real || "")}</div></div>`;
         }).join("");
     });
   }
@@ -530,62 +530,62 @@
 
   /* ---------- Ton je Quelle: Lautstärke (bis 300 %), stumm, Verzögerung, Abhören ----------
      Programm (OBS): spielt, wenn nicht stumm und nicht „nur abhören“. Vorschau in der App: spielt, wenn Abhören an ist. */
-  let audioKtx = null, monitor = { modus: "aus", vol: 100 };       // Abhören in der App: aus · app · beides (App + OBS)
-  const monitorAn = () => monitor.modus === "app" || monitor.modus === "beides";
-  const tonKetten = new Set();
-  function tonFuerVideo(v, an) {
-    if (!an) { v.muted = true; return; }
-    const c = ktx(); if (!c) return;
-    if (!v._ton) { try { tonKette(c.createMediaElementSource(v), "hintergrund", () => v.isConnected); v._ton = true; } catch (e) { return; } }
+  let audioAudioctx = null, monitor = { mode: "off", vol: 100 };       // Abhören in der App: aus · app · beides (App + OBS)
+  const monitorOn = () => monitor.mode === "app" || monitor.mode === "both";
+  const audioChains = new Set();
+  function audioForVideo(v, on) {
+    if (!on) { v.muted = true; return; }
+    const c = audioctx(); if (!c) return;
+    if (!v._audio) { try { audioChain(c.createMediaElementSource(v), "background", () => v.isConnected); v._audio = true; } catch (e) { return; } }
     v.muted = false;
   }
-  function ktx() {
-    if (!audioKtx) { try { audioKtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
-    if (audioKtx.state === "suspended") audioKtx.resume().catch(() => {});
-    return audioKtx;
+  function audioctx() {
+    if (!audioAudioctx) { try { audioAudioctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+    if (audioAudioctx.state === "suspended") audioAudioctx.resume().catch(() => {});
+    return audioAudioctx;
   }
-  function tonEinst(key) { return Object.assign({ vol: 100, stumm: key === "hintergrund", delay: 0, abhoeren: "beides" }, ((Z.audio || {})[key]) || {}); }
-  function tonPegel(key) {
-    const T = tonEinst(key);
-    if (T.stumm) return 0;
-    if (VORSCHAU) return T.abhoeren === "aus" || !monitorAn() ? 0 : (T.vol / 100) * (monitor.vol / 100);
-    return T.abhoeren === "nur" ? 0 : T.vol / 100;
+  function audioSettings(key) { return Object.assign({ vol: 100, mute: key === "background", delay: 0, monitor: "both" }, ((Z.audio || {})[key]) || {}); }
+  function audioLevel(key) {
+    const T = audioSettings(key);
+    if (T.mute) return 0;
+    if (PREVIEW) return T.monitor === "off" || !monitorOn() ? 0 : (T.vol / 100) * (monitor.vol / 100);
+    return T.monitor === "only" ? 0 : T.vol / 100;
   }
-  function tonKette(quelle, key, lebt) {
-    const c = ktx(); if (!c) return null;
+  function audioChain(source, key, alive) {
+    const c = audioctx(); if (!c) return null;
     const d = c.createDelay(5), g = c.createGain();
-    quelle.connect(d); d.connect(g); g.connect(c.destination);
-    const t = { d, g, key, lebt }; tonKetten.add(t); tonAnwenden(); return t;
+    source.connect(d); d.connect(g); g.connect(c.destination);
+    const t = { d, g, key, alive }; audioChains.add(t); audioApply(); return t;
   }
-  function tonAnwenden() {
-    const hgAn = !tonEinst("hintergrund").stumm;
-    $$(".hg video").forEach(v => tonFuerVideo(v, hgAn));
-    tonKetten.forEach(t => {
-      if (!t.lebt()) { try { t.g.disconnect(); } catch (e) {} tonKetten.delete(t); return; }
-      t.g.gain.value = tonPegel(t.key); t.d.delayTime.value = Math.min(5, Math.max(0, (+tonEinst(t.key).delay || 0) / 1000));
+  function audioApply() {
+    const bgOn = !audioSettings("background").mute;
+    $$(".backdrop video").forEach(v => audioForVideo(v, bgOn));
+    audioChains.forEach(t => {
+      if (!t.alive()) { try { t.g.disconnect(); } catch (e) {} audioChains.delete(t); return; }
+      t.g.gain.value = audioLevel(t.key); t.d.delayTime.value = Math.min(5, Math.max(0, (+audioSettings(t.key).delay || 0) / 1000));
     });
     // VDO.Ninja: Lautstärke über dessen Iframe-Schnittstelle (höchstens 100 %)
-    $$(".kam[data-quelle] iframe").forEach(f => {
-      const v = Math.min(1, tonPegel(f.closest(".kam").dataset.quelle));
+    $$(".cam[data-source] iframe").forEach(f => {
+      const v = Math.min(1, audioLevel(f.closest(".cam").dataset.source));
       if (f._vol !== v) { f._vol = v; try { f.contentWindow.postMessage({ volume: v }, "*"); } catch (e) {} }
     });
   }
-  setInterval(() => { $$(".kam[data-quelle] iframe").forEach(f => { f._vol = null; }); tonAnwenden(); }, 3000);
+  setInterval(() => { $$(".cam[data-source] iframe").forEach(f => { f._vol = null; }); audioApply(); }, 3000);
   // App-Fenster: eigene Videos/Audios direkt regeln, fremde Seiten (Clips, VDO, DACH) ohne Freigabe stumm halten
-  function vorschauTon() {
-    if (!VORSCHAU) return;
-    const an = monitorAn(), vol = Math.max(0, Math.min(1, monitor.vol / 100));
-    $$("video, audio").forEach(m => { if (m._ton) return; m.muted = !an; m.volume = vol; });
+  function previewAudio() {
+    if (!PREVIEW) return;
+    const on = monitorOn(), vol = Math.max(0, Math.min(1, monitor.vol / 100));
+    $$("video, audio").forEach(m => { if (m._audio) return; m.muted = !on; m.volume = vol; });
     $$("iframe").forEach(f => {
-      const soll = an ? "autoplay" : "autoplay 'none'";
-      if (f.getAttribute("allow") !== soll) { f.setAttribute("allow", soll); if (f.src && !/about:blank$/.test(f.src)) f.src = f.src; }
-      if (an) try { f.contentWindow.postMessage({ volume: vol }, "*"); } catch (e) {}
+      const should = on ? "autoplay" : "autoplay 'none'";
+      if (f.getAttribute("allow") !== should) { f.setAttribute("allow", should); if (f.src && !/about:blank$/.test(f.src)) f.src = f.src; }
+      if (on) try { f.contentWindow.postMessage({ volume: vol }, "*"); } catch (e) {}
     });
   }
-  if (VORSCHAU) setInterval(vorschauTon, 1000);
+  if (PREVIEW) setInterval(previewAudio, 1000);
 
   /* ---------- Quellen in den Kamera-Rahmen ---------- */
-  function linkAufbereiten(Q, key) {
+  function linkPrepare(Q, key) {
     let u = String(Q.url || "").trim();
     if (!u) return "";
     if (!/^https?:\/\//i.test(u)) u = "https://vdo.ninja/?view=" + encodeURIComponent(u);   // nur Stream-ID eingegeben
@@ -594,67 +594,67 @@
       if (/(^|\.)(vdo|obs)\.ninja$/i.test(url.hostname)) {
         const p = url.searchParams;
         if (!p.has("cleanoutput")) p.set("cleanoutput", "");
-        if (Q.anpassen !== "ganz" && !p.has("cover")) p.set("cover", "");
-        if (Q.ton === false && !p.has("noaudio")) p.set("noaudio", "");
-        if (VORSCHAU && !monitorAn() && !p.has("noaudio")) p.set("noaudio", "");     // Vorschau: nur mit Abhören hörbar
-        const verz = +tonEinst(key).delay || 0;
-        if (verz > 0) p.set("buffer", String(Math.round(verz)));          // Bild + Ton verzögern (z. B. passend zum Spiel)
+        if (Q.adjust !== "whole" && !p.has("cover")) p.set("cover", "");
+        if (Q.audio === false && !p.has("noaudio")) p.set("noaudio", "");
+        if (PREVIEW && !monitorOn() && !p.has("noaudio")) p.set("noaudio", "");     // Vorschau: nur mit Abhören hörbar
+        const delayMs = +audioSettings(key).delay || 0;
+        if (delayMs > 0) p.set("buffer", String(Math.round(delayMs)));          // Bild + Ton verzögern (z. B. passend zum Spiel)
         return url.toString().replace(/=(&|$)/g, "$1");
       }
       return url.toString();
     } catch (e) { return u; }
   }
-  async function geraetStarten(box, Q) {
+  async function deviceStart(box, Q) {
     const v = document.createElement("video");
-    v.autoplay = true; v.playsInline = true; v.muted = !Q.ton;
+    v.autoplay = true; v.playsInline = true; v.muted = !Q.audio;
     box.appendChild(v);
     try {
       const md = navigator.mediaDevices;
-      let geraete = await md.enumerateDevices();
-      if (!geraete.some(d => d.label)) {            // ohne Freigabe gibt es keine Gerätenamen
+      let devices = await md.enumerateDevices();
+      if (!devices.some(d => d.label)) {            // ohne Freigabe gibt es keine Gerätenamen
         const s = await md.getUserMedia({ video: true }); s.getTracks().forEach(t => t.stop());
-        geraete = await md.enumerateDevices();
+        devices = await md.enumerateDevices();
       }
       // Geräte-IDs unterscheiden sich zwischen Browser und OBS – deshalb zuerst über den Namen suchen
-      const d = geraete.find(x => x.kind === "videoinput" && Q.geraetName && x.label === Q.geraetName)
-             || geraete.find(x => x.kind === "videoinput" && x.deviceId === Q.geraet);
+      const d = devices.find(x => x.kind === "videoinput" && Q.deviceName && x.label === Q.deviceName)
+             || devices.find(x => x.kind === "videoinput" && x.deviceId === Q.device);
       const video = { width: { ideal: 1920 }, height: { ideal: 1080 } };
       if (d) video.deviceId = { exact: d.deviceId };
-      const stream = await md.getUserMedia({ video, audio: !!Q.ton || !!(Z.sprecher || {}).an });
+      const stream = await md.getUserMedia({ video, audio: !!Q.audio || !!(Z.speaker || {}).on });
       if (!box.isConnected) { stream.getTracks().forEach(t => t.stop()); return; }
       box._stream = stream; v.srcObject = stream; v.muted = true;
-      if (stream.getAudioTracks().length) { const c = ktx(); if (c) tonKette(c.createMediaStreamSource(stream), box.closest(".kam").dataset.quelle, () => box.isConnected); }
-      pegelMessen(box.closest(".kam"), stream);
+      if (stream.getAudioTracks().length) { const c = audioctx(); if (c) audioChain(c.createMediaStreamSource(stream), box.closest(".cam").dataset.source, () => box.isConnected); }
+      levelMeasure(box.closest(".cam"), stream);
     } catch (e) {
-      box.innerHTML = `<div class="kam-fehler">Kamera nicht verfügbar<small>${esc(e && (e.name || e.message) || e)}</small></div>`;
+      box.innerHTML = `<div class="cam-error">${esc(K.word(Z, "cameraMissing"))}<small>${esc(e && (e.name || e.message) || e)}</small></div>`;
     }
   }
   /* Sprecher-Anzeige: Pegel messen und das Schild aufleuchten lassen */
-  const pegelHalten = new WeakMap();
-  function pegel(k, wert) {
-    if (!(Z.sprecher || {}).an) { k.classList.remove("spricht"); return; }
-    if (wert > ((Z.sprecher || {}).schwelle || .08)) {
-      k.classList.add("spricht");
-      clearTimeout(pegelHalten.get(k));
-      pegelHalten.set(k, setTimeout(() => k.classList.remove("spricht"), 450));
+  const levelHold = new WeakMap();
+  function meterLevel(k, value) {
+    if (!(Z.speaker || {}).on) { k.classList.remove("speaks"); return; }
+    if (value > ((Z.speaker || {}).threshold || .08)) {
+      k.classList.add("speaks");
+      clearTimeout(levelHold.get(k));
+      levelHold.set(k, setTimeout(() => k.classList.remove("speaks"), 450));
     }
   }
-  let audioKontext = null;
-  function pegelMessen(k, stream) {
-    const spur = stream.getAudioTracks()[0];
-    if (!spur) return;
+  let audioContext = null;
+  function levelMeasure(k, stream) {
+    const track = stream.getAudioTracks()[0];
+    if (!track) return;
     try {
-      audioKontext = audioKontext || new (window.AudioContext || window.webkitAudioContext)();
-      audioKontext.resume().catch(() => {});
-      const quelle = audioKontext.createMediaStreamSource(new MediaStream([spur]));
-      const analyse = audioKontext.createAnalyser(); analyse.fftSize = 512;
-      quelle.connect(analyse);
-      const daten = new Float32Array(analyse.fftSize);
+      audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+      audioContext.resume().catch(() => {});
+      const source = audioContext.createMediaStreamSource(new MediaStream([track]));
+      const analyse = audioContext.createAnalyser(); analyse.fftSize = 512;
+      source.connect(analyse);
+      const data = new Float32Array(analyse.fftSize);
       const t = setInterval(() => {
-        if (!k.isConnected || spur.readyState === "ended") { clearInterval(t); try { quelle.disconnect(); analyse.disconnect(); } catch (e) {} return; }
-        analyse.getFloatTimeDomainData(daten);
-        let s = 0; for (const v of daten) s += v * v;
-        pegel(k, Math.sqrt(s / daten.length) * 4);
+        if (!k.isConnected || track.readyState === "ended") { clearInterval(t); try { source.disconnect(); analyse.disconnect(); } catch (e) {} return; }
+        analyse.getFloatTimeDomainData(data);
+        let s = 0; for (const v of data) s += v * v;
+        meterLevel(k, Math.sqrt(s / data.length) * 4);
       }, 100);
     } catch (e) {}
   }
@@ -662,59 +662,59 @@
   addEventListener("message", ev => {
     const d = ev.data;
     if (!d || typeof d !== "object" || d.loudness == null) return;
-    const k = $$(".kam[data-quelle]").find(x => { const f = x.querySelector("iframe"); return f && f.contentWindow === ev.source; });
+    const k = $$(".cam[data-source]").find(x => { const f = x.querySelector("iframe"); return f && f.contentWindow === ev.source; });
     if (!k) return;
-    const werte = typeof d.loudness === "object" ? Object.values(d.loudness) : [d.loudness];
-    pegel(k, Math.max(0, ...werte.map(Number).filter(n => !isNaN(n))) / 100);
+    const values = typeof d.loudness === "object" ? Object.values(d.loudness) : [d.loudness];
+    meterLevel(k, Math.max(0, ...values.map(Number).filter(n => !isNaN(n))) / 100);
   });
   setInterval(() => {
-    if (!(Z.sprecher || {}).an) return;
-    $$(".kam[data-quelle] iframe").forEach(f => { try { f.contentWindow.postMessage({ getLoudness: true }, "*"); } catch (e) {} });
+    if (!(Z.speaker || {}).on) return;
+    $$(".cam[data-source] iframe").forEach(f => { try { f.contentWindow.postMessage({ getLoudness: true }, "*"); } catch (e) {} });
   }, 3000);
 
-  function quellen() {
-    $$(".kam[data-quelle]").forEach(k => {
-      const Q = ((Z.quellen || {})[k.dataset.quelle]) || { typ: "leer" };
-      const schluessel = JSON.stringify([Q, !!(Z.sprecher || {}).an, Q.typ === "link" ? +tonEinst(k.dataset.quelle).delay || 0 : 0, VORSCHAU && Q.typ === "link" ? monitorAn() : 0]);
-      if (k._quelle === schluessel) return;
-      k._quelle = schluessel;
-      const alt = k.querySelector(".kam-quelle");
-      if (alt) { if (alt._stream) alt._stream.getTracks().forEach(t => t.stop()); alt.remove(); }
-      const aktiv = Q.typ && Q.typ !== "leer" && (Q.typ !== "link" || Q.url) && (Q.typ !== "bild" || Q.bild);
-      k.classList.toggle("gefuellt", !!aktiv);
-      if (!aktiv) return;
+  function sources() {
+    $$(".cam[data-source]").forEach(k => {
+      const Q = ((Z.sources || {})[k.dataset.source]) || { type: "empty" };
+      const keyName = JSON.stringify([Q, !!(Z.speaker || {}).on, Q.type === "link" ? +audioSettings(k.dataset.source).delay || 0 : 0, PREVIEW && Q.type === "link" ? monitorOn() : 0]);
+      if (k._source === keyName) return;
+      k._source = keyName;
+      const oldSource = k.querySelector(".cam-source");
+      if (oldSource) { if (oldSource._stream) oldSource._stream.getTracks().forEach(t => t.stop()); oldSource.remove(); }
+      const active = Q.type && Q.type !== "empty" && (Q.type !== "link" || Q.url) && (Q.type !== "image" || Q.image);
+      k.classList.toggle("filled", !!active);
+      if (!active) return;
       const box = document.createElement("div");
-      box.className = "kam-quelle" + (Q.anpassen === "ganz" ? " ganz" : "") + (Q.spiegeln ? " gespiegelt" : "");
+      box.className = "cam-source" + (Q.adjust === "whole" ? " whole" : "") + (Q.mirror ? " mirrored" : "");
       k.insertBefore(box, k.firstChild);
-      if (Q.typ === "link") {
+      if (Q.type === "link") {
         const f = document.createElement("iframe");
-        const ziel = linkAufbereiten(Q, k.dataset.quelle);
-        f.onload = () => { f._vol = null; setTimeout(tonAnwenden, 800); };
-        if (!/^https?:\/\//i.test(ziel)) return;
+        const target = linkPrepare(Q, k.dataset.source);
+        f.onload = () => { f._vol = null; setTimeout(audioApply, 800); };
+        if (!/^https?:\/\//i.test(target)) return;
         f.allow = "autoplay; camera; microphone; fullscreen; display-capture";
         // darf Skripte ausführen, aber die Overlay-Seite nicht umleiten oder Pop-ups öffnen
         f.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms allow-presentation");
         f.referrerPolicy = "no-referrer";
-        f.src = ziel;
+        f.src = target;
         box.appendChild(f);
-      } else if (Q.typ === "bild") {
-        const i = document.createElement("img"); if (/^(data:image\/|https?:|medien\/)/i.test(Q.bild)) i.src = Q.bild; box.appendChild(i);
-      } else if (Q.typ === "geraet") geraetStarten(box, Q);
+      } else if (Q.type === "image") {
+        const i = document.createElement("img"); if (/^(data:image\/|https?:|medien\/)/i.test(Q.image)) i.src = Q.image; box.appendChild(i);
+      } else if (Q.type === "device") deviceStart(box, Q);
     });
   }
 
   /* ---------- Timer ---------- */
   function timer() {
     const rest = K.timerRest(Z.timer);
-    const t = K.zeit(rest).replace(":", '<span class="dp">:</span>');
-    $$(".timer").forEach(e => { if (e.innerHTML !== t) e.innerHTML = t; e.classList.toggle("null", rest <= 0 && Z.timer.laeuft); });
+    const t = K.time(rest).replace(":", '<span class="dp">:</span>');
+    $$(".timer").forEach(e => { if (e.innerHTML !== t) e.innerHTML = t; e.classList.toggle("null", rest <= 0 && Z.timer.running); });
   }
   setInterval(timer, 250);
 
   /* ---------- Diagnose (in der Steuerseite einschaltbar) ---------- */
-  let empfangenVon = "gespeicherter Stand", empfangenUm = 0;
+  let receivedFrom = "gespeicherter Stand", receivedUm = 0;
   function diagnose() {
-    if (EINGEBETTET) return;
+    if (EMBEDDED) return;
     let box = document.querySelector(".diagnose");
     if (!Z.diagnose) { if (box) box.remove(); return; }
     if (!box) {
@@ -723,344 +723,344 @@
       document.body.appendChild(box);
       setInterval(diagnose, 1000);
     }
-    const H = Z.hintergrund || {}, t = document.createElement("video");
-    const zeilen = [
-      "DIAGNOSE – " + (document.body.dataset.szene || location.pathname.split("/").pop()) + " · Version " + K.VERSION,
+    const H = Z.background || {}, t = document.createElement("video");
+    const rows = [
+      "DIAGNOSE – " + (document.body.dataset.scene || location.pathname.split("/").pop()) + " · Version " + K.VERSION,
       "Datei:     " + (location.pathname.split("/").pop() || "?") + (location.protocol === "file:" ? " (lokale Datei)" : " (" + location.protocol.replace(":", "") + ")"),
       "Browser:   " + (navigator.userAgent.match(/(OBS|Chrome|Edg|Firefox|Safari)\/[\d.]+/g) || []).join(" "),
-      "Zustand:   " + empfangenVon + (empfangenUm ? " · " + new Date(empfangenUm).toLocaleTimeString("de-DE") : "") + " · Stand " + (Z.stand ? new Date(Z.stand).toLocaleTimeString("de-DE") : "–"),
-      "Bilder:    " + Object.keys(K.Bilder.mem).length + " gemerkt · Zustand " + Math.round(JSON.stringify(Zroh).length / 1024) + " KB",
-      "Videos:    " + ((H.videos || []).length || "keine eingetragen") + (H.durchsichtig ? " (Hintergrund durchsichtig!)" : ""),
+      "Zustand:   " + receivedFrom + (receivedUm ? " · " + new Date(receivedUm).toLocaleTimeString("de-DE") : "") + " · Stand " + (Z.revision ? new Date(Z.revision).toLocaleTimeString("de-DE") : "–"),
+      "Bilder:    " + Object.keys(K.Images.mem).length + " gemerkt · Zustand " + Math.round(JSON.stringify(rawState).length / 1024) + " KB",
+      "Videos:    " + ((H.videos || []).length || "keine eingetragen") + (H.transparent ? " (Hintergrund durchsichtig!)" : ""),
       "Formate:   H.264 " + (t.canPlayType('video/mp4; codecs="avc1.640028"') || "nein") + " · H.265 " + (t.canPlayType('video/mp4; codecs="hvc1.1.6.L120.90"') || "nein") + " · VP9 " + (t.canPlayType('video/webm; codecs="vp9"') || "nein")
     ];
-    document.querySelectorAll(".hg video").forEach((v, i) => {
+    document.querySelectorAll(".backdrop video").forEach((v, i) => {
       if (!v.getAttribute("src")) return;
-      const fehler = v.error ? ["", "abgebrochen", "Netzwerk/Datei", "Dekodierung (Format)", "Format/Datei nicht unterstützt"][v.error.code] + (v.error.message ? " – " + v.error.message : "") : "";
-      zeilen.push(`Video ${i + 1}:   ${decodeURIComponent(v.getAttribute("src"))} · bereit ${v.readyState}/4 · ${v.paused ? "pausiert" : "läuft"} · ${v.currentTime.toFixed(1)} s${v.classList.contains("an") ? " · SICHTBAR" : ""}${fehler ? " · FEHLER: " + fehler : ""}`);
+      const error = v.error ? ["", "abgebrochen", "Netzwerk/Datei", "Dekodierung (Format)", "Format/Datei nicht unterstützt"][v.error.code] + (v.error.message ? " – " + v.error.message : "") : "";
+      rows.push(`Video ${i + 1}:   ${decodeURIComponent(v.getAttribute("src"))} · bereit ${v.readyState}/4 · ${v.paused ? "pausiert" : "läuft"} · ${v.currentTime.toFixed(1)} s${v.classList.contains("on") ? " · SICHTBAR" : ""}${error ? " · FEHLER: " + error : ""}`);
     });
-    (window.__videoProbleme || []).slice(-3).forEach(p => zeilen.push("Übersprungen: " + p));
-    box.textContent = zeilen.join("\n");
+    (window.__videoProblems || []).slice(-3).forEach(p => rows.push("Übersprungen: " + p));
+    box.textContent = rows.join("\n");
   }
 
   const IN_OBS = !!window.obsstudio || /OBS\//.test(navigator.userAgent);
-  let obsAktiv = true;
+  let obsActive = true;
   addEventListener("obsSourceActiveChanged", ev => {
-    obsAktiv = !!(ev.detail && ev.detail.active);
-    document.querySelectorAll(".hg video.an").forEach(v => { if (obsAktiv) v.play().catch(() => {}); else v.pause(); });
+    obsActive = !!(ev.detail && ev.detail.active);
+    document.querySelectorAll(".backdrop video.on").forEach(v => { if (obsActive) v.play().catch(() => {}); else v.pause(); });
   });
 
   /* ---------- Hintergrund-Videos ----------
      Jede Einrichtung bekommt eine eigene „Generation": Zeitgeber und Ereignisse älterer Durchläufe
      werden ignoriert und können den Hintergrund nicht mehr durcheinanderbringen. */
-  let videoListe = null, videoWaechter = null, videoGen = 0;
-  function hintergrund() {
-    const hg = document.querySelector(".hg");
-    if (!hg) return;
-    const H = Z.hintergrund || {};
+  let videoList = null, videoWatchdog = null, videoGen = 0;
+  function background() {
+    const backdrop = document.querySelector(".backdrop");
+    if (!backdrop) return;
+    const H = Z.background || {};
     // OBS spielt das Video unter dem Overlay ab – die Vorschau in der App zeigt es trotzdem, damit sie wie das Programm aussieht
-    const obsSpielt = (H.quelle === "obs" || !!H.durchsichtig) && !VORSCHAU;
-    const liste = obsSpielt ? [] : (H.videos || []).filter(Boolean);
-    const dunkel = hg.querySelector(".hg-dunkel"), leer = hg.querySelector(".hg-leer");
-    const schluessel = (obsSpielt ? "obs|" : "") + liste.join("|");
-    if (hg.classList.contains("video-laeuft") || obsSpielt) { if (dunkel) dunkel.style.opacity = H.abdunkeln ?? .35; }
-    if (schluessel === videoListe) return;
-    videoListe = schluessel;
+    const obsPlays = (H.source === "obs" || !!H.transparent) && !PREVIEW;
+    const list = obsPlays ? [] : (H.videos || []).filter(Boolean);
+    const dark = backdrop.querySelector(".bg-dark"), empty = backdrop.querySelector(".bg-empty");
+    const keyName = (obsPlays ? "obs|" : "") + list.join("|");
+    if (backdrop.classList.contains("video-running") || obsPlays) { if (dark) dark.style.opacity = H.dim ?? .35; }
+    if (keyName === videoList) return;
+    videoList = keyName;
 
     // alles vom vorherigen Durchlauf beenden
     const gen = ++videoGen;
-    clearInterval(videoWaechter); videoWaechter = null;
-    if (gen > 1 && performance.now() > 8000) meldung(`Hintergrund neu eingerichtet (${obsSpielt ? "OBS spielt ab" : liste.length + " Video(s)"})`);
-    hg.querySelectorAll("video").forEach(v => { v.onerror = v.onended = v.oncanplay = null; v.pause(); v.removeAttribute("src"); v.load(); v.classList.remove("an"); });
-    hg.classList.toggle("obs-video", obsSpielt);
-    const zeigeTheme = () => {
-      leer.classList.remove("aus"); hg.classList.remove("video-laeuft"); hg.classList.add("ohne-video");
-      if (dunkel) dunkel.style.opacity = 0;
+    clearInterval(videoWatchdog); videoWatchdog = null;
+    if (gen > 1 && performance.now() > 8000) message(`Hintergrund neu eingerichtet (${obsPlays ? "OBS spielt ab" : list.length + " Video(s)"})`);
+    backdrop.querySelectorAll("video").forEach(v => { v.onerror = v.onended = v.oncanplay = null; v.pause(); v.removeAttribute("src"); v.load(); v.classList.remove("on"); });
+    backdrop.classList.toggle("obs-video", obsPlays);
+    const showTheme = () => {
+      empty.classList.remove("off"); backdrop.classList.remove("video-running"); backdrop.classList.add("without-video");
+      if (dark) dark.style.opacity = 0;
     };
-    if (obsSpielt) {                                      // durchsichtig, nur Abdunkeln + Verlauf
-      leer.classList.add("aus"); hg.classList.remove("ohne-video", "video-laeuft");
-      if (dunkel) dunkel.style.opacity = H.abdunkeln ?? .35;
+    if (obsPlays) {                                      // durchsichtig, nur Abdunkeln + Verlauf
+      empty.classList.add("off"); backdrop.classList.remove("without-video", "video-running");
+      if (dark) dark.style.opacity = H.dim ?? .35;
       return;
     }
-    zeigeTheme();
-    if (!liste.length) return;
+    showTheme();
+    if (!list.length) return;
 
-    const vorhanden = [...hg.querySelectorAll("video")];
-    const hgTon = !tonEinst("hintergrund").stumm;
-    const machen = () => {
-      if (vorhanden.length) { const alt = vorhanden.shift(); tonFuerVideo(alt, hgTon); return alt; }
-      const v = document.createElement("video"); setTimeout(() => tonFuerVideo(v, hgTon), 0);
+    const present = [...backdrop.querySelectorAll("video")];
+    const bgAudio = !audioSettings("background").mute;
+    const make = () => {
+      if (present.length) { const firstVideo = present.shift(); audioForVideo(firstVideo, bgAudio); return firstVideo; }
+      const v = document.createElement("video"); setTimeout(() => audioForVideo(v, bgAudio), 0);
       ["muted", "autoplay", "playsinline"].forEach(a => v.setAttribute(a, ""));
       v.muted = true; v.playsInline = true; v.preload = "auto"; v.disablePictureInPicture = true;
-      hg.insertBefore(v, leer);
+      backdrop.insertBefore(v, empty);
       return v;
     };
-    let aktiv = machen(), naechstes = machen();
-    let i = Math.floor(Math.random() * liste.length);
-    const kaputt = new Set();
-    const gueltig = () => gen === videoGen;
+    let active = make(), upcoming = make();
+    let i = Math.floor(Math.random() * list.length);
+    const broken = new Set();
+    const valid = () => gen === videoGen;
 
     // Ein Video laden und starten – erst „ok", wenn wirklich Bilder kommen (nicht nur „kann abspielen")
-    function starten(v, datei) {
-      return new Promise(fertig => {
-        let erledigt = false;
-        const ende = (ok, grund) => {
-          if (erledigt) return; erledigt = true; clearTimeout(zeit);
-          v.oncanplay = v.onerror = null; v.removeEventListener("timeupdate", fortschritt);
-          fertig({ ok, grund });
+    function launch(v, file) {
+      return new Promise(done => {
+        let finished = false;
+        const end = (ok, reason) => {
+          if (finished) return; finished = true; clearTimeout(time);
+          v.oncanplay = v.onerror = null; v.removeEventListener("timeupdate", progress);
+          done({ ok, reason });
         };
-        const zeit = setTimeout(() => ende(false, v.readyState < 2 ? "lädt nicht" : "kein Bild – Format wird hier nicht dekodiert"), 12000);
-        const fortschritt = () => { if (v.currentTime > 0.15 && v.videoWidth > 0) ende(true); };
-        v.onerror = () => ende(false, v.error ? `Fehler ${v.error.code}${v.error.message ? ": " + v.error.message : ""}` : "Fehler");
-        v.oncanplay = () => { v.oncanplay = null; v.play().catch(e => ende(false, "Abspielen abgelehnt: " + (e && e.name))); };
-        v.addEventListener("timeupdate", fortschritt);
-        v.loop = liste.length === 1;
-        v.src = /^(https?:|file:|data:|blob:)/i.test(datei) ? datei : datei.split("/").map(encodeURIComponent).join("/");
+        const time = setTimeout(() => end(false, v.readyState < 2 ? "lädt nicht" : "kein Bild – Format wird hier nicht dekodiert"), 12000);
+        const progress = () => { if (v.currentTime > 0.15 && v.videoWidth > 0) end(true); };
+        v.onerror = () => end(false, v.error ? `Fehler ${v.error.code}${v.error.message ? ": " + v.error.message : ""}` : "Fehler");
+        v.oncanplay = () => { v.oncanplay = null; v.play().catch(e => end(false, "Abspielen abgelehnt: " + (e && e.name))); };
+        v.addEventListener("timeupdate", progress);
+        v.loop = list.length === 1;
+        v.src = /^(https?:|file:|data:|blob:)/i.test(file) ? file : file.split("/").map(encodeURIComponent).join("/");
         v.load();
       });
     }
-    let laedt = false;
-    async function weiter() {
-      if (laedt || !gueltig()) return;
-      laedt = true;
-      for (let n = 0; n < liste.length; n++) {
-        const datei = liste[i]; i = (i + 1) % liste.length;
-        if (kaputt.has(datei)) continue;
-        const r = await starten(naechstes, datei);
-        if (!gueltig()) return;                                    // inzwischen neu eingerichtet
+    let loading = false;
+    async function proceed() {
+      if (loading || !valid()) return;
+      loading = true;
+      for (let n = 0; n < list.length; n++) {
+        const file = list[i]; i = (i + 1) % list.length;
+        if (broken.has(file)) continue;
+        const r = await launch(upcoming, file);
+        if (!valid()) return;                                    // inzwischen neu eingerichtet
         if (r.ok) {
-          naechstes.classList.add("an"); aktiv.classList.remove("an");
-          const alt = aktiv; setTimeout(() => { if (!alt.classList.contains("an")) alt.pause(); }, 1400);
-          [aktiv, naechstes] = [naechstes, aktiv];
-          const v = aktiv;
-          v.onended = () => { if (gueltig() && v === aktiv) weiter(); };
+          upcoming.classList.add("on"); active.classList.remove("on");
+          const previous = active; setTimeout(() => { if (!previous.classList.contains("on")) previous.pause(); }, 1400);
+          [active, upcoming] = [upcoming, active];
+          const v = active;
+          v.onended = () => { if (valid() && v === active) proceed(); };
           // bricht das Video mitten im Abspielen ab: melden und neu anstoßen
           v.onerror = () => {
-            if (!gueltig() || v !== aktiv) return;
-            meldung(`Video abgebrochen: ${datei}${v.error ? " (Fehler " + v.error.code + ")" : ""}`);
-            setTimeout(() => { if (gueltig()) weiter(); }, 1500);
+            if (!valid() || v !== active) return;
+            message(`Video abgebrochen: ${file}${v.error ? " (Fehler " + v.error.code + ")" : ""}`);
+            setTimeout(() => { if (valid()) proceed(); }, 1500);
           };
-          ["stalled", "emptied", "suspend"].forEach(ereignis => { v["on" + ereignis] = () => { if (gueltig() && v === aktiv && IN_OBS && ereignis !== "suspend") meldung(`Video-Ereignis „${ereignis}“: ${datei}`); }; });
-          leer.classList.add("aus"); hg.classList.add("video-laeuft"); hg.classList.remove("ohne-video");
-          if (dunkel) dunkel.style.opacity = (Z.hintergrund || {}).abdunkeln ?? .35;
-          laedt = false;
+          ["stalled", "emptied", "suspend"].forEach(occurrence => { v["on" + occurrence] = () => { if (valid() && v === active && IN_OBS && occurrence !== "suspend") message(`Video-Ereignis „${occurrence}“: ${file}`); }; });
+          empty.classList.add("off"); backdrop.classList.add("video-running"); backdrop.classList.remove("without-video");
+          if (dark) dark.style.opacity = (Z.background || {}).dim ?? .35;
+          loading = false;
           return;
         }
-        kaputt.add(datei); setTimeout(() => kaputt.delete(datei), 30000);   // später erneut versuchen
-        meldung(`Video lässt sich nicht abspielen: ${datei} (${r.grund})`);
-        (window.__videoProbleme = (window.__videoProbleme || []).slice(-9)).push(datei + " – " + r.grund);
+        broken.add(file); setTimeout(() => broken.delete(file), 30000);   // später erneut versuchen
+        message(`Video lässt sich nicht abspielen: ${file} (${r.reason})`);
+        (window.__videoProblems = (window.__videoProblems || []).slice(-9)).push(file + " – " + r.reason);
       }
-      laedt = false;
-      if (gueltig() && !hg.classList.contains("video-laeuft")) {
-        zeigeTheme();
-        meldung("Kein Hintergrund-Video abspielbar – zeige Theme-Hintergrund. Tipp: „OBS spielt ab“ wählen.");
-        setTimeout(() => { if (gueltig()) weiter(); }, 30000);
+      loading = false;
+      if (valid() && !backdrop.classList.contains("video-running")) {
+        showTheme();
+        message("Kein Hintergrund-Video abspielbar – zeige Theme-Hintergrund. Tipp: „OBS spielt ab“ wählen.");
+        setTimeout(() => { if (valid()) proceed(); }, 30000);
       }
     }
-    weiter();
+    proceed();
 
     // Wächter: bleibt das Bild stehen, neu anstoßen bzw. zum nächsten Video wechseln
-    let letzte = -1, stillstand = 0;
-    videoWaechter = setInterval(() => {
-      if (!gueltig() || laedt || !aktiv.classList.contains("an") || !obsAktiv) return;
-      if (aktiv.paused && !aktiv.ended) { aktiv.play().catch(() => {}); return; }
-      if (aktiv.currentTime === letzte) {
-        if (++stillstand >= 3) { stillstand = 0; meldung("Video hängt – starte neu: " + (aktiv.getAttribute("src") || "")); if (liste.length === 1) kaputt.clear(); weiter(); }
-      } else stillstand = 0;
-      letzte = aktiv.currentTime;
+    let last = -1, stall = 0;
+    videoWatchdog = setInterval(() => {
+      if (!valid() || loading || !active.classList.contains("on") || !obsActive) return;
+      if (active.paused && !active.ended) { active.play().catch(() => {}); return; }
+      if (active.currentTime === last) {
+        if (++stall >= 3) { stall = 0; message("Video hängt – starte neu: " + (active.getAttribute("src") || "")); if (list.length === 1) broken.clear(); proceed(); }
+      } else stall = 0;
+      last = active.currentTime;
     }, 1500);
   }
 
   /* ---------- Musik (Tuna) ---------- */
-  let musikDaten = null;
-  function musikBox(box) {
-    if (box._musik) return box._musik;
-    box.innerHTML = `<div class="musik-cover"></div>
-      <div class="musik-feld"><div class="musik-label"><span class="eq"><i></i><i></i><i></i></span><span data-t="texte.musikLabel"></span></div>
-        <div class="musik-text"><div class="musik-titel"></div><div class="musik-kuenstler"></div></div>
-        <div class="musik-balken"><i></i></div></div>`;
-    box.querySelector("[data-t]").textContent = Z.texte.musikLabel || "";
-    return box._musik = { cover: box.querySelector(".musik-cover"), text: box.querySelector(".musik-text"), titel: box.querySelector(".musik-titel"),
-      kuenstler: box.querySelector(".musik-kuenstler"), balken: box.querySelector(".musik-balken i"), song: null, nr: 0, aktiv: null };
+  let musicData = null;
+  function musicBox(box) {
+    if (box._music) return box._music;
+    box.innerHTML = `<div class="music-cover"></div>
+      <div class="music-field"><div class="music-label"><span class="eq"><i></i><i></i><i></i></span><span data-t="texts.musicLabel"></span></div>
+        <div class="music-text"><div class="music-title"></div><div class="music-artist"></div></div>
+        <div class="music-bar"><i></i></div></div>`;
+    box.querySelector("[data-t]").textContent = Z.texts.musicLabel || "";
+    return box._music = { cover: box.querySelector(".music-cover"), text: box.querySelector(".music-text"), title: box.querySelector(".music-title"),
+      artist: box.querySelector(".music-artist"), bar: box.querySelector(".music-bar i"), song: null, num: 0, active: null };
   }
-  function coverLaden(m, url) {
-    const n = ++m.nr;
+  function coverLoad(m, url) {
+    const n = ++m.num;
     if (!url) return;
     const img = new Image();
     img.src = url.startsWith("data:") ? url : url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
     img.onload = () => {
-      if (n !== m.nr) return;
+      if (n !== m.num) return;
       m.cover.appendChild(img);
-      requestAnimationFrame(() => requestAnimationFrame(() => img.classList.add("an")));
-      const alt = m.aktiv; m.aktiv = img;
-      if (alt) setTimeout(() => alt.remove(), 900);
+      requestAnimationFrame(() => requestAnimationFrame(() => img.classList.add("on")));
+      const previous = m.active; m.active = img;
+      if (previous) setTimeout(() => previous.remove(), 900);
     };
   }
-  function musikZeigen(d) {
-    musikDaten = d;
+  function musicShow(d) {
+    musicData = d;
     const status = d && d.status ? String(d.status).toLowerCase() : "";
-    const hat = !!(d && d.title) && Z.musik.anzeigen !== false;
-    const spielt = hat && status !== "paused" && status !== "stopped";
-    $$(".musik").forEach(box => {
-      const m = musikBox(box);
+    const has = !!(d && d.title) && Z.music.displayed !== false;
+    const plays = has && status !== "paused" && status !== "stopped";
+    $$(".music").forEach(box => {
+      const m = musicBox(box);
       // erst nach drei Abfragen ohne Musik ausblenden – kurze Aussetzer lassen die Box nicht flackern
-      m.ohne = spielt ? 0 : (m.ohne || 0) + 1;
-      if (spielt) box.classList.add("an");
-      else if (m.ohne >= 3 || Z.musik.anzeigen === false || !box.classList.contains("an")) box.classList.remove("an");
-      if (!hat) return;
+      m.without = plays ? 0 : (m.without || 0) + 1;
+      if (plays) box.classList.add("on");
+      else if (m.without >= 3 || Z.music.displayed === false || !box.classList.contains("on")) box.classList.remove("on");
+      if (!has) return;
       const k = (d.artists || []).join(", "), song = d.title + "|" + k;
       if (song !== m.song) {
-        const erst = m.song === null; m.song = song;
-        const setzen = () => { m.titel.textContent = d.title; m.kuenstler.textContent = k || d.album || ""; m.text.classList.remove("wechsel"); };
-        if (erst) setzen(); else { m.text.classList.add("wechsel"); setTimeout(setzen, 400); }
-        coverLaden(m, d.cover_url);
-        [2000, 5000].forEach(ms => setTimeout(() => { if (m.song === song) coverLaden(m, d.cover_url); }, ms));
-        m.balken.style.transition = "none"; m.balken.style.transform = "scaleX(0)"; void m.balken.offsetWidth; m.balken.style.transition = "";
+        const initially = m.song === null; m.song = song;
+        const set = () => { m.title.textContent = d.title; m.artist.textContent = k || d.album || ""; m.text.classList.remove("switchTo"); };
+        if (initially) set(); else { m.text.classList.add("switchTo"); setTimeout(set, 400); }
+        coverLoad(m, d.cover_url);
+        [2000, 5000].forEach(ms => setTimeout(() => { if (m.song === song) coverLoad(m, d.cover_url); }, ms));
+        m.bar.style.transition = "none"; m.bar.style.transform = "scaleX(0)"; void m.bar.offsetWidth; m.bar.style.transition = "";
       }
-      if (d.duration > 0) m.balken.style.transform = `scaleX(${Math.min(1, (d.progress || 0) / d.duration)})`;
+      if (d.duration > 0) m.bar.style.transform = `scaleX(${Math.min(1, (d.progress || 0) / d.duration)})`;
     });
   }
-  function musik() {
+  function music() {
     if (TEST) {
       const start = Date.now();
-      const tick = () => musikZeigen({ title: "Nachtfahrt", artists: ["Beispiel-Band"], cover_url: "medien/themes/dachcs.png", duration: 200000, progress: 50000 + Date.now() - start, status: "playing" });
-      tick(); if (!VORSCHAU) setInterval(tick, 1000);
+      const tick = () => musicShow({ title: "Nachtfahrt", artists: ["Beispiel-Band"], cover_url: "media/themes/dachcs.png", duration: 200000, progress: 50000 + Date.now() - start, status: "playing" });
+      tick(); if (!PREVIEW) setInterval(tick, 1000);
       return;
     }
-    let fehlschlaege = 0;
-    (function holen() {
+    let failures = 0;
+    (function retrieve() {
       // nur wenn es Musik-Boxen gibt (bzw. in overlay.html jederzeit welche kommen können)
-      if (!$$(".musik").length && !document.querySelector(".buehne")) return setTimeout(holen, 3000);
-      const adr = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(Z.musik.adresse || "") ? Z.musik.adresse : "http://localhost:1608/";
+      if (!$$(".music").length && !document.querySelector(".stage")) return setTimeout(retrieve, 3000);
+      const adr = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(Z.music.address || "") ? Z.music.address : "http://localhost:1608/";
       fetch(adr, { cache: "no-store" })
-        .then(r => r.json()).then(d => { fehlschlaege = 0; musikZeigen(d); }).catch(() => { fehlschlaege++; musikZeigen(null); })
-        .finally(() => setTimeout(holen, fehlschlaege > 3 ? 5000 : 1000));
+        .then(r => r.json()).then(d => { failures = 0; musicShow(d); }).catch(() => { failures++; musicShow(null); })
+        .finally(() => setTimeout(retrieve, failures > 3 ? 5000 : 1000));
     })();
   }
 
   /* ---------- Alles zeichnen ---------- */
-  function eckenSetzen() {
+  function cornersSet() {
     $$(".box").forEach(b => {
-      if (b.dataset.ecke !== undefined || !b.offsetWidth) return;
-      const r = b.getBoundingClientRect(), mitte = r.left + r.width / 2, breite = document.documentElement.clientWidth || 1920;
-      b.dataset.ecke = mitte < breite * 0.42 ? "links" : mitte > breite * 0.58 ? "rechts" : "mitte";
+      if (b.dataset.corner !== undefined || !b.offsetWidth) return;
+      const r = b.getBoundingClientRect(), middle = r.left + r.width / 2, width = document.documentElement.clientWidth || 1920;
+      b.dataset.corner = middle < width * 0.42 ? "left" : middle > width * 0.58 ? "right" : "middle";
     });
   }
-  function zeichnen() {
-    diagnose(); theme(); einblendungen(); veto(); serie(); spieler(); texte(); teams(); timer(); ticker(); hintergrund(); quellen(); sponsoren();
-    if (!(Z.sprecher || {}).an) $$(".kam.spricht").forEach(k => k.classList.remove("spricht"));
-    $$(".musik").forEach(m => m.classList.toggle("aus", Z.musik.anzeigen === false));
-    if (musikDaten && $$(".musik").some(b => !b._musik)) musikZeigen(musikDaten);
-    liveZeichnen();
-    turnierZeichnen();
-    tonAnwenden();
-    document.body.classList.toggle("dach-rahmen-zeigen", !!(Z.dach || {}).rahmenZeigen);
-    document.body.classList.toggle("clean", !!(Z.sendung || {}).clean && aktSzeneName() === "ingame");
-    requestAnimationFrame(eckenSetzen);
-    dispatchEvent(new CustomEvent("cast-gezeichnet", { detail: Z }));
+  function draw() {
+    diagnose(); theme(); graphics(); veto(); series(); players(); texts(); teams(); timer(); ticker(); background(); sources(); sponsors();
+    if (!(Z.speaker || {}).on) $$(".cam.speaks").forEach(k => k.classList.remove("speaks"));
+    $$(".music").forEach(m => m.classList.toggle("off", Z.music.displayed === false));
+    if (musicData && $$(".music").some(b => !b._music)) musicShow(musicData);
+    liveDraw();
+    tournamentDraw();
+    audioApply();
+    document.body.classList.toggle("dach-frame-show", !!(Z.dach || {}).frameShow);
+    document.body.classList.toggle("clean", !!(Z.broadcast || {}).clean && currentSceneName() === "ingame");
+    requestAnimationFrame(cornersSet);
+    dispatchEvent(new CustomEvent("cast-drawn", { detail: Z }));
   }
 
   /* ---------- Verbindung ---------- */
-  function bilderAufraeumen(z) {
-    const benutzt = new Set((JSON.stringify(z).match(/asset:[a-z0-9]+/g) || []).map(x => x.slice(6)));
-    Object.keys(K.Bilder.mem).forEach(id => { if (!benutzt.has(id)) delete K.Bilder.mem[id]; });
+  function imagesCleanup(z) {
+    const used = new Set((JSON.stringify(z).match(/asset:[a-z0-9]+/g) || []).map(x => x.slice(6)));
+    Object.keys(K.Images.mem).forEach(id => { if (!used.has(id)) delete K.Images.mem[id]; });
   }
-  function uebernehmen(z, woher) {
-    if (!z || (z.stand || 0) < (Z.stand || 0)) return;
-    bilderAufraeumen(z);
-    empfangenVon = woher || "Steuerseite"; empfangenUm = Date.now();
-    Zroh = K.mischen(K.klon(K.STANDARD), z);
-    Z = K.aufloesen(Zroh, K.Bilder.mem);
-    K.speichern(Zroh);
-    zeichnen();
+  function adopt(z, originPage) {
+    if (!z || (z.revision || 0) < (Z.revision || 0)) return;
+    imagesCleanup(z);
+    receivedFrom = originPage || "Steuerseite"; receivedUm = Date.now();
+    rawState = K.merge(K.clone(K.DEFAULT), z);
+    Z = K.resolve(rawState, K.Images.mem);
+    K.save(rawState);
+    draw();
   }
   // Bilder kamen dazu -> alles mit den echten Bildern neu zeichnen
-  function neuZeichnen() {
-    Z = K.aufloesen(Zroh, K.Bilder.mem);
-    $$(".kam[data-quelle]").forEach(k => { if (k._quelle && /asset:|data:/.test(k._quelle)) k._quelle = null; });
-    zeichnen();
+  function newDraw() {
+    Z = K.resolve(rawState, K.Images.mem);
+    $$(".cam[data-source]").forEach(k => { if (k._source && /asset:|data:/.test(k._source)) k._source = null; });
+    draw();
   }
   // Meldungen der Overlays landen im Log der App (Reiter „Log") – z. B. Video-Probleme in OBS
-  const gemeldet = {};
-  function meldung(text) {
-    const jetzt = Date.now();
-    if (gemeldet[text] && jetzt - gemeldet[text] < 30000) return;
-    gemeldet[text] = jetzt;
-    const alt = Object.keys(gemeldet); if (alt.length > 50) alt.slice(0, 25).forEach(k => delete gemeldet[k]);
-    if (K.SERVER && !VORSCHAU) fetch("/api/meldung", { method: "POST", body: JSON.stringify({ seite: aktSzeneName() + (/OBS\//.test(navigator.userAgent) ? " (OBS)" : ""), text: String(text).slice(0, 300) }) }).catch(() => {});
+  const reported = {};
+  function message(text) {
+    const now = Date.now();
+    if (reported[text] && now - reported[text] < 30000) return;
+    reported[text] = now;
+    const reportedKeys = Object.keys(reported); if (reportedKeys.length > 50) reportedKeys.slice(0, 25).forEach(k => delete reported[k]);
+    if (K.SERVER && !PREVIEW) fetch("/api/report", { method: "POST", body: JSON.stringify({ page: currentSceneName() + (/OBS\//.test(navigator.userAgent) ? " (OBS)" : ""), text: String(text).slice(0, 300) }) }).catch(() => {});
   }
-  if (VORSCHAU) document.documentElement.style.background = "#0b0c10";
-  window.CastOverlay = { neuZeichnen, meldung, ecken: eckenSetzen, get Z() { return Z; } };
+  if (PREVIEW) document.documentElement.style.background = "#0b0c10";
+  window.CastOverlay = { newDraw, message, corners: cornersSet, get Z() { return Z; } };
 
   /* ---------- OBS: Bildtakt ----------
      Die Browserquelle in OBS übernimmt Änderungen, die nur „im Hintergrund" passieren (laufendes Video,
      durchlaufender Lauftext), nicht zuverlässig in die Aufnahme – dann zeigt OBS ein altes Bild
      (z. B. den Theme-Hintergrund vom Seitenstart) statt des Videos. Eine winzige, unsichtbare Änderung
      in jedem Bild zwingt OBS, jedes Bild frisch zu übernehmen. Läuft nur in OBS und nur, wenn die Quelle aktiv ist. */
-  if (IN_OBS && !EINGEBETTET && !VORSCHAU) {
-    const takt = document.createElement("div");
-    takt.className = "obs-takt"; takt.setAttribute("aria-hidden", "true");
-    document.body.appendChild(takt);
-    let n = 0, laeuft = true;
-    const schritt = () => {
-      if (!laeuft) return;
-      takt.style.backgroundColor = (n++ & 1) ? "rgba(0,0,0,.004)" : "rgba(0,0,0,.006)";
-      requestAnimationFrame(schritt);
+  if (IN_OBS && !EMBEDDED && !PREVIEW) {
+    const timerHandle = document.createElement("div");
+    timerHandle.className = "obs-timer"; timerHandle.setAttribute("aria-hidden", "true");
+    document.body.appendChild(timerHandle);
+    let n = 0, running = true;
+    const step = () => {
+      if (!running) return;
+      timerHandle.style.backgroundColor = (n++ & 1) ? "rgba(0,0,0,.004)" : "rgba(0,0,0,.006)";
+      requestAnimationFrame(step);
     };
-    requestAnimationFrame(schritt);
+    requestAnimationFrame(step);
     addEventListener("obsSourceActiveChanged", ev => {
-      const an = !!(ev.detail && ev.detail.active);
-      if (an && !laeuft) { laeuft = true; requestAnimationFrame(schritt); }
-      if (!an) laeuft = false;
+      const on = !!(ev.detail && ev.detail.active);
+      if (on && !running) { running = true; requestAnimationFrame(step); }
+      if (!on) running = false;
     });
-    window.__obsTakt = () => laeuft;
+    window.__obsTimer = () => running;
     // Zustandsbericht alle 30 s ins Log der App: läuft das Video wirklich? Wie viel Speicher braucht die Seite?
-    try { const n = +(sessionStorage.getItem("cast-ladungen") || 0) + 1; sessionStorage.setItem("cast-ladungen", n); setTimeout(() => meldung(`Seite geladen (${n}. Mal in dieser OBS-Sitzung)`), 800); } catch (e) {}
-    let letzteZeit = -1;
+    try { const n = +(sessionStorage.getItem("cast-loads") || 0) + 1; sessionStorage.setItem("cast-loads", n); setTimeout(() => message(`Seite geladen (${n}. Mal in dieser OBS-Sitzung)`), 800); } catch (e) {}
+    let lastTime = -1;
     setInterval(() => {
-      const v = document.querySelector(".hg video.an"), hgEl = document.querySelector(".hg");
+      const v = document.querySelector(".backdrop video.on"), bgEl = document.querySelector(".backdrop");
       let text;
-      if (hgEl && hgEl.classList.contains("obs-video")) text = "Hintergrund: OBS spielt ab";
+      if (bgEl && bgEl.classList.contains("obs-video")) text = "Hintergrund: OBS spielt ab";
       else if (!v) text = "Hintergrund: kein Video aktiv (Theme-Hintergrund)";
       else {
         const q = v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality() : null;
-        const laeuftV = v.currentTime !== letzteZeit && !v.paused; letzteZeit = v.currentTime;
-        text = `Video ${laeuftV ? "läuft" : "STEHT"} (${Math.round(v.currentTime)} s, ${v.videoWidth}×${v.videoHeight}${q ? ", verworfen " + q.droppedVideoFrames + "/" + q.totalVideoFrames : ""})`;
+        const runningV = v.currentTime !== lastTime && !v.paused; lastTime = v.currentTime;
+        text = `Video ${runningV ? "läuft" : "STEHT"} (${Math.round(v.currentTime)} s, ${v.videoWidth}×${v.videoHeight}${q ? ", verworfen " + q.droppedVideoFrames + "/" + q.totalVideoFrames : ""})`;
       }
       const mem = performance.memory ? ` · Speicher ${Math.round(performance.memory.usedJSHeapSize / 1048576)} MB` : "";
-      meldung(`Bericht: ${text}${mem} · Szene ${aktSzeneName()}`);
+      message(`Bericht: ${text}${mem} · Szene ${currentSceneName()}`);
     }, 30000);
-    setTimeout(() => meldung("OBS erkannt – Bildtakt aktiv (hält Video und Lauftext in der Aufnahme aktuell)"), 1500);
+    setTimeout(() => message("OBS erkannt – Bildtakt aktiv (hält Video und Lauftext in der Aufnahme aktuell)"), 1500);
   }
 
-  if (!EINGEBETTET && !VORSCHAU) K.kanal({   // Vorschau & eingebettete Szenen bekommen den Stand direkt
-    abfragen: true,
-    nurServer: true,
-    onLive(d) { liveDaten = d; liveZeichnen(); },   // über den Cast-Dienst: Stand regelmäßig abholen
+  if (!EMBEDDED && !PREVIEW) K.channel({   // Vorschau & eingebettete Szenen bekommen den Stand direkt
+    query: true,
+    onlyServer: true,
+    onLive(d) { liveData = d; liveDraw(); },   // über den Cast-Dienst: Stand regelmäßig abholen
     obs: false,   // Overlays verbinden sich nicht selbst – die Steuerseite schickt über OBS direkt hierher
-    onNachricht(d) {
-      if (d.cast === "bilder" && d.bilder) K.Bilder.setzen(d.bilder).then(neuZeichnen);
-      if (d.cast === "zustand") uebernehmen(d.z, "Steuerseite");
+    onMessage(d) {
+      if (d.cast === "images" && d.images) K.Images.set(d.images).then(newDraw);
+      if (d.cast === "state") adopt(d.z, "Steuerseite");
     },
-    onSpeicher() { const n = K.laden(); if ((n.stand || 0) > (Z.stand || 0)) { Zroh = n; Z = K.aufloesen(n, K.Bilder.mem); zeichnen(); } }
+    onStorage() { const n = K.load(); if ((n.revision || 0) > (Z.revision || 0)) { rawState = n; Z = K.resolve(n, K.Images.mem); draw(); } }
   });
-  if (!K.SERVER && "BroadcastChannel" in window) new BroadcastChannel("cast-overlay").postMessage({ cast: "anfrage" });
+  if (!K.SERVER && "BroadcastChannel" in window) new BroadcastChannel("cast-overlay").postMessage({ cast: "request" });
   // Sicherheitsnetz ohne App: gespeicherten Stand regelmäßig prüfen (gleicher Browser, andere Tabs)
-  if (!K.SERVER || VORSCHAU) setInterval(() => { if (K.gespeicherterStand() > (Z.stand || 0)) { const n = K.laden(); if ((n.stand || 0) > (Z.stand || 0)) { Zroh = n; K.Bilder.laden().then(neuZeichnen); } } }, 1000);
+  if (!K.SERVER || PREVIEW) setInterval(() => { if (K.savedRevision() > (Z.revision || 0)) { const n = K.load(); if ((n.revision || 0) > (Z.revision || 0)) { rawState = n; K.Images.load().then(newDraw); } } }, 1000);
   // Vorschau in der Steuerseite (iframe) bekommt den Zustand direkt
   addEventListener("message", ev => {
     if (window.parent === window || ev.source !== window.parent) return;   // nur die Vorschau der Steuerseite
     const d = ev.data;
-    if (d && d.cast === "zeigen") { document.body.classList.remove("wartet"); return; }
-    if (d && d.cast === "zustand" && d.z) { Z = Zroh = K.mischen(K.klon(K.STANDARD), d.z); empfangenVon = "Vorschau der Steuerseite"; empfangenUm = Date.now(); zeichnen(); }
-    if (d && d.cast === "live") { liveDaten = d.live; liveZeichnen(); }
+    if (d && d.cast === "show") { document.body.classList.remove("waiting"); return; }
+    if (d && d.cast === "state" && d.z) { Z = rawState = K.merge(K.clone(K.DEFAULT), d.z); receivedFrom = "Vorschau der Steuerseite"; receivedUm = Date.now(); draw(); }
+    if (d && d.cast === "live") { liveData = d.live; liveDraw(); }
     if (d && d.cast === "monitor") {
-      const vorher = monitorAn(); monitor = { modus: d.modus || "aus", vol: +d.vol || 0 }; ktx(); tonAnwenden(); vorschauTon();
-      if (vorher !== monitorAn()) { $$(".kam").forEach(k => { k._schl = null; }); $$(".dach-seite").forEach(f => { f.allow = monitorAn() ? "autoplay" : "autoplay 'none'"; if (f.src && !f.src.endsWith("about:blank")) f.src = f.src; }); neuZeichnen(); }
+      const before = monitorOn(); monitor = { mode: d.mode || "off", vol: +d.vol || 0 }; audioctx(); audioApply(); previewAudio();
+      if (before !== monitorOn()) { $$(".cam").forEach(k => { k._cacheKey = null; }); $$(".dach-page").forEach(f => { f.allow = monitorOn() ? "autoplay" : "autoplay 'none'"; if (f.src && !f.src.endsWith("about:blank")) f.src = f.src; }); newDraw(); }
     }
   });
 
-  musik();
-  zeichnen();
-  K.Bilder.laden().then(neuZeichnen);             // gemerkte Bilder aus der Datenbank holen
-  if (document.fonts) document.fonts.ready.then(() => { $$(".ticker").forEach(t => { t._schl = null; }); ticker(); einpassen(); });
+  music();
+  draw();
+  K.Images.load().then(newDraw);             // gemerkte Bilder aus der Datenbank holen
+  if (document.fonts) document.fonts.ready.then(() => { $$(".ticker").forEach(t => { t._cacheKey = null; }); ticker(); fit(); });
 })();

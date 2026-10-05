@@ -15,7 +15,7 @@ class PageBridge(QObject):
     """Object published to the page as "app" on the web channel."""
 
     close_dialog_shown = Signal(int)          # request id: the page shows its close dialog
-    close_answered = Signal(str)              # "beenden", "fenster" or "" (cancel)
+    close_answered = Signal(str)              # "quit", "window" or "" (cancel)
     audio_changed = Signal(bool, float)       # on/off, volume 0–100
     overlays_reloaded = Signal(int, bool)     # request id, True if OBS reloaded them
 
@@ -30,7 +30,7 @@ class PageBridge(QObject):
         kind = message.get("type")
         if kind == "close-dialog-shown":
             self.close_dialog_shown.emit(int(message.get("requestId") or 0))
-        elif kind == "close-answer" and message.get("choice") in ("beenden", "fenster", ""):
+        elif kind == "close-answer" and message.get("choice") in ("quit", "window", ""):
             self.close_answered.emit(message["choice"])
         elif kind == "audio":
             volume = message.get("volume")

@@ -11,11 +11,13 @@ Ausführliche Anleitung für Nutzer: [LIESMICH.md](LIESMICH.md)
 ```
 casting_app/                      Python-Paket (Code und Kommentare englisch)
  ├─ __main__.py                   Start: Desktop-App oder --no-window (nur Server)
- ├─ version.py                    Version (gleich in pyproject.toml und web/cast-kern.js)
+ ├─ version.py                    Version (gleich in pyproject.toml und web/cast-core.js)
  ├─ paths.py, app_log.py          Ordner der App, Log (log.txt + Reiter „Log“)
  ├─ secret_store.py               FACEIT-Key, DACH-CS-ID/-Key, OBS-Passwort – nur im Schlüsselbund des Systems
  ├─ password_vault.py             Passwort-Tresor für Systeme ohne Schlüsselbund
- ├─ settings.py, update_check.py  App-Einstellungen (einstellungen.json), Suche nach neuer Version
+ ├─ settings.py, update_check.py  App-Einstellungen (settings.json), Suche nach neuer Version
+ ├─ legacy.py                     Daten aus 2.1 und älter (deutsche Namen) einmalig übernehmen
+ ├─ texts.py                      Texte der Python-Seite (Tray, Dialoge) auf Deutsch und Englisch
  ├─ instance.py                   laufende Version erkennen, ältere ablösen
  ├─ server/                       HTTP-Server http://localhost:8787 (nur dieser PC)
  │   ├─ app_server.py             Prüfung jeder Anfrage, alle /api-Routen, Zustand, Bilder
@@ -31,22 +33,40 @@ casting_app/                      Python-Paket (Code und Kommentare englisch)
      ├─ audio.py                  „Ton im App-Fenster“
      ├─ tray.py                   Tray-Symbol
      └─ scripts/                  ins Fenster eingespieltes JavaScript (Brücke, Lautstärke)
-web/                              Steuerseite und Overlays (unverändert, laufen auch in OBS)
+web/                              Steuerseite (control.html) und Overlays (overlay.html, Szenen), laufen auch in OBS
+ ├─ i18n.js, lang-en.js           Sprache der App: übersetzt die Steuerseite beim Anzeigen (Wörterbuch Deutsch → Englisch)
+ └─ legacy.js                     Tabelle alter (deutscher) Namen → neue Namen für die Daten-Übernahme
+tools/generate_scenes.py          erzeugt die Szenen-Vorlagen web/<scene>.html
 tools/build.py                    Bauen mit PyInstaller (+ installer.nsi für Windows)
 tests/                            pytest-Tests und Skripte gegen die laufende App
 ```
 
-* **Overlays in OBS** laden wie bisher `http://localhost:8787/overlay.html`; an `web/` hat sich für OBS nichts geändert.
+* **Overlays in OBS** laden wie bisher `http://localhost:8787/overlay.html`.
+* **Englische Namen (ab 2.2):** Code, API-Pfade, JSON-Felder und Dateien heißen englisch (`control.html`, `cast-core.js`,
+  `broadcast.js`, `players.html`, `/api/state` …). Gespeicherte Daten aus 2.1 und älter werden beim ersten Start übernommen
+  (`casting_app/legacy.py` für den Datenordner, `web/legacy.js` für Browser-Speicher, Datenbanken und importierte Dateien).
+  Alte Adressen leitet der Server weiter (`/steuerung.html`, `/spieler.html`, `/medien/…`); eine noch offene Seite der alten
+  Version (z. B. in OBS) lädt sich einmal neu.
 * **Schließen:** `closeEvent` wird ignoriert, die Steuerseite zeigt sofort ihren eigenen Dialog
   (Ganz beenden · Nur Fenster schließen · Abbrechen). Bestätigt die Seite nicht binnen 1 s, fragt ein Systemdialog.
   „Nur Fenster schließen“ versteckt das Fenster; das Tray-Symbol (29-Logo) bietet Öffnen · Overlays in OBS neu laden · Ganz beenden.
 * **Brücke zur Steuerseite:** `window.castApp` (`desktop/scripts/page_bridge.js`) spricht nur über DOM-Ereignisse mit einer
   isolierten Skript-Welt (`app_bridge.js`), die den `QWebChannel` zu Python hält. Eingebettete fremde Seiten erreichen Python nicht.
 * **Eine Instanz / Update-Ablösung:** `QLocalServer` – ein zweiter Start holt das Fenster nach vorn. Läuft eine **ältere**
-  Version (auch 1.x), wird sie über `/api/ping` erkannt und über `/api/beenden` beendet; eine ältere löst nie eine neuere ab.
+  Version (auch 1.x), wird sie über `/api/ping` erkannt und über `/api/beenden` beendet (den Namen versteht jede Version; neu heißt er `/api/quit`); eine ältere löst nie eine neuere ab.
 * **Ohne Fenster:** `Casting-App --no-window` (Alias `--ohne-fenster`) startet nur den Server.
 * **Leistung:** Grafikbeschleunigung an (Ausweg `--no-gpu` / `--ohne-gpu`), keine Hintergrund-Drosselung
   (Chromium-Schalter in `desktop/app.py`), PyInstaller-Ordner statt Einzeldatei (kein Entpacken bei jedem Start).
+
+### Zwei Sprachen: App und Overlays (unabhängig)
+
+| | Wo | Wie |
+|---|---|---|
+| **Sprache der App** | `settings.json` → `app_language` (plus `localStorage`, damit schon der erste Bildaufbau stimmt) | Die Texte im Code bleiben deutsch. `web/i18n.js` übersetzt auf Englisch alles Sichtbare beim Anzeigen (Textknoten, `title`/`placeholder`/`aria-label`, `alert`/`confirm`/`prompt`, auch später entstehende Elemente per `MutationObserver`) mit dem Wörterbuch `web/lang-en.js`; `{}` steht für eingesetzte Werte. Tray und Dialoge: `casting_app/texts.py`. |
+| **Sprache der Overlays** | im Zustand (`overlayLanguage`) – OBS bekommt sie mit | `OVERLAY_TEXTS` (Standardwerte der Überschriften) und `OVERLAY_WORDS` (Wörter, die das Overlay selbst schreibt) in `web/cast-core.js`. Beim Wechsel tauschen nur Texte, die noch auf dem Standard der alten Sprache stehen. |
+
+Neuer sichtbarer Text in der Steuerseite → Eintrag in `web/lang-en.js` ergänzen; `tests/test_control_page.py` öffnet die
+Steuerseite auf Englisch, klickt alle Knöpfe und meldet jeden deutschen Rest.
 
 ### Ton im App-Fenster – was geht und was nicht
 
@@ -66,8 +86,8 @@ verwaltung, macOS-Schlüsselbund, Linux Secret Service/KWallet), Dienstname „C
 Ohne Schlüsselbund (manche Linux-Systeme) bietet die App einen Passwort-Tresor an (`password_vault.py`: Schlüssel per scrypt
 aus dem Passwort, Inhalt AES-GCM; das Passwort wird nie gespeichert) – sonst gelten sie nur für die laufende Sitzung. Eine
 „verschlüsselte“ Datei mit danebenliegendem Schlüssel wäre nur scheinbar sicher und gibt es deshalb nicht. Auch das
-**OBS-Passwort** liegt im Schlüsselbund; die obs-websocket-Anmeldung rechnet der Server aus (`/api/obs-anmeldung`). Sie stehen nie im Zustand, im Log, in Exporten oder API-Antworten (`/api/dach-zugang` meldet nur
-`idGesetzt`/`keyGesetzt`). Dateien aus 1.x (`faceit.schluessel`, `dach.schluessel` per DPAPI bzw. Base64, `dach.json`) werden beim
+**OBS-Passwort** liegt im Schlüsselbund; die obs-websocket-Anmeldung rechnet der Server aus (`/api/obs-auth`). Sie stehen nie im Zustand, im Log, in Exporten oder API-Antworten (`/api/dach-access` meldet nur
+`idSet`/`keySet`). Dateien aus 1.x (`faceit.schluessel`, `dach.schluessel` per DPAPI bzw. Base64, `dach.json`) werden beim
 ersten Start einmalig in den Schlüsselbund übernommen und gelöscht (DPAPI direkt über die Windows-API, ohne PowerShell).
 
 ## Aus dem Quellcode starten
@@ -95,7 +115,7 @@ python tools/build.py        # baut für das laufende System nach dist/ (Teilsch
 | Linux | `Casting-App-<v>-linux-x86_64.AppImage` |
 | macOS | `Casting-App-<v>-mac-arm64.dmg/.zip` bzw. `…-mac-x64.dmg/.zip` (je nach Mac), ad-hoc signiert |
 
-`tools/build.py` prüft vorher, dass die Version in `casting_app/version.py`, `pyproject.toml` und `web/cast-kern.js` gleich ist.
+`tools/build.py` prüft vorher, dass die Version in `casting_app/version.py`, `pyproject.toml` und `web/cast-core.js` gleich ist.
 Windows braucht NSIS (`makensis`). Die portable Version ist ein zip mit Ordner: PyInstaller als Einzeldatei müsste die ~200 MB
 von Qt WebEngine bei jedem Start erst entpacken.
 

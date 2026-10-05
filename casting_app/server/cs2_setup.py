@@ -115,12 +115,12 @@ def search_cfg_folders() -> list[str]:
 def list_subfolders(raw_path: str) -> dict:
     """Subfolder names for the folder browser on the setup page (names only, no contents)."""
     if not raw_path:
-        return {"pfad": "", "eltern": None, "ordner": drive_roots()}
+        return {"path": "", "parent": None, "folder": drive_roots()}
     path = Path(raw_path).resolve()
     try:
         names = sorted((e.name for e in os.scandir(path) if e.is_dir() and not re.match(r"^(\$|System Volume Information$|\.)", e.name, re.I)),
                        key=str.casefold)[:800]
     except OSError:
-        return {"pfad": str(path), "fehler": "Ordner nicht gefunden oder kein Zugriff", "ordner": []}
+        return {"path": str(path), "error": "Ordner nicht gefunden oder kein Zugriff", "folder": []}
     parent = "" if path.parent == path else str(path.parent)
-    return {"pfad": str(path), "eltern": parent, "ordner": names, "cs2": is_cs2_cfg_folder(path)}
+    return {"path": str(path), "parent": parent, "folder": names, "cs2": is_cs2_cfg_folder(path)}

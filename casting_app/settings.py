@@ -1,17 +1,20 @@
-"""App settings that belong to the app itself (not to a cast): stored in einstellungen.json in the data folder.
+"""App settings that belong to the app itself (not to a cast): stored in settings.json in the data folder.
 
-    check_for_updates  – look for a newer version on GitHub when the app starts (default: on)
-    language           – "de" or "en": language of the control page and of the overlay defaults (default: "de")
+    check_for_updates    – look for a newer version on GitHub when the app starts (default: on)
+    app_language         – "de" or "en": control page, dialogs and tray menu (default: "de");
+                           the overlay language is part of the cast state (overlayLanguage), so OBS gets it
     offer_password_vault – without a system keyring: offer a password-protected storage at start (default: on)
 
-The control page reads and changes them through /api/app-einstellungen.
+The control page reads and changes them through /api/app-settings. Listeners added to
+`listeners` are called with the changed values (e.g. the tray follows the app language).
 """
 
 import json
 import threading
 from pathlib import Path
+from typing import Callable
 
-DEFAULTS = {"check_for_updates": True, "language": "de", "offer_password_vault": True}
+DEFAULTS = {"check_for_updates": True, "app_language": "de", "offer_password_vault": True}
 LANGUAGES = ("de", "en")
 
 
@@ -19,9 +22,10 @@ class AppSettings:
     """Small JSON-backed settings store; unknown keys and invalid values are ignored."""
 
     def __init__(self, data_dir: Path):
-        self._file = data_dir / "einstellungen.json"
+        self._file = data_dir / "settings.json"
         self._lock = threading.Lock()
         self._values = dict(DEFAULTS)
+        self.listeners: list[Callable[[dict], None]] = []
         try:
             self.update(json.loads(self._file.read_text(encoding="utf-8")), save=False)
         except (OSError, ValueError):
@@ -37,15 +41,24 @@ class AppSettings:
 
     def update(self, changes: dict, save: bool = True) -> dict:
         """Apply valid changes and save; returns all settings."""
+        changes = dict(changes)
+        if "language" in changes and "app_language" not in changes:      # name in 2.1
+            changes["app_language"] = changes.pop("language")
         with self._lock:
+            before = dict(self._values)
             for flag in ("check_for_updates", "offer_password_vault"):
                 if isinstance(changes.get(flag), bool):
                     self._values[flag] = changes[flag]
-            if changes.get("language") in LANGUAGES:
-                self._values["language"] = changes["language"]
+            if changes.get("app_language") in LANGUAGES:
+                self._values["app_language"] = changes["app_language"]
             if save:
                 try:
                     self._file.write_text(json.dumps(self._values), encoding="utf-8")
                 except OSError:
                     pass
-            return dict(self._values)
+            current = dict(self._values)
+        changed = {key: value for key, value in current.items() if before.get(key) != value}
+        if changed and save:
+            for listener in list(self.listeners):
+                listener(changed)
+        return current

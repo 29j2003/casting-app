@@ -27,7 +27,7 @@ Aufbau und Rezepte für Änderungen: `ENTWICKLUNG.md` (bei neuen Bausteinen dort
   `main_window.py` (Fenster, `closeEvent` → Dialog der Steuerseite, Systemdialog nur als Rückfall), `web_page.py`
   (Rechte, Links, Downloads, Skripte), `bridge.py` + `scripts/page_bridge.js`/`app_bridge.js` (window.castApp ↔ isolierte
   Welt mit QWebChannel), `audio.py` + `scripts/volume.js` (Ton im App-Fenster), `tray.py`.
-- `web/control.html` – die komplette Steueroberfläche (HTML/CSS/JS in einer Datei, sehr groß):
+- `web/control.html` (Aufbau) + `web/control.css` (Aussehen) + `web/control.js` (Logik, sehr groß) – die Steueroberfläche:
   Bereiche Live · Match · Turnier · Setup · Log, Docks, Arbeitsbereiche, Befehlspalette (Strg K), Ton über OBS-WebSocket.
 - `web/overlay.html` + `web/broadcast.js` – Szenenwechsel in einer Quelle (gemeinsame Teile bleiben/gleiten,
   Übergänge Schnitt/Blende/Schieben/Wischen/Stinger); DACH CS – Offiziell als Vollbild-iframes (3 Rahmen im Wechsel).

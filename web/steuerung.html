@@ -3651,31 +3651,26 @@ $("tuFaceitErg").onclick = async () => {
   } catch (err) { tuStatus("FACEIT: " + err.message); }
 };
 
-// Klick aufs X: Edge zeigt sofort „Seite verlassen?“ – solange das Fenster noch offen ist.
-//   Verlassen = Fenster zu, Overlays laufen weiter · Abbrechen = gleich danach die Auswahl mit „Ganz beenden“.
-let schliessenSeit = 0;
-addEventListener("beforeunload", ev => {
-  if (window.__neuLaden || window.__beendet) return;
-  schliessenSeit = Date.now(); ev.preventDefault(); ev.returnValue = "";
-  setTimeout(() => { if (document.visibilityState === "visible") beendenFragen(); }, 50);   // nach „Abbrechen“
-});
-addEventListener("pagehide", () => {
-  if (window.__neuLaden || window.__beendet) return;
-  // länger als ein Augenblick = du hast im Dialog „Verlassen“ gewählt → nicht noch einmal fragen
-  try { navigator.sendBeacon("/api/fenster-zu", JSON.stringify({ bestaetigt: schliessenSeit && Date.now() - schliessenSeit > 250 })); } catch (err) {}
-});
+// Schließen: Klick aufs X (Desktop-App) oder auf ⏻ – die App fragt zuerst, versteckt wird erst nach der Wahl.
+//   Ganz beenden · Nur Fenster schließen (Overlays laufen weiter, Symbol im Infobereich) · Abbrechen
+let schliessenOffen = null;
 async function beendenFragen() {
+  if (schliessenOffen) { schliessenOffen.querySelector('[data-w="fenster"]')?.focus(); return; }   // Dialog ist schon offen
   const w = await auswahl({ titel: "Casting-App schließen?", text: "Bei „Nur Fenster schließen“ laufen die Overlays in OBS weiter.",
-    knoepfe: [["beenden", "Ganz beenden", "rot"], ["fenster", "Nur Fenster schließen", "haupt"], ["", "Abbrechen", ""]] });
-  if (w === "beenden") { window.__beendet = true; fetch("/api/beenden", { method: "POST" }).catch(() => {}); setTimeout(() => window.close(), 300); }
-  if (w === "fenster") { window.__beendet = true; window.close(); }
+    knoepfe: [["beenden", "Ganz beenden", "rot"], ["fenster", "Nur Fenster schließen", "haupt"], ["", "Abbrechen", ""]], beiOffen: d => { schliessenOffen = d; } });
+  schliessenOffen = null;
+  if (window.castApp) { window.castApp.schliessenAntwort(w); return; }
+  // ohne Desktop-App (Steuerseite im normalen Browser)
+  if (w === "beenden") { fetch("/api/beenden", { method: "POST" }).catch(() => {}); setTimeout(() => window.close(), 300); }
+  if (w === "fenster") window.close();
 }
+if (window.castApp) window.castApp.beiSchliessen(beendenFragen);
 // kleine Auswahl mit mehreren Knöpfen (wie die Sicherheitsabfrage)
-function auswahl({ titel, text, knoepfe }) {
+function auswahl({ titel, text, knoepfe, beiOffen }) {
   return new Promise(ok => {
     const d = document.createElement("div"); d.className = "frage";
     d.innerHTML = `<div class="frage-box" role="dialog" aria-modal="true"><h3>${esc(titel)}</h3><p>${esc(text)}</p><div class="reihe" style="justify-content:flex-end">${knoepfe.map(([w, n, art]) => `<button class="knopf ${art === "haupt" ? "haupt" : ""}" data-w="${w}"${art === "rot" ? ' style="background:var(--rot);color:#fff;border-color:var(--rot)"' : ""}>${esc(n)}</button>`).join("")}</div></div>`;
-    document.body.appendChild(d);
+    document.body.appendChild(d); if (beiOffen) beiOffen(d);
     const zu = w => { d.remove(); removeEventListener("keydown", taste); ok(w); };
     const taste = ev => { if (ev.key === "Escape") zu(""); };
     addEventListener("keydown", taste);
@@ -3820,8 +3815,13 @@ async function tonQuelleAnlegen(k, n) {
   } catch (err) { alert("OBS: " + (err.message || err)); }
 }
 
-// Ton im App-Fenster (Vorschau): Standard aus – betrifft nur dieses Fenster, nie den Stream
-function monitorSenden() { try { $("frame").contentWindow.postMessage({ cast: "monitor", modus: ui.appTon ? "app" : "aus", vol: ui.appTonVol ?? 60 }, "*"); } catch (err) {} }
+// Ton im App-Fenster (Vorschau): Standard aus – betrifft nur dieses Fenster, nie den Stream.
+// Desktop-App: an/aus schaltet das ganze Fenster stumm (auch fremde Seiten wie VDO.Ninja, Clips, DACH CS),
+// die Lautstärke regelt die App für alles im Fenster – die Vorschau selbst spielt dann mit 100 %.
+function monitorSenden() {
+  if (window.castApp) window.castApp.ton(!!ui.appTon, ui.appTonVol ?? 60);
+  try { $("frame").contentWindow.postMessage({ cast: "monitor", modus: ui.appTon ? "app" : "aus", vol: window.castApp ? 100 : (ui.appTonVol ?? 60) }, "*"); } catch (err) {}
+}
 function appTonZeichnen() {
   $("appTon").classList.toggle("an", !!ui.appTon); $("appTon").setAttribute("aria-checked", !!ui.appTon);
   $("appTonVol").value = ui.appTonVol ?? 60; $("appTonVol").disabled = !ui.appTon; $("appTonText").textContent = ui.appTon ? (ui.appTonVol ?? 60) + " %" : "aus";
@@ -3830,7 +3830,7 @@ function appTonZeichnen() {
 $("appTon").onclick = () => { ui.appTon = !ui.appTon; uiSpeichern(); appTonZeichnen(); monitorSenden(); };
 $("appTonVol").oninput = () => { ui.appTonVol = +$("appTonVol").value; $("appTonText").textContent = ui.appTonVol + " %"; uiSpeichern(); monitorSenden(); };
 $("frame").addEventListener("load", () => setTimeout(monitorSenden, 400));
-appTonZeichnen(); setTimeout(monitorSenden, 1200);
+appTonZeichnen(); if (window.castApp) monitorSenden(); setTimeout(monitorSenden, 1200);
 /* ---------- Cleanfeed ---------- */
 function cleanZeichnen() {
   const ing = einQuelle() && Z.sendung.szene === "ingame";
@@ -4070,6 +4070,11 @@ function overlaysPille() {
 }
 // Browserquellen der App in OBS neu laden (z. B. nach einem Update – sonst läuft dort der alte Code weiter)
 let neuGeladenUm = 0;
+// Tray „Overlays in OBS neu laden“: über OBS, wenn verbunden (sonst lädt die App die Overlays über ihre Live-Verbindung neu)
+if (window.castApp) window.castApp.beiOverlaysNeuLaden(async () => {
+  if (!kanal || !kanal.obs || !kanal.obs.offen) return false;
+  await obsOverlaysNeuLaden(true); return true;
+});
 async function obsOverlaysNeuLaden(vonHand) {
   if (!kanal || !kanal.obs || !kanal.obs.offen) { if (vonHand) $("obsNeuStatus").textContent = "Nicht mit OBS verbunden."; return; }
   if (!vonHand && Date.now() - neuGeladenUm < 600000) return;                 // automatisch höchstens alle 10 Minuten

@@ -1,32 +1,22 @@
 {
   "name": "casting-app",
+  "productName": "Casting-App",
   "version": "2.0.0",
-  "description": "Casting-App – eine Datei, ein Fenster",
-  "main": "server.js",
-  "bin": "server.js",
-  "pkg": {
-    "assets": [
-      "web/**/*"
-    ],
-    "targets": [
-      "node20-win-x64",
-      "node20-linux-x64",
-      "node20-macos-x64",
-      "node20-macos-arm64"
-    ],
-    "outputPath": "dist"
-  },
+  "description": "Casting-App – Steuerung und Overlays für CS2-Casts in OBS",
+  "author": "29_THE_P4TCH3R",
+  "main": "electron/main.js",
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
-    "start": "node server.js",
+    "start": "electron .",
+    "ohne-fenster": "electron . --ohne-fenster",
+    "server": "node server.js",
     "build": "node tools/bauen.js",
     "szenen": "python3 tools/szenen_erzeugen.py"
   },
   "devDependencies": {
-    "@yao-pkg/pkg": "^6.0.0",
-    "@yao-pkg/pkg-fetch": "^3.5.0",
-    "resedit": "^2.0.0",
-    "pe-library": "^1.0.0"
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "playwright-core": "1.56"
   }
 }

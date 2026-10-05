@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file: http://absolute; script-src 'self' file: http://absolute; style-src 'self' file: http://absolute 'unsafe-inline'; img-src * data: blob:; media-src 'self' file: http://absolute blob: data:; font-src 'self' file: http://absolute data:; frame-src 'self' file: http://absolute https:; connect-src 'self' http://localhost:* http://127.0.0.1:*; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Scoreboard</title>
+<link rel="stylesheet" href="cast.css">
+
+</head>
+<body data-szene="scoreboard">
+<div class="hg"><div class="hg-leer"><img alt=""></div><div class="hg-dunkel"></div><div class="hg-schleier"></div></div>
+<div class="marke rein" data-teil="marke" style="--d:.1s" data-max="400"></div>
+<div class="box rein" data-teil="kopf" style="left:482px;top:47px;width:956px;height:126px;--d:0.2s">
+  <div class="box-kopf" data-t="texte.scoreboard"></div>
+  <div class="box-feld" style="font-size:46px"><span class="live-info"></span></div>
+</div>
+<div class="live-tabelle rein" data-team="a" data-teil="lt-a" style="left:100px;top:232px;width:840px;--d:.3s"></div>
+<div class="live-tabelle rein" data-team="b" data-teil="lt-b" style="left:980px;top:232px;width:840px;--d:.4s"></div>
+
+<script src="themes.js"></script>
+<script src="verbindung.js"></script>
+<script src="cast-kern.js"></script>
+<script src="cast.js"></script>
+</body>
+</html>

@@ -20,10 +20,23 @@ pip install -e ".[test]"
 python -m casting_app
 ```
 
-In OBS eine Browserquelle mit `http://localhost:8787/overlay.html` (1920 × 1080) anlegen – oder in der App
-Setup → Szenen & OBS → „In OBS anlegen“.
+Die Browserquelle in OBS legt die App selbst an: Setup → Szenen & OBS → „In OBS anlegen“ (sie bekommt dabei den
+Zugangsschlüssel der App, siehe [LIESMICH.md](LIESMICH.md#sicherheit)).
 
 Zugangsdaten (FACEIT-Key, DACH-CS-Zugang, OBS-Passwort) speichert die App nur im Schlüsselbund des Systems –
 nie in Dateien, Exporten oder im Log. Der Server ist nur von diesem PC aus erreichbar.
 
-Lizenz: The Unlicense.
+## Über dieses Projekt
+
+Die Casting-App war eine Idee und ein Konzept: Ich wollte ausprobieren, wie weit man mit Claude kommt – in einem
+Bereich, den ich gerne mache, dem Casten. Alles hier ist komplett mit Claude entstanden; ich selbst habe ehrlich gesagt
+keine Ahnung vom Programmieren. Sieh es als eine Art Kunstprojekt.
+
+Nutze es, wie du willst: verändern, weiterbauen, auseinandernehmen, in eigene Projekte übernehmen – alles erlaubt,
+ohne Nachfrage. Mir ist das egal, Hauptsache, du hast Spaß damit.
+
+*In English:* This app started as an idea – a test of how far you can get with Claude, in something I enjoy doing:
+casting. Everything here was built entirely with Claude; I honestly have no idea how to program. Think of it as an
+art project. Use it however you like – change it, build on it, take it apart. No need to ask. Have fun.
+
+Lizenz: [The Unlicense](LICENSE) – gemeinfrei, ohne Bedingungen.

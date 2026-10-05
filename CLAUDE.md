@@ -45,7 +45,7 @@ Aufbau und Rezepte für Änderungen: `ENTWICKLUNG.md` (bei neuen Bausteinen dort
   (`tools/build.py` prüft das). Abweichende Versionen lassen OBS-Overlays neu laden.
 - Geheimnisse (FACEIT-Key, DACH-ID und -Key) **nie** in Zustand, Log, Exporte, Dateien oder Antworten – nur `SecretStore.get()` im Server.
 - **E-Mail-Adressen nie veröffentlichen:** Commits nur mit noreply-Adressen (Nutzer: `44442596+29j2003@users.noreply.github.com`),
-  keine E-Mail-Adressen in Dateien, PR-Texten oder Kommentaren. `tools/check_privacy.py` (CI-Job `privacy`) prüft das.
+  keine E-Mail-Adressen in Dateien, PR-Texten oder Kommentaren. `tools/check_privacy.py` (CI-Job `checks`) prüft das.
 - Die Brücke zu Python liegt nur in der isolierten Welt der Steuerseite; fremde Seiten im Fenster bekommen keinen Zugang.
   Eingespielte Skripte nicht zur Laufzeit austauschen (Qt verpasst sonst Rahmen, die gerade entstehen).
 - Overlays in OBS dürfen sich durch die Desktop-App nicht ändern – Desktop-Besonderheiten nur in `casting_app/desktop/` bzw. hinter `window.castApp`.

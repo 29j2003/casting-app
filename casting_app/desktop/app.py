@@ -14,6 +14,7 @@ Quitting
 import os
 import shutil
 import sys
+import time
 
 import shiboken6
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
@@ -64,6 +65,7 @@ class DesktopApp(QObject):
         self._server = server
         self._quitting = False
         self._reload_request_id = 0
+        self._crash_times: list[float] = []     # recent renderer crashes (reloads are limited)
         self._idle_since_ms = 0
         self.single_instance: "SingleInstance | None" = None    # kept alive while the app runs
 
@@ -183,6 +185,12 @@ class DesktopApp(QObject):
     def _page_crashed(self, status, exit_code: int) -> None:
         """The control page's renderer died (out of memory, GPU driver …): load it again instead of a white window."""
         if self._quitting:
+            return
+        now = time.monotonic()
+        self._crash_times = [t for t in self._crash_times if now - t < 60] + [now]
+        if len(self._crash_times) > 3:              # keeps crashing (often the graphics driver): stop, explain instead
+            self._log.error(f"Steuerseite stürzt wiederholt ab ({status.name}, Code {exit_code}) – nicht mehr neu geladen")
+            self.tray.tell(texts.text("crash.title"), texts.text("crash.text"))
             return
         self._log.error(f"Steuerseite abgestürzt ({status.name}, Code {exit_code}) – wird neu geladen")
         QTimer.singleShot(1000, lambda: not self._quitting and self.window.page.load(QUrl(f"{BASE_URL}/control.html")))

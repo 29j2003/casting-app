@@ -38,6 +38,9 @@ TEXTS = {
                       "The server could not start:\n{error}\n\nIs another program using port 8787?"),
     "start_failed": ("Die App konnte nicht starten:\n{error}\n\nDetails stehen in log.txt im Datenordner.",
                      "The app could not start:\n{error}\n\nDetails are in log.txt in the data folder."),
+    "crash.title": ("Steuerseite stürzt immer wieder ab", "The control page keeps crashing"),
+    "crash.text": ("Oft liegt es am Grafiktreiber: App beenden und mit --no-gpu starten. Details in log.txt.",
+                   "Often the graphics driver is the cause: quit the app and start it with --no-gpu. Details in log.txt."),
     # password vault (systems without a keyring)
     "vault.unlock.title": ("{app} – gespeicherte Schlüssel", "{app} – saved keys"),
     "vault.unlock.text": ("Passwort für FACEIT-Key, DACH-CS-Zugang und OBS-Passwort:",

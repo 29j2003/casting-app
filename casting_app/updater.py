@@ -21,6 +21,7 @@ import json
 import os
 import platform
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -46,7 +47,10 @@ def install_kind() -> str:
     if IS_WINDOWS:
         return "windows-installer" if (executable.parent / "Deinstallieren.exe").exists() else "manual"
     if IS_MAC:
-        return "mac" if app_bundle(executable) else "manual"
+        bundle = app_bundle(executable)
+        replaceable = bundle and os.access(bundle.parent, os.W_OK) and "/AppTranslocation/" not in str(bundle) \
+            and not str(bundle).startswith("/Volumes/")             # not from the DMG or a quarantined Downloads copy
+        return "mac" if replaceable else "manual"
     return "appimage" if os.environ.get("APPIMAGE") else "manual"
 
 
@@ -183,7 +187,7 @@ class Updater:
             self._set(state="installing", progress=100)
             self._log(f"Update auf {release['version']} wird installiert – die App startet gleich neu", "info")
             start_replacement(install_kind(), file)
-        except (OSError, ValueError) as error:
+        except Exception as error:                  # any failure: report it, the app keeps running on the old version
             self._set(state="error", error=str(error)[:200])
             self._log(f"Update fehlgeschlagen: {error}", "error")
             return
@@ -213,40 +217,58 @@ class Updater:
 
 
 def start_replacement(kind: str, file: Path, pid: int | None = None) -> None:
-    """Start the helper that waits for this app (or process `pid`) to quit, puts `file` in place and starts the new version."""
+    """Start the helper that waits for this app (or process `pid`) to quit, puts `file` in place and starts the new version.
+    Everything that can fail early (copying, unpacking) happens here, so errors reach the caller while the app still runs;
+    the helper only swaps files and always starts an app again (the new one, or the old one if the swap failed)."""
     pid = pid or os.getpid()
     if kind == "windows-installer":
         executable = Path(sys.executable).resolve()
         script = Path(tempfile.gettempdir()) / "casting-app-update.cmd"
-        script.write_text(                       # UTF-8 + chcp 65001: paths with umlauts (C:\\Users\\Jürgen) stay intact
-            "@echo off\r\nchcp 65001 >nul\r\n"
-            f":wait\r\ntasklist /FI \"PID eq {pid}\" | find \"{pid}\" >nul && (timeout /t 1 >nul & goto wait)\r\n"
-            f"\"{file}\" /S\r\n"
-            f"start \"\" \"{executable}\"\r\n"
-            "del \"%~f0\"\r\n", encoding="utf-8")
-        flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-        subprocess.Popen(["cmd", "/c", str(script)], creationflags=flags, close_fds=True)
+        # Paths travel as environment variables and are read with !…! (delayed expansion): umlauts, spaces, & and %
+        # in a path stay intact, and the script itself is plain ASCII. ping is the sleep (timeout needs a console).
+        # /D= keeps the folder the user installed into (NSIS: last argument, without quotes).
+        script.write_text(
+            "@echo off\r\nsetlocal EnableDelayedExpansion\r\n"
+            f":wait\r\ntasklist /NH /FI \"PID eq {pid}\" | find \"{pid}\" >nul && (ping -n 2 127.0.0.1 >nul & goto wait)\r\n"
+            "\"!CA_FILE!\" /S /D=!CA_DIR!\r\n"
+            "start \"\" \"!CA_EXE!\"\r\n"
+            "del \"%~f0\"\r\n", encoding="ascii")
+        env = dict(os.environ, CA_FILE=str(file), CA_EXE=str(executable), CA_DIR=str(executable.parent))
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        subprocess.Popen(["cmd", "/c", str(script)], env=env, creationflags=flags, close_fds=True,
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return
+    wait = f"while kill -0 {pid} 2>/dev/null; do sleep 0.5; done; "
     if kind == "appimage":
         current = Path(os.environ["APPIMAGE"])
         fresh = current.with_name(current.name + ".new")
-        fresh.write_bytes(file.read_bytes())
+        shutil.copyfile(file, fresh)
         fresh.chmod(0o755)
         file.unlink(missing_ok=True)
-        command = (f"while kill -0 {pid} 2>/dev/null; do sleep 0.5; done; "
-                   f"mv -f {shlex.quote(str(fresh))} {shlex.quote(str(current))} && exec {shlex.quote(str(current))}")
+        q_fresh, q_current = shlex.quote(str(fresh)), shlex.quote(str(current))
+        command = wait + f"mv -f {q_fresh} {q_current} || rm -f {q_fresh}; exec {q_current}"
     elif kind == "mac":
         bundle = app_bundle(Path(sys.executable).resolve())
         if bundle is None:
             raise ValueError("App-Ordner nicht gefunden")
         staging = Path(tempfile.mkdtemp(prefix="casting-app-update-"))
-        subprocess.run(["ditto", "-x", "-k", str(file), str(staging)], check=True)
-        fresh = next(staging.glob("*.app"), None)
-        if fresh is None:
-            raise ValueError("Im Update ist keine App")
-        command = (f"while kill -0 {pid} 2>/dev/null; do sleep 0.5; done; "
-                   f"rm -rf {shlex.quote(str(bundle))} && ditto {shlex.quote(str(fresh))} {shlex.quote(str(bundle))} && "
-                   f"rm -rf {shlex.quote(str(staging))} {shlex.quote(str(file))}; open {shlex.quote(str(bundle))}")
+        fresh = bundle.with_name(bundle.name + ".new")
+        try:
+            subprocess.run(["ditto", "-x", "-k", str(file), str(staging)], check=True, capture_output=True)
+            unpacked = next(staging.glob("*.app"), None)
+            if unpacked is None:
+                raise ValueError("Im Update ist keine App")
+            shutil.rmtree(fresh, ignore_errors=True)
+            subprocess.run(["ditto", str(unpacked), str(fresh)], check=True, capture_output=True)   # next to the app
+        except Exception:
+            shutil.rmtree(fresh, ignore_errors=True)
+            raise
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
+            file.unlink(missing_ok=True)
+        q_bundle, q_fresh, q_old = (shlex.quote(str(p)) for p in (bundle, fresh, bundle.with_name(bundle.name + ".old")))
+        command = wait + (f"rm -rf {q_old}; mv {q_bundle} {q_old} && {{ mv {q_fresh} {q_bundle} || mv {q_old} {q_bundle}; }}; "
+                          f"rm -rf {q_old} {q_fresh}; open {q_bundle}")
     else:
         raise ValueError("Für diese Installation gibt es kein automatisches Update")
     subprocess.Popen(["/bin/sh", "-c", command], start_new_session=True, close_fds=True,

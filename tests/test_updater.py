@@ -145,6 +145,29 @@ def test_appimage_is_replaced_after_the_old_app_quit_and_started_again(tmp_path,
     assert marker.read_text().strip() == "neu" and "neu" in current.read_text() and not download.exists()
 
 
+@pytest.mark.skipif(updater.IS_WINDOWS or updater.IS_MAC, reason="AppImage: Linux")
+def test_appimage_starts_again_even_if_the_swap_fails(tmp_path, monkeypatch):
+    import subprocess
+    marker = tmp_path / "started"
+    folder = tmp_path / "app"
+    folder.mkdir()
+    current = folder / "Casting-App.AppImage"
+    current.write_text(f"#!/bin/sh\necho alt > {marker}\n")
+    current.chmod(0o755)
+    download = tmp_path / "download.AppImage"
+    download.write_text("#!/bin/sh\n")
+    monkeypatch.setenv("APPIMAGE", str(current))
+    old_app = subprocess.Popen(["sleep", "0.6"])
+    updater.start_replacement("appimage", download, pid=old_app.pid)
+    (folder / "Casting-App.AppImage.new").unlink()                          # the swap will fail
+    old_app.wait()
+    for _ in range(50):
+        if marker.exists():
+            break
+        time.sleep(0.1)
+    assert marker.read_text().strip() == "alt"                              # the old app is back, not nothing
+
+
 def test_first_start_after_an_update_is_noted(tmp_path):
     (tmp_path / "update").mkdir()
     (tmp_path / "update" / "installed-version.txt").write_text("2.2.1")
@@ -177,3 +200,18 @@ def test_windows_helper_runs_the_installer_after_the_app_quit(tmp_path, monkeypa
             break
         time.sleep(0.1)
     assert marker.read_text(encoding="utf-8", errors="replace").strip() == "/S"
+
+
+def test_a_failing_install_step_is_reported_and_can_be_retried(tmp_path, monkeypatch):
+    import subprocess
+    monkeypatch.setattr(updater, "install_kind", lambda: "mac")
+    update = updater.Updater(tmp_path, lambda text, level="info": None, quit_app=lambda: None)
+    update.release = {"version": "99.0.0", "url": PAGE, "asset": {"name": "x.zip", "url": DOWNLOAD + "x", "size": 4,
+                                                                  "sha256": hashlib.sha256(b"neu!").hexdigest()}}
+    monkeypatch.setattr(updater.urllib.request, "urlopen", lambda request, timeout: io.BytesIO(b"neu!"))
+    def broken(kind, file):
+        raise subprocess.CalledProcessError(1, "ditto")
+    monkeypatch.setattr(updater, "start_replacement", broken)
+    assert update.install_in_background()
+    wait_for(update, "error")
+    assert update.install_in_background()                                   # not stuck on "installing"

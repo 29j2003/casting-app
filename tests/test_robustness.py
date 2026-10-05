@@ -114,3 +114,10 @@ def test_read_json_object_sets_damaged_files_aside(tmp_path):
     assert read_json_object(path) is None
     path.write_text("{kaputt")
     assert read_json_object(path) is None and (tmp_path / "x.json.damaged").exists()
+
+
+def test_odd_content_length_values_are_refused():
+    from casting_app.server.net import content_length
+    assert content_length({"Content-Length": "12"}) == 12 and content_length({}) == 0
+    for value in ("²", "-1", "1e3", "١٢", "9" * 20):
+        assert content_length({"Content-Length": value}) is None

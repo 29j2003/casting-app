@@ -486,8 +486,8 @@
     list.forEach(e => {
       let d = stageLayer.querySelector(`[data-id="${CSS.escape(e.id)}"]`);
       if (!d) { d = document.createElement("div"); d.dataset.id = e.id; stageLayer.appendChild(d); }
-      const pos = /^(lu|ru|mu|lo|ro|mo|lm|rm)$/.test(e.pos || "") ? e.pos : (DEFAULT_POS[e.type] || "bl");
-      const cssClass = `einblendung eb-${e.type} pos-${pos}` + (e.type === "caster" ? "" : " box") + (e.title ? "" : " without-title");
+      const pos = /^(bl|br|bc|tl|tr|tc|cl|cr)$/.test(e.pos || "") ? e.pos : (DEFAULT_POS[e.type] || "bl");
+      const cssClass = `gfx gfx-${e.type} pos-${pos}` + (e.type === "caster" ? "" : " box") + (e.title ? "" : " without-title");
       const content = gfxContent(e);
       if (d.dataset.cacheKey !== cssClass + content) {
         const had = d.classList.contains("on");
@@ -517,7 +517,7 @@
       const k = box.dataset.team;
       const list = ((Z.players || {})[k] || []).slice(0, 5);
       while (list.length < 5) list.push(null);
-      box.innerHTML = `<div class="box lineup-team"><div class="team-logo ${k}"></div><div class="box-field"><span data-team-name="${k}" data-passend></span></div></div>` +
+      box.innerHTML = `<div class="box lineup-team"><div class="team-logo ${k}"></div><div class="box-field"><span data-team-name="${k}" data-matching></span></div></div>` +
         list.map(p => {
           if (!p || !p.name) return `<div class="box players-card empty"><div class="players-image"></div><div class="box-head">–</div><div class="box-field"></div></div>`;
           const image = p.image ? `<img${p.imageMode === "whole" ? ' class="whole"' : ""} src="${esc(p.image)}" alt="">` : `<div class="initial">${esc(p.name[0].toUpperCase())}</div>`;

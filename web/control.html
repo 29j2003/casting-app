@@ -1385,7 +1385,7 @@ function broadcastStatus(ok, hint) {
   if (ok === null) { e.textContent = ""; return; }
   e.textContent = ok ? "✓ Änderungen gehen direkt an alle Browserquellen in OBS"
                      : "✗ OBS nimmt die Änderungen nicht an (" + (hint || "obs-browser fehlt – OBS aktualisieren") + ")";
-  e.style.color = ok ? "var(--ok)" : "var(--rot)";
+  e.style.color = ok ? "var(--ok)" : "var(--red)";
 }
 function sourcesCheck() { channel.obs.request("GetInputList", { inputKind: "browser_source" }); }
 // Browserquellen der App ohne (aktuellen) Zugangsschlüssel finden – z. B. aus einer älteren Version.
@@ -2082,19 +2082,19 @@ async function faceitFetch(path, key) {
 }
 async function faceitLoad(muted) {
   const id = matchId($("faceitUrl").value), key = faceitKeyDa;
-  if (!id) return faceitStatus("Kein gültiger Matchroom-Link.", "var(--rot)");
-  if (!key) return faceitStatus("Bitte zuerst den FACEIT API-Key eintragen und speichern.", "var(--rot)");
+  if (!id) return faceitStatus("Kein gültiger Matchroom-Link.", "var(--red)");
+  if (!key) return faceitStatus("Bitte zuerst den FACEIT API-Key eintragen und speichern.", "var(--red)");
   if (!muted) faceitStatus("Lade Daten von FACEIT …");
   let m;
   try {
     const r = await faceitFetch(`/data/v4/matches/${id}`, key);
     if (!r.ok) {
       return faceitStatus(r.status === 401 || r.status === 403 ? "FACEIT lehnt den API-Key ab (" + r.status + ")." + (faceitAway === "service" ? " Bitte einen „Server side“-Key verwenden." : "")
-        : r.status === 404 ? "Match nicht gefunden." : "FACEIT-Fehler " + r.status, "var(--rot)");
+        : r.status === 404 ? "Match nicht gefunden." : "FACEIT-Fehler " + r.status, "var(--red)");
     }
     m = await r.json();
   } catch (e) {
-    return faceitStatus("Keine Verbindung zu FACEIT – Internet prüfen (Details im Reiter Log).", "var(--rot)");
+    return faceitStatus("Keine Verbindung zu FACEIT – Internet prüfen (Details im Reiter Log).", "var(--red)");
   }
   const fa = (m.teams || {}).faction1 || {}, fb = (m.teams || {}).faction2 || {};
   if ($("faceitTeams").checked) {
@@ -3327,7 +3327,7 @@ async function obsBackground(idle) {
         onSource() ? "In der Szene „Ingame“ wird sie automatisch ausgeblendet" : "In der Ingame-Szene wird sie nicht eingefügt"
       ], button: "In OBS ausführen"
     });
-    if (!ok) { st.textContent = "Abgebrochen – in OBS wurde nichts geändert."; return; }
+    if (!ok) { st.textContent = "Abgebrochen – in OBS wurde nichts geändert."; return "cancelled"; }
     if (wrongKind) await channel.obs.question("RemoveInput", { inputName: BG_NAME });
     const givesEs = present && !wrongKind;
     if (givesEs) await channel.obs.question("SetInputSettings", { inputName: BG_NAME, inputSettings: settings, overlay: true });
@@ -3730,7 +3730,7 @@ $("tourStats").onclick = async () => {
 $("tourFaceitResult").onclick = async () => {
   const id = tournamentId($("tourFaceit").value), T = tour(); if (!id) return tourStatus("Bitte einen FACEIT-Turnier-Link einfügen.");
   if (T.gamesSource === "faceit" && (T.format === "import" || T.format === "table")) {
-    try { tourStatus("Lade Ergebnisse …"); const games = await faceitGames(id), n = faceitResults(T, games); if (T.format === "table") await faceitRounds(T, sponsor); tournamentTreeDraw(); send(); return tourStatus(`✓ ${n} Ergebnisse aktualisiert.`); }
+    try { tourStatus("Lade Ergebnisse …"); const games = await faceitGames(id), n = faceitResults(T, games); if (T.format === "table") await faceitRounds(T, games); tournamentTreeDraw(); send(); return tourStatus(`✓ ${n} Ergebnisse aktualisiert.`); }
     catch (err) { return tourStatus("FACEIT: " + err.message); }
   }
   try {
@@ -3774,7 +3774,7 @@ if (window.castApp) window.castApp.onCloseRequested(quitAsk);
 function selection({ title, text, buttons, whenShown }) {
   return new Promise(ok => {
     const d = document.createElement("div"); d.className = "question";
-    d.innerHTML = `<div class="question-box" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><p>${esc(text)}</p><div class="line" style="justify-content:flex-end">${buttons.map(([w, n, kind]) => `<button class="button ${kind === "main" ? "main" : ""}" data-w="${w}"${kind === "red" ? ' style="background:var(--rot);color:#fff;border-color:var(--rot)"' : ""}>${esc(n)}</button>`).join("")}</div></div>`;
+    d.innerHTML = `<div class="question-box" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><p>${esc(text)}</p><div class="line" style="justify-content:flex-end">${buttons.map(([w, n, kind]) => `<button class="button ${kind === "main" ? "main" : ""}" data-w="${w}"${kind === "red" ? ' style="background:var(--red);color:#fff;border-color:var(--red)"' : ""}>${esc(n)}</button>`).join("")}</div></div>`;
     document.body.appendChild(d); if (whenShown) whenShown(d);
     const close = w => { d.remove(); removeEventListener("keydown", hotkey); ok(w); };
     const hotkey = ev => { if (ev.key === "Escape") close(""); };
@@ -4089,9 +4089,11 @@ $("dframeDefault") && ($("dframeDefault").onclick = () => { if (Z.dachFrame) del
 let helperRunning = false, musicRunning = null;
 function pill(id, text, state) { const p = $(id); p.className = "pill " + (state || ""); p.lastElementChild.textContent = text; }
 // zu einem Bereich springen: passenden Reiter öffnen, Bereich aufklappen, hinscrollen, kurz leuchten
+// Bereich öffnen: über seinen festen Schlüssel (data-area) – oder über den angezeigten Titel (Befehlspalette)
 function goClose(title) {
   if (title === "@einstellungen") return settings(true);
-  const s = [...document.querySelectorAll("details > summary")].find(x => x.textContent.replace(/[⠿⧉]/g, "").trim().startsWith(title));
+  const byKey = document.querySelector(`details[data-area="${CSS.escape(title)}"]`);
+  const s = byKey ? byKey.querySelector(":scope > summary") : [...document.querySelectorAll("details > summary")].find(x => x.textContent.replace(/[⠿⧉]/g, "").trim().startsWith(title));
   if (!s) return;
   const d = s.parentElement, g = d.closest(".group");
   if (g) { const u = belowFrom(g.dataset.group, d.dataset.area); if (u && SUBPAGES[g.dataset.group]) { ui.below = Object.assign({}, ui.below, { [g.dataset.group]: u }); belowApply(); } tabs(g.dataset.group); }
@@ -4115,10 +4117,10 @@ setInterval(helperCheck, 5000); setInterval(musicCheck, 5000);
 
 const STEPS = [
   ["OBS verbinden", "@einstellungen", () => !!(channel && channel.obs && channel.obs.isOpen)],
-  ["Szenen in OBS anlegen", "Szenen einrichten", () => { const l = (Z.sceneList || {}).list || {}; return Object.values(l).some(x => x && x.obs); }],
-  ["Theme der Liga wählen", "Themes", () => !!localStorage.getItem("cast-theme-chosen")],
-  ["Teams eintragen", "Teams", () => Z.teams.a.name !== K.DEFAULT.teams.a.name || Z.teams.b.name !== K.DEFAULT.teams.b.name],
-  ["Caster-Namen eintragen", "Caster", () => Z.caster.c1.name !== K.DEFAULT.caster.c1.name]
+  ["Szenen in OBS anlegen", "scenes-setup", () => { const l = (Z.sceneList || {}).list || {}; return Object.values(l).some(x => x && x.obs); }],
+  ["Theme der Liga wählen", "themes", () => !!localStorage.getItem("cast-theme-chosen")],
+  ["Teams eintragen", "teams-result", () => Z.teams.a.name !== K.DEFAULT.teams.a.name || Z.teams.b.name !== K.DEFAULT.teams.b.name],
+  ["Caster-Namen eintragen", "caster-guest", () => Z.caster.c1.name !== K.DEFAULT.caster.c1.name]
 ];
 function stepsDraw() {
   const box = $("stepsList"); if (!box) return;
@@ -4156,7 +4158,7 @@ async function videoInfoDraw() {
   d.videos.forEach(v => {
     const path = "media/videos/" + v.name, [chars, text] = videoRating(v);
     const z = document.createElement("label"); z.className = "row vid-row";
-    z.innerHTML = `<input type="checkbox"><span><b>${esc(v.name)}</b><br><span class="small" style="color:${chars === "✗" ? "var(--rot)" : chars === "⚠" ? "var(--warn)" : "var(--ok)"}">${chars} ${esc(text)}</span></span>`;
+    z.innerHTML = `<input type="checkbox"><span><b>${esc(v.name)}</b><br><span class="small" style="color:${chars === "✗" ? "var(--red)" : chars === "⚠" ? "var(--warn)" : "var(--ok)"}">${chars} ${esc(text)}</span></span>`;
     const cb = z.querySelector("input"); cb.checked = chosen.has(path);
     cb.onchange = () => {
       const l = new Set(Z.background.videos || []);
@@ -4180,8 +4182,8 @@ $("bgTipNo").onclick = () => { sessionStorage.setItem("bg-tip-off", "1"); bgTipS
 $("bgTipYes").onclick = async () => {
   Z.background.source = "obs"; Z.background.transparent = false;
   bgSourceDraw(); videoInfoDraw(); send(); bgTipShow();
-  await obsBackground(false);            // zeigt vorher, was in OBS passiert
-  if ($("bgStatus").textContent.startsWith("Abgebrochen")) { Z.background.source = "overlay"; bgSourceDraw(); videoInfoDraw(); send(); bgTipShow(); }
+  // zeigt vorher, was in OBS passiert; abgebrochen → zurück aufs Overlay (Rückgabewert, nie den sichtbaren Text vergleichen)
+  if (await obsBackground(false) === "cancelled") { Z.background.source = "overlay"; bgSourceDraw(); videoInfoDraw(); send(); bgTipShow(); }
 };
 function overlaysPill() {
   bgTipShow();

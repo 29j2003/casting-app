@@ -385,7 +385,7 @@ window.CastCore = (function () {
       // App wurde aktualisiert: Seite neu laden (höchstens 3× pro Minute, falls etwas klemmt)
       es.addEventListener("reload", () => {
         try {
-          const now = Date.now(), n = JSON.parse(sessionStorage.getItem("cast-reload") || "[undefined]").filter(t => now - t < 60000);
+          const now = Date.now(), n = JSON.parse(sessionStorage.getItem("cast-reload") || "[]").filter(t => now - t < 60000);
           if (n.length >= 3) return;
           n.push(now); sessionStorage.setItem("cast-reload", JSON.stringify(n));
         } catch (e) {}

@@ -243,7 +243,7 @@
   }
   function series() {
     const [sa, sb] = seriesScore();
-    $$(".series-score").forEach(e => { e.innerHTML = `${sa}<span class="dp">:</span>${sb}`; });
+    $$(".series-total").forEach(e => { e.innerHTML = `${sa}<span class="dp">:</span>${sb}`; });
     const maps = playedMaps();
     const keyName = JSON.stringify([maps, Z.mapPool, Z.texts.map, Z.texts.running, Z.texts.pending]);
     $$(".series-cards").forEach(k => { if (newNeeded(k, keyName)) seriesDraw(k, null, maps); });
@@ -452,7 +452,7 @@
   }
   function gfxContent(e) {
     if (e.type === "score")
-      return `<div class="team-logo a"></div><div class="gfx-score"><span data-team-score="a"></span><span class="dp">:</span><span data-team-score="b"></span></div><div class="team-logo b"></div>`;
+      return `<div class="team-logo a"></div><div class="gfx-score-value"><span data-team-score="a"></span><span class="dp">:</span><span data-team-score="b"></span></div><div class="team-logo b"></div>`;
     if (e.type === "caster") {
       const who = ["c1", "c2"].concat(e.guest ? ["guest"] : []).map(k => Z.caster[k] || {}).filter(c => c.name);
       return `<div class="gfx-caster-list ${e.arrangement === "sidebyside" ? "beside" : ""}">` +
@@ -460,10 +460,10 @@
     }
     if (e.type === "mapinfo") {
       const { cur, next } = currentMap();
-      if (!cur) return `<div class="gfx-mapinfo"><b>${esc(Z.texts.mapVeto)}</b><span class="gfx-mapinfo-map">–</span></div>`;
+      if (!cur) return `<div class="gfx-mapinfo-bar"><b>${esc(Z.texts.mapVeto)}</b><span class="gfx-mapinfo-map">–</span></div>`;
       const who = cur.action === "decider" || !cur.team ? `<b>${esc(Z.texts.decider)}</b>`
         : `<b>${esc(Z.texts.pick)}</b><div class="team-logo ${cur.team}"></div>`;
-      return `<div class="gfx-mapinfo">${who}<span class="gfx-mapinfo-map">${esc(cur.map)}</span>${next ? `<span class="gfx-mapinfo-next">${esc(Z.texts.next)}: ${esc(next.map)}</span>` : ""}</div>`;
+      return `<div class="gfx-mapinfo-bar">${who}<span class="gfx-mapinfo-map">${esc(cur.map)}</span>${next ? `<span class="gfx-mapinfo-next">${esc(Z.texts.next)}: ${esc(next.map)}</span>` : ""}</div>`;
     }
     if (e.type === "scoreboard") {
       if (!liveData) return `<div class="box-head">${esc(Z.texts.scoreboard)}</div><div class="box-field">${wait()}</div>`;

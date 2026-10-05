@@ -486,6 +486,7 @@
   .audio-mute.off { background: var(--red); border-color: var(--red); color: #fff; }
   .audio-slider { display: flex; align-items: center; gap: 8px; } .audio-slider input { flex: 1; } .audio-slider b { width: 48px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
   .audio-slider b.loud { color: var(--warn); }
+  .audio-monitoring { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; } .audio-monitoring .segment button { font-size: 12px; padding: 0 8px; }
   .audio-more { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .audio-more .segment button { font-size: 12px; padding: 0 8px; }
   .clean-button.on { background: var(--red) !important; border-color: var(--red) !important; color: #fff !important; }
   /* Erste Schritte: schwebende Checkliste unten links statt eigener Spalte */
@@ -1142,6 +1143,8 @@
           <button class="button" id="obsNew">Verbinden</button><button class="button" id="obsPasswordDelete" hidden>Passwort löschen</button>
         </div>
         <p class="small" id="obsSources"></p>
+        <p><button class="button" id="openInBrowser" hidden>Steuerseite im Browser öffnen</button></p>
+        <div id="accessNotice" hidden><p class="small" id="accessStatus"></p><button class="button" id="accessUpdate">Browserquellen umstellen</button></div>
         
       </section>
       <section><h3>Musik (Spotify über Tuna)</h3>
@@ -1250,6 +1253,9 @@
    ===================================================================== */
 "use strict";
 const K = window.CastCore, BUNDLED = window.CAST_THEMES || {};
+// ohne Zugangsschlüssel (Adresse von Hand geöffnet) darf die Seite nichts ändern – klar sagen, wie es geht
+if (K.SERVER && !K.ACCESS) addEventListener("DOMContentLoaded", () => document.body.insertAdjacentHTML("afterbegin",
+  `<div style="background:var(--red,#c33);color:#fff;padding:10px 16px;font-weight:600">Diese Steuerseite hat keinen Zugangsschlüssel und kann nichts ändern. Öffne sie aus der Casting-App (App-Fenster → ⚙ App-Einstellungen → Verbindung zu OBS → „Steuerseite im Browser öffnen“) oder nimm ohne Fenster die Adresse aus der Konsole.</div>`));
 // alle Themes: mitgelieferte + eigene (eigene liegen im Stand und wandern mit Sicherung/Sitzung)
 const ownThemes = () => { try { return (Z && Z.ownThemes) || {}; } catch (err) { return {}; } };
 const T = new Proxy({}, {
@@ -1363,7 +1369,7 @@ channel = K.channel({
     if (s !== "connected") broadcastStatus(null);
     setTimeout(() => { try { scenesDraw(); } catch (err) {} }, 0);   // erst nach dem Laden der Seite
   },
-  onOpen() { sentImages.clear(); send(); sourcesCheck(); scenesLoad(); setTimeout(overlaysPill, 1500); },
+  onOpen() { sentImages.clear(); send(); sourcesCheck(); scenesLoad(); setTimeout(overlaysPill, 1500); setTimeout(accessCheck, 2000); },
   onAnswer(type, ok, hint, data) {
     if (type === "CallVendorRequest") broadcastStatus(ok, hint);
     if (type === "GetInputList") {
@@ -1382,6 +1388,47 @@ function broadcastStatus(ok, hint) {
   e.style.color = ok ? "var(--ok)" : "var(--rot)";
 }
 function sourcesCheck() { channel.obs.request("GetInputList", { inputKind: "browser_source" }); }
+// Browserquellen der App ohne (aktuellen) Zugangsschlüssel finden – z. B. aus einer älteren Version.
+// Ohne Schlüssel zeigen sie alles außer den DACH-CS-Seiten. Umstellen nur nach Rückfrage: die Quelle lädt dabei kurz neu.
+const APP_ADDRESS = /^http:\/\/(localhost|127\.0\.0\.1|\[::1\]):8787\//i;
+let accessAsked = false;
+async function accessSourcesMissing() {
+  const inputs = (await channel.obs.question("GetInputList", { inputKind: "browser_source" })).inputs || [];
+  const missing = [];
+  for (const i of inputs) {
+    const s = (await channel.obs.question("GetInputSettings", { inputName: i.inputName })).inputSettings || {};
+    const url = String(s.url || "");
+    if (s.is_local_file || !APP_ADDRESS.test(url)) continue;
+    let u; try { u = new URL(url); } catch (err) { continue; }
+    if (u.searchParams.get("access") !== K.ACCESS) missing.push({ name: i.inputName, u });
+  }
+  return missing;
+}
+async function accessCheck(fromHand) {
+  if (!K.SERVER || !K.ACCESS || !channel.obs.isOpen) return;
+  let missing; try { missing = await accessSourcesMissing(); } catch (err) { return; }
+  $("accessNotice").hidden = !missing.length;
+  if (!missing.length) { if (fromHand) $("accessStatus").textContent = "✓ Alle Browserquellen der App haben den Zugangsschlüssel."; return; }
+  $("accessStatus").textContent = `${missing.length} Browserquelle(n) der App in OBS ohne Zugangsschlüssel: ${missing.map(m => m.name).join(", ")}`;
+  if (accessAsked && !fromHand) return;
+  accessAsked = true;
+  const ok = await confirmDialog({
+    title: "Browserquellen in OBS umstellen?",
+    text: "Seit Version 2.3 brauchen die Browserquellen der App einen Zugangsschlüssel – sonst fehlen die DACH-CS-Seiten. "
+      + "Beim Umstellen lädt jede Quelle einmal kurz neu (nicht während einer laufenden Szene im Stream).",
+    list: missing.map(m => ({ text: `„${m.name}“ umstellen` })), button: "Umstellen"
+  });
+  if (!ok) return;
+  for (const m of missing) {
+    m.u.searchParams.set("access", K.ACCESS);
+    try { await channel.obs.question("SetInputSettings", { inputName: m.name, inputSettings: { url: m.u.toString() }, overlay: true }); } catch (err) {}
+  }
+  accessCheck(true);
+}
+$("accessUpdate").onclick = () => { accessAsked = false; accessCheck(true); };
+// im Standardbrowser öffnen (das App-Fenster gibt neue Fenster an ihn weiter) – mit Schlüssel, sonst ginge dort nichts
+$("openInBrowser").hidden = !(window.castApp && K.ACCESS);
+$("openInBrowser").onclick = () => window.open(location.origin + K.withAccess("/control.html"), "_blank");
 // regelmäßig den kompletten Stand schicken (falls eine Quelle neu geladen wurde)
 if (!K.SERVER) {   // nur ohne App: Stand zusätzlich über OBS an die Browserquellen
   setInterval(() => { if (channel.obs.isOpen && smallerState) channel.obs.onBrowsersources("cast-state", { cast: "state", z: smallerState }); }, 5000);
@@ -2406,7 +2453,7 @@ $("sceneCreate").onclick = async () => {
   for (const a of p.tasks) {
     try {
       if (!obsScenes.includes(a.scene)) { await channel.obs.question("CreateScene", { sceneName: a.scene }); obsScenes.push(a.scene); }
-      result.push([a.scene, await sourceEnsure(a.scene, a.source, Object.assign({}, base, { is_local_file: false, url: location.origin + "/" + a.file }))]);
+      result.push([a.scene, await sourceEnsure(a.scene, a.source, Object.assign({}, base, { is_local_file: false, url: location.origin + K.withAccess("/" + a.file) }))]);
       if (a.k) sceneCfg().list[a.k].obs = a.scene;
     } catch (err) { result.push([a.scene, "Fehler: " + err.message]); }
   }
@@ -3801,16 +3848,30 @@ $("drawerAway").onclick = () => { const i = Z.graphics.findIndex(x => x.id === g
    Verzögerung (Synchronisation) und Abhören direkt in OBS – live, genau wie die Regler in OBS selbst. */
 const AUDIO_OBS = [["Cast – Overlay", "Overlay (Clips, Seiten, Videos im Overlay)"], ["Cast – Hintergrund", "Hintergrund-Video (OBS spielt ab)"],
   ["Cast – Ton Caster 1", "Caster 1"], ["Cast – Ton Caster 2", "Caster 2"], ["Cast – Ton Gast", "Gast"]];
-const MONITOR = [["OBS_MONITORING_TYPE_NONE", "Nur Stream"], ["OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT", "Stream + Abhören"], ["OBS_MONITORING_TYPE_MONITOR_ONLY", "Nur Abhören"]];
+// Abhören wie in OBS (Erweiterte Audioeigenschaften): aus · nur abhören · abhören und ausgeben
+const MONITOR = [["OBS_MONITORING_TYPE_NONE", "Abhören aus"], ["OBS_MONITORING_TYPE_MONITOR_ONLY", "Nur abhören"], ["OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT", "Abhören + Ausgabe"]];
+const MONITOR_HINT = { OBS_MONITORING_TYPE_NONE: "nur im Stream/der Aufnahme, nicht auf deinem Kopfhörer",
+  OBS_MONITORING_TYPE_MONITOR_ONLY: "nur auf deinem Kopfhörer, nicht im Stream",
+  OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT: "im Stream und auf deinem Kopfhörer" };
 let audioRevision = {}, audioOffen2 = new Set(), audioFetchRunning = false;
+// alle Quellen mit Ton in OBS (wie der OBS-Mixer) – die der App zuerst; die Liste wird alle 15 s erneuert
+let audioInputs = [], audioInputsAt = 0;
+async function audioInputsLoad() {
+  if (audioInputs.length && Date.now() - audioInputsAt < 15000) return audioInputs;
+  const names = ((await channel.obs.question("GetInputList", {})).inputs || []).map(i => i.inputName);
+  const withAudio = [];
+  for (const name of names) { try { await channel.obs.question("GetInputVolume", { inputName: name }); withAudio.push(name); } catch (err) {} }
+  const own = AUDIO_OBS.map(([n]) => n).filter(n => withAudio.includes(n));
+  audioInputs = own.concat(withAudio.filter(n => !own.includes(n))); audioInputsAt = Date.now();
+  return audioInputs;
+}
 async function audioFetch() {
   if (!channel.obs.isOpen || audioFetchRunning) return;
   audioFetchRunning = true;
   try {
-    const inputs = ((await channel.obs.question("GetInputList", {})).inputs || []).map(i => i.inputName);
+    const inputs = await audioInputsLoad();
     const fresh = {};
-    for (const [name] of AUDIO_OBS) {
-      if (!inputs.includes(name)) continue;
+    for (const name of inputs) {
       const [v, m, o, t] = await Promise.all([channel.obs.question("GetInputVolume", { inputName: name }), channel.obs.question("GetInputMute", { inputName: name }),
         channel.obs.question("GetInputAudioSyncOffset", { inputName: name }), channel.obs.question("GetInputAudioMonitorType", { inputName: name })]).catch(() => [null, null, null, null]);
       if (v) fresh[name] = { vol: Math.round((v.inputVolumeMul || 0) * 100), mute: !!m.inputMuted, delay: o.inputAudioSyncOffset || 0, monitor: t.monitorType };
@@ -3824,16 +3885,19 @@ function audioDraw() {
   const box = $("audioList"); if (!box) return;
   box.innerHTML = "";
   if (!channel.obs.isOpen) { box.innerHTML = `<p class="small">Ton wird direkt in OBS geregelt (wie im OBS-Mixer) – dafür mit OBS verbinden (⚙ App-Einstellungen).</p>`; return; }
-  AUDIO_OBS.forEach(([name, title]) => {
+  const titles = Object.fromEntries(AUDIO_OBS);
+  audioInputs.forEach(name => {
     const T = audioRevision[name]; if (!T) return;
+    const title = titles[name] || name;
     const z = document.createElement("div"); z.className = "audio-z";
     z.innerHTML = `<div class="audio-head"><div class="tname"><b>${esc(title)}</b><span>${esc(name)}</span></div>
         <button class="audio-mute${T.mute ? " off" : ""}" aria-pressed="${T.mute}">${T.mute ? "STUMM" : "Stumm"}</button>
         <button class="gfx-more" aria-label="Mehr Einstellungen">⋯</button></div>
       <div class="audio-slider"><input type="range" min="0" max="300" step="5" value="${Math.min(300, T.vol)}" aria-label="Lautstärke ${esc(title)}"><b class="${T.vol > 100 ? "loud" : ""}">${T.vol} %</b></div>
+      <div class="audio-monitoring"><span class="segment" role="group" aria-label="Abhören">${MONITOR.map(([v, n]) => `<button data-monitor="${v}" aria-pressed="${T.monitor === v}">${n}</button>`).join("")}</span>
+        <span class="small">${esc(MONITOR_HINT[T.monitor] || "")}</span></div>
       <div class="audio-more"${audioOffen2.has(name) ? "" : " hidden"}>
         <label>Verzögerung (ms)<input type="number" min="-950" max="20000" step="10" value="${T.delay}"></label>
-        <label>Abhören<span class="segment" role="group">${MONITOR.map(([v, n]) => `<button data-monitor="${v}" aria-pressed="${T.monitor === v}">${n}</button>`).join("")}</span></label>
       </div>`;
     const slider = z.querySelector("input[type=range]"), display = z.querySelector(".audio-slider b");
     let timerHandle = null;
@@ -3855,7 +3919,7 @@ function audioDraw() {
     z.querySelector("button").onclick = () => audioSourceCreate(k, n);
     box.appendChild(z);
   });
-  if (!box.children.length) box.innerHTML = `<p class="small">In OBS gibt es noch keine Quelle der App mit Ton – Setup → Szenen &amp; OBS → „In OBS anlegen“.</p>`;
+  if (!box.children.length) box.innerHTML = `<p class="small">In OBS gibt es noch keine Quelle mit Ton – Setup → Szenen &amp; OBS → „In OBS anlegen“.</p>`;
 }
 // VDO.Ninja-Gast als eigene Browserquelle nur für den Ton (unsichtbar klein), im Overlay wird sein Ton dann stumm geschaltet
 async function audioSourceCreate(k, n) {
@@ -3972,7 +4036,7 @@ $("dachDelete").onclick = async () => {
 let dachSwitch = async function (k) {
   const e = DACH_SCENES.find(x => x[1] === k); if (!e) return;
   Z.dach = Object.assign({}, Z.dach, { scene: k }); scenesDraw(); send();
-  if ($("frame").getAttribute("src") !== "/dach/" + e[3]) $("frame").src = "/dach/" + e[3];   // Vorschau zeigt die DACH-Seite
+  if ($("frame").getAttribute("src") !== K.dachUrl(e[3])) $("frame").src = K.dachUrl(e[3]);   // Vorschau zeigt die DACH-Seite
   if (channel.obs.isOpen) { try { await channel.obs.question("SetCurrentProgramScene", { sceneName: dachObsName(e[2]) }); } catch (err) { toastError && toastError("OBS-Szene „" + dachObsName(e[2]) + "“ fehlt – Setup → Aussehen → „In OBS einrichten“"); } }
 };
 const toastError = t => { if ($("dachObsStatus")) $("dachObsStatus").textContent = t; };

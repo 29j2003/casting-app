@@ -37,6 +37,7 @@ FACEIT_KEY = "faceit-key"
 DACH_USER_ID = "dach-user-id"
 DACH_KEY = "dach-key"
 OBS_PASSWORD = "obs-password"
+ACCESS_KEY = "access-key"          # the app's own key for its pages and OBS sources (see app_server)
 
 # What a valid value looks like – anything else is rejected before it is stored
 VALID_VALUE = {
@@ -44,6 +45,7 @@ VALID_VALUE = {
     DACH_USER_ID: re.compile(r"^\d{1,9}$"),
     DACH_KEY: re.compile(r"^[A-Za-z0-9-]{5,64}$"),
     OBS_PASSWORD: re.compile(r"^[^\r\n]{1,200}$"),
+    ACCESS_KEY: re.compile(r"^[A-Za-z0-9_-]{32,64}$"),
 }
 
 # Old 1.x files: (secret name, file name, format)

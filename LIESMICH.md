@@ -65,21 +65,29 @@ Setup → Aussehen → Stil **„DACH CS – Offiziell“** wählen, **Nutzer-ID
   Lineup, Mapveto, Ingame, Tabelle, Playoffs, Matches, MVP, Pausen, Interaktion, Interviews, Endscreen). Die neue Seite wird
   vorgeladen und dann mit dem gewählten Übergang gewechselt (Schnitt, Blende, Schieben, Wischen, Stinger – wie bei den eigenen
   Szenen); Kameras gleiten dabei in ihre neuen Rahmen, das Bild läuft weiter. Ohne Scrollbalken, exakt 1920 × 1080.
-* **Kameras und Inhalt** (Caster, Gast, Clip) setzt die App automatisch in die Rahmen der jeweiligen Seite.
+* **Kameras und Inhalt** (Caster, Gast, Clip) setzt die App automatisch in die Rahmen der jeweiligen Seite. Ein leerer
+  Rahmen ist schwarz – nie der Hintergrund der DACH-Seite, auch nicht kurz beim Wechsel.
   „Kamera- und Inhalts-Rahmen anpassen“ zeigt die Rahmen in der Vorschau und lässt sie pixelgenau verschieben.
 * Die Inhalte der Grafiken (Teams, Ergebnisse, Tabelle …) kommen aus dem DACH-CS-Live-Dashboard. Einblendungen der App liegen darüber.
 * „DACH CS – eigener Stil“ bleibt als freies Design erhalten.
 
 ## Ton (Live → Ton) – geregelt direkt in OBS
 
-Wie im OBS-Mixer: jede Tonquelle ist eine OBS-Quelle, die App regelt sie live über OBS – **Lautstärke** (bis 300 %),
-**Stumm**, **Verzögerung** (Synchronisation, −950 bis 20 000 ms) und **Abhören**: *Nur Stream* · *Stream + Abhören* · *Nur Abhören*.
-Zeilen: „Cast – Overlay“ (alles, was im Overlay klingt: Clips, DACH-Seiten, Videos), „Cast – Hintergrund“ (wenn OBS das Video
+Wie im OBS-Mixer: **alle Quellen mit Ton in OBS** (auch Mikrofon, Desktop-Audio, Spiel), die der App zuerst. Die App regelt
+sie live über OBS – **Lautstärke** (bis 300 %), **Stumm**, **Verzögerung** (Synchronisation, −950 bis 20 000 ms, unter ⋯) und
+direkt sichtbar das **Abhören**:
+
+* *Abhören aus* – nur im Stream/der Aufnahme, nicht auf deinem Kopfhörer
+* *Nur abhören* – nur auf deinem Kopfhörer, nicht im Stream
+* *Abhören + Ausgabe* – im Stream und auf deinem Kopfhörer
+
+Eigene Zeilen der App: „Cast – Overlay“ (alles, was im Overlay klingt: Clips, DACH-Seiten, Videos), „Cast – Hintergrund“ (wenn OBS das Video
 abspielt) und je Caster/Gast eine eigene Quelle: bei VDO.Ninja-Gästen „Als eigene OBS-Tonquelle“ anklicken – dann ist ihr Ton
 einzeln regelbar und läuft nicht mehr doppelt im Overlay. Änderungen direkt in OBS erscheinen hier ebenfalls.
 
 **Ton im App-Fenster** (oben im Bereich Ton, Standard: aus): schaltet alles stumm oder hörbar, was im App-Fenster klingt –
 Videos, Kameras, Clips (YouTube, Twitch), VDO.Ninja und DACH-Seiten – mit eigener Lautstärke. Der Stream bleibt davon unberührt.
+Umschalten lädt nichts neu: Videos, Kameras und DACH-Seiten laufen weiter, nur der Ton geht an oder aus.
 * **Aus** schaltet das ganze Fenster stumm – zuverlässig, auch für alle eingebetteten fremden Seiten.
 * **Lautstärke** gilt für alle Video- und Audio-Elemente und für Web Audio in allen Seiten des Fensters (auch VDO.Ninja,
   Clips und DACH CS). Die Player der Seiten zeigen dabei weiter ihre eigene Lautstärke an; die App regelt nur, was am Ende
@@ -245,6 +253,12 @@ Die macOS-App ist nur ad-hoc signiert (ohne Apple-Konto); die Beglaubigung durch
 
 * Die App nimmt nur Anfragen von **diesem PC** an. Andere Geräte im Netz werden abgelehnt.
 * Nur die eigenen Seiten dürfen zugreifen, keine Webseiten aus dem Internet.
+* **Zugangsschlüssel (ab 2.3):** Die App erzeugt beim ersten Start einen geheimen Schlüssel (im Schlüsselbund). Nur
+  Seiten mit diesem Schlüssel – das App-Fenster und die Browserquellen, die die App in OBS anlegt – dürfen etwas ändern,
+  die DACH-CS-Seiten öffnen oder sich bei OBS anmelden. Andere Programme auf dem PC kommen nicht heran.
+  Browserquellen aus älteren Versionen findet die App beim Verbinden mit OBS und fragt, ob sie sie umstellen soll
+  (jede lädt dabei einmal kurz neu – nicht während des Streams bestätigen). Bis dahin zeigen sie alles außer den DACH-CS-Seiten.
+  Die Steuerseite im normalen Browser: ⚙ App-Einstellungen → Verbindung zu OBS → „Steuerseite im Browser öffnen“.
 * **Vom PC geht nichts nach außen** außer dem Abholen der FACEIT-Match-Daten (nur Match-ID und dein API-Key) und – beim
   Start der Desktop-App – der Frage an GitHub, ob es eine neuere Version gibt (nur die Versionsnummer wird abgerufen;
   abschaltbar unter ⚙ → App). Gibt es eine, zeigt die App das im Tray und unter ⚙ → App an.

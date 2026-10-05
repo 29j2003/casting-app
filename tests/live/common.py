@@ -20,6 +20,22 @@ DACH_PAGES = {"dach-duocast": "duocast", "dach-singlecast": "singlecast", "dach-
               "dach-table": "tabelle", "dach-overview": "overview"}
 
 
+async def access_key() -> str:
+    """The app's access key, read from its own window (the app runs with QTWEBENGINE_REMOTE_DEBUGGING=9222).
+
+    The key never appears in a file or the log; the window's control page keeps it for its tab.
+    """
+    from cdp import PageConnection
+    page = await PageConnection.open()
+    try:
+        key = await page.evaluate("sessionStorage.getItem('casting-access') || ''")
+    finally:
+        await page.close()
+    if not key:
+        sys.exit("Zugangsschlüssel nicht gefunden – läuft die App mit Fenster und QTWEBENGINE_REMOTE_DEBUGGING=9222?")
+    return key
+
+
 @contextlib.asynccontextmanager
 async def control_and_overlay(overlay_url: str = "/overlay.html"):
     """Yields (control page, overlay page, list of JavaScript errors of both); the broadcast is switched on."""
@@ -30,11 +46,12 @@ async def control_and_overlay(overlay_url: str = "/overlay.html"):
         overlay = await (await browser.new_context(viewport={"width": 1920, "height": 1080})).new_page()
         for page in (control, overlay):
             page.on("pageerror", lambda error: errors.append(str(error)))
-        await control.goto(BASE_URL + "/control.html")
+        key = await access_key()
+        await control.goto(BASE_URL + "/control.html?access=" + key)
         await control.wait_for_timeout(1200)
         await control.evaluate("Z.broadcast.active = true; Z.broadcast.duration = 500; Z.broadcast.scene = 'intro'; "
                                "Z.sponsors.listen = {}; Z.background.videos = []; everything(); send();")
-        await overlay.goto(BASE_URL + overlay_url)
+        await overlay.goto(BASE_URL + overlay_url + ("&" if "?" in overlay_url else "?") + "access=" + key)
         await overlay.wait_for_timeout(1500)
         try:
             yield control, overlay, errors

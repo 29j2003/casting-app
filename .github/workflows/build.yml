@@ -122,6 +122,14 @@ jobs:
             dist/*.AppImage
             dist/*.dmg
 
+  # keine privaten E-Mail-Adressen in Commits oder Dateien (tools/check_privacy.py)
+  privacy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - run: python3 tools/check_privacy.py
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -160,7 +168,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release && github.ref == 'refs/heads/main')
-    needs: [build, test, test-windows]
+    needs: [privacy, build, test, test-windows]
     runs-on: ubuntu-latest
     permissions: { contents: write }
     steps:

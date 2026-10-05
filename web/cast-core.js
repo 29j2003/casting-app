@@ -394,7 +394,7 @@ window.CastCore = (function () {
       return m;
     }
     const title = (rest, upper) => rest === 1 ? (upper ? "OBEN-FINALE" : "FINALE") : rest === 2 ? "HALBFINALE" : rest === 3 ? "VIERTELFINALE" : rest === 4 ? "ACHTELFINALE" : "";
-    const result = { format: T.format || "se", rounds: [], bottom: [], finale: null, groups: [], tabelle: [], teams };
+    const result = { format: T.format || "se", rounds: [], bottom: [], finale: null, groups: [], table: [], teams };
     if (teams.length < 2) return result;
     const fmt = T.format || "se";
     if (fmt === "se" || fmt === "de") {
@@ -442,7 +442,7 @@ window.CastCore = (function () {
       });
     }
     // Gruppen mit Tabelle (jeder gegen jeden) – Spiele selbst erzeugt oder exakt aus FACEIT übernommen
-    if (fmt === "tabelle") {
+    if (fmt === "table") {
       const G = Math.max(1, Math.min(8, +T.groupsCount || 1)), groups = Array.from({ length: G }, () => []);
       teams.forEach((t, i) => {
         let g = t.group !== undefined && t.group !== "" && t.group !== null ? (+t.group % G) : null;
@@ -474,12 +474,12 @@ window.CastCore = (function () {
           ms.forEach(m => { if (m.done && m.a in pts && m.b in pts) { pts[m.a] += pointsFor(+m.sa || 0, +m.sb || 0); pts[m.b] += pointsFor(+m.sb || 0, +m.sa || 0); } });
           return pts;
         };
-        const tabelle = Object.values(row);
-        const afterPoints = {}; tabelle.forEach(r => { (afterPoints[r.pts] = afterPoints[r.pts] || []).push(r); });
+        const table = Object.values(row);
+        const afterPoints = {}; table.forEach(r => { (afterPoints[r.pts] = afterPoints[r.pts] || []).push(r); });
         Object.values(afterPoints).forEach(g => { if (g.length > 1) { const d = direct(g); g.forEach(r => { r.dv = d[r.id]; }); } else g[0].dv = 0; });
-        tabelle.forEach(r => { r.bracket = withRounds ? r.rd : r.diff; });
-        tabelle.sort((x, y) => y.pts - x.pts || y.dv - x.dv || y.bracket - x.bracket || y.s - x.s);
-        result.groups.push({ name: G > 1 ? "GRUPPE " + String.fromCharCode(65 + gi) : "TABELLE", matches: ms, tabelle, withRounds });
+        table.forEach(r => { r.bracket = withRounds ? r.rd : r.diff; });
+        table.sort((x, y) => y.pts - x.pts || y.dv - x.dv || y.bracket - x.bracket || y.s - x.s);
+        result.groups.push({ name: G > 1 ? "GRUPPE " + String.fromCharCode(65 + gi) : "TABELLE", matches: ms, table, withRounds });
       });
     }
     // Baum genau so, wie FACEIT ihn liefert (Runden als Spalten, negative Runden = unterer Baum)
@@ -509,7 +509,7 @@ window.CastCore = (function () {
         r.matches.sort((x, y) => String(y.record).localeCompare(String(x.record)));
         result.rounds.push(r);
       });
-      result.tabelle = Object.values(record).map(b => Object.assign(b, {
+      result.table = Object.values(record).map(b => Object.assign(b, {
         status: b.s >= (S.wins || 3) ? "proceed" : b.n >= (S.losses || 3) ? "out" : "" })).sort((a, b) => (b.s - b.n) - (a.s - a.n));
     }
     return result;
@@ -518,7 +518,7 @@ window.CastCore = (function () {
   function swissDraw(T) {
     const B = tournamentBuild(Object.assign({}, T, { format: "swiss" }));
     const S = T.swiss || {}, num = (S.rounds || []).length + 1;
-    const active = B.tabelle.filter(b => !b.status).map(b => Object.assign({}, b, { seed: T.teams.findIndex(t => t.id === b.id) }));
+    const active = B.table.filter(b => !b.status).map(b => Object.assign({}, b, { seed: T.teams.findIndex(t => t.id === b.id) }));
     if (num === 1) { const h = Math.ceil(active.length / 2); active.sort((a, b) => a.seed - b.seed); }
     else active.sort((a, b) => (b.s - b.n) - (a.s - a.n) || a.seed - b.seed);
     const isOpen = active.slice(), round = [];

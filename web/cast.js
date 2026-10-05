@@ -143,9 +143,9 @@
       // für die breiteste mögliche Box reichen (Kästen können beim Szenenwechsel breiter werden)
       const times = Math.max(1, Math.ceil(Math.max(t.clientWidth, 1920) / width));
       band.innerHTML = once.repeat(times * 2);
-      const away = width * times;
-      const duration = away / Math.max(20, Z.texts.tickerTempo || 90) * 1000;
-      band.animate([{ transform: "translate3d(0,0,0)" }, { transform: `translate3d(${-away}px,0,0)` }],
+      const distance = width * times;
+      const duration = distance / Math.max(20, Z.texts.tickerTempo || 90) * 1000;
+      band.animate([{ transform: "translate3d(0,0,0)" }, { transform: `translate3d(${-distance}px,0,0)` }],
         { duration: duration, iterations: Infinity, easing: "linear" });
     });
   }
@@ -334,19 +334,19 @@
       `<div class="bracket-round"><div class="bracket-title">${esc(r.title)}</div><div class="bracket-games">${r.matches.map(m => card(m, !show(start + i))).join("")}</div></div>`).join("");
     let h = "";
     if (!B.teams || B.teams.length < 2) h = `<div class="live-wait">Noch kein Turnier angelegt</div>`;
-    else if (B.format === "tabelle") {
+    else if (B.format === "table") {
       const choice = T.showGroup === undefined || T.showGroup === "" ? null : +T.showGroup;
       const shown = B.groups.filter((g, i) => choice === null || i === choice);
       const columns = shown.length <= 1 ? 1 : shown.length <= 4 ? 2 : shown.length <= 6 ? 3 : 4;
       h = `<div class="bracket-tables" style="grid-template-columns:repeat(${columns}, 860px)">${shown.map(g => `<div class="bracket-tab"><div class="bracket-title">${esc(g.name)}</div>
         <div class="bracket-tz head"><span>#</span><span></span><span>TEAM</span><span>SP</span><span>S</span><span>N</span><span>${g.withRounds ? "RD" : "+/−"}</span><span>PKT</span></div>` +
-        g.tabelle.map((r, i) => { const t = teamFrom(r.id) || {};
+        g.table.map((r, i) => { const t = teamFrom(r.id) || {};
           return `<div class="bracket-tz${i < (+T.nextPlaces || 0) ? " proceed" : ""}${T.focused === r.id ? " focused" : ""}"><span>${i + 1}</span><div class="bracket-logo">${t.logo ? `<img src="${esc(t.logo)}" alt="">` : esc((t.short || t.name || "?").slice(0, 3))}</div>` +
             `<span class="bracket-tname">${esc(t.name || "")}</span><span>${r.sponsor}</span><span>${r.s}</span><span>${r.n}</span><span>${r.bracket > 0 ? "+" : ""}${r.bracket}</span><b>${r.pts}</b></div>`; }).join("") +
         (T.gamesShow ? `<div class="bracket-tspiele">${g.matches.filter(m => !m.done).slice(0, 4).map(m => card(m, false)).join("")}</div>` : "") + `</div>`).join("")}</div>`;
     }
     else if (B.format === "gsl") h = `<div class="bracket-groups">${B.groups.map(g => `<div class="bracket-group"><div class="bracket-title">${esc(g.name)}</div>${g.matches.map(m => `<div class="bracket-gm"><span>${esc(m.title)}</span>${card(m, false)}</div>`).join("")}</div>`).join("")}</div>`;
-    else if (B.format === "swiss") h = `<div class="bracket-row">${columns(B.rounds, 1)}</div>` + (B.tabelle.length ? `<div class="bracket-swiss">${B.tabelle.map(b => `<div class="bracket-sw ${b.status}">${row(b.id, `${b.s}–${b.n}`, b.status === "proceed", false)}</div>`).join("")}</div>` : "");
+    else if (B.format === "swiss") h = `<div class="bracket-row">${columns(B.rounds, 1)}</div>` + (B.table.length ? `<div class="bracket-swiss">${B.table.map(b => `<div class="bracket-sw ${b.status}">${row(b.id, `${b.s}–${b.n}`, b.status === "proceed", false)}</div>`).join("")}</div>` : "");
     else {
       h = `<div class="bracket-row">${columns(B.rounds, 1)}${B.finale && B.bottom.length === 0 ? "" : ""}</div>`;
       if (B.bottom.length) h = `<div class="bracket-de"><div class="bracket-row">${columns(B.rounds, 1)}</div><div class="bracket-row bottom">${columns(B.bottom, 1)}</div></div>` +
@@ -678,8 +678,8 @@
       const keyName = JSON.stringify([Q, !!(Z.speaker || {}).on, Q.type === "link" ? +audioSettings(k.dataset.source).delay || 0 : 0, PREVIEW && Q.type === "link" ? monitorOn() : 0]);
       if (k._source === keyName) return;
       k._source = keyName;
-      const alt = k.querySelector(".cam-source");
-      if (alt) { if (alt._stream) alt._stream.getTracks().forEach(t => t.stop()); alt.remove(); }
+      const oldSource = k.querySelector(".cam-source");
+      if (oldSource) { if (oldSource._stream) oldSource._stream.getTracks().forEach(t => t.stop()); oldSource.remove(); }
       const active = Q.type && Q.type !== "empty" && (Q.type !== "link" || Q.url) && (Q.type !== "image" || Q.image);
       k.classList.toggle("filled", !!active);
       if (!active) return;
@@ -787,7 +787,7 @@
     const present = [...backdrop.querySelectorAll("video")];
     const bgAudio = !audioSettings("background").mute;
     const make = () => {
-      if (present.length) { const alt = present.shift(); audioForVideo(alt, bgAudio); return alt; }
+      if (present.length) { const firstVideo = present.shift(); audioForVideo(firstVideo, bgAudio); return firstVideo; }
       const v = document.createElement("video"); setTimeout(() => audioForVideo(v, bgAudio), 0);
       ["muted", "autoplay", "playsinline"].forEach(a => v.setAttribute(a, ""));
       v.muted = true; v.playsInline = true; v.preload = "auto"; v.disablePictureInPicture = true;
@@ -829,7 +829,7 @@
         if (!valid()) return;                                    // inzwischen neu eingerichtet
         if (r.ok) {
           upcoming.classList.add("on"); active.classList.remove("on");
-          const alt = active; setTimeout(() => { if (!alt.classList.contains("on")) alt.pause(); }, 1400);
+          const previous = active; setTimeout(() => { if (!previous.classList.contains("on")) previous.pause(); }, 1400);
           [active, upcoming] = [upcoming, active];
           const v = active;
           v.onended = () => { if (valid() && v === active) proceed(); };
@@ -891,8 +891,8 @@
       if (n !== m.num) return;
       m.cover.appendChild(img);
       requestAnimationFrame(() => requestAnimationFrame(() => img.classList.add("on")));
-      const alt = m.active; m.active = img;
-      if (alt) setTimeout(() => alt.remove(), 900);
+      const previous = m.active; m.active = img;
+      if (previous) setTimeout(() => previous.remove(), 900);
     };
   }
   function musicShow(d) {
@@ -985,7 +985,7 @@
     const now = Date.now();
     if (reported[text] && now - reported[text] < 30000) return;
     reported[text] = now;
-    const alt = Object.keys(reported); if (alt.length > 50) alt.slice(0, 25).forEach(k => delete reported[k]);
+    const reportedKeys = Object.keys(reported); if (reportedKeys.length > 50) reportedKeys.slice(0, 25).forEach(k => delete reported[k]);
     if (K.SERVER && !PREVIEW) fetch("/api/report", { method: "POST", body: JSON.stringify({ page: currentSceneName() + (/OBS\//.test(navigator.userAgent) ? " (OBS)" : ""), text: String(text).slice(0, 300) }) }).catch(() => {});
   }
   if (PREVIEW) document.documentElement.style.background = "#0b0c10";

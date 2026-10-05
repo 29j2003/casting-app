@@ -98,4 +98,5 @@ def migrate_data_folder(data_dir: Path, log=lambda text, level="info": None) -> 
 
 
 def _uses_old_names(data) -> bool:
+    """True if a stored dict still has keys from version 2.1 or older."""
     return isinstance(data, dict) and any(key in _table()["keys"] for key in data)

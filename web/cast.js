@@ -1,6 +1,16 @@
 /* =====================================================================
-   CAST-OVERLAY · Szenen-Logik
-   Liest den Zustand (von der Steuerseite) und zeichnet die Szene.
+   CASTING-APP · Zeichnen der Overlays (läuft in jeder Szene und in overlay.html)
+   Liest den Zustand Z (von der Steuerseite) und zeichnet alles, was eine
+   Szene zeigt: Theme und Marke, Teams, Veto, Serie, Sponsoren, Turnierbaum,
+   CS2-Livedaten, Einblendungen, Kameras/Quellen, Hintergrund-Videos, Musik.
+   Grundregeln:
+     · newNeeded(el, key): ein Teil wird nur neu gezeichnet, wenn sich sein
+       Schlüssel geändert hat – das hält die Last in OBS klein.
+     · data-t="texts.title" auf einem Element = Text aus dem Zustand (Pfad).
+     · Hinweise für den Bediener nur in der Vorschau (body.idle), nie im Stream.
+     · Feste Wörter im Overlay kommen aus K.word(Z, …) (Sprache der Overlays).
+   URL-Schalter: ?preview=1 (Vorschau der Steuerseite), ?embedded=1 (in
+   overlay.html eingebettet), ?test=1 (Beispiel-Musik zum Testen).
    ===================================================================== */
 (function () {
   "use strict";
@@ -476,7 +486,6 @@
     }
     return `<div class="box-head">${esc(e.title || "")}</div><div class="box-field">${esc(e.text || "")}</div>`;
   }
-  const DEFAULT_POS = { lowerthird: "bl", caster: "bl", hint: "tc", score: "tc", mapinfo: "tl", mapfact: "tr", scoreboard: "bc", players: "bl" };
   function graphics() {
     if (EMBEDDED) return;
     let stageLayer = document.querySelector(".gfx-layer");
@@ -486,7 +495,7 @@
     list.forEach(e => {
       let d = stageLayer.querySelector(`[data-id="${CSS.escape(e.id)}"]`);
       if (!d) { d = document.createElement("div"); d.dataset.id = e.id; stageLayer.appendChild(d); }
-      const pos = /^(bl|br|bc|tl|tr|tc|cl|cr)$/.test(e.pos || "") ? e.pos : (DEFAULT_POS[e.type] || "bl");
+      const pos = K.GFX_POSITIONS.includes(e.pos) ? e.pos : (K.GFX_DEFAULT_POS[e.type] || "bl");
       const cssClass = `gfx gfx-${e.type} pos-${pos}` + (e.type === "caster" ? "" : " box") + (e.title ? "" : " without-title");
       const content = gfxContent(e);
       if (d.dataset.cacheKey !== cssClass + content) {
@@ -1035,7 +1044,7 @@
   if (!EMBEDDED && !PREVIEW) K.channel({   // Vorschau & eingebettete Szenen bekommen den Stand direkt
     query: true,
     onlyServer: true,
-    onLive(d) { liveData = d; liveDraw(); },   // über den Cast-Dienst: Stand regelmäßig abholen
+    onLive(d) { liveData = d; liveDraw(); },   // CS2-Livedaten vom Server (Ereignis „live“)
     obs: false,   // Overlays verbinden sich nicht selbst – die Steuerseite schickt über OBS direkt hierher
     onMessage(d) {
       if (d.cast === "images" && d.images) K.Images.set(d.images).then(newDraw);

@@ -35,6 +35,12 @@ def test_values_paths_and_texts():
     assert new["teams"]["a"]["name"] == "Spieler"                     # user text stays
 
 
+def test_scene_order_groups_of_the_control_page():
+    """ui.sceneRow from 2.1 keeps its group headers (#vor → #pregame …)."""
+    assert legacy.migrate({"sceneRow": ["#vor", "intro", "#im", "ingame", "#nach", "#zwischen"]}) == \
+        {"sceneRow": ["#pregame", "intro", "#during", "ingame", "#post", "#between"]}
+
+
 def test_data_folder_is_taken_over_once(tmp_path):
     (tmp_path / "zustand.json").write_text(json.dumps(load("state-2.1-default.json")), encoding="utf-8")
     (tmp_path / "gsi.json").write_text(json.dumps({"token": "abc", "netz": True, "seiteA": "T", "teamA": "", "teamB": ""}))

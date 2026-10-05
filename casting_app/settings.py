@@ -22,6 +22,7 @@ class AppSettings:
     """Small JSON-backed settings store; unknown keys and invalid values are ignored."""
 
     def __init__(self, data_dir: Path):
+        """Load settings.json from `data_dir`; missing or broken files give the defaults."""
         self._file = data_dir / "settings.json"
         self._lock = threading.Lock()
         self._values = dict(DEFAULTS)
@@ -32,10 +33,12 @@ class AppSettings:
             pass
 
     def get(self, name: str):
+        """Current value of one setting (see DEFAULTS for the names)."""
         with self._lock:
             return self._values[name]
 
     def as_dict(self) -> dict:
+        """Copy of all settings (sent to the control page by /api/app-settings)."""
         with self._lock:
             return dict(self._values)
 

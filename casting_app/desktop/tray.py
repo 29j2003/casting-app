@@ -18,6 +18,7 @@ class TrayIcon(QObject):
     message_clicked = Signal()          # the user clicked a notification (e.g. "new version")
 
     def __init__(self, icon: QIcon, parent=None):
+        """Tray icon with its menu; texts follow the app language (retranslate())."""
         super().__init__(parent)
         self._icon = QSystemTrayIcon(icon, self)
         menu = QMenu()
@@ -61,11 +62,13 @@ class TrayIcon(QObject):
             self._icon.showMessage(title, text, QSystemTrayIcon.MessageIcon.Information, 5000)
 
     def tell_once_that_app_keeps_running(self) -> None:
+        """After "close window only": explain once that the overlays keep running."""
         if not self._hint_shown:
             self._hint_shown = True
             self.tell(text("tray.keeps_running.title", app=APP_NAME), text("tray.keeps_running.text"))
 
     def _clicked(self, reason: QSystemTrayIcon.ActivationReason) -> None:
+        """A click on the icon opens the window (except on macOS, where it opens the menu)."""
         # a click opens the window (on macOS a click shows the menu instead)
         if not IS_MAC and reason == QSystemTrayIcon.ActivationReason.Trigger:
             self.open_requested.emit()

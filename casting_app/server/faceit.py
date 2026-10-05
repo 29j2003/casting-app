@@ -45,6 +45,7 @@ def fetch(path_with_query: str, api_key: str | None) -> tuple[int, bytes]:
 
 
 def _read_limited(stream) -> bytes:
+    """Read an answer, refusing anything larger than MAX_ANSWER_SIZE."""
     body = stream.read(MAX_ANSWER_SIZE + 1)
     if len(body) > MAX_ANSWER_SIZE:
         raise OSError("Antwort zu groß")

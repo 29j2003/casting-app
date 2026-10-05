@@ -238,7 +238,7 @@ Kameras laufen dabei ohne Neuladen weiter.
 
 Die Windows-Dateien sind nicht signiert, deshalb warnt Windows beim ersten Start. Eine vertrauenswürdige Signatur braucht ein
 Code-Signing-Zertifikat, das auf deinen Namen ausgestellt ist (z. B. Microsoft Trusted Signing oder ein OV/EV-Zertifikat einer
-Zertifizierungsstelle). Mit so einem Zertifikat signiert der Bau (`tools/build.py`) Installer und App selbst, siehe README.
+Zertifizierungsstelle). Mit so einem Zertifikat signiert der Bau (`tools/build.py`) Installer und App selbst, siehe ENTWICKLUNG.md.
 Die macOS-App ist nur ad-hoc signiert (ohne Apple-Konto); die Beglaubigung durch Apple (Notarisierung) ist vorbereitet, aber aus.
 
 ## Sicherheit

@@ -330,7 +330,7 @@ window.CastLanguages.en = {
  "In OBS entsteht (oder wird erneuert) „Cast – Cleanfeed“ mit diesen Quellen aus „{}“:": "OBS gets (or renews) “Cast – Cleanfeed” with these sources from “{}”:",
  "In OBS gibt es dann nur": "In OBS there is then only",
  "In OBS gibt es noch keine Quelle der App mit Ton – Setup → Szenen & OBS → „In OBS anlegen“.": "OBS has no source of the app with audio yet – Setup → Scenes & OBS → “Create in OBS”.",
- "In OBS muss dafür der Kamerazugriff für Browserquellen erlaubt sein – siehe ANLEITUNG.": "In OBS camera access for browser sources must be allowed for this – see the manual.",
+ "In OBS muss dafür der Kamerazugriff für Browserquellen erlaubt sein – siehe Anleitung (LIESMICH).": "In OBS camera access for browser sources must be allowed for this – see the manual.",
  "In OBS wurde noch keine Browserquelle gefunden.": "No browser source found in OBS yet.",
  "In {} direkt unter das Overlay legen, bildfüllend": "Put it in {} directly below the overlay, full screen",
  "In „{}“ entsteht „{}“ – nur der Ton von {}, regelbar wie jede OBS-Quelle. Im Overlay wird sein Ton stumm, damit nichts doppelt läuft.": "“{}” gets “{}” – only the audio of {}, adjustable like any OBS source. Its audio is muted in the overlay so nothing plays twice.",

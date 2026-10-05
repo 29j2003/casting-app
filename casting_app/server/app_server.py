@@ -24,6 +24,7 @@ from typing import Callable
 from .. import secret_store
 from ..app_log import AppLog
 from ..paths import IS_WINDOWS, WEB_DIR, AppFolders
+from ..settings import AppSettings
 from ..version import VERSION
 from . import cs2_setup, faceit
 from .event_hub import EventClient, EventHub
@@ -70,6 +71,8 @@ class CastingServer:
         self.secrets = secrets
         self.log = log
         self.events = EventHub()
+        self.settings = AppSettings(folders.data)
+        self.available_update: dict | None = None   # set by the update check: {"version", "url"}
         self.game_state = GameStateReceiver(folders.data, self.events.broadcast, log.write)
         self._on_quit_requested = on_quit_requested
         self._open_folder = open_folder
@@ -287,6 +290,10 @@ class CastingServer:
             return self._api_dach_access(request)
         if path == "/api/faceit-schluessel":
             return self._api_faceit_key(request)
+        if path == "/api/app-einstellungen":
+            if method == "POST":
+                self.settings.update(request.read_json(1000))
+            return request.send_json(200, {**self.settings.as_dict(), "update": self.available_update})
         if path == "/api/obs-passwort":
             return self._api_obs_password(request)
         if path == "/api/obs-anmeldung" and method == "POST":

@@ -229,8 +229,11 @@ Die macOS-App ist nur ad-hoc signiert (ohne Apple-Konto); die Beglaubigung durch
 
 * Die App nimmt nur Anfragen von **diesem PC** an. Andere Geräte im Netz werden abgelehnt.
 * Nur die eigenen Seiten dürfen zugreifen, keine Webseiten aus dem Internet.
-* **Vom PC geht nichts nach außen.** Die einzige Verbindung nach draußen ist das Abholen der FACEIT-Match-Daten
-  (nur Match-ID und dein API-Key).
+* **Vom PC geht nichts nach außen** außer dem Abholen der FACEIT-Match-Daten (nur Match-ID und dein API-Key) und – beim
+  Start der Desktop-App – der Frage an GitHub, ob es eine neuere Version gibt (nur die Versionsnummer wird abgerufen;
+  abschaltbar unter ⚙ → App). Gibt es eine, zeigt die App das im Tray und unter ⚙ → App an.
+* Das **OBS-Passwort** liegt ebenfalls im Schlüsselbund. Die Anmeldung bei OBS rechnet die App selbst aus, das Passwort
+  steht nicht im Browser-Speicher der Steuerseite (ein altes wird beim ersten Start umgezogen).
 * Der **FACEIT-Schlüssel** sowie **Nutzer-ID und Key für DACH CS** liegen nur im Schlüsselbund des Systems – Windows:
   Anmeldeinformationsverwaltung (an dein Windows-Konto gebunden) · macOS: Schlüsselbund · Linux: Secret Service bzw. KWallet.
   Im Datenordner der App liegt nichts davon. Gibt es keinen Schlüsselbund (manche Linux-Systeme), gelten sie nur bis zum

@@ -123,12 +123,24 @@
     $$("[data-t]").forEach(e => { const v = pull(e.dataset.t); if (e.textContent !== String(v ?? "")) e.textContent = v ?? ""; });
     fit();
   }
+  // Text an die Box anpassen: erst verkleinern; müsste ein Teamname stärker als auf 70 % schrumpfen
+  // und gibt es ein Kürzel, steht stattdessen das Kürzel da (in voller Größe, wenn es passt).
+  const FIT_SHORT_BELOW = 0.7;
   function fit() {
     $$("[data-matching]").forEach(e => {
-      e.style.fontSize = "";
-      const box = e.parentElement;
-      let s = parseFloat(getComputedStyle(e).fontSize);
-      while (e.scrollWidth > box.clientWidth - 30 && s > 16) { s -= 2; e.style.fontSize = s + "px"; }
+      const names = [...e.querySelectorAll("[data-team-name]"), ...(e.matches("[data-team-name]") ? [e] : [])];
+      names.forEach(n => { if (n.dataset.full !== undefined && n.textContent !== n.dataset.full) n.textContent = n.dataset.full; });
+      const shrink = () => {
+        e.style.fontSize = "";
+        const box = e.parentElement, start = parseFloat(getComputedStyle(e).fontSize);
+        let s = start;
+        while (e.scrollWidth > box.clientWidth - 30 && s > 16) { s -= 2; e.style.fontSize = s + "px"; }
+        return s / start;
+      };
+      if (shrink() < FIT_SHORT_BELOW && names.some(n => n.dataset.short)) {
+        names.forEach(n => { if (n.dataset.short) n.textContent = n.dataset.short; });
+        shrink();
+      }
     });
   }
 
@@ -167,7 +179,7 @@
       const t = Z.teams[k] || {};
       $$(`.team-logo.${k}`).forEach(e => {
         const words = String(t.name || k).split(/\s+/).filter(Boolean);
-        const abbrev = (words.length > 1 ? words.map(w => w[0]).join("") : words[0] || k).replace(/[^A-Za-z0-9ÄÖÜäöü]/g, "").slice(0, 3).toUpperCase();
+        const abbrev = t.short ? String(t.short).toUpperCase() : (words.length > 1 ? words.map(w => w[0]).join("") : words[0] || k).replace(/[^A-Za-z0-9ÄÖÜäöü]/g, "").slice(0, 3).toUpperCase();
         const fresh = t.logo ? `<img src="${esc(t.logo)}" alt="">` : esc(abbrev);
         if (e.dataset.content !== fresh) {
           e.dataset.content = fresh; e.innerHTML = fresh;
@@ -176,7 +188,12 @@
         }
         e.classList.toggle("noOne", !t.logo);
       });
-      $$(`[data-team-name="${k}"]`).forEach(e => { e.textContent = t.name || ""; });
+      // Text nur bei neuem Namen setzen – fit() entscheidet, ob Name oder Kürzel dasteht
+      $$(`[data-team-name="${k}"]`).forEach(e => {
+        const full = t.name || "", short = t.short || "";
+        if (e.dataset.full === full && e.dataset.short === short) return;
+        e.dataset.full = full; e.dataset.short = short; e.textContent = full;
+      });
       $$(`[data-team-score="${k}"]`).forEach(e => { e.textContent = t.score ?? 0; });
     });
     $$(".vs").forEach(e => {

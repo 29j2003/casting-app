@@ -7,7 +7,7 @@ const SUBPAGES = {
   match: [["import", "Import & Sitzungen", ["sessions", "faceit"]], ["teams", "Teams & Spieler", ["teams-result", "players"]],
           ["veto", "Map-Veto & Serie", ["map-veto", "series-map-results"]], ["caster", "Caster & Kameras", ["caster-guest", "cameras-sources"]], ["texts", "Timer & Texte", ["timer", "tickers-title"]]],
   setup: [["appearance", "Aussehen", ["themes", "theme-adjust", "headings"]], ["sponsors", "Sponsoren", ["sponsors"]], ["maps", "Map-Pool", ["map-pool"]],
-          ["background", "Hintergrund", ["background-clips-dronefootage"]], ["sceneList", "Szenen & OBS", ["scenes-setup"]], ["cs2", "CS2-Livedaten", ["cs2-livedata"]]]
+          ["background", "Hintergrund", ["background-clips-dronefootage"]], ["sceneList", "Szenen & OBS", ["scenes-setup"]], ["panels", "Szenen-Panels", ["scene-panels"]], ["cs2", "CS2-Livedaten", ["cs2-livedata"]]]
 };
 function belowFrom(group, slug) { const u = (SUBPAGES[group] || []).find(([, , l]) => l.includes(slug)); return u ? u[0] : null; }
 function belowApply() {

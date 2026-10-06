@@ -484,6 +484,7 @@
           <label>Überschrift<input type="text" data-field="texts.sponsorLabel"></label>
         </div>
         <label class="toggleSwitch"><input type="checkbox" data-field="sponsors.inTicker" data-kind="bool"> Sponsoren zusätzlich im Lauftext nennen</label>
+        <label class="toggleSwitch"><input type="checkbox" data-field="sponsors.bar" data-kind="bool"> Restzeit-Balken unter dem Logo (zeigt, wann der nächste Sponsor kommt)</label>
         <div class="line">
           <label>Lauftext-Einleitung<input type="text" data-field="texts.sponsorTicker"></label>
           <label>Titel der Sponsoren-Szene<input type="text" data-field="texts.sponsorsTitle"></label>
@@ -497,33 +498,77 @@
     <details data-area="map-pool">
       <summary>Map-Pool</summary>
       <div class="content">
-        <div id="pool" class="list"></div>
-        <div class="line">
-          <button class="button" id="poolPlus">+ Map</button>
-          <button class="button" id="poolDefault">Standard wiederherstellen</button>
+        <div class="line" style="align-items:center"><span class="state" id="poolState"></span><span style="flex:1"></span>
+          <button class="button" id="poolDefault">Auf Active Duty zurücksetzen</button></div>
+        <h4 class="pool-title">Im Pool <span class="small" id="poolCount"></span><span class="small">· Ziehen = Reihenfolge im Veto · Schalter = im Pool</span></h4>
+        <div id="pool" class="pool-grid"></div>
+        <h4 class="pool-title">Weitere Maps <span class="small">· Schalter an = kommt in den Pool</span></h4>
+        <div id="poolMore" class="pool-grid more"></div>
+        <div class="pool-add">
+          <b>+ Eigene Map</b>
+          <div class="line" style="align-items:center"><input type="text" id="poolWorkshop" placeholder="Workshop-Link oder ID einfügen" spellcheck="false" autocomplete="off" style="flex:1">
+            <button class="button main" id="poolWorkshopGo">Aus dem Workshop holen</button><button class="button" id="poolPlus">Von Hand: Name + Bild</button></div>
+          <span class="small" id="poolWorkshopStatus">Holt Name und Vorschaubild von Steam – nur die Workshop-Nummer geht dorthin.</span>
         </div>
-        <p class="small">Alle Maps haben schon ein Bild. „im Veto" = steht bei der Veto-Auswahl zur Verfügung (aktiver Pool). Eigenes Bild: Klick auf das Feld. <b>Optimal: 262 × 470 px</b> (Hochformat). „Füllen" schneidet passend zu, „Ganz" zeigt das komplette Bild. FACEIT liefert Map-Bilder automatisch mit.</p>
+        <div class="pool-enough" id="poolEnough"></div>
+        <p class="small">Eigenes Bild: Klick auf das Bild. <b>Optimal: 262 × 470 px</b> (Hochformat). „Füllen" schneidet passend zu, „Ganz" zeigt das komplette Bild. FACEIT liefert Map-Bilder automatisch mit.</p>
       </div>
     </details>
 
     <details data-area="background-clips-dronefootage">
-      <summary>Hintergrund (Clips / Drohnenaufnahmen)</summary>
+      <summary>Hintergrund (Playlisten)</summary>
       <div class="content">
-        <span class="small">Wer spielt die Videos ab?</span>
-        <div class="segment" id="bgSource">
-          <button data-q="overlay">Das Overlay</button>
-          <button data-q="obs">OBS – empfohlen für H.265 &amp; 4K</button>
-        </div>
-        <div class="line" id="bgObs"><button class="button main" id="bgSetup">In OBS einrichten</button></div>
+        <div class="line" style="align-items:center"><span class="small">Wer spielt die Videos ab?</span>
+          <div class="segment" id="bgSource">
+            <button data-q="overlay">Das Overlay</button>
+            <button data-q="obs">OBS – empfohlen für H.265 &amp; 4K</button>
+          </div></div>
+        <div class="line" id="bgObs"><button class="button" id="bgSetup">In OBS einrichten</button></div>
         <p class="small" id="bgStatus"></p>
-        <p class="small">Videos in den <b>Videos-Ordner</b> legen, dann hier anhaken. Sie laufen nacheinander in Schleife.</p>
+        <div class="bg-layout">
+          <div class="bg-lists">
+            <b class="small">PLAYLISTEN</b>
+            <div id="bgLists" class="list"></div>
+            <button class="button" id="bgListNew">+ Playlist</button>
+            <p class="small">Blau = in diesen Szenen läuft sie von selbst. Clips laufen nur, wenn du sie in Live startest.</p>
+          </div>
+          <div class="bg-edit" id="bgEdit">
+            <div class="line" style="align-items:end"><label style="flex:1">Name<input type="text" id="bgName"></label><button class="button danger" id="bgListDelete">Playlist löschen</button></div>
+            <span class="small">Art</span>
+            <div class="bg-kinds" id="bgKinds">
+              <button data-kind="loop"><b>Ein Video · Dauerschleife</b><span class="small">Läuft endlos, nahtlos verbunden.</span></button>
+              <button data-kind="list"><b>Mehrere Videos</b><span class="small">Nacheinander oder zufällig, dann von vorn.</span></button>
+              <button data-kind="clips"><b>Clips</b><span class="small">Einmal durch, mit Ton – danach wieder der Hintergrund.</span></button>
+            </div>
+            <span class="small" id="bgVideosHead">Videos – Reihenfolge mit ↑ ↓</span>
+            <div id="bgVideos" class="list"></div>
+            <div class="line" id="bgPassageLine" style="align-items:end">
+              <div><span class="small">Übergang zwischen den Videos</span><div class="segment" id="bgPassage"><button data-v="cut">Schnitt</button><button data-v="fade">Blende</button><button data-v="black">Über Schwarz</button></div></div>
+              <label>Dauer (Sek.)<input type="number" id="bgFade" min="0" max="4" step="0.1" style="width:80px"></label>
+              <div><span class="small">Reihenfolge</span><div class="segment" id="bgOrder"><button data-v="seq">Nacheinander</button><button data-v="shuffle">Zufällig</button></div></div>
+            </div>
+            <label class="toggleSwitch" id="bgAudioLine"><input type="checkbox" id="bgAudio"> Ton der Videos abspielen</label>
+            <div id="bgScenesLine"><span class="small">Läuft von selbst in (Ingame nie – dort liegt das Spielbild)</span><div class="bg-scenes" id="bgScenes"></div></div>
+          </div>
+        </div>
+        <b class="small">BIBLIOTHEK – alle Videos im Videos-Ordner · Haken = in der gewählten Playlist</b>
         <div class="line"><button class="button" data-folder="videos">Videos-Ordner öffnen</button><button class="button" id="videosNew">Aktualisieren</button></div>
         <div id="videoInfo" class="list"></div>
-      <p class="small">Spielt <b>OBS</b> die Videos ab, gehen alle Formate, die OBS kann (auch H.265 und 4K) – die App legt dafür eine Medienquelle unter das Overlay
-        und blendet sie in der Ingame-Szene automatisch aus. Spielt <b>das Overlay</b> ab, ist MP4 (H.264) oder WebM (VP9) am sichersten.</p>
-      <p class="small">Zeigt OBS das Video nur zeitweise (in der Vorschau hier läuft es)? Dann <b>„OBS spielt ab"</b> wählen – oder in OBS unter
-        Einstellungen → Erweitert → Quellen die <b>Hardwarebeschleunigung für Browserquellen</b> aus- bzw. einschalten und OBS neu starten.</p>
         <label>Abdunkeln<input type="range" min="0" max="0.9" step="0.05" data-field="background.dim" data-kind="number"></label>
+        <p class="small">Spielt <b>OBS</b> die Videos ab, gehen alle Formate, die OBS kann (auch H.265 und 4K) – die App legt dafür eine Medienquelle unter das Overlay
+          und blendet sie in der Ingame-Szene automatisch aus. Spielt <b>das Overlay</b> ab, ist MP4 (H.264) oder WebM (VP9) am sichersten.</p>
+        <p class="small">Spielt OBS ab, ist der Übergang zwischen zwei Videos ein Schnitt. Clips spielt immer das Overlay (mit Ton).</p>
+        <p class="small">Zeigt OBS das Video nur zeitweise (in der Vorschau hier läuft es)? Dann <b>„OBS spielt ab"</b> wählen – oder in OBS unter
+          Einstellungen → Erweitert → Quellen die <b>Hardwarebeschleunigung für Browserquellen</b> aus- bzw. einschalten und OBS neu starten.</p>
+      </div>
+    </details>
+
+    <details open data-area="scene-panels">
+      <summary>Szenen-Panels</summary>
+      <div class="content">
+        <p class="small">Welche Felder jede Szene in Live im <b>Panel der Szene</b> mitbringt. Grün = Feld ist dabei. Lila Name = angepasst, sonst Vorgabe.</p>
+        <label class="toggleSwitch"><input type="checkbox" id="panelAutoSetup"> Panel öffnet sich beim Szenenwechsel</label>
+        <div class="panel-table-wrap"><table class="panel-table" id="panelTable"></table></div>
       </div>
     </details>
 
@@ -582,6 +627,8 @@
               <div class="segment" id="gsiSide"><button data-side="CT">CT</button><button data-side="T">T</button></div></div>
             <p class="small">Zur Halbzeit tauscht die App die Seiten selbst. Heißen die Teams auf dem Server wie Team A/B (z. B. bei FACEIT), ordnet sie automatisch zu.</p></li>
         </ol>
+        <div class="line" style="align-items:center"><button class="button" id="gsiDemo" data-icon="play">Testdaten abspielen</button>
+          <span class="small" id="gsiDemoText">Ein kurzes Beispiel-Match nur in der Vorschau hier – so prüfst du Scoreboard und Team-Szenen ohne Spiel. Nie im Stream.</span></div>
         <div id="gsiTable" class="gsi-table"></div>
         <div class="line" style="align-items:end">
           <label>Head-to-Head Team A<select id="h2hA"></select></label>
@@ -662,6 +709,9 @@
     </label>
   </div>
   <div class="stage-slot" id="stageSlot"><div class="stage" id="stage"><iframe id="frame" allow="autoplay" title="Vorschau"></iframe></div></div>
+  <div class="bg-corner" id="bgCorner"><span class="small">HINTERGRUND</span><select id="bgCornerList" aria-label="Hintergrund dieser Szene"></select>
+    <button class="button" id="bgCornerKeep" title="Diese Playlist ab jetzt immer für diese Szene">Für die Szene merken</button><span style="flex:1"></span>
+    <select id="bgClipList" aria-label="Clip-Playlist"></select><button class="button" id="bgClipPlay" data-icon="play">Clip zeigen</button><button class="button" id="bgClipStop" hidden>Clip stoppen</button></div>
   <p class="small" id="previewText"></p>
 </div>
 <div class="divider-h" id="dividerH" title="Ziehen, um die Höhe zu ändern"></div>

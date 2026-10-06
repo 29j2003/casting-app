@@ -26,6 +26,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import urllib.request
 from pathlib import Path
 
@@ -167,7 +168,16 @@ def package_mac(app_bundle: Path) -> None:
     run("codesign", "--verify", "--deep", "--strict", app_bundle)
     base = DIST / f"{APP_NAME}-{VERSION}-mac-{architecture}"
     run("ditto", "-c", "-k", "--keepParent", app_bundle, f"{base}.zip")
-    run("hdiutil", "create", "-volname", APP_NAME, "-srcfolder", app_bundle, "-ov", "-format", "UDZO", f"{base}.dmg")
+    # hdiutil fails now and then with "Resource busy" on the GitHub Macs (a disk image service still busy): try again
+    for attempt in range(1, 4):
+        try:
+            run("hdiutil", "create", "-volname", APP_NAME, "-srcfolder", app_bundle, "-ov", "-format", "UDZO", f"{base}.dmg")
+            break
+        except subprocess.CalledProcessError:
+            if attempt == 3:
+                raise
+            print(f"hdiutil fehlgeschlagen – neuer Versuch in {10 * attempt} s", flush=True)
+            time.sleep(10 * attempt)
     if os.environ.get("MAC_NOTARIZE") == "1":
         run("xcrun", "notarytool", "submit", f"{base}.dmg", "--apple-id", os.environ["APPLE_ID"],
             "--password", os.environ["APPLE_APP_PASSWORD"], "--team-id", os.environ["APPLE_TEAM_ID"], "--wait")

@@ -20,6 +20,7 @@ Signing
              APPLE_APP_PASSWORD and APPLE_TEAM_ID to sign with hardened runtime and notarize.
 """
 
+import importlib.util
 import os
 import platform
 import re
@@ -87,7 +88,10 @@ def run_pyinstaller() -> Path:
                "--distpath", DIST, "--workpath", WORK, "--specpath", WORK, "--paths", ROOT,
                "--add-data", f"{ROOT / 'web'}{separator}web",
                "--add-data", f"{ROOT / 'casting_app' / 'desktop' / 'scripts'}{separator}casting_app/desktop/scripts",
+               "--add-data", f"{ROOT / 'LICENSES'}{separator}LICENSES",
                "--collect-submodules", "keyring.backends"]
+    if importlib.util.find_spec("imageio_ffmpeg"):          # FFmpeg for H.264 in the app window (not on macOS Intel)
+        command += ["--collect-all", "imageio_ffmpeg"]
     for module in UNUSED_MODULES:
         command += ["--exclude-module", module]
     if sys.platform == "win32":

@@ -25,6 +25,7 @@ from casting_app import instance
 from casting_app.app_log import AppLog
 from casting_app.desktop import app as desktop_app
 from casting_app.paths import DATA_DIR
+from casting_app.server.media_converter import find_ffmpeg
 from casting_app.version import VERSION
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -161,6 +162,28 @@ def test_app_window_audio_is_off_by_default_and_regulates_foreign_frames(qtbot, 
         assert page.isAudioMuted()
 
 
+@pytest.mark.skipif(find_ffmpeg() is None, reason="FFmpeg (imageio-ffmpeg) fehlt")
+def test_h264_videos_of_foreign_pages_play_in_the_app_window(qtbot, desktop):
+    """Qt WebEngine has no H.264: the app converts it (media.py → /api/media → WebM), also from <source type=video/mp4>."""
+    page = wait_for_page(qtbot, desktop)
+    with _https_test_page(with_video=True) as https_url:
+        url = https_url + "?source"
+        qtbot.waitUntil(lambda: run_js(qtbot, page, "!!($('frame').contentDocument && $('frame').contentDocument.readyState === 'complete')"),
+                        timeout=10_000)
+        qtbot.wait(1500)                                      # the preview settles (it may reload once after start)
+        run_js(qtbot, page, f"""(() => {{ const d = $('frame').contentDocument, f = d.createElement('iframe');
+            f.id = 'video-frame'; f.src = {json.dumps(url)}; d.body.appendChild(f); }})()""")
+        frame = _wait_for_frame(qtbot, page, url)
+        state = "(() => { const v = document.getElementById('v'); return v ? [v.videoWidth, v.currentTime > 0.3, v.error && v.error.code] : null; })()"
+        for _ in range(150):
+            result = run_js(qtbot, frame, state)
+            if result and result[0] and result[1]:
+                break
+            qtbot.wait(100)
+        assert result and result[0] == 320 and result[1], f"Video spielt nicht: {result}"
+        assert run_js(qtbot, frame, "document.createElement('video').canPlayType('video/mp4')") == "maybe"
+
+
 def test_secrets_stay_in_keyring_only(qtbot, desktop):
     page = wait_for_page(qtbot, desktop)
     faceit_key, dach_key = "abcdef12-3456-7890-abcd-ef1234567890", "dachkey-0815"
@@ -205,16 +228,30 @@ def _wait_for_frame(qtbot, page, url_start):
 class _https_test_page:
     """Small HTTPS page with its own certificate – a foreign origin like VDO.Ninja or DACH CS."""
 
+    def __init__(self, with_video: bool = False):
+        self.with_video = with_video
+
     def __enter__(self):
         folder = Path(tempfile.mkdtemp())
         subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-subj", "/CN=127.0.0.1", "-days", "1",
                         "-keyout", folder / "key.pem", "-out", folder / "cert.pem"], check=True, capture_output=True)
 
+        video = self.video = folder / "clip.mp4"
+        if self.with_video:                                   # an H.264/AAC clip, as DACH CS serves it
+            subprocess.run([find_ffmpeg(), "-v", "error", "-f", "lavfi", "-i", "testsrc=size=320x180:rate=25", "-f", "lavfi",
+                            "-i", "sine=frequency=440", "-t", "4", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-movflags", "+faststart",
+                            str(video)], check=True)
+
         class Page(BaseHTTPRequestHandler):
             def do_GET(self):
-                body = b"<video muted></video><p>fremde Seite</p>"
+                if self.path.startswith("/clip.mp4"):
+                    body, kind = video.read_bytes(), "video/mp4"
+                elif "source" in self.path:          # <source type="video/mp4">: Chromium would skip it
+                    body, kind = b'<video id="v" muted autoplay loop><source src="/clip.mp4" type="video/mp4"></video>', "text/html"
+                else:
+                    body, kind = b"<video muted></video><p>fremde Seite</p>", "text/html"
                 self.send_response(200)
-                self.send_header("Content-Type", "text/html")
+                self.send_header("Content-Type", kind)
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)

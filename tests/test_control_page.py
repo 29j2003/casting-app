@@ -307,6 +307,31 @@ def test_a_won_map_is_offered_as_finished(server, browser):
     assert errors == []
 
 
+def test_faceit_swiss_is_told_apart_from_a_round_robin(server, browser):
+    """Swiss pairs teams with the same record from round 2 on; a round robin does that only for about half the games."""
+    page = browser.new_page()
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    result = page.evaluate("""(() => {
+      const ids = ['t1','t2','t3','t4','t5','t6','t7','t8'], won = (a, b) => ids.indexOf(a) < ids.indexOf(b);   // lower seed wins
+      const play = (games, res, round, pairs) => pairs.forEach(([a, b], i) => { const id = round + '-' + i;
+        games.push({ id, round, a, b }); res[id] = won(a, b) ? { a: 2, b: 0, done: true } : { a: 0, b: 2, done: true }; });
+      // Swiss: Runde 1 gesetzt, danach gleiche Bilanz gegeneinander
+      let g = [], r = {};
+      play(g, r, 1, [['t1','t5'],['t2','t6'],['t3','t7'],['t4','t8']]);
+      play(g, r, 2, [['t1','t2'],['t3','t4'],['t5','t6'],['t7','t8']]);
+      play(g, r, 3, [['t1','t3'],['t2','t4'],['t5','t7'],['t6','t8']]);
+      const swiss = faceitLooksSwiss(g, r, '');
+      // jeder gegen jeden (Kreis-Verfahren)
+      g = []; r = {}; const l = ids.slice();
+      for (let round = 1; round < 8; round++) { const pairs = []; for (let i = 0; i < 4; i++) pairs.push([l[i], l[7 - i]]); play(g, r, round, pairs); l.splice(1, 0, l.pop()); }
+      return [swiss, faceitLooksSwiss(g, r, ''), faceitLooksSwiss([], {}, 'SWISS')];
+    })()""")
+    assert result == [True, False, True]
+    assert errors == []
+
+
 def test_css_variables_of_the_control_page_are_defined():
     """Every var(--name) the control page uses (also in JavaScript strings) is defined in its styles (or set from JS)."""
     web = Path(__file__).parent.parent / "web"

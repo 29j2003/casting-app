@@ -365,6 +365,8 @@ window.CastLanguages.en = {
  "Komplettes Logo oben links (ersetzt Quadrat + Schriftzug)": "Complete logo top left (replaces square + lettering)",
  "Kopieren": "Copy",
  "Kürzel": "Short name",
+ "Die Paarungen kommen von FACEIT – „Ergebnisse aktualisieren“ holt neue Runden.": "The pairings come from FACEIT – “Update results” fetches new rounds.",
+ "Swiss wie bei FACEIT": "Swiss like FACEIT",
  "✓ Map beenden?": "✓ Finish map?",
  "Ein Team hat die Map gewonnen – als „Fertig“ eintragen": "A team has won the map – mark it as “Done”",
  "Kürzel – das Overlay zeigt es, wenn der Name nicht ohne starkes Verkleinern passt": "Short name – the overlay shows it when the name does not fit without heavy shrinking",

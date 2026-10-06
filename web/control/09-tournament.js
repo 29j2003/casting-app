@@ -121,7 +121,7 @@ $("tourReset").onclick = async () => {
 };
 // FACEIT: Teams eines Turniers, Team-Statistiken, Ergebnisse
 const tournamentId = s => (String(s || "").match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i) || [])[0] || "";
-async function faceitJson(path) { const r = await fetch("/api/faceit/" + path); if (!r.ok) throw new Error(r.status === 401 ? "kein FACEIT-Schlüssel gespeichert (Match → FACEIT)" : "FACEIT antwortet mit " + r.status); return r.json(); }
+async function faceitJson(path) { const r = await fetch("/api/faceit/" + path); if (!r.ok) throw new Error(r.status === 401 ? "kein FACEIT-Schlüssel gespeichert (⚙ App-Einstellungen → Verbindungen & Zugänge)" : "FACEIT antwortet mit " + r.status); return r.json(); }
 // Turnier komplett übernehmen: Teams (mit Logos und Spielern), Aufbau (Gruppen-Tabelle oder Baum), Ergebnisse, Team-Statistiken
 async function faceitGames(id) {
   const games = [];

@@ -305,6 +305,11 @@ document.querySelectorAll("[data-field]").forEach(e => {
     if (kind === "list") v = v.split("\n").map(s => s.trim()).filter(Boolean);
     if (kind === "number") v = parseFloat(v);
     put(e.dataset.field, v);
+    // dasselbe Feld kann an zwei Stellen stehen (z. B. Titel im Szenen-Panel und unter Setup) – die andere mitziehen
+    document.querySelectorAll(`[data-field="${e.dataset.field}"]`).forEach(o => {
+      if (o === e) return;
+      if (kind === "bool") o.checked = v !== false; else if (kind === "list") o.value = v.join("\n"); else o.value = v ?? "";
+    });
     laterSend();
   });
 });

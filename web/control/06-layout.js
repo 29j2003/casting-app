@@ -82,17 +82,23 @@ document.querySelectorAll("[data-placement] button").forEach(b => b.onclick = ()
   ui.placement = Object.assign(placement(), { [b.parentElement.dataset.placement]: b.dataset.value }); uiSave(); placementSet();
 });
 $("previewFold").onclick = () => { ui.previewClose = !ui.previewClose; widths(); uiSave(); };
-// Zoom
+// Zoom: „auto" wächst mit der Fensterbreite (1920 px = 100 %, 2560 px = 130 %) – große Bildschirme bleiben lesbar
+const zoomAuto = () => Math.min(1.5, Math.max(0.8, Math.round(innerWidth / 1920 * 10) / 10));
 function zoomSet(f) {
-  ui.zoom = Math.min(1.5, Math.max(0.6, Math.round(f * 10) / 10));
-  document.body.style.zoom = ui.zoom; document.body.style.setProperty("--zoom", ui.zoom);
-  $("zoomValue").textContent = Math.round(ui.zoom * 100) + " %";
-  $("zoomSlider").value = ui.zoom; $("zoomDisplay").textContent = Math.round(ui.zoom * 100) + " %";
+  ui.zoom = f === "auto" ? "auto" : Math.min(1.5, Math.max(0.6, Math.round(f * 10) / 10));
+  const z = ui.zoom === "auto" ? zoomAuto() : ui.zoom;
+  document.body.style.zoom = z; document.body.style.setProperty("--zoom", z);
+  $("zoomValue").textContent = ui.zoom === "auto" ? "Auto" : Math.round(z * 100) + " %";
+  $("zoomValue").title = ui.zoom === "auto" ? "Größe passt sich dem Fenster an" : "Zurück auf automatische Größe";
+  $("zoomSlider").value = z; $("zoomDisplay").textContent = Math.round(z * 100) + " %";
+  if ($("zoomAutoOn")) $("zoomAutoOn").checked = ui.zoom === "auto";
   uiSave();
 }
-$("zoomSmall").onclick = () => zoomSet((ui.zoom || 1) - 0.1);
-$("zoomLarge").onclick = () => zoomSet((ui.zoom || 1) + 0.1);
-$("zoomValue").onclick = () => zoomSet(1);
+const zoomNow = () => parseFloat(document.body.style.zoom) || 1;
+$("zoomSmall").onclick = () => zoomSet(zoomNow() - 0.1);
+$("zoomLarge").onclick = () => zoomSet(zoomNow() + 0.1);
+$("zoomValue").onclick = () => zoomSet("auto");
+addEventListener("resize", () => { if (ui.zoom === "auto") zoomSet("auto"); });
 $("zoomSlider").oninput = () => zoomSet(+$("zoomSlider").value);
 // Design der App: dunkel / hell / wie Windows
 const systemLight = matchMedia("(prefers-color-scheme: light)");
@@ -105,8 +111,41 @@ function designSet(d) {
 }
 document.querySelectorAll("#appDesign button").forEach(b => b.onclick = () => designSet(b.dataset.design));
 systemLight.addEventListener("change", () => { if (ui.design === "system") designSet("system"); });
-// App-Einstellungen öffnen/schließen
-function settings(unfolded) { $("appDialog").hidden = !unfolded; }
+// App-Einstellungen: eigene Seite mit Liste links (je Bereich ein Status), rechts ein Bereich auf einmal
+function settings(unfolded, section) {
+  $("appDialog").hidden = !unfolded;
+  if (unfolded) { settingsShow(section || ui.settingsSection || "setLinks"); settingsNavDraw(); }
+}
+function settingsShow(id) {
+  if (!$(id) || $(id).closest(".dialog-content") !== document.querySelector(".dialog-content")) id = "setLinks";
+  document.querySelectorAll(".dialog-content > section").forEach(x => x.hidden = x.id !== id);
+  document.querySelectorAll(".settings-nav [data-jump]").forEach(b => b.setAttribute("aria-current", b.dataset.jump === id));
+  const b = document.querySelector(`.settings-nav [data-jump="${id}"]`);
+  $("settingsTitle").textContent = b ? b.querySelector("span").firstChild.textContent.trim() : "";
+  document.querySelector(".dialog-content").scrollTop = 0;
+  ui.settingsSection = id; uiSave();
+}
+// Status je Bereich: Grün = verbunden/gespeichert, Gelb = fehlt/wartet, Grau = aus – nur Anzeige
+function settingsNavDraw() {
+  const obsOn = $("obsStatus").classList.contains("ok"), dachOn = typeof dachInfo !== "undefined" && dachInfo.idSet && dachInfo.keySet;
+  const faceitOn = typeof faceitKeyDa !== "undefined" && faceitKeyDa, musicOn = !(Z.music && Z.music.displayed === false);
+  const state = (id, on, text, off) => { const e = $(id); e.className = "state " + (on ? "ok" : off || ""); e.textContent = text; };
+  state("setObsState", obsOn, obsOn ? "verbunden" : "nicht verbunden", "wait");
+  state("setFaceitState", faceitOn, faceitOn ? "Schlüssel gespeichert" : "kein Schlüssel");
+  state("setDachState", dachOn, dachOn ? "Zugang gespeichert" : "nicht eingerichtet");
+  state("setMusicState", musicOn, musicOn ? "an" : "aus");
+  $("navLinksDot").className = obsOn ? "ok" : "wait";
+  $("navLanguage").textContent = `App ${CastI18n.language === "en" ? "English" : "Deutsch"} · Overlays ${(Z.overlayLanguage || "de") === "en" ? "English" : "Deutsch"}`;
+  $("navLook").innerHTML = `<span>${({ dark: "Dunkel", light: "Hell", system: "Wie das System" })[ui.design || "dark"]}</span> · <span>${ui.zoom === "auto" ? "Größe automatisch" : Math.round((ui.zoom || 1) * 100) + " %"}</span>`;
+  $("navUpdate").textContent = $("updateState").textContent;
+  $("aboutVersion").textContent = $("appVersion").textContent;
+}
+document.querySelectorAll(".settings-nav [data-jump]").forEach(b => b.onclick = () => settingsShow(b.dataset.jump));
+document.querySelectorAll("[data-settings]").forEach(b => b.onclick = () => settings(true, b.dataset.settings));
+$("setExport").onclick = () => $("export").click();
+$("setImport").onclick = () => $("import").click();
+$("aboutSteps").onclick = () => $("stepsAgain").click();
+$("zoomAutoOn").onchange = () => { zoomSet($("zoomAutoOn").checked ? "auto" : zoomNow()); settingsNavDraw(); };
 $("dialogOpen").onclick = () => settings(true);
 $("dialogClose").onclick = () => settings(false);
 $("appDialog").addEventListener("click", ev => { if (ev.target === $("appDialog")) settings(false); });
@@ -371,7 +410,8 @@ for (const place of ["bottom", "right"]) (ui.dock[place] || []).forEach(entry =>
   const g = groupNew(DOCKS[place], null, entry.active);
   cards.forEach(d => g.appendChild(d)); tabsDraw(g);
 });
-dockRemember(); widths(); zoomSet(ui.zoom || 1); designSet(ui.design || "dark"); placementSet(); lockDraw();
+if (!ui.zoom3) { if (!ui.zoom || ui.zoom === 1) ui.zoom = "auto"; ui.zoom3 = true; }   // 3.0: wer nie gezoomt hat, bekommt die automatische Größe
+dockRemember(); widths(); zoomSet(ui.zoom || "auto"); designSet(ui.design || "dark"); placementSet(); lockDraw();
 // Start: alles in den Reitern zu; angedockte Bereiche so, wie du sie zuletzt hattest
 ui.isOpen = ui.isOpen || {};
 areas.forEach(d => {

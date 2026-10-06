@@ -8,7 +8,7 @@ function pill(id, text, state) { const p = $(id); p.className = "pill " + (state
 // zu einem Bereich springen: passenden Reiter öffnen, Bereich aufklappen, hinscrollen, kurz leuchten
 // Bereich öffnen: über seinen festen Schlüssel (data-area) – oder über den angezeigten Titel (Befehlspalette)
 function goClose(title) {
-  if (title === "@einstellungen") return settings(true);
+  if (title === "@einstellungen") return settings(true, "setLinks");
   const byKey = document.querySelector(`details[data-area="${CSS.escape(title)}"]`);
   const s = byKey ? byKey.querySelector(":scope > summary") : [...document.querySelectorAll("details > summary")].find(x => x.textContent.replace(/[⠿⧉]/g, "").trim().startsWith(title));
   if (!s) return;
@@ -17,9 +17,9 @@ function goClose(title) {
   d.open = true; d.scrollIntoView({ behavior: "smooth", block: "start" });
   d.classList.remove("glow"); void d.offsetWidth; d.classList.add("glow");
 }
-$("obsStatus").onclick = () => settings(true);
+$("obsStatus").onclick = () => settings(true, "setLinks");
 $("helperStatus").onclick = () => { tabs("log"); logDraw(); };
-$("musicStatus").onclick = () => settings(true);
+$("musicStatus").onclick = () => settings(true, "setLinks");
 async function helperCheck() { overlaysPill(); stepsDraw(); }
 async function musicCheck() {
   if (Z.music && Z.music.displayed === false) { pill("musicStatus", "Musik: aus", "off"); return; }
@@ -196,8 +196,7 @@ $("updateInstall").onclick = async () => {
   try { updateDraw(await (await fetch("/api/update-install", { method: "POST" })).json()); } catch (err) {}
 };
 // Sprungleiste oben in den App-Einstellungen
-document.querySelectorAll(".settings-nav [data-jump]").forEach(b => b.onclick = () => $(b.dataset.jump).scrollIntoView({ behavior: "smooth", block: "start" }));
-if (window.castApp && window.castApp.onShowUpdate) window.castApp.onShowUpdate(() => { settings(true); $("updateArea").scrollIntoView({ block: "start" }); });
+if (window.castApp && window.castApp.onShowUpdate) window.castApp.onShowUpdate(() => settings(true, "updateArea"));
 // Sprache: App (Steuerseite, Dialoge, Tray) und Overlays unabhängig voneinander
 function languageDraw() {
   document.querySelectorAll("#appLanguage button").forEach(b => b.setAttribute("aria-pressed", b.dataset.language === CastI18n.language));

@@ -16,6 +16,12 @@ function seriesPoints() {
   const [a, b] = seriesScore();
   if (Z.teams.a.score !== a || Z.teams.b.score !== b) { Z.teams.a.score = a; Z.teams.b.score = b; teamDraw("a"); teamDraw("b"); }
 }
+// Map entschieden? MR12: 13 Runden mit 2 Vorsprung; Verlängerung je 6 Runden: 16, 19, 22 …
+function mapDecided(e) {
+  const x = +e.a, y = +e.b; if (e.a === "" || e.b === "" || isNaN(x) || isNaN(y)) return false;
+  const hi = Math.max(x, y), lo = Math.min(x, y);
+  return (hi === 13 && lo <= 11) || (hi >= 16 && (hi - 16) % 3 === 0 && hi - lo >= 2 && lo >= hi - 4);
+}
 function seriesDraw() {
   const box = $("series"); box.innerHTML = "";
   const maps = steps().filter(x => x.action !== "ban" && x.map);
@@ -25,12 +31,15 @@ function seriesDraw() {
     const z = document.createElement("div"); z.className = "row se-row";
     z.innerHTML = `<span><b>Map ${i + 1}</b> · ${esc(x.map)}</span>
       <select><option value="pending">Ausstehend</option><option value="running">Läuft</option><option value="done">Fertig</option></select>
-      <input type="number" min="0" placeholder="${esc((Z.teams.a.name || "A").slice(0, 6))}"><b>:</b><input type="number" min="0" placeholder="${esc((Z.teams.b.name || "B").slice(0, 6))}">`;
-    const sel = z.querySelector("select"), [a, b] = z.querySelectorAll("input");
-    sel.value = e.status; a.value = e.a; b.value = e.b;
-    sel.onchange = () => { e.status = sel.value; seriesPoints(); send(); };
-    a.oninput = () => { e.a = a.value === "" ? "" : +a.value; if (e.status === "pending") { e.status = "running"; sel.value = "running"; } seriesPoints(); laterSend(); };
-    b.oninput = () => { e.b = b.value === "" ? "" : +b.value; if (e.status === "pending") { e.status = "running"; sel.value = "running"; } seriesPoints(); laterSend(); };
+      <input type="number" min="0" placeholder="${esc((Z.teams.a.name || "A").slice(0, 6))}"><b>:</b><input type="number" min="0" placeholder="${esc((Z.teams.b.name || "B").slice(0, 6))}">
+      <button class="button main map-finish" hidden title="Ein Team hat die Map gewonnen – als „Fertig“ eintragen">✓ Map beenden?</button>`;
+    const sel = z.querySelector("select"), [a, b] = z.querySelectorAll("input"), finish = z.querySelector(".map-finish");
+    const suggest = () => { finish.hidden = e.status === "done" || !mapDecided(e); };
+    sel.value = e.status; a.value = e.a; b.value = e.b; suggest();
+    sel.onchange = () => { e.status = sel.value; suggest(); seriesPoints(); send(); };
+    finish.onclick = () => { e.status = "done"; sel.value = "done"; suggest(); seriesPoints(); seriesDraw(); mbarDraw(); send(); };
+    a.oninput = () => { e.a = a.value === "" ? "" : +a.value; if (e.status === "pending") { e.status = "running"; sel.value = "running"; } suggest(); seriesPoints(); laterSend(); };
+    b.oninput = () => { e.b = b.value === "" ? "" : +b.value; if (e.status === "pending") { e.status = "running"; sel.value = "running"; } suggest(); seriesPoints(); laterSend(); };
     box.appendChild(z);
   });
   const [sa, sb] = seriesScore();

@@ -272,6 +272,41 @@ def test_series_cards_keep_their_own_map_results(server, browser):
     assert errors == []
 
 
+def test_long_team_names_switch_to_the_short_name(server, browser):
+    """A team name that would shrink below 70 % shows the short name instead; without one it only shrinks."""
+    control, overlay = browser.new_page(), browser.new_page(viewport={"width": 1920, "height": 1080})
+    errors = watch(control) + watch(overlay)
+    control.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    control.wait_for_timeout(1200)
+    overlay.goto(f"{BASE_URL}/map-veto.html")
+    overlay.wait_for_timeout(1000)
+    names = "[...document.querySelectorAll('[data-matching] [data-team-name]')].map(e => e.textContent)"
+    long_name = "Sehr Langer Teamname Esports Akademie Zwei"
+    control.evaluate(f"Z.teams.a.name = {long_name!r}; Z.teams.a.short = ''; Z.teams.b.name = {long_name!r}; Z.teams.b.short = 'SLT'; send()")
+    overlay.wait_for_timeout(900)
+    assert overlay.evaluate(names)[:2] == [long_name, "SLT"]
+    control.evaluate("Z.teams.a.name = 'BIG'; Z.teams.b.name = 'MOUZ'; send()")                # fits: full names again
+    overlay.wait_for_timeout(900)
+    assert overlay.evaluate(names)[:2] == ["BIG", "MOUZ"]
+    assert errors == []
+
+
+def test_a_won_map_is_offered_as_finished(server, browser):
+    """13 rounds (or 16, 19 … in overtime) with two ahead: the series row offers „Map beenden?“."""
+    page = browser.new_page()
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    cases = page.evaluate("""[[13, 11], [13, 12], [12, 10], [16, 14], [16, 15], [19, 17], [17, 15], [22, 18], ['', 3]]
+        .map(([a, b]) => mapDecided({ a, b }))""")
+    assert cases == [True, False, False, True, False, True, False, True, False]
+    page.evaluate("Z.veto.steps = [{ action: 'pick', team: 'a', map: 'Mirage', result: { a: 13, b: 4, status: 'running' } }]; seriesDraw()")
+    assert page.evaluate("!document.querySelector('#series .map-finish').hidden")
+    page.evaluate("document.querySelector('#series .map-finish').click()")
+    assert page.evaluate("Z.veto.steps[0].result.status") == "done"
+    assert errors == []
+
+
 def test_css_variables_of_the_control_page_are_defined():
     """Every var(--name) the control page uses (also in JavaScript strings) is defined in its styles (or set from JS)."""
     web = Path(__file__).parent.parent / "web"

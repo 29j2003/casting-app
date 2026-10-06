@@ -84,7 +84,8 @@ function teamDraw(k) {
   box.innerHTML = `
     <div class="logo-field" title="Logo wählen">${t.logo ? "" : "Logo<br>wählen"}</div>
     <div style="display:grid;gap:8px">
-      <label>Team ${k.toUpperCase()}<input type="text" value=""></label>
+      <div class="line"><label style="flex:1">Team ${k.toUpperCase()}<input type="text" value=""></label>
+        <label style="width:96px" title="Kürzel – das Overlay zeigt es, wenn der Name nicht ohne starkes Verkleinern passt">Kürzel<input type="text" class="team-short" maxlength="5" value=""></label></div>
       <div class="line" style="align-items:center">
         <div class="score"><button class="button">−</button><b>${t.score || 0}</b><button class="button">+</button></div>
         <button class="button">Logo entfernen</button>
@@ -94,7 +95,9 @@ function teamDraw(k) {
   const field = box.querySelector(".logo-field"), name = box.querySelector("input[type=text]"), file = box.querySelector("input[type=file]");
   const [minus, plus, remove] = box.querySelectorAll(".button");
   if (t.logo) field.style.backgroundImage = K.cssUrl(t.logo);
-  name.value = t.name || "";
+  const short = box.querySelector(".team-short");
+  name.value = t.name || ""; short.value = t.short || "";
+  short.oninput = () => { t.short = short.value.trim(); laterSend(); mbarDraw(); };
   name.oninput = () => { t.name = name.value; laterSend(); clearTimeout(name._t); name._t = setTimeout(() => { vetoDraw(); playersDraw("a"); playersDraw("b"); }, 400); };
   field.onclick = () => file.click();
   file.onchange = async () => { if (!file.files[0]) return; t.logo = await logoShrink(file.files[0]); teamDraw(k); send(); };
@@ -385,8 +388,10 @@ async function faceitLoad(muted) {
   }
   const fa = (m.teams || {}).faction1 || {}, fb = (m.teams || {}).faction2 || {};
   if ($("faceitTeams").checked) {
-    Z.teams.a.name = fa.name || fa.nickname || Z.teams.a.name; Z.teams.a.logo = fa.avatar || "";
-    Z.teams.b.name = fb.name || fb.nickname || Z.teams.b.name; Z.teams.b.logo = fb.avatar || "";
+    // Kürzel aus dem Turnier übernehmen, wenn das Team dort bekannt ist – sonst leeren (gehörte zum alten Team)
+    const shortOf = f => ((tour().teams || []).find(t => t.faceitId && t.faceitId === f.faction_id) || {}).short || "";
+    Z.teams.a.name = fa.name || fa.nickname || Z.teams.a.name; Z.teams.a.logo = fa.avatar || ""; Z.teams.a.short = shortOf(fa);
+    Z.teams.b.name = fb.name || fb.nickname || Z.teams.b.name; Z.teams.b.logo = fb.avatar || ""; Z.teams.b.short = shortOf(fb);
   }
   if ($("faceitPlayers").checked) {
     const fromFaceit = p => ({ name: p.nickname || "", real: "", image: p.avatar || "", level: p.game_skill_level || p.skill_level || 0 });

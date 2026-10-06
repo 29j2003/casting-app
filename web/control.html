@@ -636,7 +636,10 @@
   <div class="dialog-box" role="dialog" aria-label="App-Einstellungen">
     <div class="dialog-head"><b>⚙ App-Einstellungen</b><button class="tool" id="dialogClose" title="Schließen">✕</button></div>
     <div class="dialog-content">
-      <section><h3>Verbindung zu OBS</h3>
+      <nav class="settings-nav" aria-label="Bereiche der Einstellungen">
+        <button data-jump="setObs">OBS</button><button data-jump="updateArea">Update</button><button data-jump="setLanguage">Sprache</button><button data-jump="setLook">Aussehen</button><button data-jump="setMusic">Musik</button><button data-jump="setApp">App</button>
+      </nav>
+      <section id="setObs"><h3>Verbindung zu OBS</h3>
         <p class="small">OBS → Werkzeuge → WebSocket-Server-Einstellungen: „WebSocket-Server aktivieren". Port und Passwort (unter „Verbindungsinformationen anzeigen") nur <b>hier</b> eintragen. Die Overlays brauchen kein Passwort.</p>
         <div class="line">
           <label>Port<input type="number" id="obsPort"></label>
@@ -646,37 +649,6 @@
         <p class="small" id="obsSources"></p>
         <p><button class="button" id="openInBrowser" hidden>Steuerseite im Browser öffnen</button></p>
         <div id="accessNotice" hidden><p class="small" id="accessStatus"></p><button class="button" id="accessUpdate">Browserquellen umstellen</button></div>
-        
-      </section>
-      <section><h3>Musik (Spotify über Tuna)</h3>
-        <label class="toggleSwitch"><input type="checkbox" data-field="music.displayed" data-kind="bool"> In Intro, Pause und Ende anzeigen</label>
-        <label>Tuna-Adresse<input type="text" data-field="music.address"></label>
-      </section>
-      <section><h3>Sprache · Language</h3>
-        <span class="small">Sprache der App</span>
-        <div class="segment" id="appLanguage"><button data-language="de">Deutsch</button><button data-language="en">English</button></div>
-        <p class="small">Oberfläche, Dialoge und Tray-Menü. Die App lädt danach neu.</p>
-        <span class="small">Sprache der Overlays</span>
-        <div class="segment" id="overlayLanguage"><button data-language="de">Deutsch</button><button data-language="en">English</button></div>
-        <p class="small">Feste Texte in den Overlays (Szenen-Überschriften, Statistiken). Eigene Texte bleiben, wie du sie eingetragen hast.</p>
-      </section>
-      <section><h3>Aussehen der App</h3>
-        <div class="segment" id="appDesign">
-          <button data-design="dark">Dunkel</button><button data-design="light">Hell</button><button data-design="system">Wie Windows</button>
-        </div>
-        <label>Größe der Oberfläche <output id="zoomDisplay"></output><input type="range" id="zoomSlider" min="0.6" max="1.5" step="0.1"></label>
-      </section>
-      <section><h3>Oberfläche</h3>
-        <span class="small">Reiter-Spalte</span>
-        <div class="segment" data-placement="tabs"><button data-value="left">Links</button><button data-value="right">Rechts</button></div>
-        <span class="small">Seiten-Dock (neben der Vorschau)</span>
-        <div class="segment" data-placement="side"><button data-value="right">Rechts</button><button data-value="left">Links</button></div>
-        <span class="small">Vorschau-Dock</span>
-        <div class="segment" data-placement="preview"><button data-value="bottom">Unter der Vorschau</button><button data-value="upper">Über der Vorschau</button></div>
-        <div class="line">
-          <button class="button" id="docksBack">Anordnung zurücksetzen</button>
-          <button class="button" id="stepsAgain">„Erste Schritte" wieder zeigen</button>
-        </div>
       </section>
       <section id="updateArea"><h3>Update</h3>
         <p class="small">Installiert: <b id="updateCurrent"></b> <span id="updateFrom"></span> · <span id="updateState">noch nicht gesucht</span></p>
@@ -690,12 +662,40 @@
         <p class="small">Die neue Version wird von GitHub geladen, mit der Prüfsumme verglichen und installiert; die App startet danach neu.
           Einstellungen, Bilder und Zugänge bleiben. Nicht während einer laufenden Sendung aktualisieren.</p>
       </section>
-      <section><h3>App</h3>
+      <section id="setLanguage"><h3>Sprache · Language</h3>
+        <span class="small">Sprache der App</span>
+        <div class="segment" id="appLanguage"><button data-language="de">Deutsch</button><button data-language="en">English</button></div>
+        <p class="small">Oberfläche, Dialoge und Tray-Menü. Die App lädt danach neu.</p>
+        <span class="small">Sprache der Overlays</span>
+        <div class="segment" id="overlayLanguage"><button data-language="de">Deutsch</button><button data-language="en">English</button></div>
+        <p class="small">Feste Texte in den Overlays (Szenen-Überschriften, Statistiken). Eigene Texte bleiben, wie du sie eingetragen hast.</p>
+      </section>
+      <section id="setLook"><h3>Aussehen &amp; Oberfläche</h3>
+        <div class="segment" id="appDesign">
+          <button data-design="dark">Dunkel</button><button data-design="light">Hell</button><button data-design="system">Wie Windows</button>
+        </div>
+        <label>Größe der Oberfläche <output id="zoomDisplay"></output><input type="range" id="zoomSlider" min="0.6" max="1.5" step="0.1"></label>
+        <div class="placement-grid">
+        <span class="small">Reiter-Spalte</span>
+        <div class="segment" data-placement="tabs"><button data-value="left">Links</button><button data-value="right">Rechts</button></div>
+        <span class="small">Seiten-Dock</span>
+        <div class="segment" data-placement="side"><button data-value="right">Rechts</button><button data-value="left">Links</button></div>
+        <span class="small">Vorschau-Dock</span>
+        <div class="segment" data-placement="preview"><button data-value="bottom">Unten</button><button data-value="upper">Oben</button></div>
+        </div>
+        <div class="line">
+          <button class="button" id="docksBack">Anordnung zurücksetzen</button>
+          <button class="button" id="stepsAgain">„Erste Schritte" wieder zeigen</button>
+        </div>
+      </section>
+      <section id="setMusic"><h3>Musik (Spotify über Tuna)</h3>
+        <label class="toggleSwitch"><input type="checkbox" data-field="music.displayed" data-kind="bool"> In Intro, Pause und Ende anzeigen</label>
+        <label>Tuna-Adresse<input type="text" data-field="music.address"></label>
+      </section>
+      <section id="setApp"><h3>App</h3>
         <p class="small">Schließt du dieses Fenster, laufen verbundene OBS-Overlays weiter. Die App beendet sich von selbst, sobald auch OBS zu ist.
           Fenster wieder öffnen: die App-Datei erneut starten.</p>
-        <button class="button" id="appQuit">App ganz beenden</button>
-      
-        <div class="line"><button class="button" data-folder="data">Daten &amp; Log öffnen</button></div>
+        <div class="line"><button class="button" data-folder="data">Daten &amp; Log öffnen</button><button class="button" id="appQuit">App ganz beenden</button></div>
       </section>
     </div>
   </div>

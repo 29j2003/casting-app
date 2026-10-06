@@ -232,10 +232,11 @@ In der Szene **Ingame** weichen alle Positionen dem Spiel-HUD aus (Minimap, Scor
 
 ## App-Einstellungen (⚙)
 
-Alles, was nur die App betrifft: **Sprache · Language**, **Verbindung zu OBS**, **Musik (Spotify über Tuna)**,
-**Aussehen der App** (Dunkel, Hell, Wie Windows; Größe der Oberfläche), **Oberfläche** (Lage der Docks, „Anordnung
-zurücksetzen“, „‚Erste Schritte‘ wieder zeigen“), **Update** und **App** („App ganz beenden“, „Daten & Log öffnen“).
-Alles rund um CS bleibt in den Reitern.
+Alles, was nur die App betrifft – oben springt eine Leiste direkt zu **OBS · Update · Sprache · Aussehen · Musik · App**
+(der Bereich scrollt, auch in kleinen Fenstern): **Verbindung zu OBS**, **Update**, **Sprache · Language**,
+**Aussehen & Oberfläche** (Dunkel, Hell, Wie Windows; Größe der Oberfläche; Lage von Reiter-Spalte, Seiten-Dock und
+Vorschau-Dock; „Anordnung zurücksetzen“, „‚Erste Schritte‘ wieder zeigen“), **Musik (Spotify über Tuna)** und **App**
+(„Daten & Log öffnen“, „App ganz beenden“). Alles rund um CS bleibt in den Reitern.
 
 **Browserquellen umstellen:** Unter ⚙ → Verbindung zu OBS zeigt die App, welche ihrer Browserquellen noch keinen
 Zugangsschlüssel haben. „Browserquellen umstellen“ stellt sie um – jede lädt dabei einmal kurz neu, also nicht während

@@ -6,6 +6,11 @@
    ===================================================================== */
 window.CastLanguages = window.CastLanguages || {};
 window.CastLanguages.en = {
+ "Aussehen & Oberfläche": "Appearance & interface",
+ "Unten": "Bottom",
+ "Oben": "Top",
+ "Sprache": "Language",
+ "Bereiche der Einstellungen": "Sections of the settings",
  "(0 = bleibt stehen)": "(0 = stays)",
  "(empfohlen)": "(recommended)",
  "(Hochformat). „Füllen\" schneidet passend zu, „Ganz\" zeigt das komplette Bild. FACEIT liefert Map-Bilder automatisch mit.": "(portrait). “Fill\" crops to fit, “Whole\" shows the complete image. FACEIT delivers map images automatically.",
@@ -101,7 +106,6 @@ window.CastLanguages.en = {
  "Ausblenden:": "Hide:",
  "Ausführen": "Run",
  "Aussehen": "Appearance",
- "Aussehen der App": "App appearance",
  "Ausstehend": "Pending",
  "Automatisch (stärkster Spieler)": "Automatic (strongest player)",
  "Automatisch einrichten": "Set up automatically",
@@ -586,7 +590,6 @@ window.CastLanguages.en = {
  "Seite": "Page",
  "Seite –": "Side –",
  "Seiten-Dock": "Side dock",
- "Seiten-Dock (neben der Vorschau)": "Side dock (next to the preview)",
  "Seiten-Dock auf die andere Seite": "Move the side dock to the other side",
  "Seiten-Dock sperren": "Lock the side dock",
  "Seiten-Dock sperren – dann ändert sich hier nichts mehr": "Lock the side dock – then nothing changes here any more",

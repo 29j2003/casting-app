@@ -267,7 +267,7 @@ document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => { tabs(
 tabs((() => { try { return localStorage.getItem("cast-tabs") || "live"; } catch (e) { return "live"; } })());
 
 setTimeout(audioFetch, 1500);
-function everything() { bgApply(); bgDraw(); timerEndDraw(); languageDraw(); if (typeof dachCardShow === "function") { dachCardShow(); dframeDraw(); } audioDraw(); cleanDraw(); mbarDraw(); tournamentDraw(); bgSourceDraw(); graphicsDraw(); poolComplete(); scenesDraw(); scenesSetupDraw(); sponsorsDraw(); seriesDraw(); videoInfoDraw(); sourcesDraw(); themesDraw(); themeAdjust(); fieldsFill(); teamDraw("a"); teamDraw("b"); timerShow(); poolDraw(); vetoDraw(); playersDraw("a"); playersDraw("b"); }
+function everything() { bgApply(); bgDraw(); timerEndDraw(); languageDraw(); if (typeof dachCardShow === "function") { dachCardShow(); dframeDraw(); } audioDraw(); cleanDraw(); mbarDraw(); tournamentDraw(); mdDraw(); bgSourceDraw(); graphicsDraw(); poolComplete(); scenesDraw(); scenesSetupDraw(); sponsorsDraw(); seriesDraw(); videoInfoDraw(); sourcesDraw(); themesDraw(); themeAdjust(); fieldsFill(); teamDraw("a"); teamDraw("b"); timerShow(); poolDraw(); vetoDraw(); playersDraw("a"); playersDraw("b"); }
 everything();
 helperCheck(); musicCheck();
 (async () => {

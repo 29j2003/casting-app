@@ -375,6 +375,8 @@ kbd { font: 600 11px Barlow, sans-serif; padding: 2px 6px; border-radius: 4px; b
 .tour-z button.focused { color: var(--accent); font-weight: 700; } .tour-z button:disabled { color: var(--muted); cursor: default; }
 .tour-z input { height: 30px; border-radius: 0 !important; text-align: center; padding: 0 !important; }
 .tour-foot { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; font-size: 11px; color: var(--muted); }
+.tour-fixed { margin-left: auto; margin-right: 8px; border: 1px solid var(--wait); background: transparent; color: var(--wait); border-radius: 999px; padding: 1px 8px; font: inherit; font-weight: 700; cursor: pointer; }
+.tour-fixed:hover { background: var(--wait); color: #111; }
 /* Docks: Inhalt nie abschneiden – jede Karte scrollt für sich, wenn der Platz nicht reicht */
 .page .dock-bottom > details, .page .dock-bottom > .tabgroup { overflow-y: auto; max-height: 100%; }
 .page .dock-right > details, .page .dock-right > .tabgroup { overflow: visible; flex: none; }
@@ -489,11 +491,11 @@ body.pages-mode .middle, body.pages-mode #dockRight, body.pages-mode #divider1, 
 body.pages-mode .column { flex: 1 1 auto !important; max-width: none; padding: 18px 22px; }
 body.pages-mode .page.column-empty .column { display: grid !important; }
 body.pages-mode .group:not([hidden]) { max-width: 1240px; }
-body.pages-mode .group[data-group="setup"]:not([hidden]) { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 12px 18px; align-items: start; }
-body.pages-mode .group[data-group="setup"] > .subnav { grid-row: 1 / span 40; flex-direction: column; flex-wrap: nowrap; position: sticky; top: 0; }
-body.pages-mode .group[data-group="setup"] > .subnav button { height: 40px; border-radius: 8px; border: 0; background: transparent; text-align: left; padding: 0 12px; color: var(--text); opacity: .8; }
-body.pages-mode .group[data-group="setup"] > .subnav button[aria-pressed="true"] { background: var(--accent-soft); color: var(--text); opacity: 1; }
-body.pages-mode .group[data-group="setup"] > details { grid-column: 2; }
+body.pages-mode .group:is([data-group="setup"], [data-group="tournament"]):not([hidden]) { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 12px 18px; align-items: start; }
+body.pages-mode .group:is([data-group="setup"], [data-group="tournament"]) > .subnav { grid-row: 1 / span 40; flex-direction: column; flex-wrap: nowrap; position: sticky; top: 0; }
+body.pages-mode .group:is([data-group="setup"], [data-group="tournament"]) > .subnav button { height: 40px; border-radius: 8px; border: 0; background: transparent; text-align: left; padding: 0 12px; color: var(--text); opacity: .8; }
+body.pages-mode .group:is([data-group="setup"], [data-group="tournament"]) > .subnav button[aria-pressed="true"] { background: var(--accent-soft); color: var(--text); opacity: 1; }
+body.pages-mode .group:is([data-group="setup"], [data-group="tournament"]) > details { grid-column: 2; }
 .gfx-text .gfx-status { margin-left: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 body:not(.layout-edit) details[data-area=sceneList] .scene-head { display: none !important; }
 .scenes-buttons button .scene-over { font-size: 9px; font-weight: 700; letter-spacing: .08em; color: color-mix(in srgb, var(--accent) 70%, var(--text)); margin-left: 6px; flex: none; }
@@ -689,7 +691,7 @@ summary .handle .icon, summary .pin .icon { width: 14px; height: 14px; }
 
 /* Unterseiten von Match und Setup: Liste links mit Status (Punkt + eine Zeile), wie im Konzept */
 body.pages-mode .group[data-group="match"]:not([hidden]) { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 12px 18px; align-items: start; }
-body.pages-mode .group[data-group="match"] > .subnav, body.pages-mode .group[data-group="setup"] > .subnav { grid-row: 1 / span 40; flex-direction: column; flex-wrap: nowrap; position: sticky; top: 0; }
+body.pages-mode .group[data-group="match"] > .subnav, body.pages-mode .group:is([data-group="setup"], [data-group="tournament"]) > .subnav { grid-row: 1 / span 40; flex-direction: column; flex-wrap: nowrap; position: sticky; top: 0; }
 body.pages-mode .group[data-group="match"] > details { grid-column: 2; }
 body.pages-mode .group > .subnav button { display: flex; align-items: center; gap: 10px; height: auto; min-height: 44px; padding: 7px 12px; border-radius: 8px; border: 0;
   background: transparent; text-align: left; color: var(--text); opacity: 1; font-weight: 600; }
@@ -702,3 +704,16 @@ body.pages-mode .group > .subnav button[aria-pressed="true"] { background: var(-
 .subnav button[data-below="all"] .sub-dot { visibility: hidden; }
 body:not(.pages-mode) .subnav .sub-dot, body:not(.pages-mode) .subnav .sub-text { display: none; }
 .team-library { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--f2); margin-top: 6px; }
+
+/* ---------- 2.9: Stepper, Spieltag ---------- */
+.stepper { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 6px 2px 18px; }
+.stepper > .small { margin-right: auto; }
+body.pages-mode .group > .stepper { grid-column: 2; }
+.md-list { display: grid; gap: 6px; margin-bottom: 8px; }
+.md-row { display: grid; grid-template-columns: 74px minmax(0, 1fr) auto auto auto auto auto; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--f2); }
+.md-row.live { border-color: var(--live); box-shadow: inset 3px 0 0 var(--live); }
+.md-row.done { opacity: .6; }
+.md-time { width: 100%; text-align: center; }
+.md-teams { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.md-teams b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.md-logo { flex: 0 0 28px; height: 28px; border-radius: 6px; background: var(--f1) center / contain no-repeat; display: grid; place-items: center; font-style: normal; font-size: 10px; font-weight: 800; color: var(--muted); }

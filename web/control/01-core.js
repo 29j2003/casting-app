@@ -40,7 +40,7 @@
      · neuer sichtbarer Text: deutsch hier schreiben, Übersetzung in lang-en.js
      · neues Feld der Sendung: Standardwert in cast-core.js (DEFAULT), Eingabe hier
        mit data-field, Anzeige in cast.js
-   Mehr dazu: ENTWICKLUNG.md im Projektordner.
+   Mehr dazu: docs/ENTWICKLUNG.md im Projektordner.
    ===================================================================== */
 "use strict";
 const K = window.CastCore, BUNDLED = window.CAST_THEMES || {};

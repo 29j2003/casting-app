@@ -87,6 +87,9 @@
     const r = document.documentElement.style;
     r.setProperty("--dark", T.dark); r.setProperty("--light", T.light);
     r.setProperty("--text-dark", T.textDark); r.setProperty("--accent", T.accent);
+    r.setProperty("--paper", T.light); r.setProperty("--paper-text", T.textDark);        // Logo-Felder bleiben hell (Box-Stil)
+    const boxStyle = ["dark", "mixed"].includes(T.boxStyle) ? T.boxStyle : "";
+    if ((document.body.dataset.boxstyle || "") !== boxStyle) { if (boxStyle) document.body.dataset.boxstyle = boxStyle; else delete document.body.dataset.boxstyle; }
     r.setProperty("--accent-rgb", rgb(T.accent));
     r.setProperty("--accent-readable", readable(T.accent, T.light));
     r.setProperty("--line", T.stroke ? "5px" : "0px");
@@ -301,8 +304,12 @@
     const S = Z.sponsors || {}, list = sponsorList();
     const boxes = $$(".sponsor");
     const visible = S.on !== false && (S.sceneList || {})[currentSceneName()] !== false && list.length > 0;
-    const keyName = JSON.stringify([list, S.seconds, visible, S.bar === true]);
+    const spot = S.spot === "top" ? "top" : "bar";                     // Platz: in der unteren Leiste (3.0) oder oben rechts
+    const keyName = JSON.stringify([list, S.seconds, visible, S.bar === true, spot]);
+    if (document.body.dataset.sponsorspot !== spot) document.body.dataset.sponsorspot = spot;
     const bar = S.bar === true && list.length > 1;
+    // kein Sponsor in dieser Szene: die Leiste ohne Lücke (rückt auf die mittigen Plätze ohne Sponsor)
+    if (document.body.dataset.sponsorshown !== (visible ? "1" : "0")) document.body.dataset.sponsorshown = visible ? "1" : "0";
     boxes.forEach(b => {
       b.classList.toggle("on", visible);
       let line = b.querySelector(".sponsor-bar");
@@ -313,6 +320,16 @@
       field.innerHTML = list.map(sponsorContent).join("");
       const children = [...field.children];
       if (children.length) children[sponsorNum % children.length].classList.add("on");
+      // Name ohne Logo in der Leiste: so groß wie möglich; zu lange Namen schrumpfen, ab halber Größe auf zwei Zeilen
+      if (b.classList.contains("in-bar")) field.querySelectorAll(".sponsor-name").forEach(e => {
+        const start = parseFloat(getComputedStyle(e).fontSize);
+        const tooBig = () => e.scrollWidth > e.clientWidth || e.scrollHeight > e.clientHeight;
+        let s = start;
+        while (e.clientWidth && tooBig() && s > 16) {
+          s -= 2; e.style.fontSize = s + "px";
+          if (s < start * .6 && e.style.whiteSpace !== "normal") { e.style.whiteSpace = "normal"; s = start * .7; e.style.fontSize = s + "px"; }
+        }
+      });
     });
     if (keyName !== sponsorTimerCachekey) {
       sponsorTimerCachekey = keyName;

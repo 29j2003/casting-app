@@ -33,7 +33,7 @@ jobs:
           - { os: macos-15-intel, name: macos-x64 }    # Intel
     runs-on: ${{ matrix.os }}
     env:
-      # Windows wird mit SignPath signiert, sobald das Secret eingetragen ist (siehe ENTWICKLUNG.md, „Bauen und signieren“)
+      # Windows wird mit SignPath signiert, sobald das Secret eingetragen ist (siehe docs/ENTWICKLUNG.md, „Bauen und signieren“)
       SIGNPATH: ${{ secrets.SIGNPATH_API_TOKEN != '' && matrix.name == 'windows' }}
     steps:
       - uses: actions/checkout@v7
@@ -150,7 +150,7 @@ jobs:
       - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Schlüsselbund, Server und Desktop-App (pytest)
         run: xvfb-run -a -s "-screen 0 1920x1080x24" python -m pytest -v
-      # Live-Tests gegen die laufende Desktop-App (ENTWICKLUNG.md, „Live-Tests“); jedes Skript endet bei einem Problem mit Fehlercode
+      # Live-Tests gegen die laufende Desktop-App (docs/ENTWICKLUNG.md, „Live-Tests“); jedes Skript endet bei einem Problem mit Fehlercode
       - name: Overlay-Tests gegen die laufende Desktop-App
         run: |
           # ohne Schlüsselbund würde der Tresor-Dialog den Start anhalten

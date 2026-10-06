@@ -214,7 +214,10 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
 * **Neue Felder** sind unproblematisch: Der Standardwert aus `DEFAULT` wird beim Laden ergänzt.
 * **Umbenennungen** brauchen eine Übernahme. Die Tabelle alter Namen in `web/legacy.js` (zwischen `/*BEGIN*/` und `/*END*/`)
   nutzen sowohl die Steuerseite als auch `casting_app/legacy.py`. Neue Einträge per Skript in die JSON-Tabelle schreiben
-  und einen Fall in `tests/test_legacy.py` ergänzen.
+  und einen Fall in `tests/test_legacy.py` ergänzen. Diese Tabelle greift nur bei Daten aus 2.1 und älter (deutsche Namen).
+* **Umbenennungen ab 2.2** (z. B. `sponsors.listen` → `sponsors.byTheme` in 2.3) stellt `renamedFields()` in
+  `web/cast-core.js` um – jeder Zustand, jede Sitzung und Sicherung läuft beim Laden durch `K.merge`. Test dazu in
+  `tests/test_control_page.py`.
 
 ## Technische Details
 

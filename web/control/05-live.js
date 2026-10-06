@@ -95,8 +95,8 @@ $("seatDelete").onclick = async () => {
 
 /* ---------- Sponsoren ---------- */
 function sponsorEntries() {
-  Z.sponsors = Z.sponsors || {}; Z.sponsors.listen = Z.sponsors.listen || {};
-  return Z.sponsors.listen[Z.theme] = Z.sponsors.listen[Z.theme] || [];
+  Z.sponsors = Z.sponsors || {}; Z.sponsors.byTheme = Z.sponsors.byTheme || {};
+  return Z.sponsors.byTheme[Z.theme] = Z.sponsors.byTheme[Z.theme] || [];
 }
 function sponsorShowgfx(i) {
   Z.sponsors.gfx = { num: i, until: Date.now() + Math.max(3, +$("sponsorDuration").value || 10) * 1000 };

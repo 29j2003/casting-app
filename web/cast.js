@@ -294,7 +294,7 @@
 
   /* ---------- Sponsoren ---------- */
 
-  function sponsorList() { return (((Z.sponsors || {}).listen || {})[Z.theme] || []).filter(s => s && (s.logo || s.name)); }
+  function sponsorList() { return (((Z.sponsors || {}).byTheme || {})[Z.theme] || []).filter(s => s && (s.logo || s.name)); }
   const sponsorContent = s => s.logo ? `<img src="${esc(s.logo)}" alt="${esc(s.name || "")}">` : `<div class="sponsor-name">${esc(s.name)}</div>`;
   let sponsorTimerCachekey = null, sponsorTimer = null, sponsorNum = 0;
   function sponsors() {
@@ -373,11 +373,11 @@
         <div class="bracket-tz head"><span>#</span><span></span><span>${W("tableTeam")}</span><span>${W("tableGames")}</span><span>${W("tableWins")}</span><span>${W("tableLosses")}</span><span>${g.withRounds ? "RD" : "+/−"}</span><span>${W("tablePoints")}</span></div>` +
         g.table.map((r, i) => { const t = teamFrom(r.id) || {};
           return `<div class="bracket-tz${i < (+T.nextPlaces || 0) ? " proceed" : ""}${T.focused === r.id ? " focused" : ""}"><span>${i + 1}</span><div class="bracket-logo">${t.logo ? `<img src="${esc(t.logo)}" alt="">` : esc((t.short || t.name || "?").slice(0, 3))}</div>` +
-            `<span class="bracket-tname">${esc(t.name || "")}</span><span>${r.sponsor}</span><span>${r.s}</span><span>${r.n}</span><span>${r.bracket > 0 ? "+" : ""}${r.bracket}</span><b>${r.pts}</b></div>`; }).join("") +
+            `<span class="bracket-tname">${esc(t.name || "")}</span><span>${r.played}</span><span>${r.wins}</span><span>${r.losses}</span><span>${r.tiebreak > 0 ? "+" : ""}${r.tiebreak}</span><b>${r.pts}</b></div>`; }).join("") +
         (T.gamesShow ? `<div class="bracket-tspiele">${g.matches.filter(m => !m.done).slice(0, 4).map(m => card(m, false)).join("")}</div>` : "") + `</div>`).join("")}</div>`;
     }
     else if (B.format === "gsl") h = `<div class="bracket-groups">${B.groups.map(g => `<div class="bracket-group"><div class="bracket-title">${esc(g.name)}</div>${g.matches.map(m => `<div class="bracket-gm"><span>${esc(m.title)}</span>${card(m, false)}</div>`).join("")}</div>`).join("")}</div>`;
-    else if (B.format === "swiss") h = `<div class="bracket-row">${columns(B.rounds, 1)}</div>` + (B.table.length ? `<div class="bracket-swiss">${B.table.map(b => `<div class="bracket-sw ${b.status}">${row(b.id, `${b.s}–${b.n}`, b.status === "proceed", false)}</div>`).join("")}</div>` : "");
+    else if (B.format === "swiss") h = `<div class="bracket-row">${columns(B.rounds, 1)}</div>` + (B.table.length ? `<div class="bracket-swiss">${B.table.map(b => `<div class="bracket-sw ${b.status}">${row(b.id, `${b.wins}–${b.losses}`, b.status === "proceed", false)}</div>`).join("")}</div>` : "");
     else {
       h = `<div class="bracket-row">${columns(B.rounds, 1)}${B.finale && B.bottom.length === 0 ? "" : ""}</div>`;
       if (B.bottom.length) h = `<div class="bracket-de"><div class="bracket-row">${columns(B.rounds, 1)}</div><div class="bracket-row bottom">${columns(B.bottom, 1)}</div></div>` +
@@ -496,7 +496,7 @@
       if (!p) return `<div class="box-head">${esc(Z.texts.players || "")}</div><div class="box-field">${wait()}</div>`;
       const team = p.side === sideFrom("a") ? "a" : "b";
       return `<div class="box-head"><div class="team-logo ${team}"></div><span>${esc(p.name)}</span></div>
-        <div class="box-field gfx-sponsor"><div><b>${p.k}/${p.d}/${p.a}</b><span>K/D/A</span></div><div><b>${p.adr}</b><span>ADR</span></div><div><b>${p.hs}%</b><span>HS</span></div><div><b>${p.mvps}</b><span>MVP</span></div></div>`;
+        <div class="box-field gfx-player-stats"><div><b>${p.k}/${p.d}/${p.a}</b><span>K/D/A</span></div><div><b>${p.adr}</b><span>ADR</span></div><div><b>${p.hs}%</b><span>HS</span></div><div><b>${p.mvps}</b><span>MVP</span></div></div>`;
     }
     if (e.type === "mapfact") {
       const map = e.map || ((currentMap().cur || {}).map) || "";

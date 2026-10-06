@@ -445,8 +445,8 @@ body[data-scene="ingame"] { background: transparent; }
 .gfx-sb .live-table { box-shadow: none; }
 .gfx-players { min-width: 620px; } .gfx-players .box-head { --kh: 54px; --kf: 30px; justify-content: flex-start; gap: 14px; padding-left: 0; color: #fff; letter-spacing: .04em; }
 .gfx-players .box-head .team-logo { width: 54px; height: 54px; }
-.gfx-sponsor { display: flex; justify-content: space-around; height: 82px; flex: none; }
-.gfx-sponsor div { display: flex; flex-direction: column; align-items: center; } .gfx-sponsor b { font-size: 34px; } .gfx-sponsor span { font-size: 14px; letter-spacing: .16em; opacity: .55; }
+.gfx-player-stats { display: flex; justify-content: space-around; height: 82px; flex: none; }
+.gfx-player-stats div { display: flex; flex-direction: column; align-items: center; } .gfx-player-stats b { font-size: 34px; } .gfx-player-stats span { font-size: 14px; letter-spacing: .16em; opacity: .55; }
 
 /* ===== Turnierbaum ===== */
 .tournament-tree { overflow: hidden; }

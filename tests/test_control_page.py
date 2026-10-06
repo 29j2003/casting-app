@@ -332,6 +332,17 @@ def test_faceit_swiss_is_told_apart_from_a_round_robin(server, browser):
     assert errors == []
 
 
+def test_sponsor_lists_saved_by_2_2_still_load(server, browser):
+    """2.2 kept the sponsor lists under „listen“ – sessions, backups and states from then load into „byTheme“."""
+    page = browser.new_page()
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    loaded = page.evaluate("""K.merge(K.clone(K.DEFAULT), { sponsors: { on: true, listen: { regular: [{ name: 'Alt', logo: '' }] } } }).sponsors""")
+    assert loaded["byTheme"] == {"regular": [{"name": "Alt", "logo": ""}]} and "listen" not in loaded
+    assert errors == []
+
+
 def test_css_variables_of_the_control_page_are_defined():
     """Every var(--name) the control page uses (also in JavaScript strings) is defined in its styles (or set from JS)."""
     web = Path(__file__).parent.parent / "web"

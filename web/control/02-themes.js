@@ -42,8 +42,8 @@ $("themeNew").onclick = () => {
 };
 $("themeDup").onclick = () => {
   const source = Z.theme, k = themeCreate(themeFull(source), (themeFull(source).name || source) + " (Kopie)");
-  const sponsor = ((Z.sponsors || {}).listen || {})[source];
-  if (sponsor) Z.sponsors.listen[k] = K.clone(sponsor);             // Sponsoren gleich mitnehmen
+  const sponsor = ((Z.sponsors || {}).byTheme || {})[source];
+  if (sponsor) Z.sponsors.byTheme[k] = K.clone(sponsor);             // Sponsoren gleich mitnehmen
   themeChoose(k); $("themeStatus").textContent = "✓ Kopie angelegt.";
 };
 $("themeDelete").onclick = async () => {
@@ -51,11 +51,11 @@ $("themeDelete").onclick = async () => {
   if (!isOwn(k)) { $("themeStatus").textContent = "Mitgelieferte Themes lassen sich nicht löschen – nur unter „Theme anpassen“ zurücksetzen."; return; }
   const name = themeFull(k).name || k;
   if (!await confirmDialog({ title: `Theme „${name}“ löschen?`, text: "Farben, Logos und Sponsoren dieses Themes gehen verloren. Tipp: vorher exportieren.", button: "Löschen" })) return;
-  const safe = { themeDef: Z.ownThemes[k], td: (Z.themeData || {})[k], sponsor: ((Z.sponsors || {}).listen || {})[k] };
-  delete Z.ownThemes[k]; if (Z.themeData) delete Z.themeData[k]; if (Z.sponsors && Z.sponsors.listen) delete Z.sponsors.listen[k];
+  const safe = { themeDef: Z.ownThemes[k], td: (Z.themeData || {})[k], sponsor: ((Z.sponsors || {}).byTheme || {})[k] };
+  delete Z.ownThemes[k]; if (Z.themeData) delete Z.themeData[k]; if (Z.sponsors && Z.sponsors.byTheme) delete Z.sponsors.byTheme[k];
   themeChoose("regular");
   undo(`Theme „${name}“ gelöscht`, () => {
-    Z.ownThemes[k] = safe.themeDef; if (safe.td) Z.themeData[k] = safe.td; if (safe.sponsor) Z.sponsors.listen[k] = safe.sponsor;
+    Z.ownThemes[k] = safe.themeDef; if (safe.td) Z.themeData[k] = safe.td; if (safe.sponsor) Z.sponsors.byTheme[k] = safe.sponsor;
     themeChoose(k);
   });
 };
@@ -71,7 +71,7 @@ async function asDataUrl(value) {
 $("themeExport").onclick = async () => {
   const d = themeFull(Z.theme);
   for (const k of ["icon", "fontImage", "brandImage", "backgroundImage"]) d[k] = await asDataUrl(d[k]);
-  const sponsors = K.clone(((Z.sponsors || {}).listen || {})[Z.theme] || []);
+  const sponsors = K.clone(((Z.sponsors || {}).byTheme || {})[Z.theme] || []);
   for (const s of sponsors) s.logo = await asDataUrl(s.logo);
   const file = new Blob([JSON.stringify({ format: "casting-app-theme", version: 1, theme: d, sponsors }, null, 1)], { type: "application/json" });
   const a = document.createElement("a");
@@ -96,8 +96,8 @@ $("themeFile").onchange = async () => {
     ["dark", "light", "textDark", "accent", "iconDisk", "headText"].forEach(k => { if (d[k] && !/^#[0-9a-f]{3,8}$/i.test(d[k])) delete d[k]; });
     const k = themeCreate(d, String(d.name || "Importiertes Theme").slice(0, 60));
     if (Array.isArray(j.sponsors)) {
-      Z.sponsors.listen = Z.sponsors.listen || {};
-      Z.sponsors.listen[k] = j.sponsors.slice(0, 40).map(s => ({ name: String(s.name || "").slice(0, 80), logo: /^data:image\//.test(s.logo || "") ? s.logo : "" }));
+      Z.sponsors.byTheme = Z.sponsors.byTheme || {};
+      Z.sponsors.byTheme[k] = j.sponsors.slice(0, 40).map(s => ({ name: String(s.name || "").slice(0, 80), logo: /^data:image\//.test(s.logo || "") ? s.logo : "" }));
     }
     themeChoose(k);
     $("themeStatus").textContent = `✓ Theme „${Z.ownThemes[k].name}“ importiert.`;

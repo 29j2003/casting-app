@@ -50,7 +50,7 @@ async def control_and_overlay(overlay_url: str = "/overlay.html"):
         await control.goto(BASE_URL + "/control.html?access=" + key)
         await control.wait_for_timeout(1200)
         await control.evaluate("Z.broadcast.active = true; Z.broadcast.duration = 500; Z.broadcast.scene = 'intro'; "
-                               "Z.sponsors.listen = {}; Z.background.videos = []; everything(); send();")
+                               "Z.sponsors.byTheme = {}; Z.background.videos = []; everything(); send();")
         await overlay.goto(BASE_URL + overlay_url + ("&" if "?" in overlay_url else "?") + "access=" + key)
         await overlay.wait_for_timeout(1500)
         try:

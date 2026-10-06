@@ -158,13 +158,13 @@ function faceitLooksSwiss(games, res, type) {
   if (/swiss/i.test(String(type || ""))) return true;
   const rounds = [...new Set(games.map(x => x.round))].sort((a, b) => a - b);
   if (rounds.length < 2 || rounds.some(r => r < 0)) return false;
-  const record = {}, rec = id => record[id] || (record[id] = { s: 0, n: 0 });
+  const record = {}, rec = id => record[id] || (record[id] = { wins: 0, losses: 0 });
   let same = 0, counted = 0;
   rounds.forEach((r, i) => {
     const inRound = games.filter(x => x.round === r);
-    if (i > 0) inRound.forEach(x => { if (!x.a || !x.b) return; counted++; const a = rec(x.a), b = rec(x.b); if (a.s === b.s && a.n === b.n) same++; });
+    if (i > 0) inRound.forEach(x => { if (!x.a || !x.b) return; counted++; const a = rec(x.a), b = rec(x.b); if (a.wins === b.wins && a.losses === b.losses) same++; });
     inRound.forEach(x => { const e = res[x.id]; if (!e || !e.done || !x.a || !x.b || +e.a === +e.b) return;
-      const [w, l] = +e.a > +e.b ? [x.a, x.b] : [x.b, x.a]; rec(w).s++; rec(l).n++; });
+      const [w, l] = +e.a > +e.b ? [x.a, x.b] : [x.b, x.a]; rec(w).wins++; rec(l).losses++; });
   });
   return counted >= 4 && same / counted >= 0.8;
 }

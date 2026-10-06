@@ -550,3 +550,87 @@ summary .handle .icon, summary .pin .icon { width: 14px; height: 14px; }
 [data-icon="chevron"] { display: inline-flex; margin-left: 4px; opacity: .8; }
 .dock-menu button .icon { margin-left: 6px; width: 13px; height: 13px; }
 .compass i .icon { width: 16px; height: 16px; }
+
+/* ===== Konzept 3.0: feste Bedeutung von Form und Farbe =====
+   Taste (erhaben, leuchtet lila beim Drüberfahren, sinkt beim Drücken) = klickbar · Schalter = an/aus ·
+   Punkt + Text = nur Anzeige. Farben: Rot = LIVE · Grün = OK/gewählt · Gelb = läuft/kommt gleich ·
+   Grau = aus · Lila = dein nächster Schritt · Blau = liegt über dem Spiel. Nichts blinkt im Leerlauf. */
+:root { --live: #E5484D; --ok: #3DD68C; --wait: #F5C451; --off: #6B6E79; --over: #38BDF8;
+        --key-top: #2C2E37; --key-bottom: #24262D; --key-line: #3B3E48; --key-shadow: rgba(0, 0, 0, .55); --glow: rgba(139, 108, 255, .38); }
+:root[data-design=light] { --live: #D63B40; --ok: #1F9D55; --wait: #B98500; --off: #8A8D98; --over: #0284C7;
+        --key-top: #FFFFFF; --key-bottom: #F0F1F5; --key-line: #CDD0D9; --key-shadow: rgba(30, 32, 40, .18); --glow: rgba(108, 77, 242, .28); }
+.button, .tool, .mbar-k, .scenes-buttons button, .transition-choice button, .map-buttons button {
+  background: linear-gradient(var(--key-top), var(--key-bottom)); border: 1px solid var(--key-line); border-bottom-color: var(--key-shadow);
+  box-shadow: 0 2px 0 var(--key-shadow); border-radius: 6px; font-weight: 600;
+  transition: box-shadow .12s, transform .12s, border-color .12s; }
+.button:hover:not(:disabled), .tool:hover:not(:disabled), .mbar-k:hover, .scenes-buttons button:hover:not(:disabled),
+.transition-choice button:hover, .map-buttons button:hover {
+  border-color: var(--accent); box-shadow: 0 2px 0 var(--key-shadow), 0 0 0 3px var(--accent-soft), 0 0 14px var(--glow); }
+.button:active:not(:disabled), .tool:active, .mbar-k:active, .scenes-buttons button:active:not(:disabled),
+.transition-choice button:active, .map-buttons button:active { transform: translateY(2px); box-shadow: none; }
+.button.main, .mbar-k.main { background: linear-gradient(#9A80FF, #8B6CFF); border-color: #A992FF; border-bottom-color: #5A44B4; color: #fff; }
+.button.danger { background: none; border-color: color-mix(in srgb, var(--live) 55%, transparent); color: var(--live); box-shadow: none; }
+.button:disabled { opacity: .4; box-shadow: none; cursor: default; }
+.button.link { background: none; border-color: transparent; box-shadow: none; }
+.button.link:hover { box-shadow: none; text-decoration: underline; }
+/* Szene im Programm = rot (LIVE), wie in OBS */
+.scenes-buttons button.active { background: var(--live) !important; border-color: var(--live) !important; color: #fff !important; box-shadow: 0 2px 0 var(--key-shadow) !important; }
+.transition-choice button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
+/* Schalter statt Häkchen: an = grün */
+.toggleSwitch input[type=checkbox] { appearance: none; -webkit-appearance: none; width: 2.4em; height: 1.35em; margin: 0; flex: none; position: relative; cursor: pointer;
+  border-radius: 1em; background: #33353D; border: 1px solid #474A55; transition: background .12s, border-color .12s; }
+:root[data-design=light] .toggleSwitch input[type=checkbox] { background: #D5D7DE; border-color: #BFC2CB; }
+.toggleSwitch input[type=checkbox]::after { content: ""; position: absolute; top: .12em; left: .14em; width: .95em; height: .95em; border-radius: 50%; background: #C9CBD3; transition: left .12s; }
+.toggleSwitch input[type=checkbox]:checked { background: var(--ok); border-color: var(--ok); }
+.toggleSwitch input[type=checkbox]:checked::after { left: 1.24em; background: #fff; }
+.toggleSwitch input[type=checkbox]:disabled { opacity: .45; cursor: default; }
+/* Anzeige: Punkt + Text, nicht klickbar */
+.state { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.state::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--off); flex: none; }
+.state.ok::before { background: var(--ok); } .state.wait::before { background: var(--wait); }
+.state.live::before { background: var(--live); } .state.next::before { background: var(--accent); } .state.over::before { background: var(--over); }
+@media (prefers-reduced-motion: reduce) { .button, .tool, .mbar-k, .scenes-buttons button { transition: none; } .button:active, .tool:active { transform: none; } }
+/* Panel der Szene (Live): Felder je Szene, Auswahl „Felder" */
+.panel-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.panel-head b { font-size: 16px; }
+.panel-menu { position: fixed; z-index: 120; width: 280px; display: grid; gap: 8px; padding: 12px; background: var(--f1); border: 1px solid var(--key-line);
+  border-radius: 8px; box-shadow: 0 14px 34px rgba(0, 0, 0, .45); }
+.panel-menu[hidden] { display: none; }
+.panel-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.panel-field { display: grid; gap: 8px; align-content: start; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--f2); }
+.panel-field[hidden] { display: none; }
+.panel-field[data-panel="veto"] { grid-column: 1 / -1; }
+.panel-field h4 { margin: 0; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); display: flex; gap: 8px; align-items: baseline; }
+.panel-field h4 .small { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.panel-field textarea { width: 100%; resize: vertical; }
+.panel-score, .panel-timer { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.panel-score > b:not(.panel-num) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-score > b#pNameB { text-align: right; }
+.panel-num { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 1.4em; text-align: center; }
+.panel-timer .panel-num { flex: 1; text-align: left; }
+/* App-Einstellungen als eigene Seite (unter der Kopfzeile): Liste links mit Status, rechts ein Bereich */
+.dialog { top: 56px; background: var(--bg); display: block; }
+.dialog-box { width: 100%; height: 100%; display: grid; grid-template-columns: 290px minmax(0, 1fr); border: 0; box-shadow: none; background: var(--bg); }
+.settings-nav { position: static; display: flex; flex-direction: column; flex-wrap: nowrap; gap: 4px; padding: 18px 12px; background: var(--f1); border: 0; border-right: 1px solid var(--line); overflow-y: auto; }
+.settings-title { font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); padding: 0 12px 10px; }
+.settings-nav button { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 0; border-radius: 6px; background: none; color: var(--text); text-align: left; font-size: 14px; font-weight: 600; cursor: pointer; }
+.settings-nav button:hover { background: var(--f2); color: var(--text); border: 0; }
+.settings-nav button[aria-current="true"] { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.settings-nav button small { display: block; font-size: 12px; font-weight: 500; color: var(--muted); }
+.settings-nav button > i { width: 9px; height: 9px; border-radius: 50%; background: var(--off); flex: none; }
+.settings-nav button > i.ok { background: var(--ok); } .settings-nav button > i.wait { background: var(--wait); }
+.settings-flex { flex: 1; }
+.settings-nav > p { margin: 0; padding: 0 12px; }
+.dialog-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.dialog-head { padding: 18px 28px 6px; border: 0; font-size: 24px; }
+.dialog-head b { font-weight: 800; }
+.dialog-head kbd { margin-left: 6px; }
+.dialog-content { padding: 6px 28px 40px; max-width: 1100px; gap: 12px; }
+.dialog-content section { border: 0; padding: 0; gap: 12px; }
+.dialog-content section > h3 { display: none; }
+.set-card { display: grid; gap: 10px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--f1); }
+.set-head { display: flex; align-items: center; gap: 10px; padding-bottom: 8px; margin-bottom: 2px; border-bottom: 1px solid var(--line); }
+.set-head b { flex: 1; font-size: 15px; }
+.set-safe ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.dialog { z-index: 140; }
+.dialog-head .button { font-size: 14px; }

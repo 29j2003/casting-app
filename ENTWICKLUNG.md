@@ -169,13 +169,24 @@ und Windows unterschiedlich groß aus. Satz und Helfer: `ICONS` / `icon(name)` i
 Im HTML `data-icon="name"` (wird beim Laden vorangestellt), im Skript `${icon("name")}`. Knöpfe nur mit Icon brauchen ein
 `aria-label` (Bildschirmleser, und es nimmt den Abstand zum Text weg).
 
-### Bedienung an eine Szene binden (Live → „Zur Szene“)
+### Panel der Szene (Live) – ein neues Feld
 
-Die Karte `data-area="scene-tools"` zeigt, was die Szene im Programm braucht (`sceneNow()` in `web/control/05-live.js`,
-auch im Modus mit mehreren OBS-Szenen). Zuordnung in `SCENE_TOOLS` (Szene → Werkzeug), z. B. `"map-veto": "veto"`.
-Ein neues Werkzeug: Bereich in der Karte in `web/control.html` anlegen, in `sceneToolsDraw()` ein-/ausblenden und
-mit derselben Zeichenfunktion füllen wie die Karte unter Match (Beispiel: `vetoUpnextDraw()` für beide Stellen) –
-so bleiben beide Stellen gleich, ohne eigenen Abgleich.
+Die Karte `data-area="scene-tools"` („Panel der Szene“) zeigt die Felder der Szene im Programm (`sceneNow()` in
+`web/control/05-live.js`, auch im Modus mit mehreren OBS-Szenen). Felder: `PANEL_FIELDS`, Vorgaben je Szene: `PANEL_DEFAULTS`;
+eigene Auswahl je Szene in `ui.panels` (Oberfläche, nicht Teil der Sendung), Notizen in `ui.notes`.
+Ein neues Feld:
+1. In `web/control.html` im Panel ein `<section class="panel-field" data-panel="<key>" hidden>` anlegen.
+2. `["<key>", "Name"]` in `PANEL_FIELDS`, bei passenden Szenen in `PANEL_DEFAULTS` eintragen.
+3. Werte in `panelValues()` füllen bzw. dieselbe Zeichen-/Klickfunktion nutzen wie unter Match (Beispiele: `vetoUpnextDraw()`,
+   `mbarPoint()`), Eingaben mit `data-field` – dasselbe Feld darf an mehreren Stellen stehen, die anderen ziehen mit (01-core „Felder“).
+So bleiben alle Stellen gleich, ohne eigenen Abgleich. Neue Texte → `web/lang-en.js`.
+
+### Form und Farbe (Konzept 3.0)
+
+Abschnitt „Konzept 3.0“ am Ende von `web/control.css`: `.button` = Taste (erhaben, lila Leuchten, sinkt beim Drücken),
+`.toggleSwitch input[type=checkbox]` = Schalter, `.state` (+ `ok|wait|live|next|over`) = Punkt + Text nur zur Anzeige.
+Farben mit fester Bedeutung als Variablen: `--live` Rot, `--ok` Grün, `--wait` Gelb, `--off` Grau, `--accent` Lila (nächster Schritt),
+`--over` Blau (über dem Spiel). Nichts blinkt im Leerlauf. Größe: `zoomSet("auto")` in `06-layout.js` (Fensterbreite / 1920).
 
 ### Ein neues Theme (Liga-Design)
 1. `web/themes.js`: einen Eintrag nach dem Muster der anderen. Die Felder sind oben in der Datei erklärt.
@@ -194,7 +205,9 @@ so bleiben beide Stellen gleich, ohne eigenen Abgleich.
 ### Eine neue Einstellung der App (gehört zur App, nicht zur Sendung)
 1. `casting_app/settings.py`: Standardwert in `DEFAULTS`, Prüfung in `update()`.
 2. Die Steuerseite liest und schreibt sie über `/api/app-settings`. Die Oberfläche steht unter ⚙ App-Einstellungen
-   in `web/control.html` (Dialog `#appDialog`), die Logik in `web/control/13-app.js` (Abschnitt „App-Einstellungen (Sprache, Update-Suche)“).
+   in `web/control.html` (Seite `#appDialog`: Liste `.settings-nav` mit `data-jump`, je Bereich ein `<section>` in `.dialog-content`;
+   `settings(true, "<id>")` öffnet direkt einen Bereich, `settingsNavDraw()` setzt die Status-Punkte), die Logik in
+   `web/control/13-app.js` (Abschnitt „App-Einstellungen (Sprache, Update-Suche)“) und `06-layout.js` (Seite, Liste).
 3. Soll Python sofort reagieren: `settings.listeners` (Beispiel: der Tray folgt der App-Sprache, `desktop/app.py`).
 
 ## Texte und Sprachen

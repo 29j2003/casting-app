@@ -222,7 +222,15 @@ def _wait_for_frame(qtbot, page, url_start):
             return frame
         return next((found for child in frame.children() if (found := find(child))), None)
     qtbot.waitUntil(lambda: find(page.mainFrame()) is not None, timeout=10_000)
-    return find(page.mainFrame())
+    frame = find(page.mainFrame())
+    # the frame can report its URL before its document is parsed (seen on Windows): wait for the body
+    ready = {}
+    def parsed():
+        frame.runJavaScript("document.readyState !== 'loading' && !!document.body", 0,
+                            lambda result: ready.update(ok=True) if result is True else None)
+        return ready.get("ok", False)
+    qtbot.waitUntil(parsed, timeout=10_000)
+    return frame
 
 
 class _https_test_page:

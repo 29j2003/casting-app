@@ -71,17 +71,17 @@ async function videoInfoDraw() {
   try { d = await (await fetch("/api/videos", { cache: "no-store" })).json(); } catch (e) {}
   box.innerHTML = "";
   if (!d.videos.length) { box.innerHTML = `<p class="small">Noch keine Videos im Ordner.</p>`; return; }
-  const chosen = new Set(Z.background.videos || []);
+  const list = typeof bgList === "function" ? bgList(bgChosen) || bgPlaylists()[0] : null;
+  const chosen = new Set(list ? list.videos : []);
   d.videos.forEach(v => {
     const path = "media/videos/" + v.name, [chars, text] = videoRating(v);
     const z = document.createElement("label"); z.className = "row vid-row";
     z.innerHTML = `<input type="checkbox"><span><b>${esc(v.name)}</b><br><span class="small" style="color:${chars === "✗" ? "var(--red)" : chars === "⚠" ? "var(--warn)" : "var(--ok)"}">${chars} ${esc(text)}</span></span>`;
     const cb = z.querySelector("input"); cb.checked = chosen.has(path);
-    cb.onchange = () => {
-      const l = new Set(Z.background.videos || []);
-      cb.checked ? l.add(path) : l.delete(path);
-      Z.background.videos = d.videos.map(x => "media/videos/" + x.name).filter(p => l.has(p));
-      send(); obsBackground(true);
+    cb.onchange = () => {                                    // Haken = in der gewählten Playlist (neue Videos hinten anhängen)
+      if (!list) return;
+      list.videos = cb.checked ? [...list.videos.filter(p => p !== path), path] : list.videos.filter(p => p !== path);
+      bgChanged();
     };
     box.appendChild(z);
   });
@@ -267,7 +267,7 @@ document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => { tabs(
 tabs((() => { try { return localStorage.getItem("cast-tabs") || "live"; } catch (e) { return "live"; } })());
 
 setTimeout(audioFetch, 1500);
-function everything() { languageDraw(); if (typeof dachCardShow === "function") { dachCardShow(); dframeDraw(); } audioDraw(); cleanDraw(); mbarDraw(); tournamentDraw(); bgSourceDraw(); graphicsDraw(); poolComplete(); scenesDraw(); scenesSetupDraw(); sponsorsDraw(); seriesDraw(); videoInfoDraw(); sourcesDraw(); themesDraw(); themeAdjust(); fieldsFill(); teamDraw("a"); teamDraw("b"); timerShow(); poolDraw(); vetoDraw(); playersDraw("a"); playersDraw("b"); }
+function everything() { bgApply(); bgDraw(); timerEndDraw(); languageDraw(); if (typeof dachCardShow === "function") { dachCardShow(); dframeDraw(); } audioDraw(); cleanDraw(); mbarDraw(); tournamentDraw(); bgSourceDraw(); graphicsDraw(); poolComplete(); scenesDraw(); scenesSetupDraw(); sponsorsDraw(); seriesDraw(); videoInfoDraw(); sourcesDraw(); themesDraw(); themeAdjust(); fieldsFill(); teamDraw("a"); teamDraw("b"); timerShow(); poolDraw(); vetoDraw(); playersDraw("a"); playersDraw("b"); }
 everything();
 helperCheck(); musicCheck();
 (async () => {

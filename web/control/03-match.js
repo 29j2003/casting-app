@@ -8,6 +8,22 @@ function timerShow() {
   $("timerDisplay").classList.toggle("running", !!Z.timer.running);
 }
 setInterval(timerShow, 250);
+// bei 0:00 einmal in die gewählte Szene wechseln (nur wenn der Timer gerade läuft – nicht nach dem Neuladen eines alten Stands)
+let timerEndDone = 0;
+function timerEndCheck() {
+  const E = (Z.timer || {}).end || {};
+  if (!Z.timer.running || !E.scene || K.timerRest(Z.timer) > 0 || timerEndDone === Z.timer.target) return;
+  timerEndDone = Z.timer.target;
+  if (Date.now() - Z.timer.target < 5000 && sceneNow() !== E.scene) sceneSwitch(E.scene);
+}
+setInterval(timerEndCheck, 500);
+function timerEndDraw() {
+  const E = (Z.timer.end = Object.assign({ text: "", scene: "" }, Z.timer.end || {}));
+  const html = `<option value="">– bleiben –</option>` + OVERLAY_SCENES.map(([k, n]) => `<option value="${k}"${k === E.scene ? " selected" : ""}>${esc(n)}</option>`).join("");
+  if ($("tEndScene")._h !== html) { $("tEndScene").innerHTML = html; $("tEndScene")._h = html; }
+}
+$("tEndScene").onchange = () => { Z.timer.end = Object.assign({}, Z.timer.end, { scene: $("tEndScene").value }); send(); };
+setTimeout(timerEndDraw, 0);
 function mbarDraw() {
   if (!$("mbarNameA")) return;
   ["a", "b"].forEach(k => { const t = Z.teams[k], l = $(k === "a" ? "mbarLogoA" : "mbarLogoB");
@@ -153,37 +169,81 @@ function poolComplete() {
   });
 }
 const normMap = n => String(n || "").toLowerCase().replace(/^de_/, "").replace(/[^a-z0-9]/g, "").replace(/ii$/, "2");
-function poolDraw() {
-  const box = $("pool"); box.innerHTML = "";
-  Z.mapPool.forEach((m, i) => {
-    const z = document.createElement("div"); z.className = "row p-row";
-    z.innerHTML = `<div class="vb vb-map" title="Bild wählen"></div>
-      <div style="display:grid;gap:4px"><div class="line" style="flex-wrap:nowrap;align-items:center"><input type="text"><label class="toggleSwitch" style="flex:0 0 auto" title="Map steht im Veto zur Auswahl"><input type="checkbox" class="active"> im Veto</label></div>
-      <div class="line" style="align-items:center;flex-wrap:nowrap">${modeSelect(m.imageMode)}<span class="small hint"></span></div>
-      <details class="facts"><summary class="small">Map-Fakten (${(m.facts || []).filter(Boolean).length})</summary><textarea placeholder="Ein Fakt pro Zeile, z. B. „Die CT-Seite gewinnt hier 54 % der Runden.“"></textarea></details></div>
-      <button class="x" title="Entfernen" aria-label="Entfernen">${icon("close")}</button><input type="file" accept="image/*" hidden>`;
-    const image = z.querySelector(".vb"), name = z.querySelector("input[type=text]"), mode = z.querySelector("select:not(.x)"),
-          x = z.querySelector(".x"), file = z.querySelector("input[type=file]");
-    previewImage(image, m);
-    z.querySelector(".hint").textContent = imageHint(m, TARGET.map);
-    name.value = m.name;
-    name.oninput = () => { m.name = name.value; vetoDraw(); laterSend(); };
-    const fk = z.querySelector(".facts textarea"); fk.value = (m.facts || []).join("\n");
-    fk.oninput = () => { m.facts = fk.value.split("\n").map(x => x.trim()).filter(Boolean); z.querySelector(".facts summary").textContent = `Map-Fakten (${m.facts.length})`; laterSend(); };
-    const ak = z.querySelector(".active"); ak.checked = m.active !== false;
-    ak.onchange = () => { m.active = ak.checked; vetoDraw(); send(); };
-    mode.onchange = () => { m.imageMode = mode.value; previewImage(image, m); send(); };
-    image.onclick = () => file.click();
-    file.onchange = async () => { if (!file.files[0]) return; Object.assign(m, await imageForArea(file.files[0], TARGET.map)); poolDraw(); send(); };
-    x.onclick = () => remove(Z.mapPool, i, `Map „${m.name}“`, () => { poolDraw(); vetoDraw(); });
-    box.appendChild(z);
-  });
+// Kacheln wie im Konzept: Bild mit Name, Schalter „im Pool", Füllen/Ganz, Map-Fakten; oben die aktiven, darunter die übrigen
+const poolStandard = m => K.DEFAULT.mapPool.some(s => normMap(s.name) === normMap(m.name));
+function poolCard(m, i) {
+  const z = document.createElement("div"); z.className = "pool-card" + (m.active === false ? " off" : ""); z.dataset.i = i;
+  z.innerHTML = `<div class="vb pool-image" title="Bild wählen"><input type="text" class="pool-name" aria-label="Name der Map"></div>
+    <div class="pool-bar"><label class="toggleSwitch" title="Map steht im Veto zur Auswahl"><input type="checkbox" class="active"></label>${modeSelect(m.imageMode)}
+      ${poolStandard(m) ? "" : `<button class="x" title="Entfernen" aria-label="Entfernen">${icon("close")}</button>`}</div>
+    <span class="small hint"></span>
+    <details class="facts"><summary class="small">Map-Fakten (${(m.facts || []).filter(Boolean).length})</summary><textarea placeholder="Ein Fakt pro Zeile, z. B. „Die CT-Seite gewinnt hier 54 % der Runden.“"></textarea></details>
+    <input type="file" accept="image/*" hidden>`;
+  const image = z.querySelector(".vb"), name = z.querySelector(".pool-name"), mode = z.querySelector(".pool-bar select"),
+        x = z.querySelector(".x"), file = z.querySelector("input[type=file]");
+  previewImage(image, m);
+  z.querySelector(".hint").textContent = imageHint(m, TARGET.map);
+  name.value = m.name;
+  name.onclick = ev => ev.stopPropagation();
+  name.oninput = () => { m.name = name.value; vetoDraw(); laterSend(); };
+  const fk = z.querySelector(".facts textarea"); fk.value = (m.facts || []).join("\n");
+  fk.oninput = () => { m.facts = fk.value.split("\n").map(x => x.trim()).filter(Boolean); z.querySelector(".facts summary").textContent = `Map-Fakten (${m.facts.length})`; laterSend(); };
+  const ak = z.querySelector(".active"); ak.checked = m.active !== false;
+  ak.onchange = () => { m.active = ak.checked; poolDraw(); vetoDraw(); send(); };
+  mode.onchange = () => { m.imageMode = mode.value; previewImage(image, m); send(); };
+  image.onclick = () => file.click();
+  file.onchange = async () => { if (!file.files[0]) return; Object.assign(m, await imageForArea(file.files[0], TARGET.map)); poolDraw(); send(); };
+  if (x) x.onclick = () => remove(Z.mapPool, i, `Map „${m.name}“`, () => { poolDraw(); vetoDraw(); });
+  // im Pool: ziehen = Reihenfolge im Veto
+  if (m.active !== false) {
+    z.draggable = true;
+    z.ondragstart = ev => { ev.dataTransfer.setData("text/pool", String(i)); z.classList.add("drags"); };
+    z.ondragend = () => z.classList.remove("drags");
+    z.ondragover = ev => { if (ev.dataTransfer.types.includes("text/pool")) ev.preventDefault(); };
+    z.ondrop = ev => {
+      ev.preventDefault(); const from = +ev.dataTransfer.getData("text/pool"); if (from === i || isNaN(from)) return;
+      const [moved] = Z.mapPool.splice(from, 1); Z.mapPool.splice(Z.mapPool.indexOf(m) + (from < i ? 1 : 0), 0, moved);
+      poolDraw(); vetoDraw(); send();
+    };
+  }
+  return z;
 }
-$("poolPlus").onclick = () => { Z.mapPool.push({ name: "Neue Map", image: "" }); poolDraw(); vetoDraw(); send(); };
+function poolDraw() {
+  const box = $("pool"), more = $("poolMore"); box.innerHTML = ""; more.innerHTML = "";
+  Z.mapPool.forEach((m, i) => (m.active === false ? more : box).appendChild(poolCard(m, i)));
+  const active = Z.mapPool.filter(m => m.active !== false), names = active.map(m => normMap(m.name)).sort().join();
+  const duty = K.DEFAULT.mapPool.filter(m => m.active).map(m => normMap(m.name)).sort().join();
+  $("poolCount").textContent = `· ${active.length} Maps`;
+  $("poolState").className = "state " + (names === duty ? "ok" : "next");
+  $("poolState").textContent = names === duty ? "entspricht Active Duty (Season 5)" : "eigener Pool – weicht von Active Duty ab";
+  // reicht der Pool für die Formate? (so viele Maps wie Schritte im Ablauf)
+  $("poolEnough").innerHTML = `<span class="small">Reicht für:</span>` + Object.values(Z.vetoPresets || {}).map(p => {
+    const need = (p.steps || []).length, ok = active.length >= need;
+    return `<span class="state ${ok ? "ok" : "wait"}" title="${need} Schritte im Ablauf">${esc(p.name || "")}${ok ? "" : ` – ${need - active.length} Map(s) fehlen`}</span>`;
+  }).join("");
+  more.hidden = !more.children.length; more.previousElementSibling.hidden = more.hidden;
+}
+$("poolPlus").onclick = () => { Z.mapPool.push({ name: "Neue Map", image: "", active: true }); poolDraw(); vetoDraw(); send(); };
 $("poolDefault").onclick = async () => {
   if (!await confirmDialog({ title: "Map-Pool zurücksetzen?", text: "Aktiver CS2-Pool + ältere Maps mit Bildern. Eigene Maps, Bilder und Map-Fakten gehen verloren.", button: "Zurücksetzen" })) return;
   Z.mapPool = K.clone(K.DEFAULT.mapPool); poolDraw(); vetoDraw(); send();
 };
+// eigene Map aus dem Steam Workshop: Name und Vorschaubild über die App holen (nur die Nummer geht zu Steam)
+$("poolWorkshopGo").onclick = async () => {
+  const value = $("poolWorkshop").value.trim(); if (!value) { $("poolWorkshop").focus(); return; }
+  $("poolWorkshopStatus").textContent = "Frage Steam …"; $("poolWorkshopGo").disabled = true;
+  try {
+    const r = await fetch("/api/workshop?id=" + encodeURIComponent(value), { cache: "no-store" }), j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || "Steam antwortet nicht");
+    const entry = { name: j.title, image: "", active: true, workshop: j.id };
+    if (j.image) { const blob = await (await fetch(j.image)).blob(); Object.assign(entry, await imageForArea(blob, TARGET.map)); }
+    Z.mapPool.push(entry); $("poolWorkshop").value = "";
+    $("poolWorkshopStatus").textContent = `✓ „${j.title}“ ist im Pool.`;
+    poolDraw(); vetoDraw(); send();
+  } catch (err) { $("poolWorkshopStatus").textContent = err.message; }
+  $("poolWorkshopGo").disabled = false;
+};
+$("poolWorkshop").addEventListener("keydown", ev => { if (ev.key === "Enter") $("poolWorkshopGo").click(); });
 
 /* ---------- Map-Veto ---------- */
 function presetSteps(format) {

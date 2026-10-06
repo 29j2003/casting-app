@@ -256,6 +256,16 @@ Nach oben/unten und Löschen (mit Rückgängig). Arten:
 * **Punktestand:** Logos + Stand.
 * **Map-Info:** Pick · Map · Next, automatisch aus Veto & Serie.
 * **Map-Fakt:** Fakten zur aktuellen Map. Du trägst sie im Map-Pool ein (ein Fakt pro Zeile). Sie wechseln automatisch.
+* **Map-Pool** (Setup): Kacheln mit Bild – oben die Maps im Pool (ziehen = Reihenfolge im Veto), darunter die übrigen.
+  Oben steht, ob der Pool Active Duty entspricht, unten, für welche Formate er reicht. **Eigene Map:** Workshop-Link einfügen →
+  „Aus dem Workshop holen“ übernimmt Name und Vorschaubild von Steam; sonst „Von Hand: Name + Bild“.
+* **Sponsoren:** auf Wunsch ein **Restzeit-Balken** unter dem Logo – er zeigt, wann der nächste Sponsor kommt.
+* **Unterseiten mit Status:** In Match und Setup steht links neben jeder Unterseite ein Punkt mit einer Zeile – Grün = fertig,
+  Gelb = fehlt noch (z. B. „Caster-Namen fehlen“, „1 Logo fehlt“), Lila = angepasst, Grau = Vorgabe.
+* **Timer bei 0:00** (Match → Timer & Texte): eigener Text statt „00:00“ (z. B. „GLEICH GEHT'S LOS“) und auf Wunsch ein
+  automatischer Wechsel in eine Szene – einmal, genau beim Ablaufen.
+* **Team-Bibliothek** (Match → Teams & Spieler): „Team A/B speichern“ legt Name, Kürzel, Logo, Farben und Spieler auf diesem PC ab;
+  „→ Team A/B“ lädt ein gespeichertes Team (der Punktestand bleibt).
 
 In der Szene **Ingame** weichen alle Positionen dem Spiel-HUD aus (Minimap, Scoreboard, Killfeed, Spielerkarten).
 
@@ -355,6 +365,14 @@ Kameras laufen dabei ohne Neuladen weiter.
   Adresse und Schlüssel zum Herunterladen). Das Match als Zuschauer öffnen (GOTV/Observer), dann liefert CS2 alle 10 Spieler.
   Neue Szenen: **Scoreboard**, **Team A**, **Team B**, **Head-to-Head** · neue Einblendungen: **Scoreboard (live)**, **Spieler (live)**.
   Zur Halbzeit tauscht die App die Seiten selbst; ADR und HS % rechnet sie aus den Rundendaten mit.
+  **„Testdaten abspielen“** spielt ein kurzes Beispiel-Match – nur in der Vorschau der App, nie im Stream –, so lassen sich
+  Scoreboard und Team-Szenen ohne laufendes Spiel prüfen.
+* **Hintergrund: Playlisten** (Setup → Hintergrund). Eine Playlist ist eine von drei Arten: **Ein Video · Dauerschleife**,
+  **Mehrere Videos** (nacheinander oder zufällig; Übergang Schnitt, Blende oder über Schwarz, Dauer in Sekunden) oder **Clips**
+  (einmal durch, mit Ton, danach wieder der Hintergrund). Je Szene läuft die Playlist, bei der die Szene angehakt ist; Ingame nie.
+  Videos aus der Bibliothek (Videos-Ordner) anhaken, Reihenfolge mit ↑ ↓. Bis 2.6 angehakte Videos werden zur Playlist „Standard“.
+  **In Live** sitzt unter der Programm-Vorschau die Ecke **HINTERGRUND**: andere Playlist für die laufende Szene (gilt bis zum
+  nächsten Szenenwechsel), „Für die Szene merken“, und **„Clip zeigen“** / „Clip stoppen“.
 * **Hintergrund-Video: am besten spielt OBS es ab.** Die Browserquelle in OBS gibt Videos nicht zuverlässig wieder
   (in der App-Vorschau läuft es trotzdem). Sobald ein Overlay in OBS verbunden ist, bietet die App oben „OBS spielt ab – einrichten" an:
   ein Klick, kurz bestätigen – dann spielt OBS das Video als Medienquelle unter dem Overlay (auch H.265/AV1, mehrere Videos mit VLC).
@@ -394,7 +412,8 @@ Die macOS-App ist nur ad-hoc signiert (ohne Apple-Konto); die Beglaubigung durch
 * **Kaputte Dateien halten die App nicht auf:** Ist z. B. nach einem Stromausfall eine Datei im Datenordner beschädigt,
   legt die App sie als `….damaged` beiseite, startet mit Standardwerten und schreibt es ins Log.
 * **Vom PC geht nur nach außen:** FACEIT-Abfragen (Match, Turnier, Team-Statistiken – mit deinem API-Key), die
-  DACH-CS-Seiten (mit ID und Key), Kameras und Clips, die du selbst einträgst, und die Frage an GitHub, ob es eine
+  DACH-CS-Seiten (mit ID und Key), Kameras und Clips, die du selbst einträgst, beim Klick auf „Aus dem Workshop holen“
+  die Workshop-Nummer an Steam (Name und Vorschaubild zurück), und die Frage an GitHub, ob es eine
   neuere Version gibt (nur die Versionsliste; abschaltbar unter ⚙ → Update). Updates kommen nur aus den Releases dieses Projekts und nur mit passender Prüfsumme.
 * Das **OBS-Passwort** liegt ebenfalls im Schlüsselbund. Die Anmeldung bei OBS rechnet die App selbst aus, das Passwort
   steht nicht im Browser-Speicher der Steuerseite (ein altes wird beim ersten Start umgezogen).

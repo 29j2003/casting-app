@@ -71,4 +71,4 @@ Aufbau und Rezepte für Änderungen: `ENTWICKLUNG.md` (bei neuen Bausteinen dort
 ## Geplant
 - Notarisierung für macOS einschalten, sobald ein Apple-Entwicklerkonto da ist; Windows-Signatur mit eigenem Zertifikat.
 - Konzept 3 vollständig umsetzen: Match-Stepper + Spieltag, Turnier-Phasen, Teams-Vorstellung, Fernsteuerung (Touch Portal).
-- DACH-Rahmen für Duocam/Interaktion/Interview exakt vermessen (Screenshots vom Nutzer).
+- DACH-Rahmen für Interview Single/Duo exakt vermessen (Video/Screenshots vom Nutzer); Singlecam, Duocam, Interaktion und eigene Contentpause sind vermessen.

@@ -239,10 +239,12 @@
         done = true;
         if (fresh === dachActive) return;                      // zeigt diese Seite schon – kein Übergang auf sich selbst
         const S = (C().Z || Z).broadcast || {}, previous = dachActive, kind = previous ? (S.transition || "fade") : "cut", d = Math.max(0, +S.duration || 0);
+        const before = previous ? dachUnderlay(C().Z || Z, previous, page) : null;   // Löcher beider Seiten bleiben schwarz
         dachRunning = fresh;
-        await dachTransition(previous, fresh, kind, d, () => dachFrameSet(C().Z || Z, page, kind === "cut" ? 0 : d));
+        await dachTransition(previous, fresh, kind, d, () => { dachFrameSet(C().Z || Z, page, 0); dachNote(C().Z || Z, page); }, before);
+        if (before) before.remove();
         all.forEach(x => { if (x !== fresh) { x.classList.remove("on"); x.style.zIndex = ""; } });
-        fresh.style.zIndex = ""; dachActive = fresh; dachRunning = null;
+        fresh.style.zIndex = 3; dachActive = fresh; dachRunning = null;
         all.forEach(x => { if (x === fresh) return; const m = x._brand;
           x._clear = setTimeout(() => { if (x._brand === m && x !== dachActive && x.getAttribute("src") !== window.CastCore.dachUrl(dachPage)) x.src = "about:blank"; }, 300); });
       }).catch(() => {}); };
@@ -253,9 +255,21 @@
     // Rahmen von Hand verschoben (gleiche Seite): sofort übernehmen
     else dachFrameSet(Z, page, 0);
   }
+  // Das App-Fenster (Qt WebEngine) spielt kein H.264 – Seiten mit DACH-Video bekommen dort einen Hinweis (nur Vorschau, nie in OBS)
+  const DACH_VIDEO_PAGES = ["pause_content"];
+  const canH264 = (() => { try { return !!document.createElement("video").canPlayType('video/mp4; codecs="avc1.42E01E"'); } catch (e) { return true; } })();
+  function dachNote(Z, page) {
+    let note = dachLayer && dachLayer.querySelector(".dach-note");
+    const show = !canH264 && DACH_VIDEO_PAGES.includes(page);
+    if (!show) { if (note) note.remove(); return; }
+    if (!note) { note = document.createElement("div"); note.className = "dach-note preview-only"; dachLayer.appendChild(note); }
+    note.textContent = window.CastCore.word(Z, "previewNoH264");
+  }
   // Übergänge wie bei den eigenen Szenen: Schnitt · Blende · Schieben · Wischen · Stinger
-  async function dachTransition(previous, fresh, kind, d, middle) {
-    fresh.style.zIndex = 2; if (previous) previous.style.zIndex = 1;
+  // Die Kameras gehören zur neuen Seite: sie sitzen sofort in deren Löchern und erscheinen mit ihr (gleiche Animation).
+  // Unter der alten Seite liegen solange schwarze Flächen in deren Löchern (before) – nie scheint etwas anderes durch.
+  async function dachTransition(previous, fresh, kind, d, middle, before) {
+    fresh.style.zIndex = 3; if (previous) previous.style.zIndex = 1;      // Kameras (2) liegen dazwischen
     const opt = { duration: d, easing: "cubic-bezier(.4,0,.2,1)", fill: "both" };
     if (!previous || kind === "cut" || d === 0) { fresh.classList.add("on"); middle(); return; }
     if (kind === "stinger") {
@@ -265,10 +279,21 @@
     const k = kind === "wipe" ? [{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0 0 0)" }]
             : kind === "slide" ? [{ opacity: 0, transform: "translateX(6%)" }, { opacity: 1, transform: "none" }]
             : [{ opacity: 0 }, { opacity: 1 }];
-    const a = fresh.animate(k, opt);
-    const b = kind === "slide" ? previous.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(-6%)" }], opt) : null;
-    try { await a.finished; } catch (e) {}
-    a.cancel(); if (b) b.cancel();
+    const out = [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(-6%)" }];
+    const cams = dachLayer.querySelector(".dach-cams");
+    const runs = [fresh.animate(k, opt), cams.animate(k, opt)];
+    if (kind === "slide") runs.push(previous.animate(out, opt), ...(before ? [before.animate(out, opt)] : []));
+    try { await runs[0].finished; } catch (e) {}
+    runs.forEach(r => r.cancel());
+  }
+  function dachUnderlay(Z, previous, next) {
+    const old = Object.keys(window.CastCore.DACH_FRAME).find(p => previous.getAttribute("src") === window.CastCore.dachUrl(p));
+    const frames = [old, next].filter(Boolean).flatMap(p => Object.values(window.CastCore.dachFrame(Z, p)));
+    if (!frames.length) return null;
+    const under = document.createElement("div"); under.className = "dach-under";
+    under.innerHTML = frames.map(r => `<div style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px"></div>`).join("");
+    dachLayer.insertBefore(under, dachLayer.firstChild);
+    return under;
   }
   // Kameras und Inhalt in die Rahmen der Seite – vorhandene gleiten an ihren neuen Platz (das Bild läuft dabei weiter)
   function dachFrameSet(Z, page, d) {

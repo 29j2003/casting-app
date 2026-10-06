@@ -94,10 +94,17 @@ Setup → Aussehen → Stil **„DACH CS – Offiziell“** wählen, **Nutzer-ID
 * Alles läuft in **einer** Browserquelle („Cast – Overlay“): Live → Szenen zeigt die 25 DACH-Seiten (Overview, Single-/Duocam,
   Lineup, Mapveto, Ingame, Tabelle, Playoffs, Matches, MVP, Pausen, Interaktion, Interviews, Endscreen). Die neue Seite wird
   vorgeladen und dann mit dem gewählten Übergang gewechselt (Schnitt, Blende, Schieben, Wischen, Stinger – wie bei den eigenen
-  Szenen); Kameras gleiten dabei in ihre neuen Rahmen, das Bild läuft weiter. Ohne Scrollbalken, exakt 1920 × 1080.
-* **Kameras und Inhalt** (Caster, Gast, Clip) setzt die App automatisch in die Rahmen der jeweiligen Seite. Ein leerer
-  Rahmen ist schwarz – nie der Hintergrund der DACH-Seite, auch nicht kurz beim Wechsel.
-  „Kamera- und Inhalts-Rahmen anpassen“ zeigt die Rahmen in der Vorschau und lässt sie pixelgenau verschieben.
+  Szenen); die Kameras erscheinen mit der neuen Seite gleich in deren Rahmen, das Bild läuft weiter. Ohne Scrollbalken,
+  exakt 1920 × 1080.
+* **Kameras und Inhalt** (Caster, Gast, Clip) setzt die App automatisch in die Rahmen der jeweiligen Seite (Singlecam,
+  Duocam, Interaktion Single/Duo, eigene Contentpause – aus den echten DACH-Seiten vermessen). Sie liegen **unter** der
+  Seite: gelbe Linie und Namensschild von DACH CS bleiben sichtbar. Ein leerer Rahmen ist schwarz – nie der Hintergrund
+  einer DACH-Seite, auch nicht beim Wechsel. „Kamera- und Inhalts-Rahmen anpassen“ zeigt die Rahmen in der Vorschau und
+  lässt sie pixelgenau verschieben (die Interview-Seiten sind noch nicht vermessen – dort bei Bedarf anpassen).
+  Wer früher Rahmen von Hand verschoben hat: „Standard“ übernimmt die neuen Maße.
+* **Videos in der App-Vorschau:** Das App-Fenster kann Videos im Format H.264 (MP4) nicht abspielen – das betrifft z. B.
+  das Video der DACH-Contentpause. Im Stream in OBS läuft es normal; die Vorschau zeigt dann einen Hinweis.
+  WebM/VP9 (auch YouTube, VDO.Ninja) läuft überall.
 * Die Inhalte der Grafiken (Teams, Ergebnisse, Tabelle …) kommen aus dem DACH-CS-Live-Dashboard. Einblendungen der App liegen darüber.
 * „DACH CS – eigener Stil“ bleibt als freies Design erhalten.
 
@@ -276,7 +283,7 @@ Kameras laufen dabei ohne Neuladen weiter.
 * **Wer spielt die Videos ab?** (Setup → Hintergrund)
   * **OBS** (empfohlen): alle Formate, die OBS kann, auch H.265 und 4K, mit Hardware-Dekodierung. Die App legt die Medienquelle
     „Cast – Hintergrund" direkt unter das Overlay (über die Spielaufnahme) und blendet sie in der Ingame-Szene automatisch aus.
-  * **Das Overlay**: am sichersten MP4 (H.264) oder WebM (VP9). Die App prüft jedes Video.
+  * **Das Overlay**: am sichersten WebM (VP9). MP4 (H.264) spielt OBS ab, die Vorschau im App-Fenster aber nicht. Die App prüft jedes Video.
 * **Einstellungen, Bilder und Log** liegen in *%APPDATA%\Casting-App* (Linux/macOS: *~/.casting-app*). Der Reiter **Log** zeigt, was gerade passiert,
   welche Overlays verbunden sind (auch die in OBS) und öffnet alle Ordner.
 * **FACEIT:** Match → Import & Sitzungen → FACEIT: API-Key (Server side, von developers.faceit.com) → „Schlüssel speichern“,

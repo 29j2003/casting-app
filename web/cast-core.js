@@ -18,7 +18,7 @@ window.CastCore = (function () {
   "use strict";
 
   const KEY = "cast-state-v1";
-  const VERSION = "2.3.0";                     // muss zur App passen – sonst lädt sich die Seite neu
+  const VERSION = "2.3.1";                     // muss zur App passen – sonst lädt sich die Seite neu
   // Läuft die Seite über den Server der App (http://localhost:8787)?
   const SERVER = /^https?:$/.test(location.protocol) && location.port === "8787" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
@@ -140,6 +140,7 @@ window.CastCore = (function () {
           opening: "ERÖFFNUNG", winners: "GEWINNER", elimination: "AUSSCHEIDUNG", decider: "ENTSCHEIDUNG", bye: "Freilos",
           noMaps: "Noch keine gespielten Maps – erst das Map-Veto ausfüllen", noSponsors: "Noch keine Sponsoren für dieses Theme",
           noTournament: "Noch kein Turnier angelegt", cameraMissing: "Kamera nicht verfügbar",
+          previewNoH264: "Das Video dieser DACH-Seite (H.264) spielt nur im Stream in OBS – die Vorschau im App-Fenster kann dieses Format nicht abspielen.",
           tableTeam: "TEAM", tableGames: "SP", tableWins: "S", tableLosses: "N", tablePoints: "PKT",
           winRate: "SIEGQUOTE", matches: "SPIELE", streak: "SERIE", formWin: "S", formLoss: "N" },
     en: { final: "FINAL", upperFinal: "UPPER FINAL", lowerFinal: "LOWER FINAL", semifinal: "SEMIFINAL", quarterfinal: "QUARTERFINAL",
@@ -147,6 +148,7 @@ window.CastCore = (function () {
           opening: "OPENING", winners: "WINNERS", elimination: "ELIMINATION", decider: "DECIDER", bye: "Bye",
           noMaps: "No maps played yet – fill in the map veto first", noSponsors: "No sponsors for this theme yet",
           noTournament: "No tournament set up yet", cameraMissing: "Camera not available",
+          previewNoH264: "The video of this DACH page (H.264) only plays in the stream in OBS – the preview in the app window cannot play this format.",
           tableTeam: "TEAM", tableGames: "P", tableWins: "W", tableLosses: "L", tablePoints: "PTS",
           winRate: "WIN RATE", matches: "MATCHES", streak: "STREAK", formWin: "W", formLoss: "L" }
   };
@@ -686,12 +688,15 @@ window.CastCore = (function () {
     "dach-owncontent": "pause_own_content", "dach-inter1": "singleinteraction", "dach-inter2": "duointeraction",
     "dach-interview1": "solo_interview", "dach-interview2": "duointerview", "dach-end": "endscreen"
   };
-  // Wo Kameras (c1, c2, gast) und Inhalt (inhalt) sitzen – Singlecam aus dem echten Layout gemessen, der Rest Startwerte zum Anpassen
+  // Wo Kameras (c1, c2, guest) und Inhalt (content) sitzen. Die Rahmen liegen UNTER der DACH-Seite und füllen deren
+  // Loch samt gelber Linie – Linie und Namensschild der Seite liegen darüber. Singlecam, Duocam, Interaktion und
+  // eigene Contentpause aus den echten Seiten gemessen (2.3.1); Interviews sind noch Startwerte zum Anpassen.
   const DACH_FRAME = {
-    singlecast: { c1: { x: 512, y: 37, w: 910, h: 690 } },
-    duocast: { c1: { x: 100, y: 120, w: 840, h: 630 }, c2: { x: 980, y: 120, w: 840, h: 630 } },
-    singleinteraction: { content: { x: 60, y: 60, w: 1280, h: 720 }, c1: { x: 1370, y: 60, w: 490, h: 368 } },
-    duointeraction: { content: { x: 60, y: 60, w: 1280, h: 720 }, c1: { x: 1370, y: 60, w: 490, h: 368 }, c2: { x: 1370, y: 448, w: 490, h: 368 } },
+    singlecast: { c1: { x: 510, y: 41, w: 902, h: 677 } },
+    duocast: { c1: { x: 39, y: 40, w: 902, h: 682 }, c2: { x: 980, y: 40, w: 903, h: 682 } },
+    singleinteraction: { c1: { x: 39, y: 40, w: 522, h: 321 }, content: { x: 600, y: 40, w: 1282, h: 722 } },
+    duointeraction: { c1: { x: 39, y: 40, w: 522, h: 321 }, c2: { x: 39, y: 441, w: 522, h: 321 }, content: { x: 600, y: 40, w: 1282, h: 722 } },
+    pause_own_content: { content: { x: 334, y: 33, w: 1253, h: 705 } },
     solo_interview: { c1: { x: 100, y: 120, w: 840, h: 630 }, guest: { x: 980, y: 120, w: 840, h: 630 } },
     duointerview: { c1: { x: 60, y: 140, w: 580, h: 435 }, c2: { x: 670, y: 140, w: 580, h: 435 }, guest: { x: 1280, y: 140, w: 580, h: 435 } }
   };

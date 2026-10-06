@@ -514,9 +514,15 @@ body:not(.idle) .live-table:has(.live-wait) { visibility: hidden; }
 /* DACH CS – Offiziell: Seite füllt die Quelle exakt, ohne Scrollbalken; Kameras liegen in den Rahmen darüber */
 body.dach-official .backdrop { display: none !important; }
 .dach-layer { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; z-index: 1; }
-.dach-page { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; overflow: hidden; visibility: hidden; background: transparent; }
+.dach-page { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; overflow: hidden; visibility: hidden; background: transparent; z-index: 1; }
 .dach-page.on { visibility: visible; }
-.dach-cams { position: absolute; inset: 0; pointer-events: none; }
+/* Reihenfolge: vorige Seite (1) · Kameras (2) · aktuelle Seite (3) – die Kameras sitzen in den Löchern der Seite,
+   Linie und Namensschild der Seite liegen darüber; beim Wechsel scheint nie die vorige Seite durch ein Loch */
+.dach-cams { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+body.idle.dach-frame-show .dach-cams { z-index: 4; }
+.dach-under { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.dach-under div { position: absolute; background: #000; }
+.dach-note { position: absolute; left: 50%; bottom: 300px; transform: translateX(-50%); z-index: 5; max-width: 1100px; padding: 14px 22px; font: 600 26px Rajdhani, sans-serif; color: #101526; background: #FCC659; text-align: center; }
 .dach-cam { position: absolute; overflow: hidden; background: #000; }   /* leer = schwarz, nie der DACH-Hintergrund */
 .dach-cam .cam-source { position: absolute; inset: 0; }
 .dach-frame-name { display: none; }

@@ -106,6 +106,96 @@ $("teamLibDelete").onclick = async () => {
   await TEAM_DB.erase(name); teamLibDraw(); $("teamLibStatus").textContent = `„${name}“ gelöscht.`;
 };
 teamLibDraw();
+
+/* ---------- Spieltag: Spiele des Tages nacheinander laden ---------- */
+function matchday() { Z.matchday = Object.assign({ list: [], current: "" }, Z.matchday || {}); Z.matchday.list = Z.matchday.list || []; return Z.matchday; }
+const mdStatus = s => { $("mdStatus").textContent = s; };
+const mdId = () => "md" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+// offene Turnierspiele (beide Teams stehen fest, noch nicht fertig)
+function mdTourGames() {
+  const T = tour(), B = K.tournamentBuild(T, CastI18n.language);
+  const named = (list, title) => list.map(m => Object.assign({ caption: m.title || title || "" }, m));
+  const all = [...B.rounds.flatMap(r => named(r.matches, r.title)), ...B.bottom.flatMap(r => named(r.matches, r.title)), ...(B.finale ? named([B.finale], "Grand Final") : []), ...B.groups.flatMap(g => named(g.matches, g.name))];
+  return all.filter(m => m.a && m.b && m.a !== "BYE" && m.b !== "BYE" && !m.done);
+}
+function mdFromTour(id) {
+  const t = tour().teams.find(x => x.id === id) || {};
+  return { name: t.name || "", short: t.short || "", logo: t.logo || "", players: (t.players || []).map(n => ({ name: n, real: "", image: "", level: 0 })) };
+}
+async function mdDraw() {
+  const D = matchday(), box = $("mdList"), T = tour(), name = id => ((T.teams.find(x => x.id === id) || {}).name || "?");
+  box.innerHTML = D.list.length ? "" : `<span class="small">Noch keine Spiele – unten aus dem Turnier, der Team-Bibliothek oder dem aktuellen Match hinzufügen.</span>`;
+  const next = D.list.find(x => !x.done && x.id !== D.current);
+  D.list.forEach((x, i) => {
+    const z = document.createElement("div"), live = x.id === D.current;
+    const state = live ? ["live", "Läuft"] : x.done ? ["over", "Fertig"] : x === next ? ["next", "Als Nächstes"] : ["", "Geplant"];
+    z.className = "md-row" + (live ? " live" : "") + (x.done ? " done" : "");
+    const logo = t => `<i class="md-logo"${t.logo ? ` style="background-image:${esc(K.cssUrl(t.logo))}"` : ""}>${t.logo ? "" : esc((t.short || t.name || "?").slice(0, 3).toUpperCase())}</i>`;
+    z.innerHTML = `<input type="text" class="md-time" placeholder="Zeit" aria-label="Zeit" value="${esc(x.time || "")}">
+      <div class="md-teams">${logo(x.a)}<b>${esc(x.a.name || "?")}</b><span class="small">vs</span><b>${esc(x.b.name || "?")}</b>${logo(x.b)}</div>
+      <span class="state ${state[0]}">${state[1]}</span>
+      <button class="button${live ? "" : " main"}" data-a="load"${live ? " disabled" : ""}>Laden</button>
+      <button class="button" data-a="up" aria-label="nach oben">${icon("up")}</button><button class="button" data-a="down" aria-label="nach unten">${icon("down")}</button>
+      <button class="x" data-a="away" aria-label="Entfernen">${icon("close")}</button>`;
+    z.querySelector(".md-time").oninput = ev => { x.time = ev.target.value; laterSend(); };
+    z.querySelector("[data-a=load]").onclick = () => mdLoad(x.id);
+    z.querySelector("[data-a=up]").onclick = () => { if (i > 0) { [D.list[i - 1], D.list[i]] = [D.list[i], D.list[i - 1]]; mdDraw(); send(); } };
+    z.querySelector("[data-a=down]").onclick = () => { if (i < D.list.length - 1) { [D.list[i + 1], D.list[i]] = [D.list[i], D.list[i + 1]]; mdDraw(); send(); } };
+    z.querySelector("[data-a=away]").onclick = () => remove(D.list, i, `Spiel „${x.a.name} vs ${x.b.name}“`, () => { if (D.current === x.id) D.current = ""; mdDraw(); });
+    box.appendChild(z);
+  });
+  $("mdNext").disabled = !next;
+  $("mdNext").textContent = next ? `Nächstes Spiel laden: ${next.a.name} vs ${next.b.name}` : "Nächstes Spiel laden";
+  // Auswahl: offene Turnierspiele, die noch nicht auf der Liste stehen
+  const used = new Set(D.list.map(x => x.gameId).filter(Boolean)), games = mdTourGames().filter(m => !used.has(m.id));
+  $("mdTourGame").innerHTML = games.length ? games.map(m => `<option value="${esc(m.id)}">${esc(m.caption)}: ${esc(name(m.a))} vs ${esc(name(m.b))}</option>`).join("") : `<option value="">– keine offenen Spiele –</option>`;
+  $("mdAddTour").disabled = $("mdAddAllTour").disabled = !games.length;
+  let lib = [];
+  try { lib = await TEAM_DB.all(); } catch (e) {}
+  lib.sort((a, b) => a.name.localeCompare(b.name));
+  ["mdLibA", "mdLibB"].forEach(id => { const s = $(id), before = s.value; s.innerHTML = lib.length ? lib.map(x => `<option${x.name === before ? " selected" : ""}>${esc(x.name)}</option>`).join("") : `<option value="">– noch keine –</option>`; });
+  $("mdAddLib").disabled = lib.length < 1;
+}
+// Ergebnis des laufenden Spiels ins Turnier (nur selbst eingetragene Turniere – FACEIT liefert seine Ergebnisse selbst)
+function mdResultToTour(x) {
+  const T = tour(), a = +Z.teams.a.score || 0, b = +Z.teams.b.score || 0;
+  if (!x || !x.gameId || T.gamesSource === "faceit" || (!a && !b)) return false;
+  T.res[x.gameId] = Object.assign({}, T.res[x.gameId], { a, b, done: a !== b });
+  return true;
+}
+async function mdLoad(id) {
+  const D = matchday(), x = D.list.find(e => e.id === id); if (!x) return;
+  const started = (+Z.teams.a.score || 0) + (+Z.teams.b.score || 0) > 0 || steps().some(s => s.map);
+  if (started && !await confirmDialog({ title: `„${x.a.name} vs ${x.b.name}“ laden?`, text: "Spielstand, Veto und Serie des aktuellen Matches werden geleert. Stammt es aus dem Turnier, geht sein Ergebnis vorher ins Turnier.", button: "Laden" })) return;
+  const before = D.list.find(e => e.id === D.current), toTour = mdResultToTour(before);
+  if (before) before.done = true;
+  ["a", "b"].forEach(k => {
+    const t = x[k];
+    Z.teams[k] = Object.assign({}, Z.teams[k], { name: t.name || "", short: t.short || "", logo: t.logo || "", score: 0 });
+    Z.players = Z.players || {}; Z.players[k] = K.clone(t.players || []);
+  });
+  Z.teams.result = false;
+  Z.veto.steps = presetSteps(Z.veto.format);
+  D.current = x.id; x.done = false;
+  teamDraw("a"); teamDraw("b"); playersDraw("a"); playersDraw("b"); vetoDraw(); seriesDraw(); mbarDraw(); tournamentDraw(); mdDraw(); send();
+  mdStatus(`✓ Jetzt: ${x.a.name} vs ${x.b.name}${toTour ? " · Ergebnis des letzten Spiels steht im Turnier" : ""}`);
+}
+$("mdNext").onclick = () => { const D = matchday(), next = D.list.find(x => !x.done && x.id !== D.current); if (next) mdLoad(next.id); };
+$("mdClear").onclick = async () => { const D = matchday(); if (!D.list.length || !await confirmDialog({ title: "Spieltag leeren?", text: "Die Liste der Spiele wird geleert. Das aktuelle Match bleibt, wie es ist.", button: "Leeren" })) return; D.list = []; D.current = ""; mdDraw(); send(); };
+const mdAddGame = m => matchday().list.push({ id: mdId(), time: "", gameId: m.id, a: mdFromTour(m.a), b: mdFromTour(m.b), done: false });
+$("mdAddTour").onclick = () => { const m = mdTourGames().find(g => g.id === $("mdTourGame").value); if (!m) return; mdAddGame(m); mdDraw(); send(); mdStatus("✓ Spiel hinzugefügt."); };
+$("mdAddAllTour").onclick = () => { const used = new Set(matchday().list.map(x => x.gameId)), l = mdTourGames().filter(m => !used.has(m.id)); l.forEach(mdAddGame); mdDraw(); send(); mdStatus(`✓ ${l.length} Spiele hinzugefügt.`); };
+$("mdAddLib").onclick = async () => {
+  const lib = await TEAM_DB.all(), pick = n => { const e = lib.find(x => x.name === n); return e ? Object.assign({ name: e.name, short: e.team.short || "", logo: e.team.logo || "" }, { players: K.clone(e.players || []) }) : null; };
+  const a = pick($("mdLibA").value), b = pick($("mdLibB").value); if (!a || !b) return;
+  if (a.name === b.name) return mdStatus("Bitte zwei verschiedene Teams wählen.");
+  matchday().list.push({ id: mdId(), time: "", a, b, done: false }); mdDraw(); send(); mdStatus("✓ Spiel hinzugefügt.");
+};
+$("mdAddCurrent").onclick = () => {
+  const D = matchday(), team = k => ({ name: Z.teams[k].name || "", short: Z.teams[k].short || "", logo: Z.teams[k].logo || "", players: K.clone((Z.players || {})[k] || []) });
+  const x = { id: mdId(), time: "", a: team("a"), b: team("b"), done: false };
+  D.list.push(x); if (!D.current) D.current = x.id; mdDraw(); send(); mdStatus("✓ Aktuelles Match steht auf dem Spieltag.");
+};
 const activeSession = () => { try { return localStorage.getItem("cast-session-active") || ""; } catch (e) { return ""; } };
 async function sessionsDraw(selection) {
   let list = [];

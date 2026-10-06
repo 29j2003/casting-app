@@ -162,6 +162,13 @@ Die Dateien `web/<scene>.html` werden erzeugt – nie von Hand ändern.
 5. Übersetzungen in `web/lang-en.js`. `tests/test_control_page.py` prüft die neue Art im Overlay automatisch mit,
    sobald eine Einblendung dieser Art im Standardzustand steht.
 
+### Icons in der Steuerseite
+
+Knöpfe zeigen SVG-Icons, keine Zeichen wie 🔓 ⧉ ⏻ – die hängen von den Schriften des Systems ab und sahen unter Linux
+und Windows unterschiedlich groß aus. Satz und Helfer: `ICONS` / `icon(name)` in `web/control/01-core.js`.
+Im HTML `data-icon="name"` (wird beim Laden vorangestellt), im Skript `${icon("name")}`. Knöpfe nur mit Icon brauchen ein
+`aria-label` (Bildschirmleser, und es nimmt den Abstand zum Text weg).
+
 ### Bedienung an eine Szene binden (Live → „Zur Szene“)
 
 Die Karte `data-area="scene-tools"` zeigt, was die Szene im Programm braucht (`sceneNow()` in `web/control/05-live.js`,
@@ -315,6 +322,14 @@ Commits tragen die E-Mail-Adresse des Autors – im öffentlichen Repository fü
   trägt oder eine Datei eine E-Mail-Adresse enthält; die Adresse selbst gibt es nie aus. `KNOWN_OLD_COMMITS` nennt den
   einen Commit von vor dieser Prüfung.
 
+### Programme des Systems starten (Linux)
+
+Die gebaute Linux-App (PyInstaller, AppImage) setzt `LD_LIBRARY_PATH` auf ihre eigenen Bibliotheken. Startet sie damit
+`xdg-open`, lädt z. B. `kde-open` das Qt der App statt das des Systems und scheitert still (Issue #13: „Videos-Ordner öffnen“
+unter KDE). Darum öffnen Ordner und Links über `casting_app/system_open.py` (`open_with_system`, Umgebung aus
+`system_environment()`: ursprüngliches `LD_LIBRARY_PATH`, nichts, was in den App-Ordner zeigt). Auch der Neustart nach einem
+AppImage-Update nutzt diese Umgebung. Neue Stellen, die ein Programm des Systems starten, ebenso.
+
 ### Stabilität (Dateien, Fehler)
 
 * Eigene Dateien (Zustand, Einstellungen, CS2-Einstellungen, Fenster, Bilder, Tresor) immer mit `files.write_atomic`
@@ -395,7 +410,7 @@ kommen aus `tools/build.py` – wer sie ändert, muss `asset_suffix()` anpassen.
 
 ## Fehlersuche
 
-* **Log-Reiter** in der App, oder `log.txt` im Datenordner (⚙ → Daten & Log öffnen). Blaue Zeilen kommen direkt
+* **Log-Reiter** in der App, oder `log.txt` im Datenordner (Reiter Log → Ordner → „Daten & Log“). Blaue Zeilen kommen direkt
   aus den Overlays, z. B. aus OBS.
 * **Diagnose im Overlay:** Log-Reiter → „Diagnose in allen Overlays einblenden“. Zeigt Version, Zustand, Bilder und
   Videos direkt in der Browserquelle.

@@ -215,11 +215,6 @@ $("updateCheck").onchange = () => fetch("/api/app-settings", { method: "POST", b
 appSettingsFetch(); setTimeout(appSettingsFetch, 8000);
 $("logCopy").onclick = () => navigator.clipboard.writeText($("logText").innerText).catch(() => {});
 $("logOnlyError").onchange = logDraw;
-$("appQuit").onclick = async () => {
-  if (!await confirmDialog({ title: "App ganz beenden?", text: "Auch die Overlays in OBS bekommen danach keine Änderungen mehr, bis du die App wieder startest.", button: "Beenden" })) return;
-  try { await fetch("/api/quit", { method: "POST" }); } catch (e) {}
-  document.body.innerHTML = "<p style='padding:40px;font:16px sans-serif;color:#ccc'>Die Casting-App wurde beendet. Du kannst dieses Fenster schließen.</p>";
-};
 
 /* ---------- Sichern / Laden ---------- */
 $("export").onclick = () => {

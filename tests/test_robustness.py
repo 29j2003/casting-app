@@ -121,3 +121,16 @@ def test_odd_content_length_values_are_refused():
     assert content_length({"Content-Length": "12"}) == 12 and content_length({}) == 0
     for value in ("²", "-1", "1e3", "١٢", "9" * 20):
         assert content_length({"Content-Length": value}) is None
+
+
+def test_programs_of_the_system_get_the_environment_without_the_apps_libraries():
+    """Issue #13: the built Linux app must not pass its own library paths to xdg-open (KDE's kde-open broke)."""
+    from casting_app.system_open import system_environment
+    bundle = "/tmp/.mount_CastXY/usr/lib/casting-app/_internal"
+    frozen = {"LD_LIBRARY_PATH": bundle, "LD_LIBRARY_PATH_ORIG": "/opt/own/lib", "HOME": "/home/u",
+              "QT_PLUGIN_PATH": bundle + "/PySide6/Qt/plugins", "XDG_DATA_DIRS": f"/usr/share:{bundle}/share",
+              "GTK_PATH": bundle + "/gtk"}
+    env = system_environment(frozen, bundle)
+    assert env == {"LD_LIBRARY_PATH": "/opt/own/lib", "HOME": "/home/u", "XDG_DATA_DIRS": "/usr/share"}
+    # started without own LD_LIBRARY_PATH: the system's programs get none either
+    assert system_environment({"LD_LIBRARY_PATH": bundle, "PATH": "/usr/bin"}, bundle) == {"PATH": "/usr/bin"}

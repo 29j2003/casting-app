@@ -160,7 +160,7 @@ function poolDraw() {
       <div style="display:grid;gap:4px"><div class="line" style="flex-wrap:nowrap;align-items:center"><input type="text"><label class="toggleSwitch" style="flex:0 0 auto" title="Map steht im Veto zur Auswahl"><input type="checkbox" class="active"> im Veto</label></div>
       <div class="line" style="align-items:center;flex-wrap:nowrap">${modeSelect(m.imageMode)}<span class="small hint"></span></div>
       <details class="facts"><summary class="small">Map-Fakten (${(m.facts || []).filter(Boolean).length})</summary><textarea placeholder="Ein Fakt pro Zeile, z. B. „Die CT-Seite gewinnt hier 54 % der Runden.“"></textarea></details></div>
-      <button class="x" title="Entfernen">✕</button><input type="file" accept="image/*" hidden>`;
+      <button class="x" title="Entfernen" aria-label="Entfernen">${icon("close")}</button><input type="file" accept="image/*" hidden>`;
     const image = z.querySelector(".vb"), name = z.querySelector("input[type=text]"), mode = z.querySelector("select:not(.x)"),
           x = z.querySelector(".x"), file = z.querySelector("input[type=file]");
     previewImage(image, m);
@@ -260,7 +260,7 @@ function vetoDraw() {
       sel([["a", "Team A"], ["b", "Team B"], ["", "–"]], x.team) +
       sel(maps, x.map) +
       (x.action === "pick" ? sel([["", "Seite –"], ["ct", "Geg. CT"], ["t", "Geg. T"]], x.side || "") : "<span></span>") +
-      `<button class="x" title="Schritt entfernen">✕</button>`;
+      `<button class="x" title="Schritt entfernen" aria-label="Schritt entfernen">${icon("close")}</button>`;
     const [action, team, map, side] = z.querySelectorAll("select");
     action.onchange = () => { x.action = action.value; if (x.action === "decider") x.team = ""; vetoDraw(); send(); };
     team.onchange = () => { x.team = team.value; vetoDraw(); send(); };
@@ -313,7 +313,7 @@ function playersDraw(k) {
         <div class="line" style="flex-wrap:nowrap"><input type="text" placeholder="Nickname"><input type="text" placeholder="Name / Rolle"><input type="number" min="0" max="10" placeholder="Lvl" style="flex:0 0 58px"></div>
         <div class="line" style="align-items:center;flex-wrap:nowrap">${modeSelect(p.imageMode)}<span class="small hint"></span></div>
       </div>
-      <button class="x">✕</button><input type="file" accept="image/*" hidden>`;
+      <button class="x" title="Entfernen" aria-label="Entfernen">${icon("close")}</button><input type="file" accept="image/*" hidden>`;
     const image = z.querySelector(".vb"), [nick, real] = z.querySelectorAll("input[type=text]"), lvl = z.querySelector("input[type=number]"),
           mode = z.querySelector("select"), x = z.querySelector(".x"), file = z.querySelector("input[type=file]");
     previewImage(image, p);

@@ -49,7 +49,7 @@ body.is-dragging .middle .divider-h, body.is-dragging #divider2 { display: block
 .dock > details > .content { padding: 10px; }
 /* Ziehen & Ablegen */
 summary { user-select: none; }
-summary .handle { cursor: grab; color: var(--muted); padding: 0 8px 0 0; font-size: 14px; letter-spacing: -2px; opacity: .6; }
+summary .handle { cursor: grab; color: var(--muted); padding: 0 8px 0 0; opacity: .6; }
 summary:hover .handle { opacity: 1; color: var(--accent); }
 body.is-dragging, body.is-dragging * { cursor: grabbing !important; }
 .drag-ghost { position: fixed; z-index: 202; pointer-events: none; padding: 9px 14px; border-radius: 8px; background: var(--f1); border: 2px solid var(--accent);
@@ -383,7 +383,8 @@ kbd { font: 600 11px Barlow, sans-serif; padding: 2px 6px; border-radius: 4px; b
 .scene-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .scene-head .toggleSwitch { flex: 1; }
 .scenes-buttons.arrange button { cursor: grab; position: relative; padding-left: 26px; }
-.scenes-buttons.arrange button::before { content: "⠿"; position: absolute; left: 9px; color: var(--muted); letter-spacing: -2px; }
+.scenes-buttons.arrange button::before { content: ""; position: absolute; left: 8px; top: 50%; width: 12px; height: 12px; transform: translateY(-50%); background: var(--muted);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='black'%3E%3Ccircle cx='9' cy='6' r='2'/%3E%3Ccircle cx='15' cy='6' r='2'/%3E%3Ccircle cx='9' cy='12' r='2'/%3E%3Ccircle cx='15' cy='12' r='2'/%3E%3Ccircle cx='9' cy='18' r='2'/%3E%3Ccircle cx='15' cy='18' r='2'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat; }
 .scenes-buttons.arrange button.off { opacity: .4; border-style: dashed; }
 .scenes-buttons.arrange button .tick { position: absolute; right: 7px; top: 6px; width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--muted);
   display: grid; place-items: center; font-size: 11px; line-height: 1; }
@@ -535,3 +536,17 @@ body:not(.layout-edit) details[data-area=sceneList] .scene-head { display: none 
 .palette-list button.chosen, .palette-list button:hover { background: var(--accent-soft); }
 .palette-list .kind { width: 104px; flex: none; font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--accent); }
 .palette-list .tx { flex: 1; } .palette-list .empty { padding: 14px; color: var(--muted); }
+
+/* SVG-Icons (icon() in control/01-core.js): gleich groß auf jedem System, folgen der Textfarbe */
+.icon { width: 1em; height: 1em; flex: none; vertical-align: -.14em; }
+.tool, .lock, .x, .gfx-more, .gfx-star, summary .pin, summary .handle { display: inline-grid; place-items: center; }
+.tool .icon, .lock .icon, .gfx-more .icon { width: 16px; height: 16px; }
+.x .icon { width: 15px; height: 15px; }
+.gfx-star .icon { width: 17px; height: 17px; }
+summary .handle .icon, summary .pin .icon { width: 14px; height: 14px; }
+.button > .icon { margin-right: 6px; }
+.button[aria-label] > .icon { margin-right: 0; }                 /* Knopf nur mit Icon */
+.workspace-menu .tick .icon, .workspace-menu .away .icon { width: 14px; height: 14px; }
+[data-icon="chevron"] { display: inline-flex; margin-left: 4px; opacity: .8; }
+.dock-menu button .icon { margin-left: 6px; width: 13px; height: 13px; }
+.compass i .icon { width: 16px; height: 16px; }

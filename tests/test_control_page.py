@@ -404,7 +404,7 @@ def test_dach_cams_sit_under_the_page_and_never_show_the_previous_page(server, b
 
 
 def test_app_settings_scroll_down_to_update_on_a_small_window(server, browser):
-    """2.3.0: the settings did not scroll – on a low window Update and App were out of reach."""
+    """2.3.0: the settings did not scroll – on a low window Update and the last sections were out of reach."""
     page = browser.new_page(viewport={"width": 1200, "height": 600})
     errors = watch(page)
     page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
@@ -413,9 +413,9 @@ def test_app_settings_scroll_down_to_update_on_a_small_window(server, browser):
     page.wait_for_timeout(300)
     sizes = page.evaluate("(() => { const c = document.querySelector('.dialog-content'); return [c.scrollHeight, c.clientHeight, innerHeight]; })()")
     assert sizes[1] <= sizes[2] and sizes[0] > sizes[1], sizes                  # fits the window and scrolls
-    page.click(".settings-nav [data-jump=setApp]")
+    page.click(".settings-nav [data-jump=setMusic]")                           # the last section
     page.wait_for_timeout(900)
-    assert page.evaluate("(() => { const r = document.getElementById('appQuit').getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0; })()")
+    assert page.evaluate("(() => { const r = document.querySelector('#setMusic [data-field=\\'music.address\\']').getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0; })()")
     page.click(".settings-nav [data-jump=updateArea]")
     page.wait_for_timeout(900)
     assert page.evaluate("(() => { const r = document.getElementById('updateSearch').getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0; })()")

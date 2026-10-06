@@ -66,7 +66,7 @@ function audioDraw() {
     const z = document.createElement("div"); z.className = "audio-z";
     z.innerHTML = `<div class="audio-head"><div class="tname"><b>${esc(title)}</b><span>${esc(name)}</span></div>
         <button class="audio-mute${T.mute ? " off" : ""}" aria-pressed="${T.mute}">${T.mute ? "STUMM" : "Stumm"}</button>
-        <button class="gfx-more" aria-label="Mehr Einstellungen">⋯</button></div>
+        <button class="gfx-more" aria-label="Mehr Einstellungen">${icon("more")}</button></div>
       <div class="audio-slider"><input type="range" min="0" max="300" step="5" value="${Math.min(300, T.vol)}" aria-label="Lautstärke ${esc(title)}"><b class="${T.vol > 100 ? "loud" : ""}">${T.vol} %</b></div>
       <div class="audio-monitoring"><label>Abhören<select class="audio-monitor-choice" aria-label="Abhören ${esc(title)}">${MONITOR.map(([v, n]) => `<option value="${v}"${T.monitor === v ? " selected" : ""}>${n}</option>`).join("")}</select></label>
         <span class="small">${esc(MONITOR_HINT[T.monitor] || "")}</span>${sceneOwn ? `<span class="audio-scene-own" title="Diese Lautstärke gilt nur in der Szene „${esc(audioSceneTitle(audioScene()))}“">eigene Lautstärke in dieser Szene</span>` : ""}</div>

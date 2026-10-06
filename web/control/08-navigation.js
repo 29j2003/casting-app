@@ -35,7 +35,7 @@ function workspaceChoose(name) {
 function workspaceDraw() {
   $("workspaceName").textContent = ui.workspace || "Operator";
   const m = $("workspaceMenu"), cur = ui.workspace || "Operator";
-  const entry = (name, info, own) => `<button role="menuitem" data-workspace="${esc(name)}" class="${name === cur ? "active" : ""}"><span class="tick">${name === cur ? "✓" : ""}</span><span class="name">${esc(name)}</span><span class="info">${info}</span>${own ? `<span class="away" data-away="${esc(name)}" title="Löschen" aria-label="Löschen">✕</span>` : ""}</button>`;
+  const entry = (name, info, own) => `<button role="menuitem" data-workspace="${esc(name)}" class="${name === cur ? "active" : ""}"><span class="tick">${name === cur ? icon("check") : ""}</span><span class="name">${esc(name)}</span><span class="info">${info}</span>${own ? `<span class="away" data-away="${esc(name)}" title="Löschen" aria-label="Löschen">${icon("close")}</span>` : ""}</button>`;
   m.innerHTML = `<div class="workspace-title">VORLAGEN</div>` + Object.keys(TEMPLATES).map(n => entry(n, "", false)).join("") +
     ((ui.workspaces || []).length ? `<div class="workspace-title">EIGENE</div>` + ui.workspaces.map(x => entry(x.name, "", true)).join("") : "") +
     `<hr><div class="workspace-new"><input type="text" id="workspaceNewName" placeholder="Aktuelle Anordnung speichern als …" aria-label="Name"><button class="button" id="workspaceNewSave" style="height:34px">Speichern</button></div>

@@ -19,9 +19,11 @@ CONTROL_PAGE = "control"          # page name the control page reports itself wi
 class EventClient:
     """One connected page (control page or overlay)."""
 
-    def __init__(self, page: str, from_obs: bool, version: str):
-        """page: name the page reported (scene or "control"); from_obs: runs inside OBS; version: its app version."""
+    def __init__(self, page: str, from_obs: bool, version: str, trusted: bool = False):
+        """page: name the page reported (scene or "control"); from_obs: runs inside OBS; version: its app version;
+        trusted: the page has the access key (otherwise it gets the state without camera links)."""
         self.page = page
+        self.trusted = trusted
         self.from_obs = from_obs
         self.version = version
         self.connected_at = int(time.time() * 1000)
@@ -49,7 +51,7 @@ class EventClient:
 
     def describe(self) -> dict:
         """Client info for the control page."""
-        return {"page": self.page, "obs": self.from_obs, "since": self.connected_at, "v": self.version}
+        return {"page": self.page, "obs": self.from_obs, "since": self.connected_at, "v": self.version, "key": self.trusted}
 
 
 class EventHub:
@@ -85,11 +87,14 @@ class EventHub:
             self._clients.discard(client)
         self.send_client_list()
 
-    def broadcast(self, event: str, data: str, *, overlays_only: bool = False) -> int:
-        """Send an event to all pages (or only to overlays); returns the number of receivers."""
+    def broadcast(self, event: str, data: str, *, overlays_only: bool = False, public_data: str | None = None) -> int:
+        """Send an event to all pages (or only to overlays); returns the number of receivers.
+
+        public_data: what pages without the access key get instead of `data` (None = the same for all).
+        """
         receivers = [c for c in self.clients() if not (overlays_only and c.is_control_page)]
         for client in receivers:
-            client.send(event, data)
+            client.send(event, data if client.trusted or public_data is None else public_data)
         return len(receivers)
 
     def send_client_list(self) -> None:

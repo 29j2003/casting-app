@@ -37,6 +37,7 @@ FACEIT_KEY = "faceit-key"
 DACH_USER_ID = "dach-user-id"
 DACH_KEY = "dach-key"
 OBS_PASSWORD = "obs-password"
+ACCESS_KEY = "access-key"          # the app's own key for its pages and OBS sources (see app_server)
 
 # What a valid value looks like – anything else is rejected before it is stored
 VALID_VALUE = {
@@ -44,6 +45,7 @@ VALID_VALUE = {
     DACH_USER_ID: re.compile(r"^\d{1,9}$"),
     DACH_KEY: re.compile(r"^[A-Za-z0-9-]{5,64}$"),
     OBS_PASSWORD: re.compile(r"^[^\r\n]{1,200}$"),
+    ACCESS_KEY: re.compile(r"^[A-Za-z0-9_-]{32,64}$"),
 }
 
 # Old 1.x files: (secret name, file name, format)
@@ -117,6 +119,7 @@ class SecretStore:
         self._legacy_decrypt = legacy_decrypt
         self._values: dict[str, str] = {}
         self._lock = threading.Lock()
+        self.load_failed = False        # the keyring refused to be read (locked, denied): stored values may exist
         if self._backend is None:
             self._log("Kein Schlüsselbund des Systems verfügbar – FACEIT-Key und DACH-CS-Zugang gelten nur für diese Sitzung", "warn")
         self._load()
@@ -171,7 +174,9 @@ class SecretStore:
             try:
                 value = self._backend.get_password(KEYRING_SERVICE, name)
             except Exception:
-                self._log("Schlüsselbund nicht lesbar – FACEIT-Key/DACH-CS-Zugang bitte neu eintragen", "warn")
+                self.load_failed = True
+                self._log("Schlüsselbund nicht lesbar (gesperrt?) – gespeicherte Zugänge fehlen in dieser Sitzung; "
+                          "Schlüsselbund entsperren und die App neu starten", "warn")
                 return
             if value and is_valid(name, value):
                 self._values[name] = value

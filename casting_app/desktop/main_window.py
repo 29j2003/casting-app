@@ -14,6 +14,7 @@ from PySide6.QtGui import QCloseEvent, QIcon
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QMainWindow, QMessageBox
 
+from ..files import write_atomic
 from ..texts import text
 from ..version import APP_NAME
 from .audio import AppWindowAudio
@@ -29,8 +30,9 @@ class MainWindow(QMainWindow):
     quit_requested = Signal()          # "Ganz beenden"
     hide_requested = Signal()          # "Nur Fenster schließen"
 
-    def __init__(self, profile, url: str, icon: QIcon, geometry_file: Path):
-        """Window with the control page at `url`; size and position are kept in `geometry_file`."""
+    def __init__(self, profile, url: str, icon: QIcon, geometry_file: Path, access_key: str = ""):
+        """Window with the control page at `url`; size and position are kept in `geometry_file`;
+        access_key goes to the page through the bridge (see AppWebPage)."""
         super().__init__()
         self.setWindowTitle(APP_NAME)
         self.setWindowIcon(icon)
@@ -39,7 +41,7 @@ class MainWindow(QMainWindow):
         self._geometry_file = geometry_file
         self._restore_geometry()
 
-        self.page = AppWebPage(profile, self)
+        self.page = AppWebPage(profile, self, access_key)
         self.view = QWebEngineView(self)
         self.view.setPage(self.page)
         self.setCentralWidget(self.view)
@@ -128,8 +130,7 @@ class MainWindow(QMainWindow):
     def _save_geometry(self) -> None:
         """Remember size and position for the next start."""
         try:
-            self._geometry_file.write_text(json.dumps({"geometry": bytes(self.saveGeometry().toBase64()).decode()}),
-                                           encoding="utf-8")
+            write_atomic(self._geometry_file, json.dumps({"geometry": bytes(self.saveGeometry().toBase64()).decode()}))
         except OSError:
             pass
 

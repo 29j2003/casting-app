@@ -123,12 +123,24 @@
     $$("[data-t]").forEach(e => { const v = pull(e.dataset.t); if (e.textContent !== String(v ?? "")) e.textContent = v ?? ""; });
     fit();
   }
+  // Text an die Box anpassen: erst verkleinern; müsste ein Teamname stärker als auf 70 % schrumpfen
+  // und gibt es ein Kürzel, steht stattdessen das Kürzel da (in voller Größe, wenn es passt).
+  const FIT_SHORT_BELOW = 0.7;
   function fit() {
     $$("[data-matching]").forEach(e => {
-      e.style.fontSize = "";
-      const box = e.parentElement;
-      let s = parseFloat(getComputedStyle(e).fontSize);
-      while (e.scrollWidth > box.clientWidth - 30 && s > 16) { s -= 2; e.style.fontSize = s + "px"; }
+      const names = [...e.querySelectorAll("[data-team-name]"), ...(e.matches("[data-team-name]") ? [e] : [])];
+      names.forEach(n => { if (n.dataset.full !== undefined && n.textContent !== n.dataset.full) n.textContent = n.dataset.full; });
+      const shrink = () => {
+        e.style.fontSize = "";
+        const box = e.parentElement, start = parseFloat(getComputedStyle(e).fontSize);
+        let s = start;
+        while (e.scrollWidth > box.clientWidth - 30 && s > 16) { s -= 2; e.style.fontSize = s + "px"; }
+        return s / start;
+      };
+      if (shrink() < FIT_SHORT_BELOW && names.some(n => n.dataset.short)) {
+        names.forEach(n => { if (n.dataset.short) n.textContent = n.dataset.short; });
+        shrink();
+      }
     });
   }
 
@@ -137,7 +149,8 @@
     const list = (Z.texts.ticker || []).filter(Boolean);
     const S = Z.sponsors || {};
     if (S.on !== false && S.inTicker) sponsorList().forEach(s => { if (s.name) list.push(`${Z.texts.sponsorTicker} ${s.name}`); });
-    const keyName = list.join("\u0001") + "|" + Z.texts.tickerTempo;
+    const th = themeData();                              // Schrift ändert die Breite – dann neu messen
+    const keyName = list.join("\u0001") + "|" + Z.texts.tickerTempo + "|" + [th.font, th.fontFile, th.bold].join("|");
     $$(".ticker").forEach(t => {
       if (!newNeeded(t, keyName)) return;
       t.getAnimations({ subtree: true }).forEach(a => a.cancel());
@@ -166,7 +179,7 @@
       const t = Z.teams[k] || {};
       $$(`.team-logo.${k}`).forEach(e => {
         const words = String(t.name || k).split(/\s+/).filter(Boolean);
-        const abbrev = (words.length > 1 ? words.map(w => w[0]).join("") : words[0] || k).replace(/[^A-Za-z0-9ÄÖÜäöü]/g, "").slice(0, 3).toUpperCase();
+        const abbrev = t.short ? String(t.short).toUpperCase() : (words.length > 1 ? words.map(w => w[0]).join("") : words[0] || k).replace(/[^A-Za-z0-9ÄÖÜäöü]/g, "").slice(0, 3).toUpperCase();
         const fresh = t.logo ? `<img src="${esc(t.logo)}" alt="">` : esc(abbrev);
         if (e.dataset.content !== fresh) {
           e.dataset.content = fresh; e.innerHTML = fresh;
@@ -175,7 +188,12 @@
         }
         e.classList.toggle("noOne", !t.logo);
       });
-      $$(`[data-team-name="${k}"]`).forEach(e => { e.textContent = t.name || ""; });
+      // Text nur bei neuem Namen setzen – fit() entscheidet, ob Name oder Kürzel dasteht
+      $$(`[data-team-name="${k}"]`).forEach(e => {
+        const full = t.name || "", short = t.short || "";
+        if (e.dataset.full === full && e.dataset.short === short) return;
+        e.dataset.full = full; e.dataset.short = short; e.textContent = full;
+      });
       $$(`[data-team-score="${k}"]`).forEach(e => { e.textContent = t.score ?? 0; });
     });
     $$(".vs").forEach(e => {
@@ -243,7 +261,7 @@
   }
   function series() {
     const [sa, sb] = seriesScore();
-    $$(".series-score").forEach(e => { e.innerHTML = `${sa}<span class="dp">:</span>${sb}`; });
+    $$(".series-total").forEach(e => { e.innerHTML = `${sa}<span class="dp">:</span>${sb}`; });
     const maps = playedMaps();
     const keyName = JSON.stringify([maps, Z.mapPool, Z.texts.map, Z.texts.running, Z.texts.pending]);
     $$(".series-cards").forEach(k => { if (newNeeded(k, keyName)) seriesDraw(k, null, maps); });
@@ -258,7 +276,8 @@
         const e = x.result || {}, pool = mapImage(x.map), image = x.image || pool.image || "";
         const status = e.status || "pending";
         const winner = status === "done" ? (+e.a > +e.b ? "a" : +e.b > +e.a ? "b" : "") : "";
-        const score = status === "pending" ? "" : `<div class="series-score"><span class="${winner === "b" ? "lost" : ""}">${esc(e.a ?? 0)}</span><span class="dp">:</span><span class="${winner === "a" ? "lost" : ""}">${esc(e.b ?? 0)}</span></div>`;
+        const noScore = status === "pending" || (status === "running" && (e.a === "" || e.a == null));
+        const score = noScore ? "" : `<div class="series-score"><span class="${winner === "b" ? "lost" : ""}">${esc(e.a ?? 0)}</span><span class="dp">:</span><span class="${winner === "a" ? "lost" : ""}">${esc(e.b ?? 0)}</span></div>`;
         const foot = winner ? `<div class="team-logo ${winner}"></div><span data-team-name="${winner}"></span>`
                    : `<span>${esc(status === "running" ? Z.texts.running : Z.texts.pending)}</span>`;
         return `<div class="box series-card ${status}"><div class="box-head">${esc(Z.texts.map)} ${i + 1}</div>
@@ -268,13 +287,14 @@
     }
     if (mini) {
       mini.innerHTML = maps.filter(x => (x.result || {}).status && x.result.status !== "pending").map(x =>
-        `<div class="series-chip ${x.result.status}"><b>${esc(x.map)}</b><span>${esc(x.result.a ?? 0)}<span class="dp">:</span>${esc(x.result.b ?? 0)}</span></div>`).join("");
+        `<div class="series-chip ${x.result.status}"><b>${esc(x.map)}</b><span>${x.result.a === "" || x.result.a == null ? esc(Z.texts.running)
+          : `${esc(x.result.a)}<span class="dp">:</span>${esc(x.result.b ?? 0)}`}</span></div>`).join("");
     }
   }
 
   /* ---------- Sponsoren ---------- */
 
-  function sponsorList() { return (((Z.sponsors || {}).listen || {})[Z.theme] || []).filter(s => s && (s.logo || s.name)); }
+  function sponsorList() { return (((Z.sponsors || {}).byTheme || {})[Z.theme] || []).filter(s => s && (s.logo || s.name)); }
   const sponsorContent = s => s.logo ? `<img src="${esc(s.logo)}" alt="${esc(s.name || "")}">` : `<div class="sponsor-name">${esc(s.name)}</div>`;
   let sponsorTimerCachekey = null, sponsorTimer = null, sponsorNum = 0;
   function sponsors() {
@@ -328,6 +348,7 @@
   function tournamentDraw() {
     const boxes = $$(".tournament-tree"); if (!boxes.length) return;
     const T = Z.tournament || {}, B = K.tournamentBuild(T, Z.overlayLanguage), S = T.visible || {};
+    const W = key => esc(K.word(Z, key));            // feste Wörter in der Sprache der Overlays
     const teamFrom = id => (T.teams || []).find(t => t.id === id);
     const row = (id, points, winner, hidden) => {
       if (id === "BYE") return `<div class="bracket-team free"><div class="bracket-logo"></div><span>${esc(K.word(Z, "bye"))}</span><b></b></div>`;
@@ -349,14 +370,14 @@
       const shown = B.groups.filter((g, i) => choice === null || i === choice);
       const columns = shown.length <= 1 ? 1 : shown.length <= 4 ? 2 : shown.length <= 6 ? 3 : 4;
       h = `<div class="bracket-tables" style="grid-template-columns:repeat(${columns}, 860px)">${shown.map(g => `<div class="bracket-tab"><div class="bracket-title">${esc(g.name)}</div>
-        <div class="bracket-tz head"><span>#</span><span></span><span>TEAM</span><span>SP</span><span>S</span><span>N</span><span>${g.withRounds ? "RD" : "+/−"}</span><span>PKT</span></div>` +
+        <div class="bracket-tz head"><span>#</span><span></span><span>${W("tableTeam")}</span><span>${W("tableGames")}</span><span>${W("tableWins")}</span><span>${W("tableLosses")}</span><span>${g.withRounds ? "RD" : "+/−"}</span><span>${W("tablePoints")}</span></div>` +
         g.table.map((r, i) => { const t = teamFrom(r.id) || {};
           return `<div class="bracket-tz${i < (+T.nextPlaces || 0) ? " proceed" : ""}${T.focused === r.id ? " focused" : ""}"><span>${i + 1}</span><div class="bracket-logo">${t.logo ? `<img src="${esc(t.logo)}" alt="">` : esc((t.short || t.name || "?").slice(0, 3))}</div>` +
-            `<span class="bracket-tname">${esc(t.name || "")}</span><span>${r.sponsor}</span><span>${r.s}</span><span>${r.n}</span><span>${r.bracket > 0 ? "+" : ""}${r.bracket}</span><b>${r.pts}</b></div>`; }).join("") +
+            `<span class="bracket-tname">${esc(t.name || "")}</span><span>${r.played}</span><span>${r.wins}</span><span>${r.losses}</span><span>${r.tiebreak > 0 ? "+" : ""}${r.tiebreak}</span><b>${r.pts}</b></div>`; }).join("") +
         (T.gamesShow ? `<div class="bracket-tspiele">${g.matches.filter(m => !m.done).slice(0, 4).map(m => card(m, false)).join("")}</div>` : "") + `</div>`).join("")}</div>`;
     }
     else if (B.format === "gsl") h = `<div class="bracket-groups">${B.groups.map(g => `<div class="bracket-group"><div class="bracket-title">${esc(g.name)}</div>${g.matches.map(m => `<div class="bracket-gm"><span>${esc(m.title)}</span>${card(m, false)}</div>`).join("")}</div>`).join("")}</div>`;
-    else if (B.format === "swiss") h = `<div class="bracket-row">${columns(B.rounds, 1)}</div>` + (B.table.length ? `<div class="bracket-swiss">${B.table.map(b => `<div class="bracket-sw ${b.status}">${row(b.id, `${b.s}–${b.n}`, b.status === "proceed", false)}</div>`).join("")}</div>` : "");
+    else if (B.format === "swiss") h = `<div class="bracket-row">${columns(B.rounds, 1)}</div>` + (B.table.length ? `<div class="bracket-swiss">${B.table.map(b => `<div class="bracket-sw ${b.status}">${row(b.id, `${b.wins}–${b.losses}`, b.status === "proceed", false)}</div>`).join("")}</div>` : "");
     else {
       h = `<div class="bracket-row">${columns(B.rounds, 1)}${B.finale && B.bottom.length === 0 ? "" : ""}</div>`;
       if (B.bottom.length) h = `<div class="bracket-de"><div class="bracket-row">${columns(B.rounds, 1)}</div><div class="bracket-row bottom">${columns(B.bottom, 1)}</div></div>` +
@@ -369,14 +390,14 @@
       const st = f.stats || {};
       profile += `<div class="bracket-profile box"><div class="box-head">${esc(f.name || "")}</div><div class="box-field">` +
         (f.players && f.players.length ? `<div class="bracket-players">${f.players.slice(0, 7).map(n => `<span>${esc(n)}</span>`).join("")}</div>` : "") +
-        (st.matches ? `<div class="bracket-stats"><div><b>${esc(st.winrate)}%</b><span>SIEGQUOTE</span></div><div><b>${esc(st.matches)}</b><span>SPIELE</span></div><div><b>${esc(st.series || 0)}</b><span>SERIE</span></div></div>` +
-          (st.last && st.last.length ? `<div class="bracket-form">${st.last.slice(0, 5).map(x => `<i class="${x === "1" ? "s" : "n"}">${x === "1" ? "S" : "N"}</i>`).join("")}</div>` : "") : "") +
+        (st.matches ? `<div class="bracket-stats"><div><b>${esc(st.winrate)}%</b><span>${W("winRate")}</span></div><div><b>${esc(st.matches)}</b><span>${W("matches")}</span></div><div><b>${esc(st.series || 0)}</b><span>${W("streak")}</span></div></div>` +
+          (st.last && st.last.length ? `<div class="bracket-form">${st.last.slice(0, 5).map(x => `<i class="${x === "1" ? "s" : "n"}">${x === "1" ? W("formWin") : W("formLoss")}</i>`).join("")}</div>` : "") : "") +
         `</div></div>`;
     }
+    $$(".tournament-name").forEach(e => { const n = T.name || Z.texts.title || ""; if (e.textContent !== n) e.textContent = n; });
     boxes.forEach(box => {
       if (!newNeeded(box, h + profile)) return;
       box.innerHTML = `<div class="bracket-inner">${h}</div>${profile}`;
-      $$(".tournament-name").forEach(e => { e.textContent = T.name || Z.texts.title || ""; });
       // auf die verfügbare Fläche einpassen
       requestAnimationFrame(() => { const i = box.querySelector(".bracket-inner"); if (!i) return; i.style.transform = "";
         const s = Math.min(1.6, box.clientWidth / i.scrollWidth, box.clientHeight / i.scrollHeight);
@@ -452,7 +473,7 @@
   }
   function gfxContent(e) {
     if (e.type === "score")
-      return `<div class="team-logo a"></div><div class="gfx-score"><span data-team-score="a"></span><span class="dp">:</span><span data-team-score="b"></span></div><div class="team-logo b"></div>`;
+      return `<div class="team-logo a"></div><div class="gfx-score-value"><span data-team-score="a"></span><span class="dp">:</span><span data-team-score="b"></span></div><div class="team-logo b"></div>`;
     if (e.type === "caster") {
       const who = ["c1", "c2"].concat(e.guest ? ["guest"] : []).map(k => Z.caster[k] || {}).filter(c => c.name);
       return `<div class="gfx-caster-list ${e.arrangement === "sidebyside" ? "beside" : ""}">` +
@@ -460,10 +481,10 @@
     }
     if (e.type === "mapinfo") {
       const { cur, next } = currentMap();
-      if (!cur) return `<div class="gfx-mapinfo"><b>${esc(Z.texts.mapVeto)}</b><span class="gfx-mapinfo-map">–</span></div>`;
+      if (!cur) return `<div class="gfx-mapinfo-bar"><b>${esc(Z.texts.mapVeto)}</b><span class="gfx-mapinfo-map">–</span></div>`;
       const who = cur.action === "decider" || !cur.team ? `<b>${esc(Z.texts.decider)}</b>`
         : `<b>${esc(Z.texts.pick)}</b><div class="team-logo ${cur.team}"></div>`;
-      return `<div class="gfx-mapinfo">${who}<span class="gfx-mapinfo-map">${esc(cur.map)}</span>${next ? `<span class="gfx-mapinfo-next">${esc(Z.texts.next)}: ${esc(next.map)}</span>` : ""}</div>`;
+      return `<div class="gfx-mapinfo-bar">${who}<span class="gfx-mapinfo-map">${esc(cur.map)}</span>${next ? `<span class="gfx-mapinfo-next">${esc(Z.texts.next)}: ${esc(next.map)}</span>` : ""}</div>`;
     }
     if (e.type === "scoreboard") {
       if (!liveData) return `<div class="box-head">${esc(Z.texts.scoreboard)}</div><div class="box-field">${wait()}</div>`;
@@ -475,7 +496,7 @@
       if (!p) return `<div class="box-head">${esc(Z.texts.players || "")}</div><div class="box-field">${wait()}</div>`;
       const team = p.side === sideFrom("a") ? "a" : "b";
       return `<div class="box-head"><div class="team-logo ${team}"></div><span>${esc(p.name)}</span></div>
-        <div class="box-field gfx-sponsor"><div><b>${p.k}/${p.d}/${p.a}</b><span>K/D/A</span></div><div><b>${p.adr}</b><span>ADR</span></div><div><b>${p.hs}%</b><span>HS</span></div><div><b>${p.mvps}</b><span>MVP</span></div></div>`;
+        <div class="box-field gfx-player-stats"><div><b>${p.k}/${p.d}/${p.a}</b><span>K/D/A</span></div><div><b>${p.adr}</b><span>ADR</span></div><div><b>${p.hs}%</b><span>HS</span></div><div><b>${p.mvps}</b><span>MVP</span></div></div>`;
     }
     if (e.type === "mapfact") {
       const map = e.map || ((currentMap().cur || {}).map) || "";
@@ -580,16 +601,14 @@
     });
   }
   setInterval(() => { $$(".cam[data-source] iframe").forEach(f => { f._vol = null; }); audioApply(); }, 3000);
-  // App-Fenster: eigene Videos/Audios direkt regeln, fremde Seiten (Clips, VDO, DACH) ohne Freigabe stumm halten
+  // Vorschau: eigene Videos/Audios direkt regeln, fremde Seiten (Clips, VDO, DACH) über Lautstärke-Nachricht.
+  // Nie neu laden – Bild und Videos laufen weiter, nur der Ton geht an/aus. Im App-Fenster schaltet die App
+  // zusätzlich die ganze Seite stumm (wirkt auch in fremden Seiten).
   function previewAudio() {
     if (!PREVIEW) return;
-    const on = monitorOn(), vol = Math.max(0, Math.min(1, monitor.vol / 100));
+    const on = monitorOn(), vol = on ? Math.max(0, Math.min(1, monitor.vol / 100)) : 0;
     $$("video, audio").forEach(m => { if (m._audio) return; m.muted = !on; m.volume = vol; });
-    $$("iframe").forEach(f => {
-      const should = on ? "autoplay" : "autoplay 'none'";
-      if (f.getAttribute("allow") !== should) { f.setAttribute("allow", should); if (f.src && !/about:blank$/.test(f.src)) f.src = f.src; }
-      if (on) try { f.contentWindow.postMessage({ volume: vol }, "*"); } catch (e) {}
-    });
+    $$("iframe").forEach(f => { if (f.closest(".cam[data-source]")) return; try { f.contentWindow.postMessage({ volume: vol }, "*"); } catch (e) {} });
   }
   if (PREVIEW) setInterval(previewAudio, 1000);
 
@@ -605,7 +624,6 @@
         if (!p.has("cleanoutput")) p.set("cleanoutput", "");
         if (Q.adjust !== "whole" && !p.has("cover")) p.set("cover", "");
         if (Q.audio === false && !p.has("noaudio")) p.set("noaudio", "");
-        if (PREVIEW && !monitorOn() && !p.has("noaudio")) p.set("noaudio", "");     // Vorschau: nur mit Abhören hörbar
         const delayMs = +audioSettings(key).delay || 0;
         if (delayMs > 0) p.set("buffer", String(Math.round(delayMs)));          // Bild + Ton verzögern (z. B. passend zum Spiel)
         return url.toString().replace(/=(&|$)/g, "$1");
@@ -635,7 +653,8 @@
       if (stream.getAudioTracks().length) { const c = audioctx(); if (c) audioChain(c.createMediaStreamSource(stream), box.closest(".cam").dataset.source, () => box.isConnected); }
       levelMeasure(box.closest(".cam"), stream);
     } catch (e) {
-      box.innerHTML = `<div class="cam-error">${esc(K.word(Z, "cameraMissing"))}<small>${esc(e && (e.name || e.message) || e)}</small></div>`;
+      // im Stream nur ein neutrales schwarzes Feld – der Hinweis mit Grund steht nur in der Vorschau (body.idle)
+      box.innerHTML = `<div class="cam-error preview-only">${esc(K.word(Z, "cameraMissing"))}<small>${esc(e && (e.name || e.message) || e)}</small></div>`;
     }
   }
   /* Sprecher-Anzeige: Pegel messen und das Schild aufleuchten lassen */
@@ -684,7 +703,7 @@
   function sources() {
     $$(".cam[data-source]").forEach(k => {
       const Q = ((Z.sources || {})[k.dataset.source]) || { type: "empty" };
-      const keyName = JSON.stringify([Q, !!(Z.speaker || {}).on, Q.type === "link" ? +audioSettings(k.dataset.source).delay || 0 : 0, PREVIEW && Q.type === "link" ? monitorOn() : 0]);
+      const keyName = JSON.stringify([Q, !!(Z.speaker || {}).on, Q.type === "link" ? +audioSettings(k.dataset.source).delay || 0 : 0]);
       if (k._source === keyName) return;
       k._source = keyName;
       const oldSource = k.querySelector(".cam-source");
@@ -721,16 +740,16 @@
   setInterval(timer, 250);
 
   /* ---------- Diagnose (in der Steuerseite einschaltbar) ---------- */
-  let receivedFrom = "gespeicherter Stand", receivedUm = 0;
+  let receivedFrom = "gespeicherter Stand", receivedUm = 0, diagnoseTimer = 0;
   function diagnose() {
     if (EMBEDDED) return;
     let box = document.querySelector(".diagnose");
-    if (!Z.diagnose) { if (box) box.remove(); return; }
+    if (!Z.diagnose) { if (box) box.remove(); clearInterval(diagnoseTimer); diagnoseTimer = 0; return; }
     if (!box) {
       box = document.createElement("div"); box.className = "diagnose";
       box.style.cssText = "position:absolute;left:12px;top:12px;z-index:99;max-width:1100px;padding:12px 16px;background:rgba(0,0,0,.88);color:#9f9;font:16px/1.45 Consolas,monospace;white-space:pre-wrap;border:2px solid #9f9";
       document.body.appendChild(box);
-      setInterval(diagnose, 1000);
+      if (!diagnoseTimer) diagnoseTimer = setInterval(diagnose, 1000);
     }
     const H = Z.background || {}, t = document.createElement("video");
     const rows = [
@@ -955,7 +974,7 @@
     });
   }
   function draw() {
-    diagnose(); theme(); graphics(); veto(); series(); players(); texts(); teams(); timer(); ticker(); background(); sources(); sponsors();
+    diagnose(); theme(); graphics(); veto(); series(); players(); texts(); teams(); fit(); timer(); ticker(); background(); sources(); sponsors();
     if (!(Z.speaker || {}).on) $$(".cam.speaks").forEach(k => k.classList.remove("speaks"));
     $$(".music").forEach(m => m.classList.toggle("off", Z.music.displayed === false));
     if (musicData && $$(".music").some(b => !b._music)) musicShow(musicData);
@@ -1063,8 +1082,7 @@
     if (d && d.cast === "state" && d.z) { Z = rawState = K.merge(K.clone(K.DEFAULT), d.z); receivedFrom = "Vorschau der Steuerseite"; receivedUm = Date.now(); draw(); }
     if (d && d.cast === "live") { liveData = d.live; liveDraw(); }
     if (d && d.cast === "monitor") {
-      const before = monitorOn(); monitor = { mode: d.mode || "off", vol: +d.vol || 0 }; audioctx(); audioApply(); previewAudio();
-      if (before !== monitorOn()) { $$(".cam").forEach(k => { k._cacheKey = null; }); $$(".dach-page").forEach(f => { f.allow = monitorOn() ? "autoplay" : "autoplay 'none'"; if (f.src && !f.src.endsWith("about:blank")) f.src = f.src; }); newDraw(); }
+      monitor = { mode: d.mode || "off", vol: +d.vol || 0 }; audioctx(); audioApply(); previewAudio();   // nichts neu laden
     }
   });
 

@@ -11,7 +11,8 @@ Package layout:
     password_vault.py – password-protected storage for systems without a keyring
     legacy.py         – taking over data of version 2.1 and older (German names)
     instance.py       – detecting / replacing an already running Casting-App
-    update_check.py   – looking for a newer version on GitHub
+    updater.py        – update from inside the app (GitHub Releases, checksum, replace and restart)
+    files.py          – safe writing/reading of the app's own files
     server/           – local HTTP server for the control page and the overlays
     desktop/          – the desktop window (Qt), tray icon and app-window audio
 

@@ -307,6 +307,32 @@ def test_a_won_map_is_offered_as_finished(server, browser):
     assert errors == []
 
 
+def test_map_veto_is_played_from_live_while_its_scene_runs(server, browser):
+    """Scene „Map-Veto" in the program: Live → „Zur Szene" shows the veto; a click there also shows under Match."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("tabs('live'); Z.veto.steps = presetSteps('bo3'); sceneSwitch('intro')")
+    page.wait_for_timeout(400)
+    assert page.evaluate("$('sceneToolsVeto').hidden")
+    page.evaluate("sceneSwitch('map-veto')")
+    page.wait_for_timeout(400)
+    assert page.evaluate("!$('sceneToolsVeto').hidden && !!$('sceneToolsVeto').offsetParent")
+    first = page.evaluate("(() => { const b = document.querySelector('#vUpnextLive .map-buttons button'); b.click(); return b.textContent; })()")
+    assert page.evaluate("Z.veto.steps[0].map") == first
+    assert first in page.evaluate("$('vSteps').querySelector('select:nth-of-type(3)').value")
+    assert first in page.inner_text("#vSummaryLive")
+    page.evaluate("$('vBack').click()")                             # undo under Match → Live follows
+    assert first not in page.inner_text("#vSummaryLive")
+    page.evaluate("sceneSwitch('intro')")
+    page.wait_for_timeout(400)
+    assert page.evaluate("$('sceneToolsVeto').hidden")
+    page.evaluate("$('sceneToolsVetoShow').click()")
+    assert not page.evaluate("$('sceneToolsVeto').hidden")
+    assert errors == []
+
+
 def test_faceit_swiss_is_told_apart_from_a_round_robin(server, browser):
     """Swiss pairs teams with the same record from round 2 on; a round robin does that only for about half the games."""
     page = browser.new_page()

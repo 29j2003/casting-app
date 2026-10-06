@@ -202,29 +202,52 @@ function deciderAuto() {
   if (upnext >= 0 && s[upnext].action === "decider" && free.length === 1) s[upnext].map = free[0].name;
 }
 const teamName = k => k === "a" ? (Z.teams.a.name || "Team A") : k === "b" ? (Z.teams.b.name || "Team B") : "";
-function vetoDraw() {
-  setTimeout(() => { seriesDraw(); seriesPoints(); }, 0);
-  // Format-Auswahl
-  const f = $("vFormat"); f.innerHTML = "";
-  Object.entries(Z.vetoPresets).forEach(([k, p]) => f.appendChild(new Option(p.name, k, false, k === Z.veto.format)));
-  $("vSource").value = Z.veto.source;
-  const s = steps();
-  // Wer ist dran?
-  const upnext = s.findIndex(x => !x.map), box = $("vUpnext");
+const VETO_WORD = { ban: "bannt", pick: "pickt", decider: "Decider" };
+// „Wer ist dran?" mit den freien Maps als Knöpfen – dieselbe Anzeige unter Match und in Live („Zur Szene")
+function vetoUpnextDraw(box) {
+  const s = steps(), upnext = s.findIndex(x => !x.map);
   box.innerHTML = "";
   if (Z.veto.source === "faceit") box.innerHTML = `<span class="small">Das Veto kommt von FACEIT (Reiter „Match“ → FACEIT → „Daten holen“). Unten kannst du trotzdem korrigieren.</span>`;
-  if (upnext < 0) { box.insertAdjacentHTML("beforeend", "<b>✓ Veto abgeschlossen</b>"); }
-  else if (Z.veto.source !== "faceit") {
-    const x = s[upnext];
-    const was = { ban: "bannt", pick: "pickt", decider: "Decider" }[x.action] || x.action;
-    box.insertAdjacentHTML("beforeend", `<b>Schritt ${upnext + 1}: ${x.team ? esc(teamName(x.team)) + " " + was : "Decider"}</b><div class="map-buttons"></div>`);
-    const k = box.querySelector(".map-buttons");
-    freeMaps().forEach(m => {
-      const b = document.createElement("button"); b.className = "button" + (x.action === "ban" ? "" : " main"); b.textContent = m.name;
-      b.onclick = () => { x.map = m.name; x.image = ""; deciderAuto(); vetoDraw(); send(); };
-      k.appendChild(b);
-    });
+  if (upnext < 0) { box.insertAdjacentHTML("beforeend", "<b>✓ Veto abgeschlossen</b>"); return; }
+  if (Z.veto.source === "faceit") return;
+  const x = s[upnext];
+  box.insertAdjacentHTML("beforeend", `<b>Schritt ${upnext + 1}: ${x.team ? esc(teamName(x.team)) + " " + (VETO_WORD[x.action] || x.action) : "Decider"}</b><div class="map-buttons"></div>`);
+  const k = box.querySelector(".map-buttons");
+  freeMaps().forEach(m => {
+    const b = document.createElement("button"); b.className = "button" + (x.action === "ban" ? "" : " main"); b.textContent = m.name;
+    b.onclick = () => { x.map = m.name; x.image = ""; deciderAuto(); vetoDraw(); send(); };
+    k.appendChild(b);
+  });
+}
+// kurze Übersicht für Live: ein Feld je Schritt; bei Picks die Seite direkt wählbar
+function vetoSummaryDraw(box) {
+  const s = steps(), upnext = s.findIndex(x => !x.map);
+  box.innerHTML = "";
+  s.forEach((x, i) => {
+    const z = document.createElement("div");
+    z.className = `veto-chip ${x.action}` + (i === upnext ? " next" : "") + (x.map ? "" : " open");
+    const who = x.action === "decider" ? "Decider" : `${x.action === "ban" ? "Ban" : "Pick"} · ${esc(teamName(x.team) || "–")}`;
+    z.innerHTML = `<span class="small">${i + 1} · ${who}</span><b>${x.map ? esc(x.map) : "–"}</b>`;
+    if (x.action === "pick" && x.map) {
+      const side = document.createElement("select"); side.setAttribute("aria-label", "Seite des Gegners");
+      [["", "Seite –"], ["ct", "Geg. CT"], ["t", "Geg. T"]].forEach(([v, n]) => side.appendChild(new Option(n, v, false, v === (x.side || ""))));
+      side.onchange = () => { x.side = side.value; vetoDraw(); send(); };
+      z.appendChild(side);
+    }
+    box.appendChild(z);
+  });
+}
+function vetoDraw() {
+  setTimeout(() => { seriesDraw(); seriesPoints(); }, 0);
+  // Format-Auswahl (Match und Live)
+  for (const f of [$("vFormat"), $("vFormatLive")]) {
+    f.innerHTML = "";
+    Object.entries(Z.vetoPresets).forEach(([k, p]) => f.appendChild(new Option(p.name, k, false, k === Z.veto.format)));
   }
+  $("vSource").value = Z.veto.source;
+  const s = steps();
+  vetoUpnextDraw($("vUpnext"));
+  if (!$("sceneToolsVeto").hidden) { vetoUpnextDraw($("vUpnextLive")); vetoSummaryDraw($("vSummaryLive")); }
   // Schrittliste
   const l = $("vSteps"); l.innerHTML = "";
   s.forEach((x, i) => {
@@ -242,18 +265,23 @@ function vetoDraw() {
     action.onchange = () => { x.action = action.value; if (x.action === "decider") x.team = ""; vetoDraw(); send(); };
     team.onchange = () => { x.team = team.value; vetoDraw(); send(); };
     map.onchange = () => { x.map = map.value; x.image = ""; vetoDraw(); send(); };
-    if (side && x.action === "pick") side.onchange = () => { x.side = side.value; send(); };
+    if (side && x.action === "pick") side.onchange = () => { x.side = side.value; vetoDraw(); send(); };
     z.querySelector(".x").onclick = () => remove(s, i, `Schritt ${i + 1}`, vetoDraw);
     l.appendChild(z);
   });
 }
 $("vSource").onchange = () => { Z.veto.source = $("vSource").value; vetoDraw(); send(); };
-$("vFormat").onchange = () => { Z.veto.format = $("vFormat").value; Z.veto.steps = presetSteps(Z.veto.format); vetoDraw(); send(); };
+async function vetoFormatSet(format, select) {
+  if (vetoHasMaps() && !await confirmDialog({ title: "Format wechseln?", text: "Das Veto beginnt mit dem neuen Format von vorn – eingetragene Bans und Picks werden geleert.", button: "Wechseln" })) { select.value = Z.veto.format; return; }
+  Z.veto.format = format; Z.veto.steps = presetSteps(format); vetoDraw(); send();
+}
+$("vFormat").onchange = () => vetoFormatSet($("vFormat").value, $("vFormat"));
+$("vFormatLive").onchange = () => vetoFormatSet($("vFormatLive").value, $("vFormatLive"));
 const vetoHasMaps = () => (Z.veto.steps || []).some(x => x.map);
-$("vNew").onclick = async () => {
+$("vNew").onclick = $("vNewLive").onclick = async () => {
   if (vetoHasMaps() && !await confirmDialog({ title: "Veto neu starten?", text: "Alle eingetragenen Bans, Picks und Ergebnisse werden geleert.", button: "Neu starten" })) return; Z.veto.steps = presetSteps(Z.veto.format); vetoDraw(); send(); };
-$("vBack").onclick = () => {
-  const s = steps(); for (let i = s.length - 1; i >= 0; i--) if (s[i].map) { s[i].map = ""; s[i].image = ""; s[i].page = ""; break; }
+$("vBack").onclick = $("vBackLive").onclick = () => {
+  const s = steps(); for (let i = s.length - 1; i >= 0; i--) if (s[i].map) { s[i].map = ""; s[i].image = ""; s[i].page = ""; s[i].side = ""; break; }
   vetoDraw(); send();
 };
 $("vClear").onclick = async () => {

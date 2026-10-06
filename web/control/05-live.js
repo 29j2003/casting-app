@@ -471,3 +471,33 @@ document.querySelectorAll("[data-gfx-new]").forEach(b => b.onclick = () => {
   gfxOpen.add(id);
   graphicsDraw(); send();
 });
+
+/* ---------- Zur Szene: was die laufende Szene gerade braucht ----------
+   Zeigt in Live die Bedienung, die zur Szene im Programm gehört – z. B. bei „Map-Veto" das Veto zum Klicken.
+   Dieselben Daten wie unter Match (Z.veto); jede Änderung zeichnet beide Stellen neu (vetoDraw). */
+const SCENE_TOOLS = { "map-veto": "veto" };
+let sceneToolsShown = "", sceneToolsForced = "";             // forced: „trotzdem zeigen" gilt bis zum nächsten Szenenwechsel
+function sceneNow() {
+  if (onSource()) return (Z.broadcast || {}).scene || "";
+  const list = sceneCfg().list, k = Object.keys(list).find(x => list[x].obs && list[x].obs === currentScene);
+  return k || "";
+}
+function sceneToolsDraw() {
+  const k = sceneNow(), tool = SCENE_TOOLS[k] || sceneToolsForced;
+  $("sceneToolsName").textContent = k ? audioSceneTitle(k) : "–";
+  $("sceneToolsHint").textContent = tool ? "" : "Für diese Szene gibt es hier nichts einzustellen.";
+  $("sceneToolsOther").hidden = !!tool;
+  const veto = tool === "veto";
+  $("sceneToolsVeto").hidden = !veto;
+  if (veto) vetoDraw();
+}
+$("sceneToolsVetoShow").onclick = () => { sceneToolsForced = "veto"; sceneToolsDraw(); };
+$("vEditLive").onclick = () => {
+  tabs("match"); ui.below = Object.assign({}, ui.below, { match: "veto" }); uiSave(); belowApply();
+  const d = document.querySelector('[data-area="map-veto"]'); if (d) { d.open = true; d.scrollIntoView({ block: "start", behavior: "smooth" }); }
+};
+setInterval(() => {                                           // jeder Weg zählt: Klick, Strg K, OBS, Sitzung laden
+  const k = sceneNow(); if (k === sceneToolsShown) return;
+  if (sceneToolsShown) sceneToolsForced = "";
+  sceneToolsShown = k; sceneToolsDraw();
+}, 250);

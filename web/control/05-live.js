@@ -245,6 +245,27 @@ function liveReceived(d) {
   if (liveTimer) return;                                    // Anzeige hier höchstens 2× pro Sekunde
   liveTimer = setTimeout(() => { liveTimer = null; liveShow(); }, 500);
 }
+// Testdaten: ein kurzes Beispiel-Match (Runde für Runde) – geht NUR an die Vorschau dieser Seite, nie an den Server/Stream
+let gsiDemoTimer = null;
+function gsiDemoStop() { clearInterval(gsiDemoTimer); gsiDemoTimer = null; $("gsiDemo").innerHTML = icon("play") + "Testdaten abspielen"; }
+$("gsiDemo").onclick = () => {
+  if (gsiDemoTimer) { gsiDemoStop(); return; }
+  const names = { a: ["alpha_1", "alpha_2", "alpha_3", "alpha_4", "alpha_5"], b: ["bravo_1", "bravo_2", "bravo_3", "bravo_4", "bravo_5"] };
+  let round = 0;
+  const step = () => {
+    if (round > 24) { gsiDemoStop(); return; }
+    const ctScore = Math.round(round * .55), tScore = round - ctScore;
+    const line = (n, side, i) => ({ id: side + i, name: n, side, k: Math.round(round * (.9 - i * .12) + i), d: Math.round(round * .6 + (4 - i)), a: i + Math.round(round / 5),
+      mvps: Math.round(round / (6 + i)), adr: 92 - i * 11 + (round % 5), hs: 55 - i * 6, hp: (round + i) % 3 ? 100 - i * 13 : 0, money: 4200 + i * 650, equipment: 4700 - i * 300, roundKills: (round + i) % 4 === 0 ? 2 : 0 });
+    const live = { time: Date.now(), source: "demo", map: "de_mirage", phase: "live", round, roundPhase: round % 2 ? "live" : "freezetime", bomb: round % 3 === 2 ? "planted" : "",
+      ct: { name: Z.teams.a.name || "Team A", score: ctScore }, t: { name: Z.teams.b.name || "Team B", score: tScore }, sideA: "CT", observed: "CT0",
+      players: [...names.a.map((n, i) => line(n, "CT", i)), ...names.b.map((n, i) => line(n, "T", i))] };
+    try { $("frame").contentWindow.postMessage({ cast: "live", live }, location.origin); } catch (err) {}
+    round++;
+  };
+  step(); gsiDemoTimer = setInterval(step, 1500);
+  $("gsiDemo").innerHTML = icon("pause") + "Testdaten stoppen";
+};
 function liveShow() {
   const d = liveLast, on = d && Date.now() - d.time < 15000;
   $("gsiDisplay").classList.toggle("on", !!on);
@@ -539,12 +560,34 @@ function panelMenuDraw() {
     const now = panelList(k).filter(f => f !== c.dataset.f);
     if (c.checked) now.push(c.dataset.f);
     ui.panels = Object.assign({}, ui.panels, { [k]: PANEL_FIELDS.map(([f]) => f).filter(f => now.includes(f)) });
-    uiSave(); sceneToolsDraw(); panelMenuDraw();
+    uiSave(); sceneToolsDraw(); panelMenuDraw(); panelTableDraw();
   });
-  $("panelAuto").onchange = () => { ui.panelAuto = $("panelAuto").checked; uiSave(); };
-  $("panelDefault").onclick = () => { const p = Object.assign({}, ui.panels); delete p[k]; ui.panels = p; uiSave(); sceneToolsDraw(); panelMenuDraw(); };
+  $("panelAuto").onchange = () => { ui.panelAuto = $("panelAuto").checked; uiSave(); panelTableDraw(); };
+  $("panelDefault").onclick = () => { const p = Object.assign({}, ui.panels); delete p[k]; ui.panels = p; uiSave(); sceneToolsDraw(); panelMenuDraw(); panelTableDraw(); };
 }
 document.body.appendChild($("panelMenu"));                    // liegt über allem, egal in welchem Dock das Panel steckt
+// Setup → Szenen-Panels: alle Szenen auf einen Blick (Zeile = Szene, Spalte = Feld)
+function panelTableDraw() {
+  const t = $("panelTable"); if (!t) return;
+  t.innerHTML = `<thead><tr><th>Szene</th>${PANEL_FIELDS.map(([, n]) => `<th>${esc(n)}</th>`).join("")}<th></th></tr></thead><tbody></tbody>`;
+  const body = t.querySelector("tbody");
+  OVERLAY_SCENES.forEach(([k]) => {
+    const list = panelList(k), tr = document.createElement("tr");
+    tr.innerHTML = `<th class="${panelChanged(k) ? "changed" : ""}">${esc(audioSceneTitle(k))}</th>` +
+      PANEL_FIELDS.map(([f, n]) => `<td><label class="toggleSwitch" title="${esc(n)}"><input type="checkbox" data-f="${f}"${list.includes(f) ? " checked" : ""} aria-label="${esc(n)}"></label></td>`).join("") +
+      `<td><button class="button link" ${panelChanged(k) ? "" : "disabled"}>Auf Vorgabe</button></td>`;
+    tr.querySelectorAll("[data-f]").forEach(c => c.onchange = () => {
+      const now = panelList(k).filter(f => f !== c.dataset.f); if (c.checked) now.push(c.dataset.f);
+      ui.panels = Object.assign({}, ui.panels, { [k]: PANEL_FIELDS.map(([f]) => f).filter(f => now.includes(f)) });
+      uiSave(); panelTableDraw(); if (k === sceneNow()) sceneToolsDraw();
+    });
+    tr.querySelector("button").onclick = () => { const p = Object.assign({}, ui.panels); delete p[k]; ui.panels = p; uiSave(); panelTableDraw(); if (k === sceneNow()) sceneToolsDraw(); };
+    body.appendChild(tr);
+  });
+  $("panelAutoSetup").checked = ui.panelAuto !== false;
+}
+$("panelAutoSetup").onchange = () => { ui.panelAuto = $("panelAutoSetup").checked; uiSave(); };
+setTimeout(panelTableDraw, 0);                               // nach dem Laden aller Teile (Szenennamen kommen auch aus 12-dach)
 const panelMenuToggle = (open, button) => {
   $("panelMenu").hidden = !open;
   if (open) { panelMenuDraw(); beside(button || $("panelFieldsButton"), $("panelMenu"), true); }
@@ -570,4 +613,7 @@ setInterval(() => {                                           // jeder Weg zähl
   const k = sceneNow(); if (k === sceneToolsShown) return;
   const first = !sceneToolsShown; sceneToolsShown = k; sceneToolsDraw();
   if (!first) panelReveal();
+  // Hintergrund der neuen Szene (auch wenn in OBS umgeschaltet wurde)
+  const before = JSON.stringify([Z.background.videos, Z.background.play]);
+  bgApply(k); if (JSON.stringify([Z.background.videos, Z.background.play]) !== before) send();
 }, 250);

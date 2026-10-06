@@ -31,7 +31,7 @@ from ..paths import IS_WINDOWS, WEB_DIR, AppFolders
 from ..settings import AppSettings
 from ..updater import Updater
 from ..version import VERSION
-from . import cs2_setup, faceit
+from . import cs2_setup, faceit, workshop
 from .event_hub import EventClient, EventHub
 from .net import ExclusiveHTTPServer, content_length
 from .game_state import LAN_PORT, GameStateReceiver, lan_addresses
@@ -457,6 +457,7 @@ class CastingServer:
             "/api/videos": (None, lambda request, query: self._api_videos(request)),
             "/api/fonts": (None, self._api_fonts),
             "/api/folder": ("POST", lambda request, query: self._api_open_folder(request, query.get("which"))),
+            "/api/workshop": (None, self._api_workshop),
             # names of version 2.1 and older, still used by old pages and old versions
             "/api/beenden": ("POST", self._api_quit),
             "/api/ereignisse": (None, lambda request, query: self._reload_legacy_page(request)),
@@ -723,6 +724,18 @@ class CastingServer:
         secret = base64.b64encode(hashlib.sha256((password + salt).encode()).digest()).decode()
         answer = base64.b64encode(hashlib.sha256((secret + challenge).encode()).digest()).decode()
         request.send_json(200, {"authentication": answer})
+
+    def _api_workshop(self, request, query: dict) -> None:
+        """A custom map from the Steam Workshop: ?id=<link or number> → {id, title, image (data URL)}."""
+        try:
+            found = workshop.lookup(str(query.get("id", "")))
+        except workshop.WorkshopError as error:
+            return request.send_json(400, {"error": str(error)})
+        except (OSError, ValueError) as error:
+            self.log.warn(f"Steam Workshop nicht erreichbar: {error}")
+            return request.send_json(502, {"error": "Steam ist gerade nicht erreichbar – Name und Bild von Hand eintragen."})
+        self.log.info(f"Workshop-Map übernommen: {found['title']}")
+        return request.send_json(200, found)
 
     def _api_faceit(self, request, resource: str, query: dict) -> None:
         """Forward an allowed FACEIT request; the API key is added here and never leaves the server."""

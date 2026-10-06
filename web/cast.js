@@ -301,9 +301,13 @@
     const S = Z.sponsors || {}, list = sponsorList();
     const boxes = $$(".sponsor");
     const visible = S.on !== false && (S.sceneList || {})[currentSceneName()] !== false && list.length > 0;
-    const keyName = JSON.stringify([list, S.seconds, visible]);
+    const keyName = JSON.stringify([list, S.seconds, visible, S.bar === true]);
+    const bar = S.bar === true && list.length > 1;
     boxes.forEach(b => {
       b.classList.toggle("on", visible);
+      let line = b.querySelector(".sponsor-bar");
+      if (!line) { line = document.createElement("i"); line.className = "sponsor-bar"; b.appendChild(line); }
+      line.hidden = !bar;
       if (!newNeeded(b, keyName)) return;
       const field = b.querySelector(".sponsor-field");
       field.innerHTML = list.map(sponsorContent).join("");
@@ -314,10 +318,17 @@
       sponsorTimerCachekey = keyName;
       clearInterval(sponsorTimer); sponsorTimer = null;
       if (sponsorNum >= list.length) sponsorNum = 0;
-      if (visible && list.length > 1) sponsorTimer = setInterval(() => {
-        sponsorNum = (sponsorNum + 1) % list.length;
-        $$(".sponsor").forEach(b => [...b.querySelector(".sponsor-field").children].forEach((k, i) => k.classList.toggle("on", i === sponsorNum)));
-      }, Math.max(3, S.seconds || 8) * 1000);
+      const seconds = Math.max(3, S.seconds || 8);
+      // Restzeit-Balken: läuft einmal je Logo von links nach rechts (nur sichtbar und nur mit mehreren Logos)
+      const barRestart = () => $$(".sponsor-bar").forEach(e => { e.style.animation = "none"; void e.offsetWidth; e.style.animation = `sponsor-bar ${seconds}s linear forwards`; });
+      if (visible && list.length > 1) {
+        if (bar) barRestart();
+        sponsorTimer = setInterval(() => {
+          sponsorNum = (sponsorNum + 1) % list.length;
+          $$(".sponsor").forEach(b => [...b.querySelector(".sponsor-field").children].forEach((k, i) => k.classList.toggle("on", i === sponsorNum)));
+          if (bar) barRestart();
+        }, seconds * 1000);
+      }
     }
     {
       // Raster-Szene
@@ -789,7 +800,11 @@
     const obsPlays = (H.source === "obs" || !!H.transparent) && !PREVIEW;
     const list = obsPlays ? [] : (H.videos || []).filter(Boolean);
     const dark = backdrop.querySelector(".bg-dark"), empty = backdrop.querySelector(".bg-empty");
-    const keyName = (obsPlays ? "obs|" : "") + list.join("|");
+    // Playlist (Setup → Hintergrund): Übergang zwischen den Videos, Dauer, Reihenfolge
+    const P = H.play || {}, shuffle = P.order === "shuffle", passage = ["cut", "black"].includes(P.transition) ? P.transition : "fade";
+    const fade = Math.min(4000, Math.max(0, +P.fade >= 0 ? +P.fade : 1200));
+    backdrop.style.setProperty("--bg-fade", (passage === "cut" ? 0 : passage === "black" ? fade / 2 : fade) + "ms");
+    const keyName = (obsPlays ? "obs|" : "") + list.join("|") + "|" + [passage, fade, shuffle].join();
     if (backdrop.classList.contains("video-running") || obsPlays) { if (dark) dark.style.opacity = H.dim ?? .35; }
     if (keyName === videoList) return;
     videoList = keyName;
@@ -823,7 +838,8 @@
       return v;
     };
     let active = make(), upcoming = make();
-    let i = Math.floor(Math.random() * list.length);
+    let i = shuffle ? Math.floor(Math.random() * list.length) : 0;
+    const following = n => { if (!shuffle || list.length < 3) return (n + 1) % list.length; let k; do k = Math.floor(Math.random() * list.length); while (k === n); return k; };
     const broken = new Set();
     const valid = () => gen === videoGen;
 
@@ -851,13 +867,16 @@
       if (loading || !valid()) return;
       loading = true;
       for (let n = 0; n < list.length; n++) {
-        const file = list[i]; i = (i + 1) % list.length;
+        const file = list[i]; i = following(i);
         if (broken.has(file)) continue;
         const r = await launch(upcoming, file);
         if (!valid()) return;                                    // inzwischen neu eingerichtet
         if (r.ok) {
-          upcoming.classList.add("on"); active.classList.remove("on");
-          const previous = active; setTimeout(() => { if (!previous.classList.contains("on")) previous.pause(); }, 1400);
+          const incoming = upcoming, previous = active;
+          if (passage === "black" && previous.classList.contains("on")) {   // erst ausblenden, dann das neue einblenden
+            previous.classList.remove("on"); setTimeout(() => { if (valid()) incoming.classList.add("on"); }, fade / 2);
+          } else { incoming.classList.add("on"); previous.classList.remove("on"); }
+          setTimeout(() => { if (!previous.classList.contains("on")) previous.pause(); }, Math.max(1400, fade + 200));
           [active, upcoming] = [upcoming, active];
           const v = active;
           v.onended = () => { if (valid() && v === active) proceed(); };
@@ -896,6 +915,34 @@
       } else stall = 0;
       last = active.currentTime;
     }, 1500);
+  }
+
+  /* ---------- Clips (Hintergrund-Playlist der Art „Clips"): einmal mit Ton, danach weg ----------
+     Die Steuerseite setzt Z.background.clip = { id: Zeitpunkt, videos, audio }. Jede Seite spielt einen Abruf
+     nur einmal und nur, wenn er frisch ist (nach Neuladen nicht noch einmal). Leere Liste = Clip abbrechen. */
+  let clipSeen = 0;
+  function clips() {
+    const backdrop = document.querySelector(".backdrop");
+    const C = (Z.background || {}).clip || {};
+    if (!backdrop || !C.id || C.id === clipSeen) return;
+    clipSeen = C.id;
+    let v = backdrop.querySelector("video.bg-clip");
+    const stop = () => { if (!v) return; v.classList.remove("on"); const w = v; setTimeout(() => { if (!w.classList.contains("on")) { w.pause(); w.removeAttribute("src"); w.load(); } }, 700); };
+    const list = (C.videos || []).filter(Boolean);
+    if (!list.length || Date.now() - C.id > 20000) { stop(); return; }
+    if (!v) { v = document.createElement("video"); v.className = "bg-clip"; v.playsInline = true; v.preload = "auto"; v.disablePictureInPicture = true; backdrop.appendChild(v); }
+    const id = C.id; let n = 0;
+    const next = () => {
+      if (id !== clipSeen) return;
+      if (n >= list.length) { stop(); return; }
+      const file = list[n++];
+      v.src = /^(https?:|file:|data:|blob:)/i.test(file) ? file : file.split("/").map(encodeURIComponent).join("/");
+      audioForVideo(v, C.audio !== false);
+      v.play().then(() => v.classList.add("on")).catch(() => next());
+    };
+    v.onended = next;
+    v.onerror = () => { message("Clip lässt sich nicht abspielen: " + (v.getAttribute("src") || "")); next(); };
+    next();
   }
 
   /* ---------- Musik (Tuna) ---------- */
@@ -974,7 +1021,7 @@
     });
   }
   function draw() {
-    diagnose(); theme(); graphics(); veto(); series(); players(); texts(); teams(); fit(); timer(); ticker(); background(); sources(); sponsors();
+    diagnose(); theme(); graphics(); veto(); series(); players(); texts(); teams(); fit(); timer(); ticker(); background(); clips(); sources(); sponsors();
     if (!(Z.speaker || {}).on) $$(".cam.speaks").forEach(k => k.classList.remove("speaks"));
     $$(".music").forEach(m => m.classList.toggle("off", Z.music.displayed === false));
     if (musicData && $$(".music").some(b => !b._music)) musicShow(musicData);

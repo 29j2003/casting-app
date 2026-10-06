@@ -6,9 +6,13 @@ Starts the server in-process on port 8787 – no other Casting-App may run.
 
 import base64
 import http.client
+import http.server
 import json
 import os
+import subprocess
+import threading
 import time
+import urllib.parse
 
 import pytest
 from conftest import MemoryKeyring
@@ -18,6 +22,7 @@ from casting_app.app_log import AppLog
 from casting_app.paths import create_folders
 from casting_app.secret_store import SecretStore
 from casting_app.server.app_server import CastingServer
+from casting_app.server.media_converter import find_ffmpeg, media_token
 from casting_app.version import VERSION
 
 
@@ -233,3 +238,48 @@ def test_control_script_joins_all_parts_in_order(server):
     assert status == 200 and headers["Content-Type"].startswith("text/javascript")
     assert len(names) >= 10 and all(m in body for m in markers)
     assert [body.index(m) for m in markers] == sorted(body.index(m) for m in markers)
+
+
+@pytest.mark.skipif(find_ffmpeg() is None, reason="FFmpeg (imageio-ffmpeg) fehlt")
+def test_h264_video_is_converted_to_webm_for_the_app_window(server, tmp_path):
+    """/api/media: only with the media token, only http(s); answers WebM and keeps it in the cache."""
+    clip = tmp_path / "clip.mp4"
+    subprocess.run([find_ffmpeg(), "-v", "error", "-f", "lavfi", "-i", "testsrc=size=160x90:rate=25", "-f", "lavfi", "-i",
+                    "sine", "-t", "2", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-movflags", "+faststart",
+                    str(clip)], check=True)
+
+    class Clip(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = clip.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "video/mp4")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    source_server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Clip)
+    threading.Thread(target=source_server.serve_forever, daemon=True).start()
+    try:
+        source = f"http://127.0.0.1:{source_server.server_address[1]}/clip.mp4"
+        token = media_token(server.access_key)
+        path = "/api/media?" + urllib.parse.urlencode({"src": source, "t": token})
+        assert request("GET", "/api/media?" + urllib.parse.urlencode({"src": source, "t": "falsch"}), access=False)[0] == 403
+        assert request("GET", "/api/media?" + urllib.parse.urlencode({"src": "file:///etc/passwd", "t": token}))[0] == 400
+        connection = http.client.HTTPConnection("127.0.0.1", 8787, timeout=60)
+        connection.request("GET", path, headers={"Host": "localhost:8787", "Sec-Fetch-Site": "cross-site"})  # from a DACH page
+        answer = connection.getresponse()
+        first = answer.read()
+        connection.close()
+        assert answer.status == 200 and answer.getheader("Content-Type") == "video/webm"
+        assert first[:4] == b"\x1a\x45\xdf\xa3" and len(first) > 1000                      # WebM (EBML) header
+        for _ in range(50):                                                                    # finished file in the cache
+            if list((server.folders.data / "media-cache").glob("*.webm")):
+                break
+            time.sleep(0.1)
+        status, headers, again = request("GET", path, headers={"Range": "bytes=0-99"})
+        assert status == 206 and len(again) == 100 and headers.get("Content-Type") == "video/webm"
+    finally:
+        source_server.shutdown()

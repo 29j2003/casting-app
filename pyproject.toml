@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "casting-app"
-version = "2.3.1"                     # keep equal to casting_app/version.py and web/cast-core.js
+version = "2.4.0"                     # keep equal to casting_app/version.py and web/cast-core.js
 description = "Steuerung und Overlays für CS2-Casts in OBS"
 requires-python = ">=3.11"
 dependencies = [
@@ -12,6 +12,9 @@ dependencies = [
     "PySide6-Addons>=6.8,<7",
     "keyring>=25",                    # system keyring for the FACEIT key, DACH CS access and OBS password
     "cryptography>=42; sys_platform == 'linux'",   # password vault for Linux systems without a keyring
+    # FFmpeg (GPL, separate program): plays H.264 videos in the app window – see LICENSES/FFmpeg.txt.
+    # Not on macOS Intel: imageio-ffmpeg's build there is "nonfree" and must not be redistributed.
+    "imageio-ffmpeg>=0.6; sys_platform != 'darwin' or platform_machine == 'arm64'",
 ]
 
 [project.optional-dependencies]

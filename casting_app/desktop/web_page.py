@@ -17,6 +17,7 @@ from PySide6.QtWebEngineCore import (QWebEngineDownloadRequest, QWebEnginePage, 
 from PySide6.QtWidgets import QFileDialog
 
 from ..server.app_server import ALLOWED_ORIGINS
+from . import media
 from .bridge import PageBridge
 
 SCRIPTS = Path(__file__).parent / "scripts"
@@ -94,6 +95,7 @@ class AppWebPage(QWebEnginePage):
         self.scripts().insert(_script("casting-app-bridge", app_bridge, BRIDGE_WORLD, created))
         page_bridge = (SCRIPTS / "page_bridge.js").read_text(encoding="utf-8")
         page_bridge = page_bridge.replace('"__CASTING_APP_ACCESS_KEY__"', json.dumps(access_key))
+        page_bridge = page_bridge.replace('"__CASTING_APP_CAN_CONVERT__"', json.dumps("true" if media.can_convert(access_key) else "false"))
         self.scripts().insert(_script("casting-app-page-bridge", page_bridge, QWebEngineScript.ScriptWorldId.MainWorld, created))
         self.permissionRequested.connect(self._decide_permission)
 

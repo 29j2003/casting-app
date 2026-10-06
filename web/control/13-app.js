@@ -195,6 +195,8 @@ $("updateInstall").onclick = async () => {
   if (!await confirmDialog({ title: "Jetzt aktualisieren?", text: "Die App lädt die neue Version, beendet sich und startet neu. Overlays in OBS sind dabei kurz weg – nicht während einer laufenden Sendung.", button: "Aktualisieren" })) return;
   try { updateDraw(await (await fetch("/api/update-install", { method: "POST" })).json()); } catch (err) {}
 };
+// Sprungleiste oben in den App-Einstellungen
+document.querySelectorAll(".settings-nav [data-jump]").forEach(b => b.onclick = () => $(b.dataset.jump).scrollIntoView({ behavior: "smooth", block: "start" }));
 if (window.castApp && window.castApp.onShowUpdate) window.castApp.onShowUpdate(() => { settings(true); $("updateArea").scrollIntoView({ block: "start" }); });
 // Sprache: App (Steuerseite, Dialoge, Tray) und Overlays unabhängig voneinander
 function languageDraw() {

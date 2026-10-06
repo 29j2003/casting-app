@@ -14,7 +14,7 @@ Quitting
 import os
 import shutil
 import sys
-import threading
+import time
 
 import shiboken6
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
@@ -22,10 +22,10 @@ from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication
 
-from .. import instance, texts, update_check
+from .. import instance, texts
 from ..app_log import AppLog
 from ..paths import DATA_DIR, IS_WINDOWS, WEB_DIR, create_folders
-from .. import password_vault
+from .. import password_vault, secret_store
 from ..secret_store import SecretStore, system_keyring_or_none
 from ..settings import AppSettings
 from ..server.app_server import BASE_URL, CastingServer
@@ -55,14 +55,17 @@ class ServerRequests(QObject):
 class DesktopApp(QObject):
     """Connects window, tray and server."""
 
-    def __init__(self, qt_app: QApplication, log: AppLog, server: CastingServer | None, server_requests: ServerRequests):
-        """Create window and tray and connect them with the server; `server` is None when an older server-only app runs."""
+    def __init__(self, qt_app: QApplication, log: AppLog, server: CastingServer | None, server_requests: ServerRequests,
+                 access_key: str = ""):
+        """Create window and tray and connect them with the server; `server` is None when another server-only app runs
+        (then access_key is that server's key from the keyring)."""
         super().__init__()
         self._qt_app = qt_app
         self._log = log
         self._server = server
         self._quitting = False
         self._reload_request_id = 0
+        self._crash_times: list[float] = []     # recent renderer crashes (reloads are limited)
         self._idle_since_ms = 0
         self.single_instance: "SingleInstance | None" = None    # kept alive while the app runs
 
@@ -70,12 +73,14 @@ class DesktopApp(QObject):
         qt_app.setWindowIcon(icon)
         from .web_page import create_profile        # needs the QApplication
         self._profile = create_profile(WINDOW_STORAGE, self)
-        self.window = MainWindow(self._profile, f"{BASE_URL}/control.html", icon, DATA_DIR / "window.json")
+        # the access key reaches the control page through the bridge – never in its address or browser storage
+        self.window = MainWindow(self._profile, f"{BASE_URL}/control.html", icon, DATA_DIR / "window.json", access_key)
         self.tray = TrayIcon(QIcon(str(WEB_DIR / "media" / "app-logo-32.png")), self)
 
         self.window.quit_requested.connect(lambda: self.quit("Über das Fenster-Kreuz beendet"))
         self.window.hide_requested.connect(self.hide_window)
         self.window.page.bridge.overlays_reloaded.connect(self._overlays_reloaded_by_page)
+        self.window.page.renderProcessTerminated.connect(self._page_crashed)
         self.tray.open_requested.connect(self.show_window)
         self.tray.reload_overlays_requested.connect(self.reload_overlays)
         self.tray.quit_requested.connect(lambda: self.quit("Über das Tray-Menü beendet"))
@@ -85,7 +90,7 @@ class DesktopApp(QObject):
         server_requests.language_changed.connect(self._change_language)
         self._server_requests = server_requests
         self._update_url = ""
-        self.tray.message_clicked.connect(lambda: self._update_url and QDesktopServices.openUrl(QUrl(self._update_url)))
+        self.tray.message_clicked.connect(self._open_update_settings)
         qt_app.commitDataRequest.connect(self._system_logs_off)
         qt_app.aboutToQuit.connect(self._shut_down)
 
@@ -98,24 +103,22 @@ class DesktopApp(QObject):
         self.window.show()
         if self.tray.available:
             self.tray.show()
-        if self._server and self._server.settings.get("check_for_updates"):
-            threading.Thread(target=self._check_for_update, name="update-check", daemon=True).start()
+        if self._server:
+            self._server.updater.on_found = self._server_requests.update_found.emit     # thread → Qt main thread
+            if self._server.settings.get("check_for_updates"):
+                self._server.updater.check_in_background()
 
     # --- update check ---
 
-    def _check_for_update(self) -> None:
-        """Runs in a thread: asks GitHub for the latest release (see update_check.py)."""
-        release = update_check.newer_release()
-        if release:
-            self._server_requests.update_found.emit(release)
-
     def _announce_update(self, release: dict) -> None:
-        """A newer version exists: note it in the log, the settings dialog and the tray."""
-        if self._server:
-            self._server.available_update = release
+        """A newer version exists: tell it in the tray (installing: Setup → ⚙ App-Einstellungen → Update)."""
         self._update_url = release.get("url", "")
-        self._log.info(f"Neue Version {release['version']} verfügbar: {self._update_url}")
         self.tray.tell(texts.text("update.title", app=APP_NAME, version=release["version"]), texts.text("update.text"))
+
+    def _open_update_settings(self) -> None:
+        """Click on the tray message: show the window with the update area of the settings."""
+        self.show_window()
+        self.window.page.send_to_page({"type": "show-update"})
 
     def _change_language(self, language: str) -> None:
         """The app language was changed on the control page: tray and dialogs follow (the page reloads itself)."""
@@ -170,12 +173,27 @@ class DesktopApp(QObject):
         if self._quitting:
             return
         self._quitting = True
+        if self.single_instance is not None:
+            self.single_instance.close()
         if reason:
             self._log.info(reason)
         self.window.quitting = True
         self.tray.hide()
         self.window.close()
         self._qt_app.quit()
+
+    def _page_crashed(self, status, exit_code: int) -> None:
+        """The control page's renderer died (out of memory, GPU driver …): load it again instead of a white window."""
+        if self._quitting:
+            return
+        now = time.monotonic()
+        self._crash_times = [t for t in self._crash_times if now - t < 60] + [now]
+        if len(self._crash_times) > 3:              # keeps crashing (often the graphics driver): stop, explain instead
+            self._log.error(f"Steuerseite stürzt wiederholt ab ({status.name}, Code {exit_code}) – nicht mehr neu geladen")
+            self.tray.tell(texts.text("crash.title"), texts.text("crash.text"))
+            return
+        self._log.error(f"Steuerseite abgestürzt ({status.name}, Code {exit_code}) – wird neu geladen")
+        QTimer.singleShot(1000, lambda: not self._quitting and self.window.page.load(QUrl(f"{BASE_URL}/control.html")))
 
     def _system_logs_off(self, session_manager) -> None:
         """Windows/Linux log-off or shutdown: save and let the window close without asking."""
@@ -216,15 +234,20 @@ class SingleInstance(QObject):
         self._server: QLocalServer | None = None
 
     def hand_over_to_running_app(self) -> bool:
-        """True if another instance runs (it was asked to show its window)."""
+        """True if another instance runs and confirmed it shows its window.
+
+        An app that is just quitting may still accept the connection but no longer answers – it does not count,
+        otherwise both would end and no app would be left running.
+        """
         socket = QLocalSocket()
         socket.connectToServer(INSTANCE_NAME)
         if not socket.waitForConnected(500):
             return False
         socket.write(f"zeigen {VERSION}\n".encode())
         socket.waitForBytesWritten(500)
+        answered = socket.waitForReadyRead(1500) and socket.readAll().data().startswith(b"ok")
         socket.disconnectFromServer()
-        return True
+        return answered
 
     def listen(self) -> None:
         """Become the running instance: later starts connect here."""
@@ -237,8 +260,14 @@ class SingleInstance(QObject):
     def _second_start(self) -> None:
         """Another start of the app connected: show our window instead."""
         connection = self._server.nextPendingConnection()
-        connection.readyRead.connect(lambda: (connection.readAll(), self.show_requested.emit()))
+        connection.readyRead.connect(lambda: (connection.readAll(), connection.write(b"ok\n"), connection.flush(),
+                                              self.show_requested.emit()))
         connection.disconnected.connect(connection.deleteLater)
+
+    def close(self) -> None:
+        """Stop answering later starts (first step of quitting – a new start then runs on its own)."""
+        if self._server is not None:
+            self._server.close()
 
 
 def take_over_window_settings_from_version_1() -> None:
@@ -296,18 +325,20 @@ def start_desktop_app(qt_app: QApplication, log: AppLog) -> DesktopApp | None:
     texts.set_language(settings.get("app_language"))
     settings.listeners.append(lambda changed: "app_language" in changed
                               and server_requests.language_changed.emit(changed["app_language"]))
+    store = SecretStore(folders.data, log.write, keyring_backend=_secret_backend(folders.data, settings, log))
     if running is None:
-        server = CastingServer(folders, SecretStore(folders.data, log.write, keyring_backend=_secret_backend(folders.data, settings, log)),
-                               log, on_quit_requested=server_requests.quit_requested.emit,
+        server = CastingServer(folders, store, log, on_quit_requested=server_requests.quit_requested.emit,
                                open_folder=lambda folder: server_requests.open_folder_requested.emit(str(folder)),
                                settings=settings)
         log.info(f"{APP_NAME} {VERSION} startet · Daten: {folders.data} · Videos: {folders.videos}")
         server.start()                            # OSError if the port is taken
+        access_key = server.access_key
     else:
         log.info(f"{APP_NAME} {running} läuft bereits ohne Fenster – das Fenster nutzt diesen Server")
+        access_key = store.get(secret_store.ACCESS_KEY) or ""   # that server keeps its key in the same keyring
 
     take_over_window_settings_from_version_1()
-    desktop = DesktopApp(qt_app, log, server, server_requests)
+    desktop = DesktopApp(qt_app, log, server, server_requests, access_key)
     desktop.single_instance = single              # keep it alive as long as the app runs
     single.show_requested.connect(desktop.show_window)
     desktop.start()
@@ -319,11 +350,13 @@ def run_desktop(no_gpu: bool = False) -> int:
     prepare_qt(no_gpu)
     qt_app = QApplication(sys.argv)
     log = AppLog(DATA_DIR / "log.txt", echo_to_console=not IS_WINDOWS)
+    log.catch_unhandled_errors()
     try:
         desktop = start_desktop_app(qt_app, log)
-    except OSError as error:
+    except Exception as error:                    # the windowed build has no console: always say what happened
+        log.error(f"Start fehlgeschlagen: {error!r}")
         from PySide6.QtWidgets import QMessageBox
-        QMessageBox.critical(None, APP_NAME, texts.text("server_failed", error=error))
+        QMessageBox.critical(None, APP_NAME, texts.text("server_failed" if isinstance(error, OSError) else "start_failed", error=error))
         return 1
     if desktop is None:
         return 0

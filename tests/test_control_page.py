@@ -60,7 +60,7 @@ def watch(page) -> list[str]:
 def test_every_area_and_button_of_the_control_page(server, browser):
     page = browser.new_page(viewport={"width": 1600, "height": 1000})
     errors = watch(page)
-    page.goto(f"{BASE_URL}/control.html")
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
     page.wait_for_timeout(1500)
     clicked = 0
     for target in page.eval_on_selector_all("#tabs button[data-target]", "l => l.map(b => b.dataset.target)"):
@@ -112,7 +112,7 @@ def test_control_page_in_english(server, browser):
     """App language English: the whole control page (all areas, settings, palette) shows no German text."""
     page = browser.new_page(viewport={"width": 1600, "height": 1000})
     errors = watch(page)
-    page.goto(f"{BASE_URL}/control.html")
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
     page.evaluate("localStorage.setItem('casting-app-language', 'en')")
     server.settings.update({"app_language": "en"})
     page.reload()
@@ -165,7 +165,7 @@ def test_scene_pages_load_without_errors(server, browser, scene):
 def test_overlay_switches_scenes_without_errors(server, browser):
     control, overlay = browser.new_page(), browser.new_page(viewport={"width": 1920, "height": 1080})
     control_errors, overlay_errors = watch(control), watch(overlay)
-    control.goto(f"{BASE_URL}/control.html")
+    control.goto(f"{BASE_URL}/control.html?access={server.access_key}")
     overlay.goto(f"{BASE_URL}/overlay.html")
     control.wait_for_timeout(1500)
     for scene in ("intro", "cast-duo", "players", "series", "sponsors", "end", "scoreboard", "bracket"):
@@ -179,7 +179,7 @@ def test_overlay_language_is_independent_of_the_app_language(server, browser):
     """Overlay language English with a German app: fixed overlay texts switch, own texts stay."""
     control, overlay = browser.new_page(), browser.new_page(viewport={"width": 1920, "height": 1080})
     errors = watch(control) + []
-    control.goto(f"{BASE_URL}/control.html")
+    control.goto(f"{BASE_URL}/control.html?access={server.access_key}")
     control.wait_for_timeout(1200)
     control.evaluate("Z.texts.endTitle = 'Bis morgen!'; send()")
     control.evaluate("document.querySelector('#overlayLanguage [data-language=en]').click()")
@@ -200,7 +200,7 @@ def test_every_graphic_appears_in_the_overlay_at_its_position(server, browser):
     control, overlay = browser.new_page(), browser.new_page(viewport={"width": 1920, "height": 1080})
     errors = watch(control) + []
     overlay_errors = watch(overlay)
-    control.goto(f"{BASE_URL}/control.html")
+    control.goto(f"{BASE_URL}/control.html?access={server.access_key}")
     control.wait_for_timeout(1200)
     overlay.goto(f"{BASE_URL}/cast-solo.html")
     overlay.wait_for_timeout(1000)
@@ -216,3 +216,139 @@ def test_every_graphic_appears_in_the_overlay_at_its_position(server, browser):
         assert "pos-tr" in shown["classes"] and float(shown["opacity"]) > 0
         assert shown["right"] < 200, f"Einblendung {kind} steht nicht rechts oben: {shown}"
     assert errors == [] and overlay_errors == []
+
+
+def test_dach_pages_keep_running_when_app_audio_changes(server, browser):
+    """DACH CS – official in the preview: videos may play, switching app audio reloads nothing, empty cam slots are black."""
+    page = browser.new_page(viewport={"width": 1920, "height": 1080})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/overlay.html?access={server.access_key}")      # stands in for the control page around the preview
+    page.wait_for_timeout(800)
+    page.evaluate("""(() => { const f = document.createElement('iframe'); f.id = 'p'; f.src = '/overlay.html?preview=1';
+        f.style.cssText = 'position:fixed;inset:0;width:1920px;height:1080px;z-index:99'; document.body.appendChild(f); })()""")
+    page.wait_for_timeout(1500)
+    page.evaluate("""(() => { const z = JSON.parse(JSON.stringify(CastCore.DEFAULT)); z.theme = 'dachcs-official';
+        z.broadcast.scene = 'dach-singlecast'; z.broadcast.active = true; z.revision = Date.now();
+        fetch('/api/state', { method: 'POST', body: JSON.stringify(z) });            // the server's state wins in the overlay
+        document.getElementById('p').contentWindow.postMessage({ cast: 'state', z }, location.origin); })()""")
+    page.wait_for_timeout(1500)
+    before = page.evaluate("""(() => { const d = document.getElementById('p').contentDocument;
+        const pages = [...d.querySelectorAll('.dach-page')];
+        pages.forEach(f => { f._loads = 0; f.addEventListener('load', () => f._loads++); });
+        return { allow: pages.map(f => f.getAttribute('allow')), src: pages.map(f => f.getAttribute('src')),
+                 cams: [...d.querySelectorAll('.dach-cam')].map(k => getComputedStyle(k).backgroundColor) }; })()""")
+    assert before["allow"] == ["autoplay"] * 3, "DACH-Seiten dürfen Videos abspielen"
+    assert any(s and "/dach/singlecast" in s for s in before["src"])
+    assert before["cams"] and all(c == "rgb(0, 0, 0)" for c in before["cams"]), f"leere Kamera-Rahmen müssen schwarz sein: {before['cams']}"
+    for mode in ("app", "off", "app"):
+        page.evaluate(f"document.getElementById('p').contentWindow.postMessage({{ cast: 'monitor', mode: '{mode}', vol: 100 }}, location.origin)")
+        page.wait_for_timeout(1200)
+    after = page.evaluate("""(() => { const pages = [...document.getElementById('p').contentDocument.querySelectorAll('.dach-page')];
+        return { loads: pages.map(f => f._loads), src: pages.map(f => f.getAttribute('src')), allow: pages.map(f => f.getAttribute('allow')) }; })()""")
+    assert after["loads"] == [0, 0, 0] and after["src"] == before["src"], "Ton umschalten darf keine DACH-Seite neu laden"
+    assert after["allow"] == ["autoplay"] * 3
+    assert errors == []
+
+
+def test_series_cards_keep_their_own_map_results(server, browser):
+    """Series scene: each map card shows its own result, the header shows the series total (2.2 had mixed them up)."""
+    control, overlay = browser.new_page(), browser.new_page(viewport={"width": 1920, "height": 1080})
+    errors = watch(control) + watch(overlay)
+    control.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    control.wait_for_timeout(1200)
+    overlay.goto(f"{BASE_URL}/series.html")
+    overlay.wait_for_timeout(1000)
+    control.evaluate("""(() => { Z.veto.steps = [
+        { action: 'pick', team: 'a', map: 'Mirage', result: { a: 13, b: 7, status: 'done' } },
+        { action: 'pick', team: 'b', map: 'Inferno', result: { a: 5, b: 13, status: 'done' } },
+        { action: 'decider', map: 'Nuke', result: { a: 4, b: 2, status: 'running' } }]; send(); })()""")
+    overlay.wait_for_timeout(900)
+    control.evaluate("Z.texts.title = 'Nur ein anderer Text'; send()")             # any change that does not touch the maps
+    overlay.wait_for_timeout(900)
+    cards = overlay.evaluate("[...document.querySelectorAll('.series-card .series-score')].map(e => e.textContent.replace(/\\s/g, ''))")
+    total = overlay.evaluate("document.querySelector('.series-total').textContent.replace(/\\s/g, '')")
+    assert cards == ["13:7", "5:13", "4:2"], cards
+    assert total == "1:1"
+    assert errors == []
+
+
+def test_long_team_names_switch_to_the_short_name(server, browser):
+    """A team name that would shrink below 70 % shows the short name instead; without one it only shrinks."""
+    control, overlay = browser.new_page(), browser.new_page(viewport={"width": 1920, "height": 1080})
+    errors = watch(control) + watch(overlay)
+    control.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    control.wait_for_timeout(1200)
+    overlay.goto(f"{BASE_URL}/map-veto.html")
+    overlay.wait_for_timeout(1000)
+    names = "[...document.querySelectorAll('[data-matching] [data-team-name]')].map(e => e.textContent)"
+    long_name = "Sehr Langer Teamname Esports Akademie Zwei"
+    control.evaluate(f"Z.teams.a.name = {long_name!r}; Z.teams.a.short = ''; Z.teams.b.name = {long_name!r}; Z.teams.b.short = 'SLT'; send()")
+    overlay.wait_for_timeout(900)
+    assert overlay.evaluate(names)[:2] == [long_name, "SLT"]
+    control.evaluate("Z.teams.a.name = 'BIG'; Z.teams.b.name = 'MOUZ'; send()")                # fits: full names again
+    overlay.wait_for_timeout(900)
+    assert overlay.evaluate(names)[:2] == ["BIG", "MOUZ"]
+    assert errors == []
+
+
+def test_a_won_map_is_offered_as_finished(server, browser):
+    """13 rounds (or 16, 19 … in overtime) with two ahead: the series row offers „Map beenden?“."""
+    page = browser.new_page()
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    cases = page.evaluate("""[[13, 11], [13, 12], [12, 10], [16, 14], [16, 15], [19, 17], [17, 15], [22, 18], ['', 3]]
+        .map(([a, b]) => mapDecided({ a, b }))""")
+    assert cases == [True, False, False, True, False, True, False, True, False]
+    page.evaluate("Z.veto.steps = [{ action: 'pick', team: 'a', map: 'Mirage', result: { a: 13, b: 4, status: 'running' } }]; seriesDraw()")
+    assert page.evaluate("!document.querySelector('#series .map-finish').hidden")
+    page.evaluate("document.querySelector('#series .map-finish').click()")
+    assert page.evaluate("Z.veto.steps[0].result.status") == "done"
+    assert errors == []
+
+
+def test_faceit_swiss_is_told_apart_from_a_round_robin(server, browser):
+    """Swiss pairs teams with the same record from round 2 on; a round robin does that only for about half the games."""
+    page = browser.new_page()
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    result = page.evaluate("""(() => {
+      const ids = ['t1','t2','t3','t4','t5','t6','t7','t8'], won = (a, b) => ids.indexOf(a) < ids.indexOf(b);   // lower seed wins
+      const play = (games, res, round, pairs) => pairs.forEach(([a, b], i) => { const id = round + '-' + i;
+        games.push({ id, round, a, b }); res[id] = won(a, b) ? { a: 2, b: 0, done: true } : { a: 0, b: 2, done: true }; });
+      // Swiss: Runde 1 gesetzt, danach gleiche Bilanz gegeneinander
+      let g = [], r = {};
+      play(g, r, 1, [['t1','t5'],['t2','t6'],['t3','t7'],['t4','t8']]);
+      play(g, r, 2, [['t1','t2'],['t3','t4'],['t5','t6'],['t7','t8']]);
+      play(g, r, 3, [['t1','t3'],['t2','t4'],['t5','t7'],['t6','t8']]);
+      const swiss = faceitLooksSwiss(g, r, '');
+      // jeder gegen jeden (Kreis-Verfahren)
+      g = []; r = {}; const l = ids.slice();
+      for (let round = 1; round < 8; round++) { const pairs = []; for (let i = 0; i < 4; i++) pairs.push([l[i], l[7 - i]]); play(g, r, round, pairs); l.splice(1, 0, l.pop()); }
+      return [swiss, faceitLooksSwiss(g, r, ''), faceitLooksSwiss([], {}, 'SWISS')];
+    })()""")
+    assert result == [True, False, True]
+    assert errors == []
+
+
+def test_sponsor_lists_saved_by_2_2_still_load(server, browser):
+    """2.2 kept the sponsor lists under „listen“ – sessions, backups and states from then load into „byTheme“."""
+    page = browser.new_page()
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    loaded = page.evaluate("""K.merge(K.clone(K.DEFAULT), { sponsors: { on: true, listen: { regular: [{ name: 'Alt', logo: '' }] } } }).sponsors""")
+    assert loaded["byTheme"] == {"regular": [{"name": "Alt", "logo": ""}]} and "listen" not in loaded
+    assert errors == []
+
+
+def test_css_variables_of_the_control_page_are_defined():
+    """Every var(--name) the control page uses (also in JavaScript strings) is defined in its styles (or set from JS)."""
+    web = Path(__file__).parent.parent / "web"
+    files = [web / "control.html", web / "control.css", *sorted((web / "control").glob("*.js"))]
+    text = "".join(f.read_text(encoding="utf-8") for f in files)
+    used = set(re.findall(r"var\(--([a-z0-9-]+)", text))
+    defined = set(re.findall(r"--([a-z0-9-]+)\s*:", text))
+    defined |= set(re.findall(r"setProperty\([\"']--([a-z0-9-]+)", text))      # set from JavaScript
+    assert not used - defined, f"nicht definiert: {sorted(used - defined)}"

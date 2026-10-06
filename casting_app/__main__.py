@@ -8,11 +8,12 @@ Without a system keyring, the server-only mode opens the password vault with CAS
 """
 
 import argparse
+import os
 import signal
 import sys
 import threading
 
-from . import instance, password_vault, update_check
+from . import instance, password_vault
 from .app_log import AppLog
 from .paths import DATA_DIR, create_folders
 from .secret_store import SecretStore, system_keyring_or_none
@@ -27,6 +28,8 @@ def parse_arguments(arguments: list[str] | None = None) -> argparse.Namespace:
                         help="nur den Server für die Overlays starten (kein Fenster, kein Tray)")
     parser.add_argument("--no-gpu", "--ohne-gpu", dest="no_gpu", action="store_true",
                         help="Grafikbeschleunigung aus (nur bei Problemen mit dem Grafiktreiber)")
+    parser.add_argument("--debug", action="store_true",
+                        help="für Entwickler: Entwicklerwerkzeuge des Fensters unter http://localhost:9222")
     parser.add_argument("--version", action="version", version=f"{APP_NAME} {VERSION}")
     known, _ = parser.parse_known_args(arguments)       # Qt/Chromium options are passed through
     return known
@@ -35,6 +38,7 @@ def parse_arguments(arguments: list[str] | None = None) -> argparse.Namespace:
 def run_server_only() -> int:
     """Server without window: runs until Ctrl+C or until a page/newer version asks it to quit."""
     log = AppLog(DATA_DIR / "log.txt", echo_to_console=True)
+    log.catch_unhandled_errors()
     running = instance.running_version()
     if running and instance.compare_versions(running, VERSION) >= 0:
         print(f"{APP_NAME} {running} läuft bereits: {BASE_URL}")
@@ -53,9 +57,12 @@ def run_server_only() -> int:
     except OSError as error:
         print(f"Port belegt: {error}", file=sys.stderr)
         return 1
-    print(f"{APP_NAME} {VERSION} läuft ohne Fenster: {BASE_URL} · Overlays: {BASE_URL}/overlay.html", flush=True)
+    # only on the console (never in the log): the addresses with the access key
+    print(f"{APP_NAME} {VERSION} läuft ohne Fenster.\n"
+          f"  Steuerseite: {BASE_URL}/control.html?access={server.access_key}\n"
+          f"  Overlay für OBS: {BASE_URL}/overlay.html?access={server.access_key}", flush=True)
     if server.settings.get("check_for_updates"):
-        threading.Thread(target=_note_update, args=(server, log), name="update-check", daemon=True).start()
+        server.updater.check_in_background()
     signal.signal(signal.SIGTERM, lambda *_: quit_event.set())
     try:
         while not quit_event.wait(0.5):
@@ -74,19 +81,13 @@ def _secret_backend(data_dir, log: AppLog):
     return password_vault.vault_from_environment(data_dir, log.write) or "system"
 
 
-def _note_update(server: CastingServer, log: AppLog) -> None:
-    """Server without window: a newer version is only noted in the log and the settings dialog."""
-    release = update_check.newer_release()
-    if release:
-        server.available_update = release
-        log.info(f"Neue Version {release['version']} verfügbar: {release['url']}")
-
-
 def main(arguments: list[str] | None = None) -> int:
     """Entry point of `python -m casting_app` and of the built app; returns the exit code."""
     if sys.stdout:                               # a windowed build on Windows has no console at all
         sys.stdout.reconfigure(errors="replace")
     options = parse_arguments(arguments)
+    if options.debug:                            # Chrome/Edge → http://localhost:9222 (also used by tests/live)
+        os.environ.setdefault("QTWEBENGINE_REMOTE_DEBUGGING", "9222")
     if options.no_window:
         return run_server_only()
     from .desktop.app import run_desktop                 # Qt is only loaded for the desktop app

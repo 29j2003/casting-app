@@ -18,9 +18,42 @@ window.CastCore = (function () {
   "use strict";
 
   const KEY = "cast-state-v1";
-  const VERSION = "2.2.1";                     // muss zur App passen – sonst lädt sich die Seite neu
+  const VERSION = "2.3.0";                     // muss zur App passen – sonst lädt sich die Seite neu
   // Läuft die Seite über den Server der App (http://localhost:8787)?
   const SERVER = /^https?:$/.test(location.protocol) && location.port === "8787" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+
+  // Zugangsschlüssel der App: im App-Fenster über window.castApp, in OBS-Quellen in der Adresse (?access=…);
+  // im Browser („Steuerseite im Browser öffnen“) legt /open?code=… ihn für den Tab in sessionStorage.
+  // Aus der Adresszeile wird er entfernt.
+  // Jede Anfrage an /api/… bekommt ihn als Kopfzeile mit; ohne ihn liefert der Server nur, was ein Overlay braucht.
+  const ACCESS = (() => {
+    if (!SERVER) return "";
+    // App-Fenster: der Schlüssel kommt über die Brücke (nie in Adresse oder Browser-Speicher); Vorschau-Rahmen fragen das Fenster
+    try { const app = window.top.castApp; if (app && app.accessKey) return app.accessKey; } catch (e) {}
+    try {
+      const u = new URL(location.href), a = u.searchParams.get("access");
+      if (a) {
+        sessionStorage.setItem("casting-access", a);
+        u.searchParams.delete("access");
+        history.replaceState(history.state, "", u.pathname + u.search + u.hash);
+        return a;
+      }
+      return sessionStorage.getItem("casting-access") || "";
+    } catch (e) { return ""; }
+  })();
+  if (ACCESS && !window.__castingFetch) {
+    window.__castingFetch = window.fetch;
+    window.fetch = (input, init) => {
+      if (typeof input === "string" && input.startsWith("/api/")) {
+        init = Object.assign({}, init);
+        init.headers = Object.assign({}, init.headers, { "X-Casting-Access": ACCESS });
+      }
+      return window.__castingFetch(input, init);
+    };
+  }
+  // Adresse für eine eigene Seite mit Schlüssel (OBS-Quellen, DACH-Rahmen)
+  const withAccess = path => path + (ACCESS ? (path.includes("?") ? "&" : "?") + "access=" + encodeURIComponent(ACCESS) : "");
+  const dachUrl = page => withAccess("/dach/" + page);
 
 
   // Feste Texte der Overlays in beiden Sprachen (⚙ App-Einstellungen → Sprache der Overlays).
@@ -106,12 +139,16 @@ window.CastCore = (function () {
           roundOf16: "ACHTELFINALE", round: "RUNDE", upperRound: "OBEN R", lowerRound: "UNTEN R", group: "GRUPPE", table: "TABELLE",
           opening: "ERÖFFNUNG", winners: "GEWINNER", elimination: "AUSSCHEIDUNG", decider: "ENTSCHEIDUNG", bye: "Freilos",
           noMaps: "Noch keine gespielten Maps – erst das Map-Veto ausfüllen", noSponsors: "Noch keine Sponsoren für dieses Theme",
-          noTournament: "Noch kein Turnier angelegt", cameraMissing: "Kamera nicht verfügbar" },
+          noTournament: "Noch kein Turnier angelegt", cameraMissing: "Kamera nicht verfügbar",
+          tableTeam: "TEAM", tableGames: "SP", tableWins: "S", tableLosses: "N", tablePoints: "PKT",
+          winRate: "SIEGQUOTE", matches: "SPIELE", streak: "SERIE", formWin: "S", formLoss: "N" },
     en: { final: "FINAL", upperFinal: "UPPER FINAL", lowerFinal: "LOWER FINAL", semifinal: "SEMIFINAL", quarterfinal: "QUARTERFINAL",
           roundOf16: "ROUND OF 16", round: "ROUND", upperRound: "UPPER R", lowerRound: "LOWER R", group: "GROUP", table: "TABLE",
           opening: "OPENING", winners: "WINNERS", elimination: "ELIMINATION", decider: "DECIDER", bye: "Bye",
           noMaps: "No maps played yet – fill in the map veto first", noSponsors: "No sponsors for this theme yet",
-          noTournament: "No tournament set up yet", cameraMissing: "Camera not available" }
+          noTournament: "No tournament set up yet", cameraMissing: "Camera not available",
+          tableTeam: "TEAM", tableGames: "P", tableWins: "W", tableLosses: "L", tablePoints: "PTS",
+          winRate: "WIN RATE", matches: "MATCHES", streak: "STREAK", formWin: "W", formLoss: "L" }
   };
   /** A fixed overlay word in the overlay language of the state. */
   const word = (Z, key) => (OVERLAY_WORDS[(Z || {}).overlayLanguage] || OVERLAY_WORDS.de)[key];
@@ -182,7 +219,7 @@ window.CastCore = (function () {
     sponsors: {
       on: true, seconds: 8, inTicker: false,
       sceneList: { intro: true, pause: true, end: true, "cast-duo": true, "cast-solo": true, "cast-duo-interview": true, "cast-solo-interview": true },
-      listen: {},                 // { themeKey: [ { name, logo } ] }
+      byTheme: {},                // { themeKey: [ { name, logo } ] } (bis 2.2: „listen“)
       gfx: { num: -1, until: 0 }
     },
     // Szenenwechsel über OBS (nur Steuerseite)
@@ -222,8 +259,18 @@ window.CastCore = (function () {
   const isObj = v => v && typeof v === "object" && !Array.isArray(v);
   const clone = o => JSON.parse(JSON.stringify(o));
   const FORBIDDEN = new Set(["__proto__", "constructor", "prototype"]);
+  // Felder, die nach 2.2 umbenannt wurden: alte Zustände, Sitzungen und Sicherungen laden weiter
+  function renamedFields(source) {
+    const S = source.sponsors;
+    if (isObj(S) && "listen" in S) {
+      const { listen, ...rest } = S;
+      return Object.assign({}, source, { sponsors: Object.assign({ byTheme: listen }, rest) });
+    }
+    return source;
+  }
   function merge(target, source) {
     if (!isObj(source)) return target;
+    source = renamedFields(source);
     for (const k of Object.keys(source)) {
       if (FORBIDDEN.has(k)) continue;
       const v = source[k];
@@ -323,6 +370,10 @@ window.CastCore = (function () {
     return { send, request, question, onBrowsersources, fresh, get isOpen() { return isOpen; } };
   }
 
+  // Stand-Nummer („revision“): Zeitstempel, aber immer über dem letzten eigenen und dem des Servers
+  let serverRevision = 0;
+  const nextRevision = previous => Math.max(Date.now(), (+previous || 0) + 1, serverRevision + 1);
+
   /* ---------- Kanal: alle Wege zusammen ---------- */
   function channel(opt) {
     // In der App bekommen Overlays ihren Stand ausschließlich über die Live-Verbindung zur App.
@@ -351,11 +402,12 @@ window.CastCore = (function () {
     // App: Änderungen kommen sofort per Live-Verbindung (Server-Sent Events)
     if (SERVER && (opt.query || opt.onClients)) {
       const page = opt.page || document.body.dataset.scene || "page";
-      const es = new EventSource("/api/events?page=" + encodeURIComponent(page) + "&v=" + VERSION);
+      // mit Schlüssel bekommt die Seite den vollen Stand (ohne: ohne Kamera-Links)
+      const es = new EventSource(withAccess("/api/events?page=" + encodeURIComponent(page) + "&v=" + VERSION));
       // App wurde aktualisiert: Seite neu laden (höchstens 3× pro Minute, falls etwas klemmt)
       es.addEventListener("reload", () => {
         try {
-          const now = Date.now(), n = JSON.parse(sessionStorage.getItem("cast-reload") || "[undefined]").filter(t => now - t < 60000);
+          const now = Date.now(), n = JSON.parse(sessionStorage.getItem("cast-reload") || "[]").filter(t => now - t < 60000);
           if (n.length >= 3) return;
           n.push(now); sessionStorage.setItem("cast-reload", JSON.stringify(n));
         } catch (e) {}
@@ -369,7 +421,10 @@ window.CastCore = (function () {
     }
     const serviceSend = d => {
       if (!SERVER) return;
-      if (d.cast === "state") fetch("/api/state", { method: "POST", body: JSON.stringify(d.z) }).catch(() => {});
+      if (d.cast === "state") fetch("/api/state", { method: "POST", body: JSON.stringify(d.z) }).then(async r => {
+        // 409: der Server hat einen neueren Stand (z. B. Uhr des PCs zurückgestellt) – darüber weitermachen
+        if (r.status === 409) { const j = await r.json().catch(() => ({})); serverRevision = Math.max(serverRevision, +j.revision || 0); opt.onStale && opt.onStale(); }
+      }).catch(() => {});
       if (d.cast === "images") Object.entries(d.images || {}).forEach(([id, v]) => fetch("/api/image/" + id, { method: "POST", body: v }).catch(() => {}));
     };
     return {
@@ -544,15 +599,15 @@ window.CastCore = (function () {
         // Punkte je Turnier einstellbar: Sieg ohne/mit Map-Verlust, Niederlage mit/ohne Map-Gewinn, Unentschieden
         const P = Object.assign({ win: 3, winClose: 3, lossClose: 1, loss: 0, draws: 1 }, T.points || {});
         const pointsFor = (own, opponent) => own > opponent ? (opponent > 0 ? P.winClose : P.win) : own < opponent ? (own > 0 ? P.lossClose : P.loss) : P.draws;
-        const row = {}; ids.forEach(id => { row[id] = { id, sponsor: 0, s: 0, n: 0, u: 0, diff: 0, rd: 0, pts: 0 }; });
+        const row = {}; ids.forEach(id => { row[id] = { id, played: 0, wins: 0, losses: 0, draws: 0, diff: 0, rd: 0, pts: 0 }; });
         let withRounds = false;
         ms.forEach(m => {
           if (!m.done || !row[m.a] || !row[m.b]) return;
           const a = row[m.a], b = row[m.b], sa = +m.sa || 0, sb = +m.sb || 0, e = res[m.id] || {};
-          a.sponsor++; b.sponsor++; a.diff += sa - sb; b.diff += sb - sa;
+          a.played++; b.played++; a.diff += sa - sb; b.diff += sb - sa;
           if (e.rdA !== undefined && e.rdB !== undefined) { withRounds = true; a.rd += e.rdA - e.rdB; b.rd += e.rdB - e.rdA; }
           a.pts += pointsFor(sa, sb); b.pts += pointsFor(sb, sa);
-          if (sa === sb) { a.u++; b.u++; } else if (sa > sb) { a.s++; b.n++; } else { b.s++; a.n++; }
+          if (sa === sb) { a.draws++; b.draws++; } else if (sa > sb) { a.wins++; b.losses++; } else { b.wins++; a.losses++; }
         });
         // Reihenfolge: Punkte → direkter Vergleich (Punkte untereinander) → Rundendifferenz (sonst Map-Differenz) → Siege
         const direct = (group) => {
@@ -562,9 +617,9 @@ window.CastCore = (function () {
         };
         const table = Object.values(row);
         const afterPoints = {}; table.forEach(r => { (afterPoints[r.pts] = afterPoints[r.pts] || []).push(r); });
-        Object.values(afterPoints).forEach(g => { if (g.length > 1) { const d = direct(g); g.forEach(r => { r.dv = d[r.id]; }); } else g[0].dv = 0; });
-        table.forEach(r => { r.bracket = withRounds ? r.rd : r.diff; });
-        table.sort((x, y) => y.pts - x.pts || y.dv - x.dv || y.bracket - x.bracket || y.s - x.s);
+        Object.values(afterPoints).forEach(g => { if (g.length > 1) { const d = direct(g); g.forEach(r => { r.direct = d[r.id]; }); } else g[0].direct = 0; });
+        table.forEach(r => { r.tiebreak = withRounds ? r.rd : r.diff; });           // RD, sonst Map-Differenz
+        table.sort((x, y) => y.pts - x.pts || y.direct - x.direct || y.tiebreak - x.tiebreak || y.wins - x.wins);
         result.groups.push({ name: G > 1 ? W.group + " " + String.fromCharCode(65 + gi) : W.table, matches: ms, table, withRounds });
       });
     }
@@ -580,23 +635,23 @@ window.CastCore = (function () {
     }
     if (fmt === "swiss") {
       const S = T.swiss || {}, record = {};
-      teams.forEach(t => { record[t.id] = { id: t.id, s: 0, n: 0, opponent: [] }; });
+      teams.forEach(t => { record[t.id] = { id: t.id, wins: 0, losses: 0, opponents: [] }; });
       (S.rounds || []).forEach((round, ri) => {
         const r = { title: W.round + " " + (ri + 1), matches: [] };
         round.forEach(x => {
           const m = resolve(fresh(x.id, null, null, { team: x.a }, { team: x.b }));
           // Bilanz VOR dem Spiel für die Anzeige („1–0“-Gruppe)
-          m.record = record[x.a] ? `${record[x.a].s}–${record[x.a].n}` : "";
-          if (m.winner && m.winner !== "BYE" && record[m.winner]) record[m.winner].s++;
-          if (m.loser && m.loser !== "BYE" && record[m.loser]) record[m.loser].n++;
-          [x.a, x.b].forEach((t, i) => { if (record[t]) record[t].opponent.push(i ? x.a : x.b); });
+          m.record = record[x.a] ? `${record[x.a].wins}–${record[x.a].losses}` : "";
+          if (m.winner && m.winner !== "BYE" && record[m.winner]) record[m.winner].wins++;
+          if (m.loser && m.loser !== "BYE" && record[m.loser]) record[m.loser].losses++;
+          [x.a, x.b].forEach((t, i) => { if (record[t]) record[t].opponents.push(i ? x.a : x.b); });
           r.matches.push(m);
         });
         r.matches.sort((x, y) => String(y.record).localeCompare(String(x.record)));
         result.rounds.push(r);
       });
       result.table = Object.values(record).map(b => Object.assign(b, {
-        status: b.s >= (S.wins || 3) ? "proceed" : b.n >= (S.losses || 3) ? "out" : "" })).sort((a, b) => (b.s - b.n) - (a.s - a.n));
+        status: b.wins >= (S.wins || 3) ? "proceed" : b.losses >= (S.losses || 3) ? "out" : "" })).sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses));
     }
     return result;
   }
@@ -606,14 +661,14 @@ window.CastCore = (function () {
     const S = T.swiss || {}, num = (S.rounds || []).length + 1;
     const active = B.table.filter(b => !b.status).map(b => Object.assign({}, b, { seed: T.teams.findIndex(t => t.id === b.id) }));
     if (num === 1) { const h = Math.ceil(active.length / 2); active.sort((a, b) => a.seed - b.seed); }
-    else active.sort((a, b) => (b.s - b.n) - (a.s - a.n) || a.seed - b.seed);
+    else active.sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses) || a.seed - b.seed);
     const isOpen = active.slice(), round = [];
     if (num === 1) { const h = Math.floor(isOpen.length / 2); for (let i = 0; i < h; i++) round.push([isOpen[i].id, isOpen[i + h].id]); if (isOpen.length % 2) round.push([isOpen[isOpen.length - 1].id, "BYE"]); }
     else {
       while (isOpen.length) {
         const a = isOpen.shift();
-        let j = isOpen.findIndex(b => b.s === a.s && b.n === a.n && !a.opponent.includes(b.id));
-        if (j < 0) j = isOpen.findIndex(b => !a.opponent.includes(b.id));
+        let j = isOpen.findIndex(b => b.wins === a.wins && b.losses === a.losses && !a.opponents.includes(b.id));
+        if (j < 0) j = isOpen.findIndex(b => !a.opponents.includes(b.id));
         if (j < 0) j = isOpen.length ? 0 : -1;
         if (j < 0) { round.push([a.id, "BYE"]); break; }
         round.push([a.id, isOpen.splice(j, 1)[0].id]);
@@ -665,5 +720,5 @@ window.CastCore = (function () {
     return e.until && e.until > now ? e.until : 0;
   }
 
-  return { VERSION, SERVER, GFX_POSITIONS, GFX_DEFAULT_POS, OVERLAY_TEXTS, OVERLAY_WORDS, word, overlayLanguageSet, split, gfxVisible, gfxNextSwitch, DACH_PAGES, DACH_FRAME, dachFrame, tournamentBuild, swissDraw, resolve, Images, cssUrl, DEFAULT, KEY, clone, merge, load, save, savedRevision, channel, timerRest, time };
+  return { VERSION, SERVER, ACCESS, withAccess, dachUrl, nextRevision, GFX_POSITIONS, GFX_DEFAULT_POS, OVERLAY_TEXTS, OVERLAY_WORDS, word, overlayLanguageSet, split, gfxVisible, gfxNextSwitch, DACH_PAGES, DACH_FRAME, dachFrame, tournamentBuild, swissDraw, resolve, Images, cssUrl, DEFAULT, KEY, clone, merge, load, save, savedRevision, channel, timerRest, time };
 })();

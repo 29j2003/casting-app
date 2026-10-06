@@ -7,10 +7,13 @@ http://<ip>:8788/api/gsi. Ten players (team Alpha on CT, team Beta on T) play `r
 (default 5): each round has a freeze time, a live phase with kills and damage, and an end.
 """
 
+import asyncio
 import json
 import random
 import sys
 import urllib.request
+
+from common import access_key
 
 INFO_URL = "http://localhost:8787/api/gsi-info"
 PLAYER_NAMES = ["Alpha1", "Alpha2", "Alpha3", "Alpha4", "Alpha5", "Beta1", "Beta2", "Beta3", "Beta4", "Beta5"]
@@ -61,7 +64,8 @@ class Match:
 def main() -> None:
     url = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8787/api/gsi"
     rounds = int(sys.argv[2]) if len(sys.argv) > 2 else 5
-    with urllib.request.urlopen(INFO_URL) as answer:
+    key = asyncio.run(access_key())                       # /api/gsi-info needs the app's access key
+    with urllib.request.urlopen(urllib.request.Request(INFO_URL, headers={"X-Casting-Access": key})) as answer:
         token = json.load(answer)["token"]
     random.seed(4)
     match = Match(url, token)

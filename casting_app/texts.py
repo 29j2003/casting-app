@@ -25,7 +25,7 @@ TEXTS = {
     "reload.count": ("{count} Overlay(s) neu geladen.", "{count} overlay(s) reloaded."),
     "reload.none": ("Kein Overlay verbunden.", "No overlay connected."),
     "update.title": ("{app} {version} ist da", "{app} {version} is available"),
-    "update.text": ("Klicke hier, um die neue Version herunterzuladen.", "Click here to download the new version."),
+    "update.text": ("Klicke hier – unter „Update“ installierst du sie mit einem Klick.", "Click here – install it with one click under “Update”."),
     # closing the window (system dialog, only when the control page does not answer)
     "close.title": ("{app} schließen?", "Close {app}?"),
     "close.text": ("Bei „Nur Fenster schließen“ laufen die Overlays in OBS weiter.",
@@ -36,11 +36,20 @@ TEXTS = {
     # start
     "server_failed": ("Der Server konnte nicht starten:\n{error}\n\nLäuft ein anderes Programm auf Port 8787?",
                       "The server could not start:\n{error}\n\nIs another program using port 8787?"),
+    "start_failed": ("Die App konnte nicht starten:\n{error}\n\nDetails stehen in log.txt im Datenordner.",
+                     "The app could not start:\n{error}\n\nDetails are in log.txt in the data folder."),
+    "crash.title": ("Steuerseite stürzt immer wieder ab", "The control page keeps crashing"),
+    "crash.text": ("Oft liegt es am Grafiktreiber: App beenden und mit --no-gpu starten. Details in log.txt.",
+                   "Often the graphics driver is the cause: quit the app and start it with --no-gpu. Details in log.txt."),
     # password vault (systems without a keyring)
     "vault.unlock.title": ("{app} – gespeicherte Schlüssel", "{app} – saved keys"),
     "vault.unlock.text": ("Passwort für FACEIT-Key, DACH-CS-Zugang und OBS-Passwort:",
                           "Password for the FACEIT key, DACH CS access and OBS password:"),
     "vault.wrong": ("Falsches Passwort. ", "Wrong password. "),
+    "vault.damaged": ("Die Tresor-Datei ist beschädigt und wurde als secrets.vault.damaged beiseitegelegt.\n"
+                      "FACEIT-Key, DACH-CS-Zugang und OBS-Passwort bitte neu eintragen.",
+                      "The vault file is damaged and was set aside as secrets.vault.damaged.\n"
+                      "Please enter the FACEIT key, DACH CS access and OBS password again."),
     "vault.offer.text": ("Auf diesem System gibt es keinen Schlüsselbund.", "This system has no keyring."),
     "vault.offer.details": ("FACEIT-Key, DACH-CS-Zugang und OBS-Passwort gelten dann nur bis zum Beenden der App.\n"
                             "Stattdessen mit einem eigenen Passwort geschützt speichern? Es wird bei jedem Start abgefragt.",

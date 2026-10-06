@@ -92,7 +92,8 @@ async def check_dach_pages(control, overlay) -> int:
             await control.evaluate(f"Z.broadcast.transition = {transition!r}; dachSwitch({target!r})")
             await control.wait_for_timeout(random.randint(80, 400))
         await overlay.wait_for_timeout(3000)
-        shown = await overlay.evaluate("[...document.querySelectorAll('.dach-page.on')].map(f => f.getAttribute('src'))")
+        # the address carries the access key (?access=…) – compare the page only
+        shown = await overlay.evaluate("[...document.querySelectorAll('.dach-page.on')].map(f => (f.getAttribute('src') || '').split('?')[0])")
         if shown != ["/dach/" + DACH_PAGES[target]]:
             bad += 1
             print(f"  DACH: shows {shown}, expected {target}")

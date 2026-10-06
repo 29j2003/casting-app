@@ -182,7 +182,7 @@ body > * { position: absolute; }
    Map-Veto
    --------------------------------------------------------------------- */
 .veto { display: flex; gap: 16px; justify-content: center; }
-.veto-card { flex: 0 0 var(--kb, 244px); display: flex; flex-direction: column; box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
+.veto-card { flex: 0 0 var(--kb, 244px); min-width: 0; display: flex; flex-direction: column; box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
 .veto-card .box-head { --kh: 56px; --kf: 34px; }
 .veto-card.pick .box-head, .veto-card.decider .box-head { background: var(--accent); color: var(--dark); }
 .theme-regular .veto-card.pick .box-head, .theme-regular .veto-card.decider .box-head { background: var(--light); color: var(--text-dark); }
@@ -266,7 +266,7 @@ body > * { position: absolute; }
 .veto-result.running { background: var(--accent); color: var(--dark); font-size: 20px; animation: blink 1.6s ease-in-out infinite; }
 .veto-card:has(.veto-result) .veto-side { top: 58px; }
 .series-cards { display: flex; gap: 20px; justify-content: center; }
-.series-card { flex: 0 0 var(--kb, 340px); display: flex; flex-direction: column; box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
+.series-card { flex: 0 0 var(--kb, 340px); min-width: 0; display: flex; flex-direction: column; box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
 .series-card .box-head { --kh: 56px; --kf: 30px; }
 .series-card.running .box-head { background: var(--accent); color: var(--dark); }
 .series-card .veto-image { flex: 1; }
@@ -274,7 +274,7 @@ body > * { position: absolute; }
   color: #fff; font-weight: 800; font-size: 96px; letter-spacing: .02em; text-shadow: 0 4px 20px rgba(0, 0, 0, .7); -webkit-text-stroke: var(--bold) currentColor; }
 .series-score .lost { opacity: .45; }
 .series-card.pending .veto-image img { filter: grayscale(.6) brightness(.55); }
-.series-score { color: var(--accent-readable); padding: 0 .3em; }
+.series-total { color: var(--accent-readable); padding: 0 .3em; }
 .series-mini { display: flex; gap: 12px; justify-content: center; }
 .series-chip { display: flex; align-items: center; background: var(--light); color: var(--text-dark); font-weight: 800; font-size: 26px; text-transform: uppercase; box-shadow: 0 10px 24px rgba(0, 0, 0, .35); }
 .series-chip b { background: var(--dark); color: var(--accent); padding: 6px 12px; font-size: 20px; }
@@ -349,7 +349,7 @@ body > * { position: absolute; }
 .pos-tc.gfx-score { top: 47px; }
 :is([data-scene="ingame"], [data-currentscene="ingame"]) .pos-tc.gfx-score { top: 110px; }
 .gfx-score .team-logo { height: 90px; width: 90px; flex: none; background: var(--dark); }
-.gfx-score { flex: 1; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 60px; line-height: 1; color: var(--text-dark); -webkit-text-stroke: var(--bold) currentColor; }
+.gfx-score-value { flex: 1; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 60px; line-height: 1; color: var(--text-dark); -webkit-text-stroke: var(--bold) currentColor; }
 /* Caster-Bauchbinden: alle Caster auf einmal */
 .gfx-caster-list { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
 .gfx-caster-list.beside { flex-direction: row; align-items: flex-end; }
@@ -357,9 +357,9 @@ body > * { position: absolute; }
 .gfx-caster .box-head { --kh: 54px; --kf: 36px; justify-content: flex-start; color: #fff; }
 .gfx-caster .box-field { height: 44px; flex: none; justify-content: flex-start; font-size: 24px; font-weight: 600; text-transform: none; }
 /* Map-Info: PICK · Map · NEXT */
-.gfx-mapinfo { display: flex; align-items: stretch; height: 46px; font-weight: 800; font-size: 22px; letter-spacing: .06em; text-transform: uppercase; box-shadow: 0 12px 30px rgba(0, 0, 0, .4); }
-.gfx-mapinfo b { display: grid; place-items: center; padding: 0 14px; background: var(--dark); color: #fff; }
-.gfx-mapinfo .team-logo { width: 46px; height: 46px; background: var(--dark); border-left: 1px solid rgba(255, 255, 255, .08); font-size: 14px; }
+.gfx-mapinfo-bar { display: flex; align-items: stretch; height: 46px; font-weight: 800; font-size: 22px; letter-spacing: .06em; text-transform: uppercase; box-shadow: 0 12px 30px rgba(0, 0, 0, .4); }
+.gfx-mapinfo-bar b { display: grid; place-items: center; padding: 0 14px; background: var(--dark); color: #fff; }
+.gfx-mapinfo-bar .team-logo { width: 46px; height: 46px; background: var(--dark); border-left: 1px solid rgba(255, 255, 255, .08); font-size: 14px; }
 .gfx-mapinfo-map { display: grid; place-items: center; padding: 0 22px; background: var(--accent); color: var(--dark); }
 .theme-regular .gfx-mapinfo-map { background: var(--light); color: var(--text-dark); }
 .gfx-mapinfo-next { display: grid; place-items: center; padding: 0 14px; background: var(--dark); color: var(--accent); opacity: .95; }
@@ -445,8 +445,8 @@ body[data-scene="ingame"] { background: transparent; }
 .gfx-sb .live-table { box-shadow: none; }
 .gfx-players { min-width: 620px; } .gfx-players .box-head { --kh: 54px; --kf: 30px; justify-content: flex-start; gap: 14px; padding-left: 0; color: #fff; letter-spacing: .04em; }
 .gfx-players .box-head .team-logo { width: 54px; height: 54px; }
-.gfx-sponsor { display: flex; justify-content: space-around; height: 82px; flex: none; }
-.gfx-sponsor div { display: flex; flex-direction: column; align-items: center; } .gfx-sponsor b { font-size: 34px; } .gfx-sponsor span { font-size: 14px; letter-spacing: .16em; opacity: .55; }
+.gfx-player-stats { display: flex; justify-content: space-around; height: 82px; flex: none; }
+.gfx-player-stats div { display: flex; flex-direction: column; align-items: center; } .gfx-player-stats b { font-size: 34px; } .gfx-player-stats span { font-size: 14px; letter-spacing: .16em; opacity: .55; }
 
 /* ===== Turnierbaum ===== */
 .tournament-tree { overflow: hidden; }
@@ -517,9 +517,11 @@ body.dach-official .backdrop { display: none !important; }
 .dach-page { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; overflow: hidden; visibility: hidden; background: transparent; }
 .dach-page.on { visibility: visible; }
 .dach-cams { position: absolute; inset: 0; pointer-events: none; }
-.dach-cam { position: absolute; overflow: hidden; background: transparent; }
+.dach-cam { position: absolute; overflow: hidden; background: #000; }   /* leer = schwarz, nie der DACH-Hintergrund */
 .dach-cam .cam-source { position: absolute; inset: 0; }
 .dach-frame-name { display: none; }
 body.idle.dach-frame-show .dach-cam { outline: 3px dashed #FCC659; outline-offset: -3px; background: rgba(252,198,89,.12); }
 body.idle.dach-frame-show .dach-frame-name { display: block; position: absolute; left: 8px; top: 8px; z-index: 3; font: 700 22px Rajdhani, sans-serif; color: #101526; background: #FCC659; padding: 2px 10px; }
-.dach-cam { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+.dach-cam { background: #000 !important; border: 0 !important; box-shadow: none !important; }
+/* Hinweise wie „Kamera nicht verfügbar“ nur in der Vorschau – im Stream bleibt das Feld schwarz */
+body:not(.idle) .preview-only { visibility: hidden; }

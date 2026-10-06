@@ -12,6 +12,7 @@ import urllib.error
 import urllib.request
 
 from .server.app_server import PORT
+from .version import compare_versions  # noqa: F401 – kept here for callers (instance.compare_versions)
 
 PING_URL = f"http://127.0.0.1:{PORT}/api/ping"
 QUIT_URL = f"http://127.0.0.1:{PORT}/api/beenden"       # the old name: understood by every version
@@ -29,21 +30,6 @@ def running_version() -> str | None:
     if "cast" not in (data.get("service"), data.get("dienst")):
         return None
     return data.get("version") or "old"
-
-
-def compare_versions(a: str, b: str) -> int:
-    """> 0 if a is newer than b, < 0 if older, 0 if equal ("old" counts as oldest)."""
-    def parts(version):
-        """Version as a list of numbers; anything unreadable counts as oldest."""
-        try:
-            return [int(p) for p in str(version).split(".")]
-        except ValueError:
-            return [-1]
-    left, right = parts(a), parts(b)
-    length = max(len(left), len(right))
-    left += [0] * (length - len(left))
-    right += [0] * (length - len(right))
-    return (left > right) - (left < right)
 
 
 def ask_running_app_to_quit(wait_seconds: float = 10) -> bool:

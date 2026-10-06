@@ -16,11 +16,14 @@ import secrets
 import socket
 import threading
 import time
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
+from ..files import read_json_object, write_atomic
+from .net import ExclusiveHTTPServer, content_length
+
 LAN_PORT = 8788
-LOCAL_TOKEN = "castoverlay"            # token of cfg files written by older versions for this PC
+LEGACY_TOKEN = "castoverlay"           # fixed token of 1.x cfg files – public, so no longer accepted
 MAX_BODY = 2_000_000
 SEND_INTERVAL = 0.2                    # seconds between live updates
 
@@ -63,13 +66,15 @@ class GameStateReceiver:
         self._broadcast = broadcast
         self._log = log
         self._lock = threading.Lock()
+        self._save_lock = threading.Lock()       # gsi.json: one writer at a time (request thread and control page)
         # settings (stored in gsi.json and shown on the control page)
         self.settings = {"token": secrets.token_hex(12), "network": False, "sideA": "CT", "teamA": "", "teamB": ""}
-        try:
-            self.settings.update(json.loads(self._settings_file.read_text(encoding="utf-8")))
-        except (OSError, ValueError):
-            pass
+        saved = read_json_object(self._settings_file, log) or {}
+        for key, default in list(self.settings.items()):
+            if type(saved.get(key)) is type(default) and (key != "token" or saved[key] not in ("", LEGACY_TOKEN)):
+                self.settings[key] = saved[key]
         self.save_settings()
+        self._legacy_token_reported = False
         self.last_raw: str | None = None       # last post as received
         self.last_time = 0.0
         self.live: dict | None = None          # processed state sent to the pages
@@ -79,15 +84,15 @@ class GameStateReceiver:
         self._players: dict = {}
         self._previous_score = None
         self._send_timer: threading.Timer | None = None
-        self._lan_server: ThreadingHTTPServer | None = None
+        self._lan_server: ExclusiveHTTPServer | None = None
 
     # --- settings ---
 
     def save_settings(self) -> None:
         """Write gsi.json (token, network receiver, sides, team names)."""
         try:
-            self._settings_file.write_text(json.dumps(self.settings), encoding="utf-8")
-            self._settings_file.chmod(0o600)
+            with self._save_lock:
+                write_atomic(self._settings_file, json.dumps(self.settings), private=True)
         except OSError:
             pass
 
@@ -125,12 +130,18 @@ class GameStateReceiver:
         if not isinstance(state, dict) or not isinstance(state.get("auth") or {}, dict):
             return 400, {"error": "kein JSON"}
         token = str((state.get("auth") or {}).get("token") or "")
-        if not (hmac.compare_digest(token.encode(), self.settings["token"].encode())
-                or (source == "local" and token == LOCAL_TOKEN)):
+        if not hmac.compare_digest(token.encode(), self.settings["token"].encode()):
+            if token == LEGACY_TOKEN and not self._legacy_token_reported:
+                self._legacy_token_reported = True
+                self._log("CS2 nutzt noch die Datei einer alten Version – Setup → CS2-Livedaten → „In CS2 einrichten“ "
+                          "(der alte Schlüssel war öffentlich und wird nicht mehr angenommen)", "warn")
             return 403, {"error": "falscher Schlüssel"}
         state.pop("auth", None)                        # the token is not kept or shown anywhere
+        try:
+            self._process(state, source)
+        except (AttributeError, TypeError, ValueError):       # not what CS2 sends (e.g. "allplayers" as a list)
+            return 400, {"error": "unerwartete Daten"}
         self.last_raw, self.last_time = json.dumps(state, ensure_ascii=False), time.time()
-        self._process(state, source)
         return 200, {"ok": True}
 
     def _process(self, state: dict, source: str) -> None:
@@ -245,8 +256,9 @@ class GameStateReceiver:
                 def do_POST(self):
                     if self.path.split("?")[0] != "/api/gsi":
                         return self._answer(403, {})
-                    length = int(self.headers.get("Content-Length") or 0)
-                    if length > MAX_BODY:
+                    length = content_length(self.headers)
+                    if length is None or length > MAX_BODY:          # also "-1": would read until the sender stops
+                        self.close_connection = True
                         return self._answer(400, {})
                     status, answer = receiver.accept(self.rfile.read(length).decode("utf-8", "replace"), "network")
                     self._answer(status, answer)
@@ -267,7 +279,7 @@ class GameStateReceiver:
                     pass
 
             try:
-                self._lan_server = ThreadingHTTPServer(("0.0.0.0", LAN_PORT), LanHandler)
+                self._lan_server = ExclusiveHTTPServer(("0.0.0.0", LAN_PORT), LanHandler)
             except OSError as error:
                 self._log(f"Netzwerk-Empfang (Port {LAN_PORT}): {error}", "error")
                 return

@@ -4,6 +4,7 @@ Starts the server in-process on port 8787 – no other Casting-App may run.
     pytest tests/test_server.py
 """
 
+import base64
 import http.client
 import json
 import os
@@ -28,13 +29,19 @@ def server(tmp_path_factory):
     app_server = CastingServer(folders, SecretStore(folders.data, log.write, keyring_backend=MemoryKeyring()), log,
                                on_quit_requested=lambda: None)
     app_server.start()
+    ACCESS["key"] = app_server.access_key
     yield app_server
     app_server.stop()
 
 
-def request(method, path, body=None, headers=None, host="localhost:8787"):
+ACCESS = {}          # the server's access key (set by the fixture)
+
+
+def request(method, path, body=None, headers=None, host="localhost:8787", access=True):
+    """One request like the app's own pages make it (with the access key) – access=False: like a foreign program."""
     connection = http.client.HTTPConnection("127.0.0.1", 8787, timeout=5)
-    connection.request(method, path, body=body, headers={"Host": host, **(headers or {})})
+    key = {"X-Casting-Access": ACCESS.get("key", "")} if access else {}
+    connection.request(method, path, body=body, headers={"Host": host, **key, **(headers or {})})
     answer = connection.getresponse()
     data = answer.read()
     connection.close()
@@ -111,8 +118,9 @@ def test_game_state_needs_token(server):
 def test_obs_login_only_for_the_control_page(server):
     server.secrets.set("obs-password", "geheim-obs-123")
     challenge = json.dumps({"salt": "s", "challenge": "c"})
-    assert request("POST", "/api/obs-auth", challenge)[0] == 403              # a program without browser headers
     own_page = {"Origin": "http://localhost:8787", "Sec-Fetch-Site": "same-origin"}
+    assert request("POST", "/api/obs-auth", challenge)[0] == 403              # a program without browser headers
+    assert request("POST", "/api/obs-auth", challenge, headers=own_page, access=False)[0] == 403   # forged, no key
     status, _, body = request("POST", "/api/obs-auth", challenge, headers=own_page)
     assert status == 200 and "authentication" in json.loads(body)
     server.secrets.delete("obs-password")
@@ -148,7 +156,80 @@ def test_dach_notice_follows_the_overlay_language(server):
     server.secrets.delete("dach-user-id")
     newer = int(time.time() * 1000) * 10 + 100
     request("POST", "/api/state", json.dumps({"revision": newer, "overlayLanguage": "en"}))
-    status, _, body = request("GET", "/dach/pause")
+    status, _, body = request("GET", "/dach/pause", access=False)               # an old OBS source without the key
+    assert status == 403 and b"needs the app's access key" in body
+    status, _, body = request("GET", "/dach/pause?access=" + ACCESS["key"], access=False)
     assert status == 409 and b"DACH CS access missing" in body
     request("POST", "/api/state", json.dumps({"revision": newer + 1, "overlayLanguage": "de"}))
     assert "DACH-CS-Zugang fehlt" in request("GET", "/dach/pause")[2].decode()
+
+
+def test_without_the_access_key_only_what_an_overlay_needs(server):
+    """A program on this PC without the key can neither read secrets nor change anything."""
+    for method, path in [("POST", "/api/state"), ("GET", "/api/gsi-info"), ("GET", "/api/gsi-cfg"), ("GET", "/api/log"),
+                         ("GET", "/api/dach-access"), ("POST", "/api/faceit-key"), ("GET", "/api/folder-list?path=/"),
+                         ("GET", "/api/app-settings"), ("POST", "/api/image/abcd1234"), ("GET", "/api/faceit/data/v4/matches/x")]:
+        assert request(method, path, "{}", access=False)[0] == 403, path
+    assert request("GET", "/api/state", access=False, headers={"X-Casting-Access": "falsch"})[0] == 200   # overlays read the state
+    assert request("GET", "/api/ping", access=False)[0] == 200
+    assert request("GET", "/overlay.html", access=False)[0] == 200
+
+
+@pytest.mark.parametrize("length", ["-1", "abc", "99999999999999"])
+def test_odd_content_length_is_refused_before_reading(server, length):
+    assert request("POST", "/api/report", "{}", headers={"Content-Length": length}, access=False)[0] == 400
+
+
+def test_overlays_without_the_key_get_the_state_without_camera_links(server):
+    secret_link = "https://vdo.ninja/?view=abc&password=geheim"
+    newer = int(time.time() * 1000) * 10 + 7
+    request("POST", "/api/state", json.dumps({"revision": newer, "sources": {"c1": {"type": "link", "url": secret_link}}}))
+    assert secret_link.encode() not in request("GET", "/api/state", access=False)[2]
+    assert secret_link.encode() in request("GET", "/api/state")[2]
+    connection = http.client.HTTPConnection("127.0.0.1", 8787, timeout=5)
+    connection.request("GET", "/api/events?page=pause&v=" + VERSION, headers={"Host": "localhost:8787"})
+    answer, first = connection.getresponse(), b""
+    while b"event: state" not in first and len(first) < 200_000:      # the stream comes in pieces
+        first += answer.read1(65536)
+    connection.close()
+    assert secret_link.encode() not in first
+
+
+def test_one_time_code_opens_the_control_page_once(server):
+    code = json.loads(request("POST", "/api/access-code")[2])["code"]
+    status, headers, body = request("GET", "/open?code=" + code, access=False)
+    assert status == 200 and server.access_key.encode() in body and headers.get("Cache-Control") == "no-store"
+    assert request("GET", "/open?code=" + code, access=False)[0] == 403          # used once
+    assert request("POST", "/api/access-code", access=False)[0] == 403            # only with the key
+
+
+def test_bad_image_upload_keeps_the_old_image(server):
+    image = "data:image/png;base64," + base64.b64encode(b"\x89PNG old").decode()
+    assert request("POST", "/api/image/test1234", image)[0] == 200
+    assert request("POST", "/api/image/test1234", "data:image/png;base64,@@@kaputt")[0] == 400
+    assert request("GET", "/api/image/test1234")[2] == b"\x89PNG old"
+
+
+def test_update_status_check_and_install_need_the_key(server, monkeypatch):
+    from casting_app import updater
+    monkeypatch.setattr(updater, "newer_release", lambda: {"version": "99.0.0", "url": "https://github.com/x", "asset": None})
+    assert request("GET", "/api/update", access=False)[0] == 403
+    assert request("POST", "/api/update-check", access=False)[0] == 403
+    assert request("POST", "/api/update-check")[0] == 200
+    for _ in range(50):
+        status = json.loads(request("GET", "/api/update")[2])
+        if status["state"] == "available":
+            break
+        time.sleep(0.05)
+    assert status["version"] == "99.0.0" and status["canInstall"] is False
+    assert request("POST", "/api/update-install")[0] == 409        # nothing that installs with one click (no checked file)
+
+
+def test_control_script_joins_all_parts_in_order(server):
+    from casting_app.paths import WEB_DIR
+    status, headers, body = request("GET", "/control.js", access=False)
+    names = sorted(f.name for f in (WEB_DIR / "control").glob("*.js"))
+    markers = [f"// ===== control/{name} =====".encode() for name in names]
+    assert status == 200 and headers["Content-Type"].startswith("text/javascript")
+    assert len(names) >= 10 and all(m in body for m in markers)
+    assert [body.index(m) for m in markers] == sorted(body.index(m) for m in markers)

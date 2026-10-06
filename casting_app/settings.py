@@ -14,6 +14,8 @@ import threading
 from pathlib import Path
 from typing import Callable
 
+from .files import read_json_object, write_atomic
+
 DEFAULTS = {"check_for_updates": True, "app_language": "de", "offer_password_vault": True}
 LANGUAGES = ("de", "en")
 
@@ -27,10 +29,7 @@ class AppSettings:
         self._lock = threading.Lock()
         self._values = dict(DEFAULTS)
         self.listeners: list[Callable[[dict], None]] = []
-        try:
-            self.update(json.loads(self._file.read_text(encoding="utf-8")), save=False)
-        except (OSError, ValueError):
-            pass
+        self.update(read_json_object(self._file) or {}, save=False)
 
     def get(self, name: str):
         """Current value of one setting (see DEFAULTS for the names)."""
@@ -56,7 +55,7 @@ class AppSettings:
                 self._values["app_language"] = changes["app_language"]
             if save:
                 try:
-                    self._file.write_text(json.dumps(self._values), encoding="utf-8")
+                    write_atomic(self._file, json.dumps(self._values))
                 except OSError:
                     pass
             current = dict(self._values)

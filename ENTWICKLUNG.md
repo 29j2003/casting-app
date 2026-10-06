@@ -54,7 +54,9 @@ JSON-Felder). Texte, die Nutzer sehen, sind deutsch und bekommen eine englische 
 | `casting_app/__main__.py` | Start (Desktop-App oder `--no-window`) |
 | `casting_app/server/app_server.py` | jede Anfrage: Sicherheitsprüfung, alle `/api`-Routen, Dateien |
 | `casting_app/desktop/` | Fenster, Tray, Brücke `window.castApp`, Ton im App-Fenster |
-| `web/control.html` | Steuerseite (CSS, HTML, JavaScript in einer Datei; Lageplan im Kopf des `<script>`) |
+| `web/control.html` | Steuerseite: Aufbau (Reiter, Karten, Dialoge) |
+| `web/control.css` | Steuerseite: Aussehen (Farben als Variablen in `:root`) |
+| `web/control/01-core.js` … `13-app.js` | Steuerseite: Logik nach Themen (Lageplan in `01-core.js`); der Server liefert sie verbunden als `/control.js` |
 | `web/cast-core.js` | gemeinsamer Kern: Standardzustand, Übertragung, Turnier-Logik, Overlay-Texte |
 | `web/cast.js` | Zeichnen aller Overlay-Teile |
 | `web/broadcast.js` | Szenenwechsel und Übergänge in `overlay.html` |
@@ -64,7 +66,7 @@ JSON-Felder). Texte, die Nutzer sehen, sind deutsch und bekommen eine englische 
 | `web/legacy.js`, `casting_app/legacy.py` | Übernahme alter Daten (Version 2.1 und älter) |
 | `tests/` | pytest-Tests; `tests/live/` Skripte gegen die laufende App |
 
-Große Dateien haben oben einen Kopfkommentar mit ihrem Aufbau. In `web/control.html` und `web/cast-core.js` sind die
+Große Dateien haben oben einen Kopfkommentar mit ihrem Aufbau. In `web/control/*.js` und `web/cast-core.js` sind die
 Abschnitte mit `/* ---------- Name ---------- */` markiert – danach suchen.
 
 ## Einrichten, starten, testen
@@ -77,7 +79,7 @@ python -m casting_app --no-window                 # nur der Server (Overlays in 
 ```
 
 Die Dateien in `web/` liest der Server bei jeder Anfrage neu. Nach einer Änderung dort reicht ein Neuladen der Seite.
-Am bequemsten ist die Steuerseite im normalen Browser (`http://localhost:8787/control.html`, F5); das App-Fenster
+Am bequemsten ist die Steuerseite im normalen Browser (⚙ App-Einstellungen → „Steuerseite im Browser öffnen“, dann F5); das App-Fenster
 lädt sie beim nächsten Start neu. Änderungen an Python brauchen einen Neustart der App.
 
 | Test | Wann |
@@ -87,6 +89,8 @@ lädt sie beim nächsten Start neu. Änderungen an Python brauchen einen Neustar
 | `tests/live/fast_switching.py`, `tests/live/memory.py` | nach Änderungen an Ton, DACH CS oder größeren Umbauten |
 
 Die CI (`.github/workflows/build.yml`) führt bei jedem Push alles aus und baut die App für Windows, Linux und macOS.
+Der schnellste Job `checks` sagt nach unter einer Minute, ob es grundsätzlich passt: keine privaten E-Mail-Adressen,
+Python und JavaScript syntaktisch in Ordnung, Szenen-Dateien passen zu `tools/generate_scenes.py`.
 
 ### Live-Tests (`tests/live/`)
 
@@ -95,7 +99,7 @@ schnelle Klicks und über lange Sitzungen. Jedes gibt am Ende `OK: …` oder `PR
 mit Fehlercode 1. Vorher die App starten (unter Linux als root zusätzlich `QTWEBENGINE_DISABLE_SANDBOX=1`):
 
 ```
-QTWEBENGINE_REMOTE_DEBUGGING=9222 python -m casting_app
+python -m casting_app --debug          # = QTWEBENGINE_REMOTE_DEBUGGING=9222
 ```
 
 | Skript | Prüft |
@@ -138,10 +142,10 @@ Die Dateien `web/<scene>.html` werden erzeugt – nie von Hand ändern.
    `sponsor` …; Positionen in Pixeln auf 1920 × 1080; `data-part` = gleicher Name in mehreren Szenen → das Teil bleibt
    beim Wechsel stehen).
 2. `python3 tools/generate_scenes.py` ausführen.
-3. Nur für eine **neue** Szene, in `web/control.html`:
-   * `OVERLAY_SCENES` (Schlüssel = Dateiname ohne `.html`, Name zum Anzeigen)
-   * `SCENE_DEFAULT` (wo sie in der Reihenfolge im Reiter Live steht)
-   * `<select id="scene">` (Auswahl der Vorschau)
+3. Nur für eine **neue** Szene:
+   * `web/control/…` → `OVERLAY_SCENES` (Schlüssel = Dateiname ohne `.html`, Name zum Anzeigen)
+   * `web/control/…` → `SCENE_DEFAULT` (wo sie in der Reihenfolge im Reiter Live steht)
+   * `web/control.html` → `<select id="scene">` (Auswahl der Vorschau)
    * den Namen in `web/lang-en.js` übersetzen.
 4. Neue Szene auch in `tests/live/common.py` → `SCENES` eintragen; dann `tests/live/transitions.py` und `flicker.py` laufen lassen.
 
@@ -149,10 +153,10 @@ Die Dateien `web/<scene>.html` werden erzeugt – nie von Hand ändern.
 1. `web/cast-core.js` → `GFX_DEFAULT_POS`: Art und Standardposition.
 2. `web/cast.js` → `gfxContent()`: was die Einblendung zeigt.
 3. `web/cast.css`: Aussehen als `.gfx-<art>`. Die Position kommt von `.pos-…`.
-4. `web/control.html`:
-   * `GFX_NAMES` (Name in der Liste)
-   * ein Knopf `<button class="button" data-gfx-new="<art>">+ Name</button>`
-   * eigene Eingabefelder im Abschnitt „Einblendungen“ (`x.type === "<art>"`).
+4. Steuerseite:
+   * `web/control/…` → `GFX_NAMES` (Name in der Liste)
+   * `web/control.html` → ein Knopf `<button class="button" data-gfx-new="<art>">+ Name</button>`
+   * `web/control/…` → eigene Eingabefelder im Abschnitt „Einblendungen“ (`x.type === "<art>"`).
 5. Übersetzungen in `web/lang-en.js`. `tests/test_control_page.py` prüft die neue Art im Overlay automatisch mit,
    sobald eine Einblendung dieser Art im Standardzustand steht.
 
@@ -173,7 +177,7 @@ Die Dateien `web/<scene>.html` werden erzeugt – nie von Hand ändern.
 ### Eine neue Einstellung der App (gehört zur App, nicht zur Sendung)
 1. `casting_app/settings.py`: Standardwert in `DEFAULTS`, Prüfung in `update()`.
 2. Die Steuerseite liest und schreibt sie über `/api/app-settings`. Die Oberfläche steht unter ⚙ App-Einstellungen
-   in `web/control.html` (Abschnitt „App-Einstellungen (Update-Suche) …“).
+   in `web/control.html` (Dialog `#appDialog`), die Logik in `web/control/13-app.js` (Abschnitt „App-Einstellungen (Sprache, Update-Suche)“).
 3. Soll Python sofort reagieren: `settings.listeners` (Beispiel: der Tray folgt der App-Sprache, `desktop/app.py`).
 
 ## Texte und Sprachen
@@ -182,7 +186,7 @@ Es gibt zwei unabhängige Sprachen: die **Sprache der App** und die **Sprache de
 
 | Text | Wo er steht | Englisch |
 |---|---|---|
-| Steuerseite (Beschriftungen, Meldungen, Dialoge) | deutsch direkt in `web/control.html` | `web/lang-en.js` (deutscher Text → englischer) |
+| Steuerseite (Beschriftungen, Meldungen, Dialoge) | deutsch direkt in `web/control.html` / `web/control/*.js` | `web/lang-en.js` (deutscher Text → englischer) |
 | Python (Tray, Fenster-Dialoge, Startfehler) | `casting_app/texts.py` | daneben im selben Eintrag |
 | feste Texte im Overlay | `OVERLAY_TEXTS`/`OVERLAY_WORDS` in `web/cast-core.js` | daneben (`en`) |
 
@@ -210,7 +214,10 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
 * **Neue Felder** sind unproblematisch: Der Standardwert aus `DEFAULT` wird beim Laden ergänzt.
 * **Umbenennungen** brauchen eine Übernahme. Die Tabelle alter Namen in `web/legacy.js` (zwischen `/*BEGIN*/` und `/*END*/`)
   nutzen sowohl die Steuerseite als auch `casting_app/legacy.py`. Neue Einträge per Skript in die JSON-Tabelle schreiben
-  und einen Fall in `tests/test_legacy.py` ergänzen.
+  und einen Fall in `tests/test_legacy.py` ergänzen. Diese Tabelle greift nur bei Daten aus 2.1 und älter (deutsche Namen).
+* **Umbenennungen ab 2.2** (z. B. `sponsors.listen` → `sponsors.byTheme` in 2.3) stellt `renamedFields()` in
+  `web/cast-core.js` um – jeder Zustand, jede Sitzung und Sicherung läuft beim Laden durch `K.merge`. Test dazu in
+  `tests/test_control_page.py`.
 
 ## Technische Details
 
@@ -251,13 +258,51 @@ Datei mit danebenliegendem Schlüssel wäre nur scheinbar sicher und gibt es des
 * Dateien aus 1.x (`faceit.schluessel`, `dach.schluessel` per DPAPI bzw. Base64, `dach.json`) werden beim ersten Start
   einmalig in den Schlüsselbund übernommen und gelöscht.
 * Im Repository liegen keine Zugangsdaten. Die CI liest den SignPath-Token nur aus den GitHub-Secrets.
+* **Zugangsschlüssel (ab 2.3):** Beim ersten Start erzeugt der Server einen Zufallsschlüssel (`access-key` im
+  Schlüsselbund). Ohne ihn liefert er nur, was ein Overlay braucht (`OPEN_API` in `app_server.py`: Zustand lesen,
+  Live-Verbindung, Bilder, Meldungen, Ping, Beenden) – kein `/dach/…`, keine OBS-Anmeldung, keine Änderung, keine
+  Tokens oder Pfade. So kommt auch ein Programm auf diesem PC, das Browser-Kopfzeilen fälscht, an nichts heran.
+  - **App-Fenster:** Python gibt den Schlüssel beim Anlegen der Seite in `window.castApp.accessKey` (`page_bridge.js`) –
+    nie in einer Adresse, im Verlauf oder im Browser-Speicher. Vorschau-Rahmen lesen ihn vom Fenster (`window.top`).
+  - **Browser** („Steuerseite im Browser öffnen“): die Seite holt einen Einmal-Code (`/api/access-code`, 2 Minuten gültig)
+    und öffnet `/open?code=…`; der Server legt den Schlüssel für diesen Tab in `sessionStorage`. Der Code im Verlauf ist danach wertlos.
+  - **OBS-Quellen** bekommen ihn in der Adresse („In OBS anlegen“) – OBS speichert ihn in seiner Szenen-Datei.
+    Ältere Quellen ohne Schlüssel findet die Steuerseite beim Verbinden mit OBS und stellt sie nach Rückfrage um (`accessCheck`).
+  - `cast-core.js` hängt ihn an jede `/api/…`-Anfrage (Kopfzeile `X-Casting-Access`) und an die Live-Verbindung (`?access=`).
+  - **Ohne Schlüssel** bekommt ein Overlay den Zustand ohne Kamera-Links und Geräte (`public_state` – VDO.Ninja-Links
+    können Passwörter enthalten); `/api/quit` bleibt offen, weil der Windows-Installer eine laufende App beenden muss.
+  - Ohne Fenster steht die Adresse mit Schlüssel nur in der Konsole, nie im Log.
+  - Ist der Schlüsselbund beim Start gesperrt, gilt ein vorläufiger Schlüssel – der gespeicherte wird nie überschrieben.
+  - Neue Route, die ein Overlay ohne Schlüssel braucht → in `OPEN_API` eintragen (nur, wenn nichts Geheimes drin ist).
+  - Tests: `server.access_key`; Live-Skripte lesen ihn aus dem App-Fenster (`tests/live/common.py`).
 * **Grenzen:** DACH CS nimmt ID und Key nur als URL-Parameter an. `/dach/<page>` leitet deshalb mit beiden weiter
   (`no-store`, `no-referrer`, nicht geloggt); die Adresse steht danach im iframe in OBS bzw. im App-Fenster.
-  Der Server prüft Adresse, Host, `Origin` und `Sec-Fetch-Site`, aber kein Passwort: Ein Programm auf **diesem PC**, das
-  Browser-Kopfzeilen fälscht, käme an `/dach/…` und `/api/obs-auth`. Programme unter demselben Nutzerkonto können
-  ohnehin den Schlüsselbund lesen – dagegen schützt keine App.
+  Programme unter demselben Nutzerkonto können den Schlüsselbund (und damit auch den Zugangsschlüssel) lesen –
+  dagegen schützt keine App, das ist die Grenze des Betriebssystems.
 * Die Vorschau bekommt Zustand und Live-Daten per `postMessage(…, location.origin)` – nie eine fremde Seite.
 * FACEIT-Abfragen folgen keiner Weiterleitung (der Key ginge sonst an den Ziel-Host mit).
+
+### Privatsphäre (E-Mail-Adressen)
+
+Commits tragen die E-Mail-Adresse des Autors – im öffentlichen Repository für alle sichtbar. Deshalb:
+* GitHub → Settings → Emails: „Keep my email addresses private“ und „Block command line pushes that expose my email“ an.
+* Lokal `git config user.email "<id>+<name>@users.noreply.github.com"` (die Adresse steht auf derselben GitHub-Seite).
+* `tools/check_privacy.py` (CI-Job `checks`) schlägt fehl, sobald ein Commit eine andere als eine noreply-Adresse
+  trägt oder eine Datei eine E-Mail-Adresse enthält; die Adresse selbst gibt es nie aus. `KNOWN_OLD_COMMITS` nennt den
+  einen Commit von vor dieser Prüfung.
+
+### Stabilität (Dateien, Fehler)
+
+* Eigene Dateien (Zustand, Einstellungen, CS2-Einstellungen, Fenster, Bilder, Tresor) immer mit `files.write_atomic`
+  schreiben: erst `<name>.tmp`, dann in einem Schritt ersetzen – ein Absturz hinterlässt nie eine halbe Datei.
+* Lesen mit `files.read_json_object`: eine beschädigte Datei wird als `<name>.damaged` beiseitegelegt (Log-Eintrag),
+  die App startet mit Standardwerten. Nie eine Datei überschreiben, die sich nicht lesen ließ.
+* Der Zustand hat eine laufende Nummer (`revision`, `K.nextRevision`). Ein älterer Stand bekommt 409 mit der Nummer des
+  Servers; die Steuerseite macht darüber weiter (wichtig, wenn die Uhr des PCs zurückgestellt wurde).
+* Unerwartete Fehler (auch in Threads) landen im Log (`AppLog.catch_unhandled_errors`); stürzt die Steuerseite im
+  Fenster ab, lädt die App sie neu.
+* Server-Sockets: `server/net.py` (`ExclusiveHTTPServer` – unter Windows bekommt ein zweiter Server den Port wirklich nicht;
+  `content_length` lehnt „-1“ und Unsinn ab).
 
 ## Bauen und signieren
 
@@ -291,6 +336,27 @@ deinstallieren).
   Installer signieren. Ohne Secret wird unsigniert gebaut. Laut den Bedingungen muss dann in der README stehen:
   „Free code signing provided by SignPath.io, certificate by SignPath Foundation“.
 
+## Update aus der App
+
+`casting_app/updater.py` (Server-Routen `/api/update`, `/api/update-check`, `/api/update-install`, Oberfläche unter
+⚙ → Update: `control.html` `#updateArea`, Logik in `control/13-app.js`, Abschnitt „Update“):
+1. GitHub-API `releases/latest` → Version und die Datei für dieses System (`install_kind()`, `asset_suffix()`).
+   Nur Dateien unter `github.com/29j2003/casting-app/releases/download/` mit `sha256`-Prüfsumme der API werden angeboten.
+2. Download in den Datenordner (`update/`), SHA-256 prüfen – stimmt sie nicht, wird nichts installiert.
+3. `start_replacement()` startet einen kleinen Helfer (Windows: `.cmd`, sonst `/bin/sh`), der wartet, bis die App beendet
+   ist, die neue Version einsetzt und sie startet. Was schiefgehen kann (Kopieren, Entpacken), passiert vorher, solange
+   die App noch läuft – Fehler landen dann im Status statt in einer geschlossenen App. Der Helfer startet immer eine App
+   (die neue oder, wenn der Tausch scheitert, die alte).
+   * Windows: Setup mit `/S /D=<bisheriger Ordner>`; Pfade als Umgebungsvariablen (`!CA_FILE!` – Umlaute, `&`, `%`
+     bleiben heil), Warten mit `ping` (ohne Konsole). Der Installer merkt sich `InstallLocation` (`InstallDirRegKey`).
+   * AppImage: Kopie als `….new` neben die alte, nach dem Beenden `mv`.
+   * macOS: neue `.app` vorher als `….app.new` daneben, danach Tausch mit Rückfall auf die alte. Kein automatisches
+     Update aus dem DMG, aus App Translocation oder ohne Schreibrecht im Ordner (`install_kind()` → „manual“).
+4. Beim nächsten Start notiert `update/installed-version.txt` „aktualisiert von …“ und alte Downloads werden gelöscht.
+
+Die Dateinamen der Releases (`Casting-App-<v>-Setup.exe`, `…-linux-x86_64.AppImage`, `…-mac-arm64.zip`, `…-mac-x64.zip`)
+kommen aus `tools/build.py` – wer sie ändert, muss `asset_suffix()` anpassen.
+
 ## Version und Release
 
 1. Die Version an drei Stellen gleich setzen:
@@ -309,8 +375,9 @@ deinstallieren).
   aus den Overlays, z. B. aus OBS.
 * **Diagnose im Overlay:** Log-Reiter → „Diagnose in allen Overlays einblenden“. Zeigt Version, Zustand, Bilder und
   Videos direkt in der Browserquelle.
-* **Entwicklerwerkzeuge des App-Fensters:** die App mit `QTWEBENGINE_REMOTE_DEBUGGING=9222 python -m casting_app`
-  starten und in Chrome/Edge `http://localhost:9222` öffnen.
+* **Entwicklerwerkzeuge des App-Fensters:** die App mit `python -m casting_app --debug` starten (dasselbe wie
+  `QTWEBENGINE_REMOTE_DEBUGGING=9222`) und in Chrome/Edge `http://localhost:9222` öffnen. Fehler in der Steuerseite
+  zeigen auf `/control.js` – die Zeilen davor `// ===== control/<datei>.js =====` sagen, aus welcher Datei sie stammen.
 * **Overlays im normalen Browser:** `http://localhost:8787/overlay.html` oder eine einzelne Szene, z. B.
   `http://localhost:8787/players.html?preview=1`.
 

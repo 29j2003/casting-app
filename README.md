@@ -263,6 +263,8 @@ Nach oben/unten und Löschen (mit Rückgängig). Arten:
 * **Box-Stil** (Setup → Aussehen → Theme anpassen): **Hell** (weiße Kästen, wie bisher), **Dunkel** (dunkle Kästen) oder
   **Mischung** (dunkel, nur der Titel bleibt hell). Logo-Felder (Sponsoren, Marke) bleiben immer hell, damit auch dunkle Logos zu sehen sind.
   Der **Sponsor** sitzt in Intro, Pause, Ende und den Cast-Szenen als vierter Kasten in der unteren Leiste – gleich hoch, die Leiste mittig.
+  Unter Setup → Sponsoren → **Platz des Sponsor-Kastens** lässt er sich stattdessen **oben rechts** zeigen; ist kein Sponsor
+  zu sehen (aus oder keiner eingetragen), rückt die Leiste ohne Lücke zur Mitte.
 * **Unterseiten mit Status:** In Match und Setup steht links neben jeder Unterseite ein Punkt mit einer Zeile – Grün = fertig,
   Gelb = fehlt noch (z. B. „Caster-Namen fehlen“, „1 Logo fehlt“), Lila = angepasst, Grau = Vorgabe.
 * **Timer bei 0:00** (Match → Timer & Texte): eigener Text statt „00:00“ (z. B. „GLEICH GEHT'S LOS“) und auf Wunsch ein

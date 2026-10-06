@@ -77,7 +77,7 @@ function overGameToggle(k) {
   scenesDraw(); send();
 }
 setInterval(() => { const U = Z.broadcast.overGame; if (U && U.until && U.until <= Date.now()) { Z.broadcast.overGame = null; scenesDraw(); } }, 1000);
-// Reihenfolge wie eine Sendung abläuft – eigene Reihenfolge per Ziehen (✎ Anordnen)
+// Reihenfolge wie eine Sendung abläuft – eigene Reihenfolge per Ziehen („Anordnen“)
 const SCENE_DEFAULT = ["#pregame", "intro", "cast-solo", "cast-duo", "players", "map-veto",
   "#during", "ingame",
   "#stats", "scoreboard", "team-a", "team-b", "h2h", "bracket", "series",
@@ -109,7 +109,7 @@ function scenesDraw() {
     : !single && !connected ? "Mehrere OBS-Szenen: erst mit OBS verbinden (⚙ App-Einstellungen) – oder unter Setup → Szenen & OBS „eine Browserquelle“ nutzen." : "";
   if (why) box.insertAdjacentHTML("beforeend", `<p class="small scene-why">${esc(why)}</p>`);
   let column = null;
-  $("sceneArrange").textContent = sceneArrange ? "✓ Fertig" : "✎ Anordnen"; $("sceneDefault").hidden = !sceneArrange;
+  $("sceneArrange").innerHTML = sceneArrange ? icon("check") + "Fertig" : icon("edit") + "Anordnen"; $("sceneDefault").hidden = !sceneArrange;
   const line = scenesRow();
   line.filter(([k], i) => {
     if (!SCENE_GROUPS[k]) return sceneArrange || c.list[k].on;
@@ -124,7 +124,7 @@ function scenesDraw() {
     if (sceneArrange) {
       // Anordnen: Klick = Haken an/aus, Ziehen = verschieben (kein Szenenwechsel)
       b.classList.toggle("off", !e.on);
-      b.insertAdjacentHTML("beforeend", `<span class="tick">${e.on ? "✓" : ""}</span>`);
+      b.insertAdjacentHTML("beforeend", `<span class="tick">${e.on ? icon("check") : ""}</span>`);
       b.onclick = () => { if (b._dragged) { b._dragged = false; return; } e.on = !e.on; scenesDraw(); send(); };
       b.addEventListener("pointerdown", ev => sceneDragStart(ev, b));
       box.appendChild(b); return;
@@ -152,7 +152,7 @@ function scenesDraw() {
   const list = sponsorEntries();
   if (list.length) {
     sponsor.innerHTML = `<span class="small">Sponsor groß einblenden:</span><div class="map-buttons"></div>`;
-    list.forEach((s, i) => { const b = document.createElement("button"); b.className = "button"; b.textContent = "▶ " + (s.name || "Sponsor " + (i + 1)); b.onclick = () => sponsorShowgfx(i); sponsor.lastChild.appendChild(b); });
+    list.forEach((s, i) => { const b = document.createElement("button"); b.className = "button"; b.innerHTML = icon("play") + esc(s.name || "Sponsor " + (i + 1)); b.onclick = () => sponsorShowgfx(i); sponsor.lastChild.appendChild(b); });
   }
 }
 $("sceneOn").onchange = () => { sceneCfg().on = $("sceneOn").checked; scenesDraw(); send(); };

@@ -37,7 +37,7 @@ function widths() {
   if (ui.b2) pageEl.style.setProperty("--b2", ui.b2 + "px");
   if (ui.hU) pageEl.style.setProperty("--hU", ui.hU + "px");
   pageEl.classList.toggle("preview-close", !!ui.previewClose);
-  $("previewFold").textContent = ui.previewClose ? "⇤" : "⇥";
+  $("previewFold").innerHTML = icon(ui.previewClose ? "panel-open" : "panel-close");
 }
 function draggable(divider, field, element, direction, reversedValue) {
   divider.addEventListener("pointerdown", ev => {
@@ -73,8 +73,8 @@ function placementSet() {
   const upper = L.preview === "upper";
   $("dockBottom").style.order = upper ? 0 : 3; $("dividerH").style.order = upper ? 1 : 2; middleEl.querySelector(".preview").style.order = upper ? 2 : 0;
   document.querySelectorAll("[data-placement]").forEach(g => g.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.value === L[g.dataset.placement])));
-  zones.bottom.textContent = upper ? "⤒  Über der Vorschau" : "⤓  Unter der Vorschau";
-  zones.right.textContent = L.side === "left" ? "⇤  Links neben der Vorschau" : "⇥  Rechts neben der Vorschau";
+  zones.bottom.textContent = upper ? "Über der Vorschau" : "Unter der Vorschau";
+  zones.right.textContent = L.side === "left" ? "Links neben der Vorschau" : "Rechts neben der Vorschau";
   DOCKS.bottom.querySelector(".dock-target").textContent = upper ? "Über der Vorschau andocken" : "Unter der Vorschau andocken";
   DOCKS.right.querySelector(".dock-target").textContent = L.side === "left" ? "Links neben der Vorschau andocken" : "Rechts neben der Vorschau andocken";
 }
@@ -207,8 +207,8 @@ const menu = document.createElement("div"); menu.className = "dock-menu"; menu.h
 function menuShow(d, button) {
   const place = placeFrom(d), r = button.getBoundingClientRect(), z = parseFloat(document.body.style.zoom) || 1;
   const L = placement();
-  menu.innerHTML = [["left", "☰  In den Reiter"], ["bottom", L.preview === "upper" ? "⤒  Über der Vorschau" : "⤓  Unter der Vorschau"], ["right", L.side === "left" ? "⇤  Links neben der Vorschau" : "⇥  Rechts neben der Vorschau"]]
-    .map(([o, t]) => `<button data-place="${o}"${o === place ? ' aria-current="true"' : ""}${locked(o) ? " disabled" : ""}>${t}${locked(o) ? "  🔒" : ""}</button>`).join("");
+  menu.innerHTML = [["left", "In den Reiter"], ["bottom", L.preview === "upper" ? "Über der Vorschau" : "Unter der Vorschau"], ["right", L.side === "left" ? "Links neben der Vorschau" : "Rechts neben der Vorschau"]]
+    .map(([o, t]) => `<button data-place="${o}"${o === place ? ' aria-current="true"' : ""}${locked(o) ? " disabled" : ""}>${t}${locked(o) ? icon("lock") : ""}</button>`).join("");
   menu.style.left = Math.max(8, r.right / z - 220) + "px"; menu.style.top = (r.bottom / z + 4) + "px";
   menu.hidden = false; menuFit(menu, r, z);
   menu.querySelectorAll("button").forEach(b => b.onclick = () => { menu.hidden = true; dockPanel(d, b.dataset.place); });
@@ -218,9 +218,9 @@ areas.forEach((d, n) => {
   const s = d.querySelector("summary");
   if (!d.dataset.area) d.dataset.area = slug(s.textContent);    // fixed keys in the HTML (stored in docks/workspaces)
   d.dataset.home = d.parentElement.dataset.group; d.dataset.num = n;
-  const handle = document.createElement("span"); handle.className = "handle"; handle.textContent = "⠿"; handle.title = "Ziehen: links, unter oder neben die Vorschau";
+  const handle = document.createElement("span"); handle.className = "handle"; handle.innerHTML = icon("grip"); handle.title = "Ziehen: links, unter oder neben die Vorschau";
   s.prepend(handle);
-  const pin = document.createElement("button"); pin.className = "pin"; pin.type = "button"; pin.title = "Andocken: links, unter oder neben der Vorschau"; pin.textContent = "⧉";
+  const pin = document.createElement("button"); pin.className = "pin"; pin.type = "button"; pin.title = "Andocken: links, unter oder neben der Vorschau"; pin.innerHTML = icon("dock"); pin.setAttribute("aria-label", "Andocken");
   pin.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); if (locked(placeFrom(d))) return; if (menu.hidden) menuShow(d, pin); else menu.hidden = true; };
   s.appendChild(pin);
   s.addEventListener("pointerdown", ev => dragStart(ev, d));
@@ -230,7 +230,7 @@ areas.forEach((d, n) => {
 const ghost = document.createElement("div"); ghost.className = "drag-ghost"; ghost.hidden = true;
 const stroke = document.createElement("div"); stroke.className = "insert-line"; stroke.hidden = true;
 const zones = { left: document.createElement("div"), bottom: document.createElement("div"), right: document.createElement("div") };
-zones.left.textContent = "⇤  Zurück in den Reiter"; zones.bottom.textContent = "⤓  Unter der Vorschau"; zones.right.textContent = "⇥  Rechts neben der Vorschau";
+zones.left.textContent = "Zurück in den Reiter"; zones.bottom.textContent = "Unter der Vorschau"; zones.right.textContent = "Rechts neben der Vorschau";
 Object.values(zones).forEach(z => { z.className = "zone"; document.documentElement.appendChild(z); });
 document.documentElement.append(ghost, stroke);
 let dragState = null;
@@ -245,7 +245,7 @@ function dragStart(ev, d) {
 function surface(el) { const r = el.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }
 function zoneSet(z, r) { Object.assign(z.style, { left: r.x + 6 + "px", top: r.y + 6 + "px", width: Math.max(0, r.w - 12) + "px", height: Math.max(0, r.h - 12) + "px" }); }
 const compass = document.createElement("div"); compass.className = "compass"; compass.hidden = true;
-compass.innerHTML = ["", "↑", "", "←", "⧉", "→", "", "↓", ""].map(z => `<i class="${z ? "" : "empty"}">${z}</i>`).join("");
+compass.innerHTML = ["", "up", "", "left", "dock", "right", "", "down", ""].map(z => `<i class="${z ? "" : "empty"}">${z ? icon(z) : ""}</i>`).join("");
 const tabTarget = document.createElement("div"); tabTarget.className = "tab-target"; tabTarget.hidden = true; tabTarget.innerHTML = "<span></span>";
 document.documentElement.append(compass, tabTarget);
 function compassShow(r, field) {
@@ -258,7 +258,7 @@ function dragMove(m) {
     if (Math.hypot(m.clientX - dragState.x, m.clientY - dragState.y) < 7) return;     // kleiner Ruck = Klick, kein Ziehen
     dragState.active = true; dragState.d._dragged = true; menu.hidden = true;
     document.body.classList.add("is-dragging"); dragState.d.classList.add("becomes-dragged");
-    ghost.textContent = "⠿  " + dragState.d.querySelector("summary").textContent.replace(/[⠿⧉]/g, "").trim(); ghost.hidden = false;
+    ghost.textContent = dragState.d.querySelector("summary").textContent.trim(); ghost.hidden = false;
     DOCKS.bottom.classList.remove("empty"); DOCKS.right.classList.remove("empty");
     requestAnimationFrame(() => { zoneSet(zones.left, surface(document.querySelector(".column"))); zoneSet(zones.bottom, surface(DOCKS.bottom)); zoneSet(zones.right, surface(DOCKS.right)); });
   }
@@ -353,7 +353,7 @@ function locked(place) { return !!((ui.locked || {})[place]); }
 function lockDraw() {
   document.querySelectorAll("[data-lock]").forEach(b => {
     const on = locked(b.dataset.lock);
-    b.setAttribute("aria-pressed", on); b.textContent = on ? "🔒" : "🔓";
+    b.setAttribute("aria-pressed", on); b.innerHTML = icon(on ? "lock" : "unlock");
     b.title = (on ? "Entsperren" : "Sperren") + " – " + { left: "Reiter-Spalte", bottom: "Vorschau-Dock", right: "Seiten-Dock" }[b.dataset.lock];
   });
   const flag = (el, on) => { if (on) el.dataset.locked = "1"; else delete el.dataset.locked; };

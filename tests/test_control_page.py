@@ -234,7 +234,9 @@ def test_dach_pages_keep_running_when_app_audio_changes(server, browser):
     page.wait_for_timeout(1500)
     before = page.evaluate("""(() => { const d = document.getElementById('p').contentDocument;
         const pages = [...d.querySelectorAll('.dach-page')];
-        pages.forEach(f => { f._loads = 0; f.addEventListener('load', () => f._loads++); });
+        // a reload by the overlay means writing src again (even the same value) or a new frame – not a late first load
+        window._pages = pages; window._srcWrites = 0;
+        new MutationObserver(r => window._srcWrites += r.filter(m => m.target.classList.contains('dach-page')).length).observe(d.body, { subtree: true, attributes: true, attributeFilter: ['src'] });
         return { allow: pages.map(f => f.getAttribute('allow')), src: pages.map(f => f.getAttribute('src')),
                  cams: [...d.querySelectorAll('.dach-cam')].map(k => getComputedStyle(k).backgroundColor) }; })()""")
     assert before["allow"] == ["autoplay"] * 3, "DACH-Seiten dürfen Videos abspielen"
@@ -244,8 +246,9 @@ def test_dach_pages_keep_running_when_app_audio_changes(server, browser):
         page.evaluate(f"document.getElementById('p').contentWindow.postMessage({{ cast: 'monitor', mode: '{mode}', vol: 100 }}, location.origin)")
         page.wait_for_timeout(1200)
     after = page.evaluate("""(() => { const pages = [...document.getElementById('p').contentDocument.querySelectorAll('.dach-page')];
-        return { loads: pages.map(f => f._loads), src: pages.map(f => f.getAttribute('src')), allow: pages.map(f => f.getAttribute('allow')) }; })()""")
-    assert after["loads"] == [0, 0, 0] and after["src"] == before["src"], "Ton umschalten darf keine DACH-Seite neu laden"
+        return { same: pages.length === window._pages.length && pages.every((f, i) => f === window._pages[i]),
+                 writes: window._srcWrites, src: pages.map(f => f.getAttribute('src')), allow: pages.map(f => f.getAttribute('allow')) }; })()""")
+    assert after["same"] and after["writes"] == 0 and after["src"] == before["src"], f"Ton umschalten darf keine DACH-Seite neu laden: {after}"
     assert after["allow"] == ["autoplay"] * 3
     assert errors == []
 
@@ -304,6 +307,32 @@ def test_a_won_map_is_offered_as_finished(server, browser):
     assert page.evaluate("!document.querySelector('#series .map-finish').hidden")
     page.evaluate("document.querySelector('#series .map-finish').click()")
     assert page.evaluate("Z.veto.steps[0].result.status") == "done"
+    assert errors == []
+
+
+def test_map_veto_is_played_from_live_while_its_scene_runs(server, browser):
+    """Scene „Map-Veto" in the program: Live → „Zur Szene" shows the veto; a click there also shows under Match."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("tabs('live'); Z.veto.steps = presetSteps('bo3'); sceneSwitch('intro')")
+    page.wait_for_timeout(400)
+    assert page.evaluate("$('sceneToolsVeto').hidden")
+    page.evaluate("sceneSwitch('map-veto')")
+    page.wait_for_timeout(400)
+    assert page.evaluate("!$('sceneToolsVeto').hidden && !!$('sceneToolsVeto').offsetParent")
+    first = page.evaluate("(() => { const b = document.querySelector('#vUpnextLive .map-buttons button'); b.click(); return b.textContent; })()")
+    assert page.evaluate("Z.veto.steps[0].map") == first
+    assert first in page.evaluate("$('vSteps').querySelector('select:nth-of-type(3)').value")
+    assert first in page.inner_text("#vSummaryLive")
+    page.evaluate("$('vBack').click()")                             # undo under Match → Live follows
+    assert first not in page.inner_text("#vSummaryLive")
+    page.evaluate("sceneSwitch('intro')")
+    page.wait_for_timeout(400)
+    assert page.evaluate("$('sceneToolsVeto').hidden")
+    page.evaluate("$('sceneToolsVetoShow').click()")
+    assert not page.evaluate("$('sceneToolsVeto').hidden")
     assert errors == []
 
 
@@ -375,7 +404,7 @@ def test_dach_cams_sit_under_the_page_and_never_show_the_previous_page(server, b
 
 
 def test_app_settings_scroll_down_to_update_on_a_small_window(server, browser):
-    """2.3.0: the settings did not scroll – on a low window Update and App were out of reach."""
+    """2.3.0: the settings did not scroll – on a low window Update and the last sections were out of reach."""
     page = browser.new_page(viewport={"width": 1200, "height": 600})
     errors = watch(page)
     page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
@@ -384,9 +413,9 @@ def test_app_settings_scroll_down_to_update_on_a_small_window(server, browser):
     page.wait_for_timeout(300)
     sizes = page.evaluate("(() => { const c = document.querySelector('.dialog-content'); return [c.scrollHeight, c.clientHeight, innerHeight]; })()")
     assert sizes[1] <= sizes[2] and sizes[0] > sizes[1], sizes                  # fits the window and scrolls
-    page.click(".settings-nav [data-jump=setApp]")
+    page.click(".settings-nav [data-jump=setMusic]")                           # the last section
     page.wait_for_timeout(900)
-    assert page.evaluate("(() => { const r = document.getElementById('appQuit').getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0; })()")
+    assert page.evaluate("(() => { const r = document.querySelector('#setMusic [data-field=\\'music.address\\']').getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0; })()")
     page.click(".settings-nav [data-jump=updateArea]")
     page.wait_for_timeout(900)
     assert page.evaluate("(() => { const r = document.getElementById('updateSearch').getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0; })()")

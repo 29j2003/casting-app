@@ -26,7 +26,7 @@ function tournamentDraw() {
     z.innerHTML = `<span class="num">${i + 1}</span><input type="text" data-f="name" placeholder="Teamname" aria-label="Teamname"><input type="text" data-f="short" maxlength="4" placeholder="Kürzel" aria-label="Kürzel">
       <button type="button" class="tour-logo" title="Logo wählen" aria-label="Logo wählen">${t.logo ? "" : "Logo"}</button>
       <div class="wide"><input type="text" data-f="players" placeholder="Spieler, mit Komma getrennt" aria-label="Spieler"><input type="text" data-f="faceitId" placeholder="FACEIT-Team-ID (optional)" aria-label="FACEIT-Team-ID">
-        <button class="button" data-a="up" aria-label="nach oben">↑</button><button class="button" data-a="down" aria-label="nach unten">↓</button><button class="x" data-a="away" aria-label="Entfernen">✕</button></div>
+        <button class="button" data-a="up" aria-label="nach oben">${icon("up")}</button><button class="button" data-a="down" aria-label="nach unten">${icon("down")}</button><button class="x" data-a="away" aria-label="Entfernen">${icon("close")}</button></div>
       <input type="file" accept="image/*" hidden>`;
     if (t.logo) z.querySelector(".tour-logo").style.backgroundImage = K.cssUrl(t.logo);
     z.querySelectorAll("[data-f]").forEach(f => {
@@ -269,7 +269,7 @@ $("tourFaceitResult").onclick = async () => {
   } catch (err) { tourStatus("FACEIT: " + err.message); }
 };
 
-// Schließen: Klick aufs X (Desktop-App) oder auf ⏻ – die App fragt zuerst, versteckt wird erst nach der Wahl.
+// Schließen: Klick aufs X (Desktop-App) oder auf den Ein/Aus-Knopf – die App fragt zuerst, versteckt wird erst nach der Wahl.
 //   Ganz beenden · Nur Fenster schließen (Overlays laufen weiter, Symbol im Infobereich) · Abbrechen
 let closeOpen = null;
 async function quitAsk() {
@@ -296,5 +296,5 @@ function selection({ title, text, buttons, whenShown }) {
     d.querySelector('[data-w=window]')?.focus();
   });
 }
-$("workspaceButton") && document.querySelector(".topbar .tools").insertAdjacentHTML("beforeend", `<button class="tool" id="quitButton" title="Schließen oder ganz beenden" aria-label="Schließen oder beenden">⏻</button>`);
+$("workspaceButton") && document.querySelector(".topbar .tools").insertAdjacentHTML("beforeend", `<button class="tool" id="quitButton" title="Schließen oder ganz beenden" aria-label="Schließen oder beenden">${icon("power")}</button>`);
 $("quitButton").onclick = quitAsk;

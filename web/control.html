@@ -36,7 +36,7 @@
     <button class="tool" id="allClose" title="Alle Bereiche einklappen" aria-label="Alle Bereiche einklappen" data-icon="collapse"></button>
     <button class="tool" id="allOpen" title="Alle Bereiche aufklappen" aria-label="Alle Bereiche aufklappen" data-icon="expand"></button>
     <button class="tool" id="zoomSmall" title="Alles kleiner">−</button>
-    <button class="tool" id="zoomValue" title="Zurück auf 100 %">100 %</button>
+    <button class="tool" id="zoomValue" title="Größe passt sich dem Fenster an">Auto</button>
     <button class="tool" id="zoomLarge" title="Alles größer">+</button>
     <button class="tool" id="layoutButton" title="Layout bearbeiten" aria-label="Layout bearbeiten"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="8" height="8" rx="1.5"></rect><rect x="13" y="3" width="8" height="5" rx="1.5"></rect><rect x="13" y="10" width="8" height="11" rx="1.5"></rect><rect x="3" y="13" width="8" height="8" rx="1.5"></rect></svg></button>
     <button class="tool" id="dialogOpen" title="App-Einstellungen: OBS, Musik, Aussehen" aria-label="App-Einstellungen">
@@ -108,17 +108,51 @@
     </details>
 
     <details open data-area="scene-tools">
-      <summary>Zur Szene</summary>
+      <summary>Panel der Szene</summary>
       <div class="content">
-        <div class="scene-tools-head"><b id="sceneToolsName">–</b><span class="small" id="sceneToolsHint"></span></div>
-        <div id="sceneToolsVeto" class="scene-tools-veto" hidden>
-          <div class="line"><label>Format<select id="vFormatLive" aria-label="Format des Vetos"></select></label>
-            <button class="button" id="vBackLive" data-icon="undo">Rückgängig</button><button class="button" id="vNewLive">Neu starten</button></div>
-          <div id="vUpnextLive" class="veto-upnext"></div>
-          <div id="vSummaryLive" class="veto-summary"></div>
-          <button class="button link" id="vEditLive">Schritte, Teams und Presets bearbeiten → Match</button>
+        <div class="panel-head"><b id="sceneToolsName">–</b><span class="small" id="sceneToolsHint"></span><span style="flex:1"></span>
+          <button class="button" id="panelFieldsButton" aria-haspopup="menu" title="Welche Felder diese Szene hier zeigt">Felder<span data-icon="chevron"></span></button></div>
+        <div class="panel-menu" id="panelMenu" role="menu" hidden></div>
+        <div class="panel-fields" id="panelFields">
+          <section class="panel-field" data-panel="veto" id="sceneToolsVeto" hidden>
+            <h4>Map-Veto</h4>
+            <div class="line"><label>Format<select id="vFormatLive" aria-label="Format des Vetos"></select></label>
+              <button class="button" id="vBackLive" data-icon="undo">Rückgängig</button><button class="button" id="vNewLive">Neu starten</button></div>
+            <div id="vUpnextLive" class="veto-upnext"></div>
+            <div id="vSummaryLive" class="veto-summary"></div>
+            <button class="button link" id="vEditLive">Schritte, Teams und Presets bearbeiten → Match</button>
+          </section>
+          <section class="panel-field" data-panel="score" hidden>
+            <h4>Spielstand</h4>
+            <div class="panel-score"><b id="pNameA">Team A</b><button class="mbar-k" id="pMinusA" aria-label="Punkt abziehen Team A">−</button><b class="panel-num" id="pScoreA">0</b><button class="mbar-k main" id="pPlusA" aria-label="Punkt Team A">+</button>
+              <span class="mbar-dp">:</span>
+              <button class="mbar-k" id="pMinusB" aria-label="Punkt abziehen Team B">−</button><b class="panel-num" id="pScoreB">0</b><button class="mbar-k main" id="pPlusB" aria-label="Punkt Team B">+</button><b id="pNameB">Team B</b></div>
+          </section>
+          <section class="panel-field" data-panel="timer" hidden>
+            <h4>Timer</h4>
+            <div class="panel-timer"><b class="panel-num" id="pTimer">10:00</b><button class="button main" id="pStart">Start</button><button class="button" id="pMinus1">− 1</button><button class="button" id="pPlus1">+ 1</button></div>
+          </section>
+          <section class="panel-field" data-panel="series" hidden>
+            <h4>Serie</h4>
+            <div class="mbar-series" id="pSeries"></div>
+            <span class="small" id="pSeriesEmpty">Noch keine Maps – erst das Map-Veto ausfüllen.</span>
+          </section>
+          <section class="panel-field" data-panel="texts" hidden>
+            <h4>Texte im Overlay</h4>
+            <label>Großer Titel<input type="text" data-field="texts.title"></label>
+            <label>Lauftext – eine Meldung pro Zeile<textarea data-field="texts.ticker" data-kind="list" rows="3"></textarea></label>
+          </section>
+          <section class="panel-field" data-panel="sponsor" hidden>
+            <h4>Sponsoren</h4>
+            <div class="map-buttons" id="pSponsors"></div>
+            <span class="small" id="pSponsorsEmpty">Noch keine Sponsoren für dieses Theme – Setup → Sponsoren.</span>
+          </section>
+          <section class="panel-field" data-panel="note" hidden>
+            <h4>Notiz <span class="small">nur für dich – nie im Stream</span></h4>
+            <textarea id="pNote" rows="3" placeholder="z. B. Timeout Team B noch 1×"></textarea>
+          </section>
         </div>
-        <div class="line" id="sceneToolsOther" hidden><button class="button" id="sceneToolsVetoShow">Map-Veto trotzdem hier zeigen</button></div>
+        <div class="line" id="sceneToolsOther" hidden><button class="button" id="panelFieldsAdd">Felder für diese Szene wählen</button></div>
       </div>
     </details>
 
@@ -200,11 +234,7 @@
           <label class="toggleSwitch"><input type="checkbox" id="faceitVeto" checked> Map-Veto</label>
         </div>
         <p class="small" id="faceitStatus"></p>
-        <label>FACEIT API-Key (Server side, von developers.faceit.com)
-          <input type="text" id="faceitKey" autocomplete="off" spellcheck="false" placeholder="Schlüssel einfügen …" style="-webkit-text-security: disc"></label>
-        <div class="line"><button class="button" id="faceitKeySave">Schlüssel speichern</button><button class="button" id="faceitKeyDelete">Schlüssel löschen</button></div>
-        <p class="small" id="faceitKeyStatus">Der Schlüssel wird im Schlüsselbund des Systems gespeichert und nie wieder angezeigt –
-          weder hier noch in Sicherungen, Sitzungen, Exporten oder im Log. Die App setzt ihn nur intern für FACEIT-Abfragen ein.</p>
+        <p class="small" id="faceitKeyHint">FACEIT-Schlüssel: <button class="button link" data-settings="setLinks">⚙ App-Einstellungen → Verbindungen &amp; Zugänge</button></p>
       </div>
     </details>
 
@@ -380,12 +410,7 @@
       <div class="content">
         <div class="dach-card">
           <div class="dach-head"><b>DACH CS – offiziell</b><span class="small">Browserquellen direkt von DACH CS · ohne bewegte Übergänge</span></div>
-          <div class="line" style="align-items:end">
-            <label>Nutzer-ID<input type="text" id="dachId" inputmode="numeric" autocomplete="off" placeholder="z. B. 123" style="width:110px"></label>
-            <label style="flex:1">Key<input type="text" id="dachKey" autocomplete="off" spellcheck="false" placeholder="Key einfügen …" style="-webkit-text-security: disc"></label>
-            <button class="button" id="dachSave">Speichern</button><button class="button" id="dachDelete">Löschen</button>
-          </div>
-          <p class="small" id="dachStatus">ID und Key findest du im DACH-CS-Nutzerbereich unter Casting → Browserquellen. Beide werden im Schlüsselbund des Systems gespeichert und nie wieder angezeigt.</p>
+          <p class="small" id="dachAccessHint">Nutzer-ID und Key: <button class="button link" data-settings="setLinks">⚙ App-Einstellungen → Verbindungen &amp; Zugänge</button></p>
           <p class="small" id="dachObsStatus">Alles läuft in deiner einen Browserquelle („Cast – Overlay“). Die Inhalte (Teams, Spielstand, Tabelle …) steuerst du im DACH-CS-Live-Dashboard – die App schaltet die Seiten um, setzt Kameras und Inhalt in die Rahmen und legt ihre Einblendungen darüber.</p>
           <details class="dach-frame-edit" data-area="dach-frame-edit"><summary>Kamera- und Inhalts-Rahmen anpassen</summary>
             <div class="line" style="align-items:end"><label>Seite<select id="dframeSide"></select></label>
@@ -648,13 +673,24 @@
 
 
 <div class="dialog" id="appDialog" hidden>
-  <div class="dialog-box" role="dialog" aria-label="App-Einstellungen">
-    <div class="dialog-head"><b>App-Einstellungen</b><button class="tool" id="dialogClose" title="Schließen" aria-label="Schließen" data-icon="close"></button></div>
-    <div class="dialog-content">
-      <nav class="settings-nav" aria-label="Bereiche der Einstellungen">
-        <button data-jump="setObs">OBS</button><button data-jump="updateArea">Update</button><button data-jump="setLanguage">Sprache</button><button data-jump="setLook">Aussehen</button><button data-jump="setMusic">Musik</button>
-      </nav>
-      <section id="setObs"><h3>Verbindung zu OBS</h3>
+<div class="dialog-box" role="dialog" aria-label="App-Einstellungen">
+<nav class="settings-nav" aria-label="Bereiche der Einstellungen">
+<div class="settings-title">App-Einstellungen</div>
+<button data-jump="setLinks"><i id="navLinksDot"></i><span>Verbindungen &amp; Zugänge<small id="navLinks">OBS · FACEIT · DACH CS · Musik</small></span></button>
+<button data-jump="setLanguage"><i></i><span>Sprache<small id="navLanguage"></small></span></button>
+<button data-jump="setLook"><i></i><span>Oberfläche<small id="navLook"></small></span></button>
+<button data-jump="updateArea"><i id="navUpdateDot"></i><span>Update<small id="navUpdate"></small></span></button>
+<button data-jump="setData"><i></i><span>Daten &amp; Sicherung<small>Ordner, Sichern, Laden</small></span></button>
+<button data-jump="setAbout"><i></i><span>Über die App<small>Version, Lizenz, Hilfe</small></span></button>
+<span class="settings-flex"></span>
+<p class="small">Gilt für die App auf diesem PC – nicht fürs Match.</p>
+</nav>
+<div class="dialog-main">
+<div class="dialog-head"><b id="settingsTitle">Verbindungen &amp; Zugänge</b><button class="button" id="dialogClose">Schließen <kbd>Esc</kbd></button></div>
+<div class="dialog-content">
+<section id="setLinks"><h3>Verbindungen &amp; Zugänge</h3>
+<p class="small">Womit die App spricht. Schlüssel liegen im Schlüsselbund des Systems und werden nach dem Speichern nie wieder angezeigt – nur ersetzen oder löschen.</p>
+<div class="set-card" id="setObs"><div class="set-head"><b>OBS</b><span class="state" id="setObsState">–</span></div>
         <p class="small">OBS → Werkzeuge → WebSocket-Server-Einstellungen: „WebSocket-Server aktivieren". Port und Passwort (unter „Verbindungsinformationen anzeigen") nur <b>hier</b> eintragen. Die Overlays brauchen kein Passwort.</p>
         <div class="line">
           <label>Port<input type="number" id="obsPort"></label>
@@ -664,20 +700,31 @@
         <p class="small" id="obsSources"></p>
         <p><button class="button" id="openInBrowser" hidden>Steuerseite im Browser öffnen</button></p>
         <div id="accessNotice" hidden><p class="small" id="accessStatus"></p><button class="button" id="accessUpdate">Browserquellen umstellen</button></div>
-      </section>
-      <section id="updateArea"><h3>Update</h3>
-        <p class="small">Installiert: <b id="updateCurrent"></b> <span id="updateFrom"></span> · <span id="updateState">noch nicht gesucht</span></p>
-        <div class="update-progress" id="updateProgress" hidden><i></i></div>
-        <div class="line">
-          <button class="button" id="updateSearch">Nach Updates suchen</button>
-          <button class="button main" id="updateInstall" hidden>Jetzt aktualisieren</button>
-          <a class="button" id="updatePage" href="#" target="_blank" rel="noopener" hidden>Download-Seite öffnen</a>
-        </div>
-        <label class="toggleSwitch"><input type="checkbox" id="updateCheck"> Bei jedem Start nach Updates suchen (fragt nur die Versionsliste bei GitHub ab)</label>
-        <p class="small">Die neue Version wird von GitHub geladen, mit der Prüfsumme verglichen und installiert; die App startet danach neu.
-          Einstellungen, Bilder und Zugänge bleiben. Nicht während einer laufenden Sendung aktualisieren.</p>
-      </section>
-      <section id="setLanguage"><h3>Sprache · Language</h3>
+      </div>
+<div class="set-card" id="setFaceit"><div class="set-head"><b>FACEIT</b><span class="state" id="setFaceitState">–</span></div>
+        <label>FACEIT API-Key (Server side, von developers.faceit.com)
+          <input type="text" id="faceitKey" autocomplete="off" spellcheck="false" placeholder="Schlüssel einfügen …" style="-webkit-text-security: disc"></label>
+        <div class="line"><button class="button" id="faceitKeySave">Schlüssel speichern</button><button class="button" id="faceitKeyDelete">Schlüssel löschen</button></div>
+        <p class="small" id="faceitKeyStatus">Der Schlüssel wird im Schlüsselbund des Systems gespeichert und nie wieder angezeigt –
+          weder hier noch in Sicherungen, Sitzungen, Exporten oder im Log. Die App setzt ihn nur intern für FACEIT-Abfragen ein.</p>
+</div>
+<div class="set-card" id="setDach"><div class="set-head"><b>DACH CS – Offiziell</b><span class="state" id="setDachState">–</span></div>
+          <div class="line" style="align-items:end">
+            <label>Nutzer-ID<input type="text" id="dachId" inputmode="numeric" autocomplete="off" placeholder="z. B. 123" style="width:110px"></label>
+            <label style="flex:1">Key<input type="text" id="dachKey" autocomplete="off" spellcheck="false" placeholder="Key einfügen …" style="-webkit-text-security: disc"></label>
+            <button class="button" id="dachSave">Speichern</button><button class="button" id="dachDelete">Löschen</button>
+          </div>
+          <p class="small" id="dachStatus">ID und Key findest du im DACH-CS-Nutzerbereich unter Casting → Browserquellen. Beide werden im Schlüsselbund des Systems gespeichert und nie wieder angezeigt.</p>
+</div>
+<div class="set-card" id="setMusic"><div class="set-head"><b>Musik · Spotify über Tuna</b><span class="state" id="setMusicState">–</span></div>
+        <label class="toggleSwitch"><input type="checkbox" data-field="music.displayed" data-kind="bool"> In Intro, Pause und Ende anzeigen</label>
+        <label>Tuna-Adresse<input type="text" data-field="music.address"></label>
+      </div>
+<div class="set-card set-safe"><b>So sind deine Zugänge geschützt</b>
+<ul><li>Gespeichert im Schlüsselbund des Systems – keine Datei, kein Export.</li><li>Nach dem Speichern nie wieder angezeigt – nur ersetzen oder löschen.</li>
+<li>Nie in Overlays, Log, Sitzungs- oder Theme-Exporten.</li><li>Der Server der App hört nur auf diesem PC.</li></ul></div>
+</section>
+<section id="setLanguage" hidden><h3>Sprache · Language</h3>
         <span class="small">Sprache der App</span>
         <div class="segment" id="appLanguage"><button data-language="de">Deutsch</button><button data-language="en">English</button></div>
         <p class="small">Oberfläche, Dialoge und Tray-Menü. Die App lädt danach neu.</p>
@@ -685,11 +732,12 @@
         <div class="segment" id="overlayLanguage"><button data-language="de">Deutsch</button><button data-language="en">English</button></div>
         <p class="small">Feste Texte in den Overlays (Szenen-Überschriften, Statistiken). Eigene Texte bleiben, wie du sie eingetragen hast.</p>
       </section>
-      <section id="setLook"><h3>Aussehen &amp; Oberfläche</h3>
+<section id="setLook" hidden><h3>Oberfläche</h3>
         <div class="segment" id="appDesign">
-          <button data-design="dark">Dunkel</button><button data-design="light">Hell</button><button data-design="system">Wie Windows</button>
+          <button data-design="dark">Dunkel</button><button data-design="light">Hell</button><button data-design="system">Wie das System</button>
         </div>
-        <label>Größe der Oberfläche <output id="zoomDisplay"></output><input type="range" id="zoomSlider" min="0.6" max="1.5" step="0.1"></label>
+        <label class="toggleSwitch"><input type="checkbox" id="zoomAutoOn"> Größe passt sich dem Fenster an (1920 px = 100 %, 2560 px = 130 %)</label>
+<label>Größe der Oberfläche <output id="zoomDisplay"></output><input type="range" id="zoomSlider" min="0.6" max="1.5" step="0.1"></label>
         <div class="placement-grid">
         <span class="small">Reiter-Spalte</span>
         <div class="segment" data-placement="tabs"><button data-value="left">Links</button><button data-value="right">Rechts</button></div>
@@ -703,12 +751,32 @@
           <button class="button" id="stepsAgain">„Erste Schritte" wieder zeigen</button>
         </div>
       </section>
-      <section id="setMusic"><h3>Musik (Spotify über Tuna)</h3>
-        <label class="toggleSwitch"><input type="checkbox" data-field="music.displayed" data-kind="bool"> In Intro, Pause und Ende anzeigen</label>
-        <label>Tuna-Adresse<input type="text" data-field="music.address"></label>
+<section id="updateArea" hidden><h3>Update</h3>
+        <p class="small">Installiert: <b id="updateCurrent"></b> <span id="updateFrom"></span> · <span id="updateState">noch nicht gesucht</span></p>
+        <div class="update-progress" id="updateProgress" hidden><i></i></div>
+        <div class="line">
+          <button class="button" id="updateSearch">Nach Updates suchen</button>
+          <button class="button main" id="updateInstall" hidden>Jetzt aktualisieren</button>
+          <a class="button" id="updatePage" href="#" target="_blank" rel="noopener" hidden>Download-Seite öffnen</a>
+        </div>
+        <label class="toggleSwitch"><input type="checkbox" id="updateCheck"> Bei jedem Start nach Updates suchen (fragt nur die Versionsliste bei GitHub ab)</label>
+        <p class="small">Die neue Version wird von GitHub geladen, mit der Prüfsumme verglichen und installiert; die App startet danach neu.
+          Einstellungen, Bilder und Zugänge bleiben. Nicht während einer laufenden Sendung aktualisieren.</p>
       </section>
-    </div>
-  </div>
+<section id="setData" hidden><h3>Daten &amp; Sicherung</h3>
+<p class="small">Alles speichert sich von selbst. Für einen anderen PC oder als Sicherung: den ganzen Stand als Datei sichern und dort laden.</p>
+<div class="line"><button class="button" id="setExport">Sichern (.json)</button><button class="button" id="setImport">Laden (.json)</button></div>
+<p class="small">Videos und eigene Schriften liegen in deinen Dokumenten, Einstellungen und Log im Datenordner:</p>
+<div class="line"><button class="button" data-folder="videos">Videos-Ordner</button><button class="button" data-folder="fonts">Schriften-Ordner</button><button class="button" data-folder="data">Daten &amp; Log</button></div>
+</section>
+<section id="setAbout" hidden><h3>Über die App</h3>
+<p>Casting-App <b id="aboutVersion"></b> – Overlays und Steuerung für CS2-Casts mit OBS.</p>
+<p class="small">Frei verwendbar (Public Domain, siehe LICENSE). Mitgelieferte Schriften und Programme haben eigene Lizenzen (Ordner LICENSES).</p>
+<div class="line"><a class="button" href="https://github.com/29j2003/casting-app" target="_blank" rel="noopener">Projekt auf GitHub</a><a class="button" href="https://github.com/29j2003/casting-app/issues" target="_blank" rel="noopener">Fehler melden</a><button class="button" id="aboutSteps">„Erste Schritte" wieder zeigen</button></div>
+</section>
+</div>
+</div>
+</div>
 </div>
 <div class="palette" id="palette" hidden>
   <div class="palette-box" role="dialog" aria-label="Suchen und Befehle">

@@ -472,32 +472,102 @@ document.querySelectorAll("[data-gfx-new]").forEach(b => b.onclick = () => {
   graphicsDraw(); send();
 });
 
-/* ---------- Zur Szene: was die laufende Szene gerade braucht ----------
-   Zeigt in Live die Bedienung, die zur Szene im Programm gehört – z. B. bei „Map-Veto" das Veto zum Klicken.
-   Dieselben Daten wie unter Match (Z.veto); jede Änderung zeichnet beide Stellen neu (vetoDraw). */
-const SCENE_TOOLS = { "map-veto": "veto" };
-let sceneToolsShown = "", sceneToolsForced = "";             // forced: „trotzdem zeigen" gilt bis zum nächsten Szenenwechsel
+/* ---------- Panel der Szene: was die laufende Szene gerade braucht ----------
+   Zeigt in Live die Felder, die zur Szene im Programm gehören – z. B. bei „Map-Veto" das Veto zum Klicken,
+   bei Ingame Spielstand und Serie. Jede Szene hat Vorgaben (PANEL_DEFAULTS); „Felder" ändert sie,
+   gemerkt in ui.panels (diese Oberfläche, nicht Teil der Sendung). Die Felder bedienen dieselben Daten wie
+   Match und Setup (Z.veto, Z.teams, Z.timer, Z.texts) – jede Änderung zeichnet beide Stellen neu. */
+const PANEL_FIELDS = [["veto", "Map-Veto"], ["score", "Spielstand"], ["timer", "Timer"], ["series", "Serie"],
+  ["texts", "Texte im Overlay"], ["sponsor", "Sponsoren"], ["note", "Notiz"]];
+const PANEL_DEFAULTS = {
+  "intro": ["timer", "texts", "sponsor"], "cast-duo": ["timer", "texts", "note"], "cast-solo": ["timer", "texts", "note"],
+  "cast-duo-clips": ["note"], "cast-solo-clips": ["note"], "cast-duo-interview": ["series", "texts", "note"], "cast-solo-interview": ["series", "texts", "note"],
+  "map-veto": ["veto", "series"], "players": ["series", "note"], "series": ["series", "score"], "sponsors": ["sponsor"],
+  "ingame": ["score", "series", "note"], "pause": ["timer", "texts", "sponsor"], "end": ["series", "texts", "sponsor"],
+  "scoreboard": ["score", "series"], "team-a": ["score", "series"], "team-b": ["score", "series"], "h2h": ["score", "series"], "bracket": ["note"]
+};
+let sceneToolsShown = "";
+const panelList = k => (ui.panels && ui.panels[k]) || PANEL_DEFAULTS[k] || [];
+const panelChanged = k => !!(ui.panels && ui.panels[k]);
 function sceneNow() {
   if (onSource()) return (Z.broadcast || {}).scene || "";
   const list = sceneCfg().list, k = Object.keys(list).find(x => list[x].obs && list[x].obs === currentScene);
   return k || "";
 }
 function sceneToolsDraw() {
-  const k = sceneNow(), tool = SCENE_TOOLS[k] || sceneToolsForced;
+  const k = sceneNow(), list = panelList(k);
   $("sceneToolsName").textContent = k ? audioSceneTitle(k) : "–";
-  $("sceneToolsHint").textContent = tool ? "" : "Für diese Szene gibt es hier nichts einzustellen.";
-  $("sceneToolsOther").hidden = !!tool;
-  const veto = tool === "veto";
-  $("sceneToolsVeto").hidden = !veto;
-  if (veto) vetoDraw();
+  $("sceneToolsHint").textContent = !k ? "Keine Szene im Programm." : list.length ? (panelChanged(k) ? "angepasst" : "Vorgabe") : "Für diese Szene gibt es hier nichts einzustellen.";
+  $("sceneToolsOther").hidden = !k || !!list.length;
+  $("panelFieldsButton").hidden = !k;
+  const box = $("panelFields");
+  PANEL_FIELDS.forEach(([f]) => { const e = box.querySelector(`[data-panel="${f}"]`); e.hidden = !list.includes(f); });
+  list.forEach(f => { const e = box.querySelector(`[data-panel="${f}"]`); if (e) box.appendChild(e); });   // Reihenfolge wie gewählt
+  if (list.includes("veto")) vetoDraw();
+  panelValues();
+  $("pNote").value = (ui.notes || {})[k] || "";
 }
-$("sceneToolsVetoShow").onclick = () => { sceneToolsForced = "veto"; sceneToolsDraw(); };
+// Werte der Felder: Spielstand, Timer, Serie, Sponsoren (aufgerufen von mbarDraw und beim Szenenwechsel)
+function panelValues() {
+  if (!$("pNameA")) return;
+  $("pNameA").textContent = Z.teams.a.name || "Team A"; $("pNameB").textContent = Z.teams.b.name || "Team B";
+  $("pScoreA").textContent = Z.teams.a.score || 0; $("pScoreB").textContent = Z.teams.b.score || 0;
+  $("pTimer").textContent = K.time(K.timerRest(Z.timer)); $("pStart").textContent = Z.timer.running ? "Pause" : "Start";
+  const series = $("mbarSeries") ? $("mbarSeries").innerHTML : "";
+  if ($("pSeries").innerHTML !== series) $("pSeries").innerHTML = series;
+  $("pSeriesEmpty").hidden = !!series;
+  const names = sponsorEntries().map((x, i) => x.name || "Sponsor " + (i + 1)), key = names.join("\n");
+  if ($("pSponsors")._k !== key) {
+    $("pSponsors")._k = key; $("pSponsors").innerHTML = "";
+    names.forEach((n, i) => { const b = document.createElement("button"); b.className = "button"; b.innerHTML = icon("play") + esc(n); b.onclick = () => sponsorShowgfx(i); $("pSponsors").appendChild(b); });
+  }
+  $("pSponsorsEmpty").hidden = !!names.length;
+}
+$("pPlusA").onclick = () => mbarPoint("a", 1); $("pMinusA").onclick = () => mbarPoint("a", -1);
+$("pPlusB").onclick = () => mbarPoint("b", 1); $("pMinusB").onclick = () => mbarPoint("b", -1);
+$("pStart").onclick = () => $("mbarStart").click();
+$("pPlus1").onclick = () => $("mbarPlus1").click(); $("pMinus1").onclick = () => $("mbarMinus1").click();
+$("pNote").oninput = () => { const k = sceneNow(); if (!k) return; ui.notes = Object.assign({}, ui.notes, { [k]: $("pNote").value }); uiSave(); };
+// „Felder": an/aus je Feld für die Szene im Programm, oder zurück auf die Vorgabe
+function panelMenuDraw() {
+  const k = sceneNow(), list = panelList(k), m = $("panelMenu");
+  m.innerHTML = `<div class="small">Felder für „${esc(audioSceneTitle(k))}“</div>` +
+    PANEL_FIELDS.map(([f, n]) => `<label class="toggleSwitch"><input type="checkbox" data-f="${f}"${list.includes(f) ? " checked" : ""}> ${esc(n)}</label>`).join("") +
+    `<label class="toggleSwitch"><input type="checkbox" id="panelAuto"${ui.panelAuto !== false ? " checked" : ""}> Panel öffnet sich beim Szenenwechsel</label>` +
+    `<button class="button" id="panelDefault"${panelChanged(k) ? "" : " disabled"}>Auf Vorgabe zurück</button>`;
+  m.querySelectorAll("[data-f]").forEach(c => c.onchange = () => {
+    const now = panelList(k).filter(f => f !== c.dataset.f);
+    if (c.checked) now.push(c.dataset.f);
+    ui.panels = Object.assign({}, ui.panels, { [k]: PANEL_FIELDS.map(([f]) => f).filter(f => now.includes(f)) });
+    uiSave(); sceneToolsDraw(); panelMenuDraw();
+  });
+  $("panelAuto").onchange = () => { ui.panelAuto = $("panelAuto").checked; uiSave(); };
+  $("panelDefault").onclick = () => { const p = Object.assign({}, ui.panels); delete p[k]; ui.panels = p; uiSave(); sceneToolsDraw(); panelMenuDraw(); };
+}
+document.body.appendChild($("panelMenu"));                    // liegt über allem, egal in welchem Dock das Panel steckt
+const panelMenuToggle = (open, button) => {
+  $("panelMenu").hidden = !open;
+  if (open) { panelMenuDraw(); beside(button || $("panelFieldsButton"), $("panelMenu"), true); }
+};
+$("panelFieldsButton").onclick = ev => { ev.stopPropagation(); panelMenuToggle($("panelMenu").hidden); };
+$("panelFieldsAdd").onclick = ev => { ev.stopPropagation(); panelMenuToggle(true, $("panelFieldsAdd")); };
+$("panelMenu").addEventListener("click", ev => ev.stopPropagation());
+document.addEventListener("click", () => { if (!$("panelMenu").hidden) panelMenuToggle(false); });
+addEventListener("keydown", ev => { if (ev.key === "Escape" && !$("panelMenu").hidden) panelMenuToggle(false); });
+// beim Szenenwechsel: Panel öffnen (zugeklappt oder als Tab hinten) – außer der Schalter ist aus
+function panelReveal() {
+  const d = document.querySelector('[data-area="scene-tools"]'); if (!d || ui.panelAuto === false || !panelList(sceneNow()).length) return;
+  d.open = true;
+  const g = d.parentElement && d.parentElement.classList.contains("tabgroup") ? d.parentElement : null;
+  if (g && g.dataset.active !== "scene-tools") { g.dataset.active = "scene-tools"; tabsDraw(g); }
+}
 $("vEditLive").onclick = () => {
   tabs("match"); ui.below = Object.assign({}, ui.below, { match: "veto" }); uiSave(); belowApply();
   const d = document.querySelector('[data-area="map-veto"]'); if (d) { d.open = true; d.scrollIntoView({ block: "start", behavior: "smooth" }); }
 };
 setInterval(() => {                                           // jeder Weg zählt: Klick, Strg K, OBS, Sitzung laden
+  if (!$("panelFields").querySelector('[data-panel="timer"]').hidden) $("pTimer").textContent = K.time(K.timerRest(Z.timer));
   const k = sceneNow(); if (k === sceneToolsShown) return;
-  if (sceneToolsShown) sceneToolsForced = "";
-  sceneToolsShown = k; sceneToolsDraw();
+  const first = !sceneToolsShown; sceneToolsShown = k; sceneToolsDraw();
+  if (!first) panelReveal();
 }, 250);

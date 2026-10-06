@@ -55,7 +55,7 @@ Sicherungen (`.json`) und Theme-Dateien aus 2.1 lassen sich weiter laden.
 1. **Casting-App** starten.
 2. Es öffnet sich das Fenster **Casting-App**. Die Karte **„Erste Schritte"** führt durch alles Weitere:
    * **OBS verbinden:** OBS → Werkzeuge → WebSocket-Server-Einstellungen → „WebSocket-Server aktivieren".
-     Port und Passwort („Verbindungsinformationen anzeigen") in der App unter **⚙ App-Einstellungen → Verbindung zu OBS** eintragen.
+     Port und Passwort („Verbindungsinformationen anzeigen") in der App unter **⚙ App-Einstellungen → Verbindungen & Zugänge** eintragen.
    * **Szenen einrichten:** Setup → **Szenen & OBS** → **„Szene ‚Cast – Sendung‘ in OBS anlegen"**. In OBS gibt es dann die Szene „Cast – Sendung"
      mit einer Browserquelle (mit dem Zugangsschlüssel der App). Wer die Browserquelle lieber selbst anlegt:
      **„Overlay-Adresse kopieren"** und in OBS als Browserquelle (1920 × 1080) einfügen.
@@ -66,8 +66,8 @@ Sicherungen (`.json`) und Theme-Dateien aus 2.1 lassen sich weiter laden.
 
 ### Aufbau
 
-* **Live** – nur, was du in der Sendung brauchst: Programm-Vorschau, Szenen, **Zur Szene** (was die laufende Szene
-  braucht – bei „Map-Veto“ das Veto zum Klicken), **Match** (Punkte, Map, Serie, Timer), **Turnier live** (Gruppe, Team hervorheben, „Tabelle zeigen“), Einblendungen und Ton.
+* **Live** – nur, was du in der Sendung brauchst: Programm-Vorschau, Szenen, **Panel der Szene** (was die laufende Szene
+  braucht – bei „Map-Veto“ das Veto zum Klicken, bei Ingame Spielstand und Serie), **Match** (Punkte, Map, Serie, Timer), **Turnier live** (Gruppe, Team hervorheben, „Tabelle zeigen“), Einblendungen und Ton.
 * **Match** – Unterseiten: Import & Sitzungen · Teams & Spieler · Map-Veto & Serie · Caster & Kameras · Timer & Texte (und „Alle“).
 * **Turnier** – eigener Bereich für Baum, Tabelle und FACEIT-Abgleich.
 * **Setup** – Unterseiten: Aussehen · Sponsoren · Map-Pool · Hintergrund · Szenen & OBS · CS2-Livedaten.
@@ -77,6 +77,31 @@ Sicherungen (`.json`) und Theme-Dateien aus 2.1 lassen sich weiter laden.
 * **Layout bearbeiten** (Symbol oben rechts neben ⚙, im Menü Arbeitsbereiche oder Strg K): oben erscheint die Leiste
   „LAYOUT BEARBEITEN“ mit „Als Arbeitsbereich speichern“ und „Fertig“. Nur dann lassen sich Bereiche ziehen, andocken und in der Größe ändern –
   im Normalbetrieb verschiebt sich nichts aus Versehen. Leere Reiter-Spalten blenden sich aus.
+
+### Panel der Szene (Live)
+
+Das Panel zeigt, was die Szene im Programm gerade braucht – es wechselt mit jeder Szene und klappt dabei von selbst auf:
+
+| Szene | Felder (Vorgabe) |
+|---|---|
+| Intro, Pause | Timer, Texte im Overlay (Titel, Lauftext), Sponsoren |
+| Cast Solo/Duo | Timer, Texte im Overlay, Notiz |
+| Map-Veto | Map-Veto, Serie |
+| Ingame | Spielstand, Serie, Notiz |
+| Scoreboard, Team A/B, Head-to-Head | Spielstand, Serie |
+| Interview, Ende | Serie, Texte im Overlay (Ende: Sponsoren) |
+
+* **Felder** (oben im Panel): je Feld ein Schalter – gilt für die Szene im Programm und bleibt gemerkt. „Auf Vorgabe zurück“ stellt sie wieder her.
+  Dort auch der Schalter **„Panel öffnet sich beim Szenenwechsel“**.
+* Alle Felder bedienen dieselben Daten wie Match und Setup – wer hier einen Punkt gibt oder den Titel ändert, sieht es dort sofort.
+* **Notiz:** nur für dich, je Szene – sie erscheint nie im Stream und wandert nicht in Sicherungen.
+
+### Bedienung auf einen Blick
+
+* **Tasten** (erhaben, leuchten lila beim Drüberfahren) = klickbar · **Schalter** = an/aus · **Punkt + Text** = nur Anzeige.
+* Farben: **Rot** = LIVE (Szene im Programm) · **Grün** = OK/an · **Gelb** = läuft/wartet · **Grau** = aus · **Lila** = dein nächster Schritt.
+* **Größe:** passt sich von selbst dem Fenster an (1920 px = 100 %, 2560 px = 130 %). „Auto“ oben rechts bzw. ⚙ → Oberfläche;
+  mit − / + stellst du sie von Hand ein.
 
 ### Teams, Kürzel und Serie
 
@@ -90,11 +115,10 @@ Sicherungen (`.json`) und Theme-Dateien aus 2.1 lassen sich weiter laden.
 Speichere ein Match als Sitzung („Speichern“, „Speichern unter …“) und lade es später mit „Laden“. „Sichern (.json)“ und
 „Laden (.json)“ bringen alles auf einen anderen PC. „Alles zurücksetzen“ fragt vorher nach.
 
-### Map-Veto (Live → Zur Szene · Match → Map-Veto & Serie)
+### Map-Veto (Live → Panel der Szene · Match → Map-Veto & Serie)
 
-**Während der Sendung:** Läuft die Szene **Map-Veto**, zeigt Live → **Zur Szene** das Veto: wer dran ist, die freien Maps
-als Knöpfe, alle Schritte auf einen Blick und bei Picks die Seite. In anderen Szenen holt „Map-Veto trotzdem hier zeigen“
-es bis zum nächsten Szenenwechsel dazu. Unter Match bearbeitest du dasselbe Veto – beide Stellen zeigen immer den gleichen Stand.
+**Während der Sendung:** Läuft die Szene **Map-Veto**, zeigt Live → **Panel der Szene** das Veto: wer dran ist, die freien Maps
+als Knöpfe, alle Schritte auf einen Blick und bei Picks die Seite. In anderen Szenen holst du es über **Felder** dazu. Unter Match bearbeitest du dasselbe Veto – beide Stellen zeigen immer den gleichen Stand.
 
 **Vorbereitung (Match):** Quelle „Manuell“ oder „FACEIT“, Format/Preset wählen, „Neu starten“. „↶ Rückgängig“ nimmt den letzten Schritt zurück.
 Eigene Abläufe mit „+ Schritt“ bauen und „Als Preset speichern“. Gewonnene Maps zählen auf Wunsch automatisch als Punktestand.
@@ -112,7 +136,7 @@ Lauftext: eine Meldung pro Zeile, Tempo einstellbar; dazu ein großer Titel.
 ### DACH CS – Offiziell (fünfter Stil)
 
 Setup → Aussehen → Stil **„DACH CS – Offiziell“** wählen, **Nutzer-ID** und **Key** aus dem DACH-CS-Nutzerbereich
-(Casting → Browserquellen) eintragen. Der Key wird verschlüsselt gespeichert und nie wieder angezeigt.
+(Casting → Browserquellen) unter **⚙ App-Einstellungen → Verbindungen & Zugänge** eintragen. Der Key wird verschlüsselt gespeichert und nie wieder angezeigt.
 
 * Alles läuft in **einer** Browserquelle („Cast – Overlay“): Live → Szenen zeigt die 25 DACH-Seiten (Overview, Single-/Duocam,
   Lineup, Mapveto, Ingame, Tabelle, Playoffs, Matches, MVP, Pausen, Interaktion, Interviews, Endscreen). Die neue Seite wird
@@ -190,7 +214,7 @@ trotzdem in die ganze Szene. In jeder anderen Szene wechseln die Knöpfe ganz no
 
 ### Reiter
 
-* **Live** – während der Sendung: Szenen, Zur Szene (z. B. Map-Veto), Match, Turnier live, Einblendungen, Ton.
+* **Live** – während der Sendung: Szenen, Panel der Szene (z. B. Map-Veto, Spielstand), Match, Turnier live, Einblendungen, Ton.
 * **Match** – das aktuelle Spiel: Sitzungen, FACEIT, Map-Veto, Teams, Spieler, Timer, Lauftexte, Caster, Kameras.
 * **Turnier** – Baum, Tabelle, FACEIT-Turnier.
 * **Setup** – Themes, Überschriften, Sponsoren, Map-Pool, Hintergrund, OBS-Szenen, CS2-Daten.
@@ -258,17 +282,23 @@ In der Szene **Ingame** weichen alle Positionen dem Spiel-HUD aus (Minimap, Scor
 * **Lage frei wählbar** (⚙ → Oberfläche oder Strg K): Reiter-Spalte links/rechts, Seiten-Dock links/rechts der Vorschau,
   Vorschau-Dock unter oder über der Vorschau.
 * **Trennlinien** ziehen, um Breite bzw. Höhe zu ändern. Der Knopf oben links an der Vorschau klappt sie ein und wieder auf.
-* Oben: Verbindungsanzeige („… von 3 verbunden“: OBS, Overlays, Musik), **Suchen & Befehle**, **Alle einklappen / aufklappen**, **− / 100 % / +** alles kleiner/größer, Layout bearbeiten, **⚙** App-Einstellungen, **Ein/Aus** Schließen oder ganz beenden.
+* Oben: Verbindungsanzeige („… von 3 verbunden“: OBS, Overlays, Musik), **Suchen & Befehle**, **Alle einklappen / aufklappen**, **− / Auto / +** alles kleiner/größer (Auto = passt sich dem Fenster an), Layout bearbeiten, **⚙** App-Einstellungen, **Ein/Aus** Schließen oder ganz beenden.
 
 ### App-Einstellungen (⚙)
 
-Alles, was nur die App betrifft – oben springt eine Leiste direkt zu **OBS · Update · Sprache · Aussehen · Musik**
-(der Bereich scrollt, auch in kleinen Fenstern): **Verbindung zu OBS**, **Update**, **Sprache · Language**,
-**Aussehen & Oberfläche** (Dunkel, Hell, Wie Windows; Größe der Oberfläche; Lage von Reiter-Spalte, Seiten-Dock und
-Vorschau-Dock; „Anordnung zurücksetzen“, „‚Erste Schritte‘ wieder zeigen“), **Musik (Spotify über Tuna)**. Beenden geht über den Ein/Aus-Knopf oben rechts, Daten & Log liegen im Reiter **Log**.
-Alles rund um CS bleibt in den Reitern.
+Eine eigene Seite für alles, was nur die App auf diesem PC betrifft – links die Liste (mit Status-Punkt), rechts ein Bereich;
+**Schließen** oder Esc führt zurück:
 
-**Browserquellen umstellen:** Unter ⚙ → Verbindung zu OBS zeigt die App, welche ihrer Browserquellen noch keinen
+* **Verbindungen & Zugänge** – OBS (Port, Passwort), **FACEIT-Schlüssel**, **DACH CS** (Nutzer-ID, Key), Musik (Spotify über Tuna).
+  Schlüssel liegen im Schlüsselbund des Systems und werden nach dem Speichern nie wieder angezeigt – nur ersetzen oder löschen.
+  (Unter Match → Import und Setup → Aussehen führt ein Verweis hierher.)
+* **Sprache** · **Oberfläche** (Dunkel, Hell, Wie das System; Größe automatisch oder von Hand; Lage von Reiter-Spalte, Seiten-Dock
+  und Vorschau-Dock; „Anordnung zurücksetzen“, „‚Erste Schritte‘ wieder zeigen“) · **Update**
+* **Daten & Sicherung** – Sichern/Laden (.json), Videos-, Schriften- und Datenordner · **Über die App**
+
+Beenden geht über den Ein/Aus-Knopf oben rechts. Alles rund um CS bleibt in den Reitern.
+
+**Browserquellen umstellen:** Unter ⚙ → Verbindungen & Zugänge (OBS) zeigt die App, welche ihrer Browserquellen noch keinen
 Zugangsschlüssel haben. „Browserquellen umstellen“ stellt sie um – jede lädt dabei einmal kurz neu, also nicht während
 der Sendung.
 
@@ -317,7 +347,7 @@ Kameras laufen dabei ohne Neuladen weiter.
   * **Das Overlay**: am sichersten WebM (VP9). MP4 (H.264) spielt OBS ab, die Vorschau im App-Fenster aber nicht. Die App prüft jedes Video.
 * **Einstellungen, Bilder und Log** liegen in *%APPDATA%\Casting-App* (Linux/macOS: *~/.casting-app*). Der Reiter **Log** zeigt, was gerade passiert,
   welche Overlays verbunden sind (auch die in OBS) und öffnet alle Ordner.
-* **FACEIT:** Match → Import & Sitzungen → FACEIT: API-Key (Server side, von developers.faceit.com) → „Schlüssel speichern“,
+* **FACEIT:** ⚙ App-Einstellungen → Verbindungen & Zugänge → FACEIT: API-Key (Server side, von developers.faceit.com) → „Schlüssel speichern“; dann unter Match → Import & Sitzungen den
   Matchroom-Link einfügen, „Daten holen" (optional „alle 15 s aktualisieren“).
 * **CS2-Livedaten:** Setup → CS2-Livedaten führt Schritt für Schritt durch die Einrichtung – für CS2 auf diesem PC
   („Automatisch einrichten“, „Auf allen Laufwerken suchen“, Pfad direkt eintippen – mit Vorschlägen – oder „Ordner durchsuchen …“
@@ -359,7 +389,7 @@ Die macOS-App ist nur ad-hoc signiert (ohne Apple-Konto); die Beglaubigung durch
   Browserquellen aus älteren Versionen findet die App beim Verbinden mit OBS und fragt, ob sie sie umstellen soll
   (jede lädt dabei einmal kurz neu – nicht während des Streams bestätigen). Bis dahin zeigen sie alles außer den
   DACH-CS-Seiten und den Kameras (Kamera-Links können Passwörter enthalten und gehen nur an Quellen mit Schlüssel).
-  Die Steuerseite im normalen Browser: ⚙ App-Einstellungen → Verbindung zu OBS → „Steuerseite im Browser öffnen“
+  Die Steuerseite im normalen Browser: ⚙ App-Einstellungen → Verbindungen & Zugänge → „Steuerseite im Browser öffnen“
   (der Link gilt einmal und 2 Minuten – im Browser-Verlauf ist er danach wertlos).
 * **Kaputte Dateien halten die App nicht auf:** Ist z. B. nach einem Stromausfall eine Datei im Datenordner beschädigt,
   legt die App sie als `….damaged` beiseite, startet mit Standardwerten und schreibt es ins Log.

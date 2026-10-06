@@ -23,6 +23,7 @@ function mbarDraw() {
   $("mbarNameA").textContent = Z.teams.a.name || "Team A"; $("mbarNameB").textContent = Z.teams.b.name || "Team B";
   $("mbarScoreA").textContent = Z.teams.a.score || 0; $("mbarScoreB").textContent = Z.teams.b.score || 0;
   $("mbarTimer").textContent = K.time(K.timerRest(Z.timer)); $("mbarStart").textContent = Z.timer.running ? "Pause" : "Start";
+  panelValues();
   const T = Z.tournament || {}, B = K.tournamentBuild(T, CastI18n.language);
   const groups = `<option value="">Alle Gruppen</option>` + (B.groups || []).map((g, i) => `<option value="${i}"${String(T.showGroup ?? "") === String(i) ? " selected" : ""}>${esc(g.name)}</option>`).join("");
   if ($("mbarGroup")._h !== groups) { $("mbarGroup").innerHTML = groups; $("mbarGroup")._h = groups; }

@@ -18,7 +18,7 @@ window.CastCore = (function () {
   "use strict";
 
   const KEY = "cast-state-v1";
-  const VERSION = "2.5.0";                     // muss zur App passen – sonst lädt sich die Seite neu
+  const VERSION = "2.6.0";                     // muss zur App passen – sonst lädt sich die Seite neu
   // Läuft die Seite über den Server der App (http://localhost:8787)?
   const SERVER = /^https?:$/.test(location.protocol) && location.port === "8787" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
@@ -189,18 +189,18 @@ window.CastCore = (function () {
     },
     timer: { running: false, target: 0, rest: 10 * 60000 },
 
-    // Aktive-Duty-Pool CS2 (Stand 2026) – in der Steuerseite erweiterbar
+    // Active-Duty-Pool CS2 (Stand Season 5, Juli 2026: Cache ersetzt Overpass) – in der Steuerseite erweiterbar
     mapPool: [
       { name: "Ancient",  image: "media/maps/de_ancient.jpg",  active: true },
       { name: "Anubis",   image: "media/maps/de_anubis.jpg",   active: true },
+      { name: "Cache",    image: "media/maps/de_cache.jpg",    active: true },
       { name: "Dust II",  image: "media/maps/de_dust2.jpg",    active: true },
       { name: "Inferno",  image: "media/maps/de_inferno.jpg",  active: true },
       { name: "Mirage",   image: "media/maps/de_mirage.jpg",   active: true },
       { name: "Nuke",     image: "media/maps/de_nuke.jpg",     active: true },
-      { name: "Overpass", image: "media/maps/de_overpass.jpg", active: true },
+      { name: "Overpass", image: "media/maps/de_overpass.jpg", active: false },
       { name: "Train",    image: "media/maps/de_train.jpg",    active: false },
       { name: "Vertigo",  image: "media/maps/de_vertigo.jpg",  active: false },
-      { name: "Cache",    image: "media/maps/de_cache.jpg",    active: false },
       { name: "Office",   image: "media/maps/cs_office.jpg",   active: false },
       { name: "Italy",    image: "media/maps/cs_italy.jpg",    active: false }
     ],

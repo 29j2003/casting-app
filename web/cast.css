@@ -536,3 +536,6 @@ body.idle.dach-frame-show .dach-frame-name { display: block; position: absolute;
 .dach-cam { background: #000 !important; border: 0 !important; box-shadow: none !important; }
 /* Hinweise wie „Kamera nicht verfügbar“ nur in der Vorschau – im Stream bleibt das Feld schwarz */
 body:not(.idle) .preview-only { visibility: hidden; }
+
+/* Timer bei 0:00 mit eigenem Text (Timer & Texte → „Bei 0:00“): Text passt sich der Breite an */
+.timer .timer-end { font-size: .5em; letter-spacing: .04em; white-space: nowrap; }

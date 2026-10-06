@@ -60,6 +60,52 @@ const DB = (() => {
   }));
   return { all: () => tx("readonly", s => s.getAll()), set: (name, z) => tx("readwrite", s => s.put({ name, z, date: Date.now() })), erase: name => tx("readwrite", s => s.delete(name)) };
 })();
+// Team-Bibliothek: Teams mit Logo, Farben und Spielern auf diesem PC (eigene Datenbank, nicht Teil der Sendung)
+const TEAM_DB = (() => {
+  let db;
+  const openDb = () => db ? Promise.resolve(db) : new Promise((ok, no) => {
+    const r = indexedDB.open("cast-teams", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("t", { keyPath: "name" });
+    r.onsuccess = () => ok(db = r.result); r.onerror = () => no(r.error);
+  });
+  const tx = (mode, f) => openDb().then(d => new Promise((ok, no) => {
+    const t = d.transaction("t", mode), r = f(t.objectStore("t"));
+    t.oncomplete = () => ok(r && r.result); t.onerror = () => no(t.error);
+  }));
+  return { all: () => tx("readonly", s => s.getAll()), set: entry => tx("readwrite", s => s.put(entry)), erase: name => tx("readwrite", s => s.delete(name)) };
+})();
+async function teamLibDraw(selection) {
+  let list = [];
+  try { list = await TEAM_DB.all(); } catch (e) { $("teamLibStatus").textContent = "Die Team-Bibliothek ist in diesem Browser nicht verfügbar."; }
+  list.sort((a, b) => a.name.localeCompare(b.name));
+  const s = $("teamLib"); s.innerHTML = "";
+  if (!list.length) s.appendChild(new Option("– noch keine –", ""));
+  list.forEach(x => s.appendChild(new Option(x.name, x.name, false, x.name === selection)));
+  ["teamLibA", "teamLibB", "teamLibDelete"].forEach(id => $(id).disabled = !list.length);
+}
+async function teamLibSave(k) {
+  const t = Z.teams[k], name = (t.name || "").trim();
+  if (!name) { $("teamLibStatus").textContent = "Erst einen Teamnamen eintragen."; return; }
+  const team = K.clone(t); delete team.score;
+  try { await TEAM_DB.set({ name, team, players: K.clone((Z.players || {})[k] || []), date: Date.now() }); $("teamLibStatus").textContent = `✓ „${name}“ gespeichert`; teamLibDraw(name); }
+  catch (e) { $("teamLibStatus").textContent = "Speichern fehlgeschlagen: " + (e.message || e); }
+}
+async function teamLibLoad(k) {
+  const name = $("teamLib").value; if (!name) return;
+  const entry = (await TEAM_DB.all()).find(x => x.name === name); if (!entry) return;
+  Z.teams[k] = Object.assign({}, entry.team, { score: Z.teams[k].score || 0 });
+  Z.players = Z.players || {}; Z.players[k] = K.clone(entry.players || []);
+  teamDraw(k); playersDraw(k); mbarDraw(); send();
+  $("teamLibStatus").textContent = `✓ „${name}“ ist jetzt Team ${k.toUpperCase()}`;
+}
+$("teamLibSaveA").onclick = () => teamLibSave("a"); $("teamLibSaveB").onclick = () => teamLibSave("b");
+$("teamLibA").onclick = () => teamLibLoad("a"); $("teamLibB").onclick = () => teamLibLoad("b");
+$("teamLibDelete").onclick = async () => {
+  const name = $("teamLib").value; if (!name) return;
+  if (!await confirmDialog({ title: `„${name}“ aus der Bibliothek löschen?`, text: "Die Teams im laufenden Match bleiben, wie sie sind.", button: "Löschen" })) return;
+  await TEAM_DB.erase(name); teamLibDraw(); $("teamLibStatus").textContent = `„${name}“ gelöscht.`;
+};
+teamLibDraw();
 const activeSession = () => { try { return localStorage.getItem("cast-session-active") || ""; } catch (e) { return ""; } };
 async function sessionsDraw(selection) {
   let list = [];

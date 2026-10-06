@@ -269,6 +269,13 @@
           <label class="toggleSwitch"><input type="checkbox" id="result"> Ergebnis statt „VS" anzeigen</label>
           <button class="button" id="swap" data-icon="swap">Teams tauschen</button>
         </div>
+        <div class="team-library">
+          <b class="small">TEAM-BIBLIOTHEK</b>
+          <div class="line" style="align-items:end"><label style="flex:1">Gespeicherte Teams<select id="teamLib"></select></label>
+            <button class="button" id="teamLibA">→ Team A</button><button class="button" id="teamLibB">→ Team B</button><button class="button danger" id="teamLibDelete">Löschen</button></div>
+          <div class="line"><button class="button" id="teamLibSaveA">Team A speichern</button><button class="button" id="teamLibSaveB">Team B speichern</button>
+            <span class="small" id="teamLibStatus">Name, Kürzel, Logo, Farben und Spieler – für Teams, die öfter spielen. Bleibt auf diesem PC.</span></div>
+        </div>
       </div>
     </details>
 
@@ -296,6 +303,10 @@
           <button class="button" id="tSet">Setzen</button>
           <label>oder bis Uhrzeit<input type="time" id="tUntil"></label>
           <button class="button" id="tUntilSet">Setzen</button>
+        </div>
+        <div class="line" style="align-items:end">
+          <label style="flex:1">Bei 0:00 im Overlay zeigen (leer = „00:00“)<input type="text" data-field="timer.end.text" placeholder="z. B. GLEICH GEHT'S LOS"></label>
+          <label>und wechseln zu<select id="tEndScene" aria-label="Szene bei 0:00"></select></label>
         </div>
       </div>
     </details>

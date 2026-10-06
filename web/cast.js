@@ -87,6 +87,9 @@
     const r = document.documentElement.style;
     r.setProperty("--dark", T.dark); r.setProperty("--light", T.light);
     r.setProperty("--text-dark", T.textDark); r.setProperty("--accent", T.accent);
+    r.setProperty("--paper", T.light); r.setProperty("--paper-text", T.textDark);        // Logo-Felder bleiben hell (Box-Stil)
+    const boxStyle = ["dark", "mixed"].includes(T.boxStyle) ? T.boxStyle : "";
+    if ((document.body.dataset.boxstyle || "") !== boxStyle) { if (boxStyle) document.body.dataset.boxstyle = boxStyle; else delete document.body.dataset.boxstyle; }
     r.setProperty("--accent-rgb", rgb(T.accent));
     r.setProperty("--accent-readable", readable(T.accent, T.light));
     r.setProperty("--line", T.stroke ? "5px" : "0px");

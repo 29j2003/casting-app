@@ -195,6 +195,14 @@ Spielt OBS ab (`source: "obs"`), bekommt die Quelle „Cast – Hintergrund“ d
 `GetPublishedFileDetails`; das Vorschaubild nur über HTTPS von Steams Bild-Servern (auch nach Weiterleitung geprüft),
 größenbegrenzt. Tests: `tests/test_workshop.py`.
 
+### Box-Stil der Overlays (hell · dunkel · Mischung)
+
+Theme-Feld `boxStyle` (`light` Standard, `dark`, `mixed`; in `Z.themeData[theme]`). `cast.js` → `theme()` setzt
+`body[data-boxstyle]` und `--paper`/`--paper-text` (die hellen Theme-Farben). `cast.css` (Abschnitt „Box-Stil“) stellt bei
+dunkel/Mischung `--light`/`--text-dark` auf dunkel um – alle Felder, die `var(--light)` nutzen, folgen. Logo-Felder
+(Sponsor, Marke) nutzen `--paper` und bleiben hell; bei Mischung auch Titel (`[data-part=title]`, `[data-part=head]`, `.large`).
+Neue helle Fläche, die in jedem Stil hell bleiben soll → `var(--paper)`.
+
 ### Form und Farbe (Konzept 3.0)
 
 Abschnitt „Konzept 3.0“ am Ende von `web/control.css`: `.button` = Taste (erhaben, lila Leuchten, sinkt beim Drücken),

@@ -1,7 +1,8 @@
 # Casting-App – Handbuch für Änderungen
 
 Dieses Handbuch erklärt, wie die App aufgebaut ist und wie man typische Änderungen macht, Schritt für Schritt.
-Für Nutzer der App gibt es [LIESMICH.md](LIESMICH.md). Alles für Entwickler steht hier – auch Tests, Bauen, Signieren und Release.
+Für Nutzer der App gibt es [README.md](README.md) (Anleitung). Alles für Entwickler steht hier – auch Tests, Bauen, Signieren und Release.
+Die Kurzfassung der Regeln für den KI-Assistenten Claude Code liegt in `.claude/CLAUDE.md`.
 
 **Regel für alle Änderungen:** Namen im Code sind englisch (Variablen, Funktionen, CSS-Klassen, IDs, Dateien,
 JSON-Felder). Texte, die Nutzer sehen, sind deutsch und bekommen eine englische Übersetzung (siehe [Texte](#texte-und-sprachen)).
@@ -53,7 +54,8 @@ JSON-Felder). Texte, die Nutzer sehen, sind deutsch und bekommen eine englische 
 |---|---|
 | `casting_app/__main__.py` | Start (Desktop-App oder `--no-window`) |
 | `casting_app/server/app_server.py` | jede Anfrage: Sicherheitsprüfung, alle `/api`-Routen, Dateien |
-| `casting_app/desktop/` | Fenster, Tray, Brücke `window.castApp`, Ton im App-Fenster |
+| `casting_app/desktop/` | Fenster, Tray, Brücke `window.castApp`, Ton im App-Fenster, H.264-Umleitung (`media.py`) |
+| `casting_app/server/media_converter.py` | H.264 → WebM mit FFmpeg für das App-Fenster (`/api/media`) |
 | `web/control.html` | Steuerseite: Aufbau (Reiter, Karten, Dialoge) |
 | `web/control.css` | Steuerseite: Aussehen (Farben als Variablen in `:root`) |
 | `web/control/01-core.js` … `13-app.js` | Steuerseite: Logik nach Themen (Lageplan in `01-core.js`); der Server liefert sie verbunden als `/control.js` |
@@ -227,8 +229,14 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
   Beim Wechsel sitzen die Kameras sofort in den neuen Rahmen und laufen mit derselben Animation wie die neue Seite;
   `.dach-under` (z 0) füllt die Löcher beider Seiten schwarz, bis der Wechsel fertig ist. Neue Seite vermessen:
   Video/Screenshot der Seite, gelbe Linie suchen (1920 × 1080), Werte in `DACH_FRAME` eintragen.
-* **Videoformate:** Qt WebEngine aus PySide6 kann kein H.264/AAC (VP8/VP9/AV1 ja). OBS (CEF) kann H.264 – Overlays in OBS
-  sind nicht betroffen; im App-Fenster zeigt `dachNote()` auf DACH-Seiten mit Video einen Hinweis (nur Vorschau).
+* **Videoformate / H.264 im App-Fenster:** Qt WebEngine aus PySide6 kann kein H.264/AAC (VP8/VP9/AV1 ja); OBS (CEF) kann es.
+  Im App-Fenster leitet `desktop/media.py` (`QWebEngineUrlRequestInterceptor`) Medienanfragen auf MP4-artige Dateien auf
+  `/api/media?src=…&t=…` um; `server/media_converter.py` wandelt mit FFmpeg in WebM (VP8 + Opus), streamt schon während
+  der Umwandlung und legt das Ergebnis in `media-cache/` (höchstens 3 GB, Range-fähig). `t` ist `media_token()` aus dem
+  Zugangsschlüssel – fremde Programme können den Server nicht als Download-Werkzeug nutzen. `desktop/scripts/codecs.js`
+  sorgt dafür, dass Seiten MP4 überhaupt anfragen (`canPlayType`, `<source type>`). FFmpeg kommt aus `imageio-ffmpeg`
+  (GPL, eigenes Programm, `LICENSES/FFmpeg.txt`; nicht auf macOS Intel – die Fassung dort ist „nonfree“). Ohne FFmpeg
+  zeigt `dachNote()` in der Vorschau einen Hinweis. Tests: `test_desktop.py` (fremde Seite mit MP4), `test_server.py`.
 * **Schließen:** `closeEvent` wird ignoriert, die Steuerseite zeigt sofort ihren eigenen Dialog
   (Ganz beenden · Nur Fenster schließen · Abbrechen). Bestätigt die Seite nicht binnen 1 s, fragt ein Systemdialog.
   „Nur Fenster schließen“ versteckt das Fenster; das Tray-Symbol bietet Öffnen · Overlays in OBS neu laden · Ganz beenden.
@@ -399,4 +407,5 @@ kommen aus `tools/build.py` – wer sie ändert, muss `asset_suffix()` anpassen.
 * **Overlays ändern sich nicht durch die Desktop-App:** Desktop-Besonderheiten liegen in `casting_app/desktop/` oder
   hinter `window.castApp`.
 * **Geheimnisse** nie in Zustand, Log, Exporte, Dateien, URLs oder API-Antworten – und nie ins Repository.
-* **Doku:** Nutzer-Anleitung nur in `LIESMICH.md`, alles für Entwickler nur hier. `README.md` ist die kurze Startseite.
+* **Doku:** genau zwei Dateien – `README.md` (Startseite und Anleitung für Nutzer) und `ENTWICKLUNG.md` (alles für
+  Entwickler). Dazu `.claude/CLAUDE.md` für Claude Code. Keine weiteren `.md`-Dateien.

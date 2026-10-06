@@ -35,6 +35,7 @@ from . import cs2_setup, faceit
 from .event_hub import EventClient, EventHub
 from .net import ExclusiveHTTPServer, content_length
 from .game_state import LAN_PORT, GameStateReceiver, lan_addresses
+from .media_converter import MediaConverter, media_token
 from .static_files import CONTENT_TYPES, path_inside, send_file
 from .video_info import video_info
 
@@ -130,6 +131,7 @@ class CastingServer:
         self._log_message_times: list[float] = []
         self._routes = self._api_routes()
         self.access_key = self._load_access_key()
+        self.media = MediaConverter(folders.data / "media-cache", log.write)   # H.264 for the app window
         self._access_codes: dict[str, float] = {}    # one-time codes for "open the control page in the browser"
 
         self._state_file = folders.data / "state.json"
@@ -164,6 +166,7 @@ class CastingServer:
     def stop(self) -> None:
         """Save the state and stop listening."""
         self.save_state_now()
+        self.media.stop()
         for server in self._servers:
             server.shutdown()
             server.server_close()
@@ -311,6 +314,10 @@ class CastingServer:
         if path == "/open" and request.command == "GET":
             return self._open_with_code(request, str(query.get("code", "")))
 
+        # the app window asks for H.264 videos as WebM (also from DACH pages: cross-site, so before the check below)
+        if path == "/api/media" and request.command in ("GET", "HEAD"):
+            return self._api_media(request, query)
+
         dach_match = re.match(r"^/dach/([a-z0-9_]{2,30})$", path)
         if dach_match and request.command == "GET":
             return self._redirect_to_dach(request, dach_match.group(1), fetch_site, query)
@@ -375,6 +382,20 @@ class CastingServer:
         except OSError:
             self.log.warn("Zugangsschlüssel konnte nicht gespeichert werden – gilt nur bis zum Beenden")
         return key
+
+    def _api_media(self, request, query: dict) -> None:
+        """/api/media?src=…&t=…: a video as WebM for the app window (see media_converter.py).
+
+        Only with the media token (derived from the access key, known to the app window only) and only
+        for http(s) addresses – no other program can use the app to fetch things.
+        """
+        token, source = str(query.get("t", "")), str(query.get("src", ""))
+        if not hmac.compare_digest(token.encode(), media_token(self.access_key).encode()):
+            return request.send_plain(403)
+        if not re.match(r"^https?://", source) or len(source) > 4000:
+            return request.send_json(400, {"error": "ungültige Adresse"})
+        referer = str(query.get("ref", ""))
+        self.media.serve(request, source, referer if re.match(r"^https?://", referer) and len(referer) < 2000 else "")
 
     def _redirect_to_dach(self, request, page: str, fetch_site: str | None, query: dict) -> None:
         """Forward OBS/the preview to the official DACH CS browser source (ID and key added here only).

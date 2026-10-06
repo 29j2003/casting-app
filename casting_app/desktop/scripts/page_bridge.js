@@ -35,6 +35,8 @@
     desktop: true,
     // the app's access key – handed over here so it never appears in an address, history or browser storage
     accessKey: "__CASTING_APP_ACCESS_KEY__",
+    // H.264 videos (MP4) play here through the app's converter (casting_app/desktop/media.py)
+    canPlayH264: "__CASTING_APP_CAN_CONVERT__" === "true",
     // close dialog: the page registers its dialog and reports the choice ("quit", "window" or "")
     onCloseRequested: handler => { if (typeof handler === "function") onCloseRequested = handler; },
     closeAnswer: choice => toApp({ type: "close-answer", choice: ["quit", "window"].includes(choice) ? choice : "" }),

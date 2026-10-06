@@ -497,7 +497,7 @@ function sourcesDraw() {
       s.onchange = () => { const c = cameras.find(x => x.deviceId === s.value); Q.device = s.value; Q.deviceName = c ? c.label : ""; send(); };
       l.appendChild(s); f.appendChild(l);
       const r = document.createElement("div"); r.className = "line"; r.append(toggleSwitch("audio", "Mikrofon-Ton"), toggleSwitch("mirror", "Spiegeln"), rendering()); f.appendChild(r);
-      f.insertAdjacentHTML("beforeend", `<p class="small">In OBS muss dafür der Kamerazugriff für Browserquellen erlaubt sein – siehe Anleitung (LIESMICH).</p>`);
+      f.insertAdjacentHTML("beforeend", `<p class="small">In OBS muss dafür der Kamerazugriff für Browserquellen erlaubt sein – siehe Anleitung (README).</p>`);
     }
     if (Q.type === "image") {
       const r = document.createElement("div"); r.className = "image-row";

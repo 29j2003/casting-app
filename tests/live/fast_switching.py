@@ -53,7 +53,7 @@ async def check_audio(control) -> bool:
     await control.wait_for_timeout(300)
     await control.click(f"{row} .audio-mute")
     await control.click(f"{row} .gfx-more")
-    await control.click(f"{row} [data-monitor=OBS_MONITORING_TYPE_MONITOR_ONLY]")
+    await control.select_option(f"{row} .audio-monitor-choice", "OBS_MONITORING_TYPE_MONITOR_ONLY")
     await control.fill(f"{row} input[type=number]", "250")
     await control.dispatch_event(f"{row} input[type=number]", "change")
     await control.wait_for_timeout(400)

@@ -257,7 +257,8 @@
   }
   // Das App-Fenster (Qt WebEngine) spielt kein H.264 – Seiten mit DACH-Video bekommen dort einen Hinweis (nur Vorschau, nie in OBS)
   const DACH_VIDEO_PAGES = ["pause_content"];
-  const canH264 = (() => { try { return !!document.createElement("video").canPlayType('video/mp4; codecs="avc1.42E01E"'); } catch (e) { return true; } })();
+  const canH264 = (() => { try { return !!(window.top.castApp && window.top.castApp.canPlayH264)
+    || !!document.createElement("video").canPlayType('video/mp4; codecs="avc1.42E01E"'); } catch (e) { return true; } })();
   function dachNote(Z, page) {
     let note = dachLayer && dachLayer.querySelector(".dach-note");
     const show = !canH264 && DACH_VIDEO_PAGES.includes(page);

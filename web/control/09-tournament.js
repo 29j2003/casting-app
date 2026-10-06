@@ -16,6 +16,8 @@ function tournamentDraw() {
   $("tourTabSettings").hidden = T.format !== "table"; $("tourGroups").value = T.groupsCount || 1; $("tourNext").value = T.nextPlaces ?? 2; $("tourGamesShow").checked = !!T.gamesShow;
   $("tourPointsBox").hidden = T.format !== "table"; pointsDraw();
   $("tourWins").value = T.swiss.wins; $("tourLosses").value = T.swiss.losses;
+  const swissFaceit = T.format === "swiss" && T.gamesSource === "faceit" && (T.games || []).length > 0;   // FACEIT lost aus
+  $("tourDraw").hidden = swissFaceit; $("tourDrawFaceit").hidden = !swissFaceit;
   $("tourMode").value = T.visible.mode; $("tourRound").value = T.visible.round; $("tourResultOff").checked = !!T.visible.resultsOff;
   // Teams
   const box = $("tourTeams"); box.innerHTML = "";
@@ -150,6 +152,27 @@ function faceitResults(T, games) {
   });
   return n;
 }
+// Swiss bei FACEIT erkennen: Typ nennt „swiss“ – oder ab Runde 2 spielen (fast) nur Teams mit gleicher Bilanz gegeneinander
+// (bei „jeder gegen jeden“ ist das nur etwa jedes zweite Spiel)
+function faceitLooksSwiss(games, res, type) {
+  if (/swiss/i.test(String(type || ""))) return true;
+  const rounds = [...new Set(games.map(x => x.round))].sort((a, b) => a - b);
+  if (rounds.length < 2 || rounds.some(r => r < 0)) return false;
+  const record = {}, rec = id => record[id] || (record[id] = { s: 0, n: 0 });
+  let same = 0, counted = 0;
+  rounds.forEach((r, i) => {
+    const inRound = games.filter(x => x.round === r);
+    if (i > 0) inRound.forEach(x => { if (!x.a || !x.b) return; counted++; const a = rec(x.a), b = rec(x.b); if (a.s === b.s && a.n === b.n) same++; });
+    inRound.forEach(x => { const e = res[x.id]; if (!e || !e.done || !x.a || !x.b || +e.a === +e.b) return;
+      const [w, l] = +e.a > +e.b ? [x.a, x.b] : [x.b, x.a]; rec(w).s++; rec(l).n++; });
+  });
+  return counted >= 4 && same / counted >= 0.8;
+}
+// FACEIT-Spiele als Swiss-Runden (die Paarungen kommen von FACEIT, nichts wird ausgelost)
+function swissFromGames(T) {
+  const rounds = [...new Set(T.games.map(x => x.round))].sort((a, b) => a - b);
+  T.swiss.rounds = rounds.map(r => T.games.filter(x => x.round === r).map(x => ({ id: x.id, a: x.a || "BYE", b: x.b || "BYE" })));
+}
 $("tourFaceitAll").onclick = async () => {
   const id = tournamentId($("tourFaceit").value); if (!id) return tourStatus("Bitte einen FACEIT-Turnier-Link einfügen.");
   const T = tour();
@@ -183,16 +206,19 @@ $("tourFaceitAll").onclick = async () => {
     T.games = games.filter(x => x.teams).map(x => ({ id: "F" + x.match_id, round: +x.round || 0, group: groupsNum.length ? Math.max(0, groupsNum.indexOf(x.group)) : 0,
       a: tid(((x.teams || {}).faction1 || {}).faction_id), b: tid(((x.teams || {}).faction2 || {}).faction_id) }));
     T.gamesSource = "faceit";
-    if (tablesKind) {
+    T.res = {}; faceitResults(T, games);
+    if (groupsNum.length <= 1 && faceitLooksSwiss(T.games, T.res, info.type)) {
+      T.format = "swiss"; swissFromGames(T);
+    } else if (tablesKind) {
       T.format = "table"; T.groupsCount = Math.max(1, groupsNum.length);
       T.teams.forEach(t => { const s = T.games.find(x => x.a === t.id || x.b === t.id); t.group = s ? s.group : 0; });
     } else T.format = "import";
-    T.res = {}; T.swiss.rounds = [];
+    if (T.format !== "swiss") T.swiss.rounds = [];
     const n = faceitResults(T, games);
     if (T.format === "table") await faceitRounds(T, games);
     if (info.name) T.name = info.name;
     tournamentDraw(); send();
-    tourStatus(`✓ Übernommen: ${T.teams.length} Teams · ${T.format === "table" ? T.groupsCount + " Gruppe(n) mit Tabelle" : "Baum wie bei FACEIT"} · ${n} Ergebnisse.`);
+    tourStatus(`✓ Übernommen: ${T.teams.length} Teams · ${T.format === "table" ? T.groupsCount + " Gruppe(n) mit Tabelle" : T.format === "swiss" ? "Swiss wie bei FACEIT" : "Baum wie bei FACEIT"} · ${n} Ergebnisse.`);
   } catch (err) { tourStatus("FACEIT: " + err.message); }
 };
 $("tourStats").onclick = async () => {
@@ -209,8 +235,15 @@ $("tourStats").onclick = async () => {
 };
 $("tourFaceitResult").onclick = async () => {
   const id = tournamentId($("tourFaceit").value), T = tour(); if (!id) return tourStatus("Bitte einen FACEIT-Turnier-Link einfügen.");
-  if (T.gamesSource === "faceit" && (T.format === "import" || T.format === "table")) {
-    try { tourStatus("Lade Ergebnisse …"); const games = await faceitGames(id), n = faceitResults(T, games); if (T.format === "table") await faceitRounds(T, games); tournamentTreeDraw(); send(); return tourStatus(`✓ ${n} Ergebnisse aktualisiert.`); }
+  if (T.gamesSource === "faceit" && (T.format === "import" || T.format === "table" || T.format === "swiss")) {
+    try { tourStatus("Lade Ergebnisse …"); const games = await faceitGames(id);
+      if (T.format === "swiss") {                        // neue Runden, die FACEIT inzwischen ausgelost hat
+        const tid = fid => (T.teams.find(t => t.faceitId === fid) || {}).id || null;
+        T.games = games.filter(x => x.teams).map(x => ({ id: "F" + x.match_id, round: +x.round || 0, group: 0,
+          a: tid(((x.teams || {}).faction1 || {}).faction_id), b: tid(((x.teams || {}).faction2 || {}).faction_id) }));
+        swissFromGames(T);
+      }
+      const n = faceitResults(T, games); if (T.format === "table") await faceitRounds(T, games); tournamentTreeDraw(); send(); return tourStatus(`✓ ${n} Ergebnisse aktualisiert.`); }
     catch (err) { return tourStatus("FACEIT: " + err.message); }
   }
   try {

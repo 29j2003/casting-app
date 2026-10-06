@@ -59,6 +59,13 @@ Sicherungen (`.json`) und Theme-Dateien aus 2.1 lassen sich weiter laden.
   „LAYOUT BEARBEITEN“ mit „Als Arbeitsbereich speichern“ und „Fertig“. Nur dann lassen sich Bereiche ziehen, andocken und in der Größe ändern –
   im Normalbetrieb verschiebt sich nichts aus Versehen. Leere Reiter-Spalten blenden sich aus.
 
+## Teams, Kürzel und Serie
+
+* **Kürzel** (Match → Teams & Spieler, neben dem Namen): Müsste ein langer Teamname im Overlay stark verkleinert werden
+  (unter 70 %), zeigt das Overlay stattdessen das Kürzel. Ohne Kürzel wird der Name nur verkleinert.
+* **Serie** (Live → Match): Hat ein Team eine Map gewonnen (13 Runden, in der Verlängerung 16, 19 …), erscheint in der
+  Zeile **„✓ Map beenden?“** – ein Klick trägt die Map als „Fertig“ ein.
+
 ## Sitzungen & Sicherung (Match → Import & Sitzungen)
 
 Speichere ein Match als Sitzung („Speichern“, „Speichern unter …“) und lade es später mit „Laden“. „Sichern (.json)“ und
@@ -154,13 +161,14 @@ trotzdem in die ganze Szene. In jeder anderen Szene wechseln die Knöpfe ganz no
 ## Turnierbaum (Reiter Turnier, Szene „Turnierbaum“)
 
 * **„Turnier übernehmen“** (FACEIT-Link): holt Teams mit Logos, Spielern und Statistiken und übernimmt den **genauen Aufbau** –
-  Gruppen mit Tabelle (jeder gegen jeden) oder den Baum genau so, wie FACEIT ihn führt. „Ergebnisse aktualisieren“ holt neue Spielstände.
+  Gruppen mit Tabelle (jeder gegen jeden), **Swiss** (mit Bilanz 2–1 usw.; die Paarungen kommen von FACEIT, ausgelost
+  wird nichts) oder den Baum genau so, wie FACEIT ihn führt. „Ergebnisse aktualisieren“ holt neue Spielstände.
 * **Punkteregel je Turnier** (Gruppen mit Tabelle): Vorlagen wie „Sieg 3 · Niederlage mit Map-Gewinn 1 · Niederlage 0“ oder eigene Werte
   für Sieg 2:0, Sieg 2:1, Niederlage 1:2, Niederlage 0:2 und Unentschieden. Bei Punktgleichheit zählt der direkte Vergleich, dann die
   Rundendifferenz (RD, holt die App von FACEIT), dann die Siege. **„Gruppe im Overlay“** zeigt alle Gruppen oder nur eine –
   die Tabellen passen sich der Fläche an (eine Gruppe groß, mehrere nebeneinander).
 * Formate von Hand: **Gruppen mit Tabelle** (Gruppenzahl, Plätze die weiterkommen, offene Spiele unter der Tabelle), **Single Elimination**, **Double Elimination** (oben/unten + Grand Final), **Swiss** (Siege/Niederlagen einstellbar,
-  „Nächste Runde auslosen“) und **Gruppen (GSL)** – bis 32 Teams. Reihenfolge der Teams = Setzliste, Freilose werden automatisch vergeben.
+  „Nächste Runde auslosen“ – nur bei Turnieren ohne FACEIT) und **Gruppen (GSL)** – bis 32 Teams. Reihenfolge der Teams = Setzliste, Freilose werden automatisch vergeben.
 * Teams mit Kürzel, Logo, Spielern und optionaler FACEIT-Team-ID. FACEIT-Turnier (Link oder ID) →
   **„Turnier übernehmen“**, **„Ergebnisse aktualisieren“** und **„Team-Statistiken von FACEIT laden“** (Siegquote, Spiele,
   Serie, letzte Ergebnisse) – oder alles von Hand.

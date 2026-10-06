@@ -8,7 +8,7 @@
 const AUDIO_OBS = [["Cast – Overlay", "Overlay (Clips, Seiten, Videos im Overlay)"], ["Cast – Hintergrund", "Hintergrund-Video (OBS spielt ab)"],
   ["Cast – Ton Caster 1", "Caster 1"], ["Cast – Ton Caster 2", "Caster 2"], ["Cast – Ton Gast", "Gast"]];
 // Abhören wie in OBS (Erweiterte Audioeigenschaften): aus · nur abhören · abhören und ausgeben
-const MONITOR = [["OBS_MONITORING_TYPE_NONE", "Abhören aus"], ["OBS_MONITORING_TYPE_MONITOR_ONLY", "Nur abhören"], ["OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT", "Abhören + Ausgabe"]];
+const MONITOR = [["OBS_MONITORING_TYPE_NONE", "Abhören aus"], ["OBS_MONITORING_TYPE_MONITOR_ONLY", "Nur abhören (Ausgabe stumm)"], ["OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT", "Abhören und Ausgabe"]];
 const MONITOR_HINT = { OBS_MONITORING_TYPE_NONE: "nur im Stream/der Aufnahme, nicht auf deinem Kopfhörer",
   OBS_MONITORING_TYPE_MONITOR_ONLY: "nur auf deinem Kopfhörer, nicht im Stream",
   OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT: "im Stream und auf deinem Kopfhörer" };
@@ -43,29 +43,44 @@ const audioSet = (name, req, data) => channel.obs.question(req, Object.assign({ 
 function audioDraw() {
   const box = $("audioList"); if (!box) return;
   box.innerHTML = "";
-  if (!channel.obs.isOpen) { box.innerHTML = `<p class="small">Ton wird direkt in OBS geregelt (wie im OBS-Mixer) – dafür mit OBS verbinden (⚙ App-Einstellungen).</p>`; return; }
+  if (!channel.obs.isOpen) {
+    box.innerHTML = `<div class="audio-z"><b>Ton der Quellen in OBS</b><p class="small">Lautstärke, Stumm, Abhören und Lautstärke je Szene regelt die App direkt in OBS – wie im OBS-Mixer. Dafür muss die App mit OBS verbunden sein.</p>
+      <div class="line"><button class="button main" id="audioConnect">Mit OBS verbinden …</button></div></div>`;
+    $("audioConnect").onclick = () => { settings(true); $("setObs").scrollIntoView({ block: "start" }); };
+    return;
+  }
+  // Lautstärke je Szene: an/aus und für welche Szene die Regler gerade gelten
+  const perSceneBox = document.createElement("div"); perSceneBox.className = "audio-per-scene";
+  const k = audioScene(), own = (((Z.audio || {}).sceneVolumes) || {})[k] || {};
+  perSceneBox.innerHTML = `<label class="toggleSwitch"><input type="checkbox"${audioPerScene() ? " checked" : ""}> Lautstärke je Szene merken</label>
+    ${audioPerScene() ? `<span class="small">Regler gelten jetzt für „${esc(audioSceneTitle(k))}“</span>${Object.keys(own).length ? `<button class="button">Szene auf Standard</button>` : ""}` : ""}`;
+  perSceneBox.querySelector("input").onchange = ev => { Z.audio = Object.assign({}, Z.audio, { perScene: ev.target.checked }); send(); audioDraw(); };
+  const reset = perSceneBox.querySelector("button");
+  if (reset) reset.onclick = () => { delete Z.audio.sceneVolumes[k]; send(); sceneVolumesApply(k); };
+  box.appendChild(perSceneBox);
   const titles = Object.fromEntries(AUDIO_OBS);
   audioInputs.forEach(name => {
     const T = audioRevision[name]; if (!T) return;
     const title = titles[name] || name;
+    const sceneOwn = audioPerScene() && name in ((((Z.audio || {}).sceneVolumes) || {})[audioScene()] || {});
     const z = document.createElement("div"); z.className = "audio-z";
     z.innerHTML = `<div class="audio-head"><div class="tname"><b>${esc(title)}</b><span>${esc(name)}</span></div>
         <button class="audio-mute${T.mute ? " off" : ""}" aria-pressed="${T.mute}">${T.mute ? "STUMM" : "Stumm"}</button>
         <button class="gfx-more" aria-label="Mehr Einstellungen">⋯</button></div>
       <div class="audio-slider"><input type="range" min="0" max="300" step="5" value="${Math.min(300, T.vol)}" aria-label="Lautstärke ${esc(title)}"><b class="${T.vol > 100 ? "loud" : ""}">${T.vol} %</b></div>
-      <div class="audio-monitoring"><span class="segment" role="group" aria-label="Abhören">${MONITOR.map(([v, n]) => `<button data-monitor="${v}" aria-pressed="${T.monitor === v}">${n}</button>`).join("")}</span>
-        <span class="small">${esc(MONITOR_HINT[T.monitor] || "")}</span></div>
+      <div class="audio-monitoring"><label>Abhören<select class="audio-monitor-choice" aria-label="Abhören ${esc(title)}">${MONITOR.map(([v, n]) => `<option value="${v}"${T.monitor === v ? " selected" : ""}>${n}</option>`).join("")}</select></label>
+        <span class="small">${esc(MONITOR_HINT[T.monitor] || "")}</span>${sceneOwn ? `<span class="audio-scene-own" title="Diese Lautstärke gilt nur in der Szene „${esc(audioSceneTitle(audioScene()))}“">eigene Lautstärke in dieser Szene</span>` : ""}</div>
       <div class="audio-more"${audioOffen2.has(name) ? "" : " hidden"}>
         <label>Verzögerung (ms)<input type="number" min="-950" max="20000" step="10" value="${T.delay}"></label>
       </div>`;
     const slider = z.querySelector("input[type=range]"), display = z.querySelector(".audio-slider b");
     let timerHandle = null;
-    slider.oninput = () => { T.vol = +slider.value; display.textContent = T.vol + " %"; display.classList.toggle("loud", T.vol > 100);
+    slider.oninput = () => { sceneVolumeRemember(name, T.vol, +slider.value); T.vol = +slider.value; display.textContent = T.vol + " %"; display.classList.toggle("loud", T.vol > 100);
       clearTimeout(timerHandle); timerHandle = setTimeout(() => audioSet(name, "SetInputVolume", { inputVolumeMul: T.vol / 100 }), 40); };       // live, wie der OBS-Regler
     z.querySelector(".audio-mute").onclick = () => { T.mute = !T.mute; audioSet(name, "SetInputMute", { inputMuted: T.mute }); audioDraw(); };
     z.querySelector(".gfx-more").onclick = () => { audioOffen2.has(name) ? audioOffen2.delete(name) : audioOffen2.add(name); audioDraw(); };
     z.querySelector("input[type=number]").onchange = ev => { T.delay = Math.max(-950, Math.min(20000, +ev.target.value || 0)); audioSet(name, "SetInputAudioSyncOffset", { inputAudioSyncOffset: T.delay }); };
-    z.querySelectorAll("[data-monitor]").forEach(b => b.onclick = () => { T.monitor = b.dataset.monitor; audioSet(name, "SetInputAudioMonitorType", { monitorType: T.monitor }); audioDraw(); });
+    z.querySelector(".audio-monitor-choice").onchange = ev => { T.monitor = ev.target.value; audioSet(name, "SetInputAudioMonitorType", { monitorType: T.monitor }); audioDraw(); };
     box.appendChild(z);
   });
   // Caster und Gast als eigene OBS-Tonquelle (VDO.Ninja-Ton direkt in OBS statt im Overlay)
@@ -78,8 +93,42 @@ function audioDraw() {
     z.querySelector("button").onclick = () => audioSourceCreate(k, n);
     box.appendChild(z);
   });
-  if (!box.children.length) box.innerHTML = `<p class="small">In OBS gibt es noch keine Quelle mit Ton – Setup → Szenen &amp; OBS → „In OBS anlegen“.</p>`;
+  if (box.children.length <= 1) box.innerHTML = `<p class="small">In OBS gibt es noch keine Quelle mit Ton – Setup → Szenen &amp; OBS → „In OBS anlegen“.</p>`;
 }
+/* ---------- Lautstärke je Szene ----------
+   An: Wer in einer Szene einen Regler bewegt, speichert die Lautstärke dieser Quelle für diese Szene
+   (Z.audio.sceneVolumes[szene][quelle]). Beim Szenenwechsel stellt die App die gespeicherten Werte in OBS ein;
+   Quellen ohne eigenen Wert in der neuen Szene bekommen ihren Standard (der Wert vor der ersten Szenen-Änderung, "*"). */
+const audioPerScene = () => !!((Z.audio || {}).perScene);
+const audioScene = () => { try { return (onSource() ? (Z.broadcast || {}).scene : $("scene").value) || ""; } catch (err) { return ""; } };
+function audioSceneTitle(k) {
+  const own = OVERLAY_SCENES.find(([x]) => x === k), dach = typeof DACH_SCENES !== "undefined" ? DACH_SCENES.find(x => x[1] === k) : null;
+  return own ? own[1] : dach ? dach[2] : k;
+}
+function sceneVolumeRemember(name, before, vol) {
+  const k = audioScene(); if (!audioPerScene() || !k) return;
+  const A = Z.audio = Object.assign({}, Z.audio), S = A.sceneVolumes = A.sceneVolumes || {};
+  S["*"] = S["*"] || {}; if (!(name in S["*"])) S["*"][name] = before;     // Standard: wie es vorher war
+  S[k] = S[k] || {}; S[k][name] = vol; laterSend();
+}
+function sceneVolumesApply(k) {
+  if (!audioPerScene() || !channel.obs.isOpen) return;
+  const S = (Z.audio || {}).sceneVolumes || {}, own = S[k] || {}, standard = S["*"] || {};
+  for (const name of new Set([...Object.keys(standard), ...Object.keys(own)])) {
+    const vol = name in own ? own[name] : standard[name], T = audioRevision[name];
+    if (vol === undefined || (T && T.vol === vol)) continue;
+    if (T) T.vol = vol;
+    audioSet(name, "SetInputVolume", { inputVolumeMul: vol / 100 });
+  }
+  audioDraw();
+}
+let audioLastScene = null;
+setInterval(() => {                                               // jeder Weg zählt: Klick, Strg K, DACH, Sitzung laden
+  const k = audioScene(); if (k === audioLastScene) return;
+  const first = audioLastScene === null; audioLastScene = k;
+  if (!first) sceneVolumesApply(k);
+}, 250);
+
 // VDO.Ninja-Gast als eigene Browserquelle nur für den Ton (unsichtbar klein), im Overlay wird sein Ton dann stumm geschaltet
 async function audioSourceCreate(k, n) {
   const Q = (Z.sources || {})[k] || {}; let u = (Q.url || "").trim();

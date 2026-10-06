@@ -490,7 +490,10 @@ body:not(.layout-edit) details[data-area=sceneList] .scene-head { display: none 
 .audio-mute.off { background: var(--red); border-color: var(--red); color: #fff; }
 .audio-slider { display: flex; align-items: center; gap: 8px; } .audio-slider input { flex: 1; } .audio-slider b { width: 48px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
 .audio-slider b.loud { color: var(--warn); }
-.audio-monitoring { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; } .audio-monitoring .segment button { font-size: 12px; padding: 0 8px; }
+.audio-monitoring { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.audio-monitoring label { display: flex; align-items: center; gap: 8px; font-size: 12px; } .audio-monitoring select { width: auto; min-width: 220px; }
+.audio-scene-own { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--accent); color: #151515; font-weight: 700; }
+.audio-per-scene { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 4px 2px; }
 .audio-more { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .audio-more .segment button { font-size: 12px; padding: 0 8px; }
 .clean-button.on { background: var(--red) !important; border-color: var(--red) !important; color: #fff !important; }
 /* Erste Schritte: schwebende Checkliste unten links statt eigener Spalte */

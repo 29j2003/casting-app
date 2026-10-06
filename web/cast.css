@@ -546,7 +546,7 @@ body:not(.idle) .preview-only { visibility: hidden; }
 .sponsor.in-bar .box-head { --kh: 46px; --kf: 23px; letter-spacing: .16em; }
 .sponsor.in-bar { box-shadow: 0 16px 30px rgba(0, 0, 0, .34); }
 .sponsor.in-bar .sponsor-field img, .sponsor.in-bar .sponsor-field .sponsor-name { inset: 8px 16px; width: calc(100% - 32px); height: calc(100% - 16px); }
-.sponsor.in-bar .sponsor-field .sponsor-name { font-size: 28px; }
+.sponsor.in-bar .sponsor-field .sponsor-name { font-size: 42px; line-height: 1; white-space: nowrap; letter-spacing: .02em; text-align: center; overflow-wrap: anywhere; }   /* ohne Logo: Name groß, lange Namen verkleinert cast.js */
 
 /* ---------------------------------------------------------------------
    3.0: Box-Stil (Setup → Aussehen): hell (wie bisher) · dunkel · Mischung (nur der Titel bleibt hell)
@@ -573,4 +573,5 @@ body[data-boxstyle=mixed] [data-part=title] > .box-field, body[data-boxstyle=mix
 :is(body:is([data-sponsorspot=top], [data-sponsorshown="0"]):is([data-scene^=cast-duo], [data-scene^=cast-solo]), body:is([data-sponsorspot=top], [data-sponsorshown="0"]) :is([data-scene^=cast-duo], [data-scene^=cast-solo])) > [data-part=matchup] { left: 1386px !important; width: 280px !important; }
 :is(body[data-sponsorspot=top]:is([data-scene^=cast-duo], [data-scene^=cast-solo]), body[data-sponsorspot=top] :is([data-scene^=cast-duo], [data-scene^=cast-solo])) > .sponsor.in-bar { left: auto !important; right: 57px; top: 47px !important; width: 440px !important; height: 125px !important; }
 body[data-sponsorspot=top] .sponsor.in-bar .box-head { --kh: 40px; --kf: 22px; letter-spacing: .12em; }
+body[data-sponsorspot=top] .sponsor.in-bar .sponsor-field .sponsor-name { font-size: 50px; }
 body[data-sponsorspot=top] .music:not(.on) ~ .sponsor.in-bar { top: 47px !important; }

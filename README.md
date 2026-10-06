@@ -263,6 +263,7 @@ Nach oben/unten und Löschen (mit Rückgängig). Arten:
   Der **Sponsor** sitzt in Intro, Pause, Ende und den Cast-Szenen als vierter Kasten in der unteren Leiste – gleich hoch, die Leiste mittig.
   Unter Setup → Sponsoren → **Platz des Sponsor-Kastens** lässt er sich stattdessen **oben rechts** zeigen; ist kein Sponsor
   zu sehen (aus oder keiner eingetragen), rückt die Leiste ohne Lücke zur Mitte.
+  Ohne Logo steht der Sponsor-Name groß im Kasten; lange Namen werden kleiner und brechen bei Bedarf auf zwei Zeilen um.
 * **Unterseiten mit Status:** In Match und Setup steht links neben jeder Unterseite ein Punkt mit einer Zeile – Grün = fertig,
   Gelb = fehlt noch (z. B. „Caster-Namen fehlen“, „1 Logo fehlt“), Lila = angepasst, Grau = Vorgabe.
 * **Timer bei 0:00** (Match → Timer & Texte): eigener Text statt „00:00“ (z. B. „GLEICH GEHT'S LOS“) und auf Wunsch ein

@@ -18,7 +18,7 @@ import sys
 
 NOREPLY = re.compile(r"(^|[.+@])noreply\b|@users\.noreply\.github\.com$", re.I)
 EMAIL = re.compile(rb"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
-# commits made before this check existed; listed so that only NEW slips fail (see ENTWICKLUNG.md, "Privatsphäre")
+# commits made before this check existed; listed so that only NEW slips fail (see docs/ENTWICKLUNG.md, "Privatsphäre")
 KNOWN_OLD_COMMITS = {"e28bf8884c4f1bc5f5a4f05dc25a3178faf63101"}
 TEXT_ALLOWED = {"noreply@anthropic.com", "noreply@github.com"}      # attribution lines in docs/commits
 

@@ -8,8 +8,6 @@ Turnierbaum/Tabellen, Ton-Steuerung über OBS. Oberfläche und Overlays auf Deut
 Windows `…-Setup.exe`, Linux `…-linux-x86_64.AppImage`, macOS `…-mac-arm64.dmg` (Apple Silicon) bzw. `…-mac-x64.dmg` (Intel).
 Die Browserquelle in OBS legt die App selbst an: Setup → Szenen & OBS → „In OBS anlegen“.
 
-Für Entwickler: [ENTWICKLUNG.md](ENTWICKLUNG.md) (Aufbau, Tests, Bauen, Release).
-
 ## Über das Projekt
 
 Ein Experiment: Ich wollte ausprobieren, wie weit man mit Claude kommt. Die App ist komplett mit Claude entstanden –
@@ -260,6 +258,12 @@ Nach oben/unten und Löschen (mit Rückgängig). Arten:
   Oben steht, ob der Pool Active Duty entspricht, unten, für welche Formate er reicht. **Eigene Map:** Workshop-Link einfügen →
   „Aus dem Workshop holen“ übernimmt Name und Vorschaubild von Steam; sonst „Von Hand: Name + Bild“.
 * **Sponsoren:** auf Wunsch ein **Restzeit-Balken** unter dem Logo – er zeigt, wann der nächste Sponsor kommt.
+* **Box-Stil** (Setup → Aussehen → Theme anpassen): **Hell** (weiße Kästen, wie bisher), **Dunkel** (dunkle Kästen) oder
+  **Mischung** (dunkel, nur der Titel bleibt hell). Logo-Felder (Sponsoren, Marke) bleiben immer hell, damit auch dunkle Logos zu sehen sind.
+  Der **Sponsor** sitzt in Intro, Pause, Ende und den Cast-Szenen als vierter Kasten in der unteren Leiste – gleich hoch, die Leiste mittig.
+  Unter Setup → Sponsoren → **Platz des Sponsor-Kastens** lässt er sich stattdessen **oben rechts** zeigen; ist kein Sponsor
+  zu sehen (aus oder keiner eingetragen), rückt die Leiste ohne Lücke zur Mitte.
+  Ohne Logo steht der Sponsor-Name groß im Kasten; lange Namen werden kleiner und brechen bei Bedarf auf zwei Zeilen um.
 * **Unterseiten mit Status:** In Match und Setup steht links neben jeder Unterseite ein Punkt mit einer Zeile – Grün = fertig,
   Gelb = fehlt noch (z. B. „Caster-Namen fehlen“, „1 Logo fehlt“), Lila = angepasst, Grau = Vorgabe.
 * **Timer bei 0:00** (Match → Timer & Texte): eigener Text statt „00:00“ (z. B. „GLEICH GEHT'S LOS“) und auf Wunsch ein
@@ -394,7 +398,7 @@ Kameras laufen dabei ohne Neuladen weiter.
 
 Die Windows-Dateien sind nicht signiert, deshalb warnt Windows beim ersten Start. Eine vertrauenswürdige Signatur braucht ein
 Code-Signing-Zertifikat, das auf deinen Namen ausgestellt ist (z. B. Microsoft Trusted Signing oder ein OV/EV-Zertifikat einer
-Zertifizierungsstelle). Mit so einem Zertifikat signiert der Bau (`tools/build.py`) Installer und App selbst, siehe ENTWICKLUNG.md.
+Zertifizierungsstelle). Mit so einem Zertifikat signiert der Bau (`tools/build.py`) Installer und App selbst, siehe [Entwickler-Doku](docs/ENTWICKLUNG.md).
 Die macOS-App ist nur ad-hoc signiert (ohne Apple-Konto); die Beglaubigung durch Apple (Notarisierung) ist vorbereitet, aber aus.
 
 ### Sicherheit
@@ -431,3 +435,7 @@ Die macOS-App ist nur ad-hoc signiert (ohne Apple-Konto); die Beglaubigung durch
   die eigenen Seiten benutzen.
 * Der Netzwerk-Empfang für CS2 (Port 8788) ist aus, bis du ihn einschaltest, und nimmt dann nur CS2-Spielstände mit deinem Schlüssel an.
 * Die App liefert nur ihre eigenen Dateien sowie Videos und Schriften aus deinen Ordnern aus.
+
+---
+
+Für Entwickler: [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) (Aufbau, Tests, Bauen, Release).

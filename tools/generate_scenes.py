@@ -97,8 +97,12 @@ def cam(x, y, w, h, name, d, who=None, guest=False):
 '''
 
 
-def bottom_cast(d=.5):
-    """Title and match-up at the bottom – the usual footer of the cast scenes."""
+def bottom_cast(d=.5, with_sponsor=False):
+    """Title and match-up at the bottom – the usual footer of the cast scenes.
+
+    With `with_sponsor` the sponsor is the fourth box of the bar (same height, the whole bar centered)."""
+    if with_sponsor:
+        return title_box(194, 868, 1000, d) + matchup(1215, 868, 250, d + .1) + bar_sponsor(1486, d + .2)
     return title_box(254, 868, 1100, d) + matchup(1386, 868, 280, d + .1)
 
 
@@ -107,6 +111,16 @@ def sponsor(x, y, w, h, d=.6, right=None):
     position = f"right:{right}px" if right is not None else f"left:{x}px"
     return f'''<div class="box sponsor" data-part="sponsor" style="{position};top:{y}px;width:{w}px;height:{h}px"><div class="box-head" data-t="texts.sponsorLabel"></div><div class="sponsor-field"></div></div>
 '''
+
+
+def bar_sponsor(x, d=.6, w=240):
+    """Sponsor as a box of the bottom bar: as high as the other boxes, logo centered (3.0 – no longer floating top right)."""
+    return f'''<div class="box sponsor in-bar" data-part="sponsor" style="left:{x}px;top:868px;width:{w}px;height:126px"><div class="box-head" data-t="texts.sponsorLabel"></div><div class="sponsor-field"></div></div>
+'''
+
+
+# the bottom bar of intro and pause: timer · title · match-up · sponsor, 21 px apart and centered on the screen
+BAR = dict(timer=184, title=433, matchup=1246, sponsor=1495)
 
 
 def scene(file_name, title, content, style='', max_brand=None, without_backdrop=False, without_brand=False):
@@ -118,10 +132,11 @@ def scene(file_name, title, content, style='', max_brand=None, without_backdrop=
         f.write(HEAD.format(title=title, style=style, scene=file_name[:-5], backdrop=backdrop, brand=brand) + content + FOOT)
 
 
-scene('intro.html', 'Intro', MUSIC + sponsor(0, 190, 520, 116, right=57) + timer_box(315, 868, 'startIn', .3) + title_box(564, 868, 792, .4) + matchup(1377, 868, 228, .5))
+scene('intro.html', 'Intro', MUSIC + timer_box(BAR['timer'], 868, 'startIn', .3) + title_box(BAR['title'], 868, 792, .4) +
+      matchup(BAR['matchup'], 868, 228, .5) + bar_sponsor(BAR['sponsor']))
 scene('cast-duo.html', 'Cast Duo',
-      cam(120, 230, 800, 450, 'Caster 1', .2, 'c1') + cam(1000, 230, 800, 450, 'Caster 2', .3, 'c2') + bottom_cast(.7) + sponsor(0, 47, 440, 125, right=57))
-scene('cast-solo.html', 'Cast Solo', cam(448, 200, 1024, 576, 'Caster', .2, 'c1') + bottom_cast(.6) + sponsor(0, 47, 400, 125, right=57))
+      cam(120, 230, 800, 450, 'Caster 1', .2, 'c1') + cam(1000, 230, 800, 450, 'Caster 2', .3, 'c2') + bottom_cast(.7, with_sponsor=True))
+scene('cast-solo.html', 'Cast Solo', cam(448, 200, 1024, 576, 'Caster', .2, 'c1') + bottom_cast(.6, with_sponsor=True))
 scene('cast-duo-clips.html', 'Cast Duo + Clips',
       title_box(482, 47, 919, .2) + matchup(1433, 47, 430, .3) +
       cam(57, 212, 1344, 756, 'Clips / Browser', .4) +
@@ -130,16 +145,17 @@ scene('cast-solo-clips.html', 'Cast Solo + Clips',
       title_box(482, 47, 1381, .2) + cam(57, 212, 1344, 756, 'Clips / Browser', .3) +
       cam(1433, 212, 430, 242, 'Caster', .4, 'c1') + matchup(1433, 600, 430, .6, h=150), max_brand=400)
 scene('cast-duo-interview.html', 'Cast Duo + Interview',
-      cam(48, 290, 592, 333, 'Caster 1', .2, 'c1') + cam(664, 290, 592, 333, 'Caster 2', .3, 'c2') + cam(1280, 290, 592, 333, 'Gast', .4, 'guest', True) + bottom_cast(.8) + sponsor(0, 47, 440, 125, right=57))
+      cam(48, 290, 592, 333, 'Caster 1', .2, 'c1') + cam(664, 290, 592, 333, 'Caster 2', .3, 'c2') + cam(1280, 290, 592, 333, 'Gast', .4, 'guest', True) + bottom_cast(.8, with_sponsor=True))
 scene('cast-solo-interview.html', 'Cast Solo + Interview',
-      cam(120, 230, 800, 450, 'Caster', .2, 'c1') + cam(1000, 230, 800, 450, 'Gast', .3, 'guest', True) + bottom_cast(.7) + sponsor(0, 47, 440, 125, right=57))
-scene('pause.html', 'Pause', MUSIC + sponsor(0, 190, 520, 116, right=57) + '''<div data-part="large" style="left:0;right:0;top:330px;display:flex;justify-content:center">
+      cam(120, 230, 800, 450, 'Caster', .2, 'c1') + cam(1000, 230, 800, 450, 'Gast', .3, 'guest', True) + bottom_cast(.7, with_sponsor=True))
+scene('pause.html', 'Pause', MUSIC + '''<div data-part="large" style="left:0;right:0;top:330px;display:flex;justify-content:center">
   <div class="box large enter" style="--d:.2s">
     <div class="box-head" data-t="texts.pauseTitle"></div>
     <div class="box-field" data-t="texts.pauseBelow"></div>
   </div>
 </div>
-''' + timer_box(315, 868, 'nextIn', .4) + title_box(564, 868, 792, .5) + matchup(1377, 868, 228, .6))
+''' + timer_box(BAR['timer'], 868, 'nextIn', .4) + title_box(BAR['title'], 868, 792, .5) + matchup(BAR['matchup'], 868, 228, .6) +
+      bar_sponsor(BAR['sponsor'], .7))
 scene('end.html', 'Ende', MUSIC + '''<div data-part="large" style="left:0;right:0;top:230px;display:flex;justify-content:center">
   <div class="box large enter" style="--d:.2s">
     <div class="box-head" data-t="texts.endTitle"></div>
@@ -156,7 +172,7 @@ scene('end.html', 'Ende', MUSIC + '''<div data-part="large" style="left:0;right:
     </div></div>
   </div>
 </div>
-''' + '<div class="series-mini enter" data-part="series-mini" style="left:0;right:0;top:772px;--d:.55s"></div>\n' + title_box(564, 868, 792, .6) + sponsor(1377, 868, 280, 126), style=END_STYLE)
+''' + '<div class="series-mini enter" data-part="series-mini" style="left:0;right:0;top:772px;--d:.55s"></div>\n' + title_box(BAR['title'], 868, 792, .6) + bar_sponsor(BAR['matchup'], .7), style=END_STYLE)
 
 scene('map-veto.html', 'Map-Veto',
       head_box(482, 47, 1381, .2, 'mapVeto', VS_FIELD) +

@@ -18,7 +18,7 @@ window.CastCore = (function () {
   "use strict";
 
   const KEY = "cast-state-v1";
-  const VERSION = "2.7.0";                     // muss zur App passen – sonst lädt sich die Seite neu
+  const VERSION = "2.8.0";                     // muss zur App passen – sonst lädt sich die Seite neu
   // Läuft die Seite über den Server der App (http://localhost:8787)?
   const SERVER = /^https?:$/.test(location.protocol) && location.port === "8787" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
@@ -219,7 +219,7 @@ window.CastCore = (function () {
     speaker: { on: false, threshold: 0.08 },
     // Sponsoren pro Theme
     sponsors: {
-      on: true, seconds: 8, inTicker: false, bar: false,   // bar: Restzeit-Balken unter dem Logo
+      on: true, seconds: 8, inTicker: false, bar: false, spot: "bar",   // bar: Restzeit-Balken · spot: "bar" (untere Leiste) | "top" (oben rechts)
       sceneList: { intro: true, pause: true, end: true, "cast-duo": true, "cast-solo": true, "cast-duo-interview": true, "cast-solo-interview": true },
       byTheme: {},                // { themeKey: [ { name, logo } ] } (bis 2.2: „listen“)
       gfx: { num: -1, until: 0 }

@@ -88,7 +88,7 @@ $("themeFile").onchange = async () => {
     const j = CastLegacy.migrateImport(JSON.parse(await f.text()));
     if (j.format !== "casting-app-theme" || !j.theme || typeof j.theme !== "object") throw new Error("keine Theme-Datei der Casting-App");
     // nur bekannte Felder übernehmen – eine fremde Datei kann so nichts anderes verändern
-    const allowed = ["name", "dark", "light", "textDark", "accent", "stroke", "bold", "iconDisk", "corners", "icon", "fontImage", "brandImage", "brandBox",
+    const allowed = ["name", "dark", "light", "textDark", "accent", "stroke", "bold", "iconDisk", "corners", "boxStyle", "icon", "fontImage", "brandImage", "brandBox",
                      "backgroundImage", "line1", "line2", "font", "fontFile", "headText", "brandText", "rowsSwap"];
     const d = {};
     allowed.forEach(k => { if (k in j.theme) d[k] = j.theme[k]; });
@@ -160,6 +160,13 @@ function themeAdjust() {
   [["outside", "Außen gespiegelt (empfohlen)"], ["straight", "Gerade"], ["all", "Alle oben rechts"]].forEach(([v, n]) => cornerSel.appendChild(new Option(n, v, false, (tw("corners") || "outside") === v)));
   cornerSel.onchange = () => { td().corners = cornerSel.value; fresh(); };
   cornerChoice.appendChild(cornerSel); box.appendChild(cornerChoice);
+  // 3.0: Box-Stil – hell (wie bisher), dunkel oder Mischung (nur Titel hell); Logo-Felder bleiben immer hell
+  const styleChoice = document.createElement("label"); styleChoice.textContent = "Box-Stil";
+  const styleSel = document.createElement("select");
+  [["light", "Hell – weiße Kästen (Standard)"], ["dark", "Dunkel – dunkle Kästen"], ["mixed", "Mischung – dunkel, nur der Titel hell"]]
+    .forEach(([v, n]) => styleSel.appendChild(new Option(n, v, false, (tw("boxStyle") || "light") === v)));
+  styleSel.onchange = () => { td().boxStyle = styleSel.value; fresh(); };
+  styleChoice.appendChild(styleSel); box.appendChild(styleChoice);
   const lin = document.createElement("label"); lin.className = "toggleSwitch";
   const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!tw("stroke");
   cb.onchange = () => { td().stroke = cb.checked; fresh(); };

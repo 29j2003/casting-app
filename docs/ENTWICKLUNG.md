@@ -1,7 +1,7 @@
 # Casting-App – Handbuch für Änderungen
 
 Dieses Handbuch erklärt, wie die App aufgebaut ist und wie man typische Änderungen macht, Schritt für Schritt.
-Für Nutzer der App gibt es [README.md](README.md) (Anleitung). Alles für Entwickler steht hier – auch Tests, Bauen, Signieren und Release.
+Für Nutzer der App gibt es [README.md](../README.md) (Anleitung). Alles für Entwickler steht hier – auch Tests, Bauen, Signieren und Release.
 Die Kurzfassung der Regeln für den KI-Assistenten Claude Code liegt in `.claude/CLAUDE.md`.
 
 **Regel für alle Änderungen:** Namen im Code sind englisch (Variablen, Funktionen, CSS-Klassen, IDs, Dateien,
@@ -194,6 +194,14 @@ Spielt OBS ab (`source: "obs"`), bekommt die Quelle „Cast – Hintergrund“ d
 `/api/workshop?id=<Link oder Nummer>` → `{id, title, image}`. Nur die Nummer geht an Steams öffentliche
 `GetPublishedFileDetails`; das Vorschaubild nur über HTTPS von Steams Bild-Servern (auch nach Weiterleitung geprüft),
 größenbegrenzt. Tests: `tests/test_workshop.py`.
+
+### Box-Stil der Overlays (hell · dunkel · Mischung)
+
+Theme-Feld `boxStyle` (`light` Standard, `dark`, `mixed`; in `Z.themeData[theme]`). `cast.js` → `theme()` setzt
+`body[data-boxstyle]` und `--paper`/`--paper-text` (die hellen Theme-Farben). `cast.css` (Abschnitt „Box-Stil“) stellt bei
+dunkel/Mischung `--light`/`--text-dark` auf dunkel um – alle Felder, die `var(--light)` nutzen, folgen. Logo-Felder
+(Sponsor, Marke) nutzen `--paper` und bleiben hell; bei Mischung auch Titel (`[data-part=title]`, `[data-part=head]`, `.large`).
+Neue helle Fläche, die in jedem Stil hell bleiben soll → `var(--paper)`.
 
 ### Form und Farbe (Konzept 3.0)
 

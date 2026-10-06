@@ -46,7 +46,7 @@ function audioDraw() {
   if (!channel.obs.isOpen) {
     box.innerHTML = `<div class="audio-z"><b>Ton der Quellen in OBS</b><p class="small">Lautstärke, Stumm, Abhören und Lautstärke je Szene regelt die App direkt in OBS – wie im OBS-Mixer. Dafür muss die App mit OBS verbunden sein.</p>
       <div class="line"><button class="button main" id="audioConnect">Mit OBS verbinden …</button></div></div>`;
-    $("audioConnect").onclick = () => { settings(true); $("setObs").scrollIntoView({ block: "start" }); };
+    $("audioConnect").onclick = () => settings(true, "setLinks");
     return;
   }
   // Lautstärke je Szene: an/aus und für welche Szene die Regler gerade gelten

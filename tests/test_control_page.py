@@ -311,7 +311,7 @@ def test_a_won_map_is_offered_as_finished(server, browser):
 
 
 def test_map_veto_is_played_from_live_while_its_scene_runs(server, browser):
-    """Scene „Map-Veto" in the program: Live → „Zur Szene" shows the veto; a click there also shows under Match."""
+    """Scene „Map-Veto" in the program: the scene panel in Live shows the veto; a click there also shows under Match."""
     page = browser.new_page(viewport={"width": 1600, "height": 1000})
     errors = watch(page)
     page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
@@ -331,8 +331,42 @@ def test_map_veto_is_played_from_live_while_its_scene_runs(server, browser):
     page.evaluate("sceneSwitch('intro')")
     page.wait_for_timeout(400)
     assert page.evaluate("$('sceneToolsVeto').hidden")
-    page.evaluate("$('sceneToolsVetoShow').click()")
+    page.evaluate("$('panelFieldsButton').click()")                  # „Felder": Veto auch bei Intro zeigen
+    page.evaluate("document.querySelector('#panelMenu [data-f=veto]').click()")
     assert not page.evaluate("$('sceneToolsVeto').hidden")
+    assert page.evaluate("ui.panels.intro").count("veto") == 1
+    page.evaluate("$('panelDefault').click()")                         # zurück auf die Vorgabe
+    assert page.evaluate("$('sceneToolsVeto').hidden")
+    assert errors == []
+
+
+def test_scene_panel_shows_the_fields_of_each_scene(server, browser):
+    """3.0: the panel follows the scene in the program – Ingame brings score and series, Intro the timer; the score
+    buttons there count like the match bar, and a note stays per scene without ever reaching the stream."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    shown = "[...document.querySelectorAll('#panelFields [data-panel]')].filter(e => !e.hidden).map(e => e.dataset.panel)"
+    page.evaluate("tabs('live'); sceneSwitch('ingame')")
+    page.wait_for_timeout(400)
+    assert page.evaluate(shown) == ["score", "series", "note"]
+    before = page.evaluate("Z.teams.a.score || 0")
+    page.evaluate("$('pPlusA').click()")
+    assert page.evaluate("Z.teams.a.score") == before + 1
+    assert page.inner_text("#mbarScoreA") == page.inner_text("#pScoreA") == str(before + 1)
+    page.fill("#pNote", "Timeout Team B noch 1x")
+    page.evaluate("sceneSwitch('intro')")
+    page.wait_for_timeout(400)
+    assert page.evaluate(shown) == ["timer", "texts", "sponsor"]
+    assert page.input_value("#pNote") == ""
+    page.fill("[data-panel=texts] [data-field='texts.title']", "HALBFINALE")     # the same field under Setup follows
+    assert page.evaluate("Z.texts.title") == "HALBFINALE"
+    assert page.evaluate("[...document.querySelectorAll(\"[data-field='texts.title']\")].every(e => e.value === 'HALBFINALE')")
+    page.evaluate("sceneSwitch('ingame')")
+    page.wait_for_timeout(400)
+    assert page.input_value("#pNote") == "Timeout Team B noch 1x"
+    assert "Timeout" not in page.evaluate("JSON.stringify(Z)")
     assert errors == []
 
 
@@ -403,22 +437,29 @@ def test_dach_cams_sit_under_the_page_and_never_show_the_previous_page(server, b
     assert errors == []
 
 
-def test_app_settings_scroll_down_to_update_on_a_small_window(server, browser):
-    """2.3.0: the settings did not scroll – on a low window Update and the last sections were out of reach."""
+def test_app_settings_are_a_page_with_one_section_at_a_time(server, browser):
+    """3.0: the settings are their own page – list on the left, one section on the right that also scrolls in a low
+    window (2.3.0 could not reach Update); the access keys of FACEIT and DACH CS live there now."""
     page = browser.new_page(viewport={"width": 1200, "height": 600})
     errors = watch(page)
     page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
     page.wait_for_timeout(1200)
+    page.evaluate("zoomSet(1)")                                                 # sizes below in page pixels
     page.click("#dialogOpen")
     page.wait_for_timeout(300)
+    visible = "[...document.querySelectorAll('.dialog-content > section')].filter(x => !x.hidden).map(x => x.id)"
+    assert page.evaluate(visible) == ["setLinks"]
+    assert page.evaluate("!!$('faceitKey').offsetParent && !!$('dachKey').offsetParent && !!$('obsPort').offsetParent")
     sizes = page.evaluate("(() => { const c = document.querySelector('.dialog-content'); return [c.scrollHeight, c.clientHeight, innerHeight]; })()")
     assert sizes[1] <= sizes[2] and sizes[0] > sizes[1], sizes                  # fits the window and scrolls
-    page.click(".settings-nav [data-jump=setMusic]")                           # the last section
-    page.wait_for_timeout(900)
-    assert page.evaluate("(() => { const r = document.querySelector('#setMusic [data-field=\\'music.address\\']').getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0; })()")
     page.click(".settings-nav [data-jump=updateArea]")
-    page.wait_for_timeout(900)
+    assert page.evaluate(visible) == ["updateArea"]
     assert page.evaluate("(() => { const r = document.getElementById('updateSearch').getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0; })()")
+    page.keyboard.press("Escape")
+    assert page.evaluate("$('appDialog').hidden")
+    page.evaluate("tabs('match')")                                              # the pointer under Match leads there
+    page.evaluate("document.querySelector('#faceitKeyHint [data-settings]').click()")
+    assert page.evaluate(visible) == ["setLinks"] and not page.evaluate("$('appDialog').hidden")
     assert errors == []
 
 

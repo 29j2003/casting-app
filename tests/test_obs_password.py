@@ -35,9 +35,11 @@ def obs_login_answer(password: str, salt: str, challenge: str) -> str:
 class FakeObs:
     """Minimal obs-websocket server that only accepts the right password."""
 
-    def __init__(self, sources: dict | None = None):
+    def __init__(self, sources: dict | None = None, audio: dict | None = None):
         self.logins = []                       # True/False per login attempt
         self.sources = dict(sources or {})     # browser sources: name -> url
+        self.audio = dict(audio or {})         # inputs with audio: name -> volume factor (SetInputVolume changes it)
+        self.monitor = {}                      # SetInputAudioMonitorType: name -> type
         self.changed = {}                      # SetInputSettings: name -> new url
         self._loop = asyncio.new_event_loop()
         threading.Thread(target=self._loop.run_forever, daemon=True).start()
@@ -66,14 +68,24 @@ class FakeObs:
         async for raw in socket:
             request = json.loads(raw)["d"]
             kind, data, answer = request["requestType"], request.get("requestData") or {}, {}
+            name, ok = data.get("inputName"), True
             if kind == "GetInputList":
-                answer = {"inputs": [{"inputName": n, "inputKind": "browser_source"} for n in self.sources]}
+                answer = {"inputs": [{"inputName": n, "inputKind": "browser_source"} for n in {**self.sources, **self.audio}]}
+            elif kind in ("GetInputVolume", "GetInputMute", "GetInputAudioSyncOffset", "GetInputAudioMonitorType"):
+                ok = name in self.audio                # inputs without audio answer with an error, like OBS
+                answer = {"inputVolumeMul": self.audio.get(name, 0), "inputMuted": False, "inputAudioSyncOffset": 0,
+                          "monitorType": self.monitor.get(name, "OBS_MONITORING_TYPE_NONE")}
+            elif kind == "SetInputVolume":
+                self.audio[name] = data["inputVolumeMul"]
+            elif kind == "SetInputAudioMonitorType":
+                self.monitor[name] = data["monitorType"]
             elif kind == "GetInputSettings":
                 answer = {"inputSettings": {"url": self.sources.get(data.get("inputName"), ""), "is_local_file": False}}
             elif kind == "SetInputSettings" and "url" in (data.get("inputSettings") or {}):
                 self.changed[data["inputName"]] = self.sources[data["inputName"]] = data["inputSettings"]["url"]
+            status = {"result": True, "code": 100} if ok else {"result": False, "code": 600, "comment": "no audio"}
             await socket.send(json.dumps({"op": 7, "d": {"requestType": kind, "requestId": request["requestId"],
-                                                         "requestStatus": {"result": True, "code": 100}, "responseData": answer}}))
+                                                         "requestStatus": status, "responseData": answer}}))
 
 
 @pytest.fixture(scope="module")
@@ -146,3 +158,43 @@ def test_old_obs_sources_get_the_access_key_after_asking(server):
         browser.close()
     obs.stop()
     assert obs.changed == {"Cast – Overlay": f"http://localhost:8787/overlay.html?access={server.access_key}"}
+
+
+def test_monitoring_dropdown_and_volume_per_scene(server):
+    """Ton: Abhören as a dropdown like OBS; with „Lautstärke je Szene merken" every scene keeps its own volume."""
+    server.secrets.set("obs-password", OBS_PASSWORD)
+    obs = FakeObs(audio={"Cast – Overlay": 1.0, "Mikrofon": 1.0})
+    row = "#audioList .audio-z"                                    # the app's own sources come first: „Cast – Overlay"
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page(viewport={"width": 1600, "height": 1000})
+        page.goto(f"http://localhost:8787/control.html?access={server.access_key}")
+        page.evaluate(f"localStorage.setItem('cast-verbindung', JSON.stringify({{ port: {OBS_PORT} }}))")
+        page.reload()
+        page.wait_for_function("() => typeof channel !== 'undefined' && channel.obs && channel.obs.isOpen", timeout=15_000)
+        page.evaluate("document.querySelector('#audioList').closest('details').open = true")
+        page.wait_for_selector(row, timeout=10_000)
+        page.select_option(f"{row} .audio-monitor-choice", "OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT")
+        page.wait_for_timeout(300)
+        assert obs.monitor["Cast – Overlay"] == "OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT"
+
+        def volume_in(scene: str, percent: int | None = None) -> float:
+            page.evaluate(f"sceneSwitch({scene!r})")
+            page.wait_for_timeout(700)
+            if percent is not None:
+                page.evaluate(f"""(() => {{ const r = document.querySelector("{row} input[type=range]");
+                    r.value = {percent}; r.dispatchEvent(new Event('input')); }})()""")
+                page.wait_for_timeout(300)
+            return round(obs.audio["Cast – Overlay"], 2)
+
+        page.click(".audio-per-scene input")                                   # „Lautstärke je Szene merken"
+        page.wait_for_timeout(200)
+        assert volume_in("intro", 50) == 0.5
+        assert volume_in("pause") == 1.0                                         # no own value: back to the standard
+        assert volume_in("pause", 30) == 0.3
+        assert volume_in("intro") == 0.5
+        assert volume_in("pause") == 0.3
+        assert volume_in("end") == 1.0
+        assert obs.audio["Mikrofon"] == 1.0                                      # untouched sources stay as they are
+        browser.close()
+    obs.stop()

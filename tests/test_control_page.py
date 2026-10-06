@@ -370,6 +370,26 @@ def test_scene_panel_shows_the_fields_of_each_scene(server, browser):
     assert errors == []
 
 
+def test_sponsor_box_moves_between_bar_and_top_right(server, browser):
+    """Sponsor in the bottom bar (default), top right on request; without a sponsor the bar closes the gap."""
+    control, overlay = browser.new_page(), browser.new_page(viewport={"width": 1920, "height": 1080})
+    errors = watch(control) + watch(overlay)
+    control.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    control.wait_for_timeout(1200)
+    overlay.goto(f"{BASE_URL}/intro.html")
+    box = "(n => { const r = document.querySelector(n).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top)]; })"
+    places = {}
+    for name, js in (("bar", "Z.sponsors.on = true; Z.sponsors.byTheme[Z.theme] = [{ name: 'Nordnet' }]; Z.sponsors.spot = 'bar'"),
+                     ("top", "Z.sponsors.spot = 'top'"), ("none", "Z.sponsors.spot = 'bar'; Z.sponsors.on = false")):
+        control.evaluate(js + "; send()")
+        overlay.wait_for_timeout(900)
+        places[name] = overlay.evaluate(f"[{box}('.sponsor.in-bar'), {box}('[data-part=timer]')]")
+    assert places["bar"][0][1] > 800 and places["top"][0][1] < 300          # sponsor: bottom bar → top right
+    assert places["top"][1][0] > places["bar"][1][0]                         # the bar moves to the middle without it
+    assert places["none"][1] == places["top"][1]
+    assert errors == []
+
+
 def test_faceit_swiss_is_told_apart_from_a_round_robin(server, browser):
     """Swiss pairs teams with the same record from round 2 on; a round robin does that only for about half the games."""
     page = browser.new_page()

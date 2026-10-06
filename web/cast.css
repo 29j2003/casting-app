@@ -563,3 +563,14 @@ body[data-boxstyle] .sponsor-field .sponsor-name, body[data-boxstyle] .sponsor-t
 body[data-boxstyle=mixed] [data-part=title] > .box-field, body[data-boxstyle=mixed] [data-part=head] > .box-field, body[data-boxstyle=mixed] .large > .box-field {
   background: var(--paper); color: var(--paper-text);
 }
+
+/* Sponsor-Platz „Oben rechts" (Sponsoren → Platz): Sponsor wie vor 3.0 oben rechts, die Leiste rückt zurück auf ihre alten Plätze */
+:is(body:is([data-sponsorspot=top], [data-sponsorshown="0"]):is([data-scene=intro], [data-scene=pause]), body:is([data-sponsorspot=top], [data-sponsorshown="0"]) :is([data-scene=intro], [data-scene=pause])) > [data-part=timer] { left: 315px !important; }
+:is(body:is([data-sponsorspot=top], [data-sponsorshown="0"]):is([data-scene=intro], [data-scene=pause], [data-scene=end]), body:is([data-sponsorspot=top], [data-sponsorshown="0"]) :is([data-scene=intro], [data-scene=pause], [data-scene=end])) > [data-part=title] { left: 564px !important; }
+:is(body:is([data-sponsorspot=top], [data-sponsorshown="0"]):is([data-scene=intro], [data-scene=pause]), body:is([data-sponsorspot=top], [data-sponsorshown="0"]) :is([data-scene=intro], [data-scene=pause])) > [data-part=matchup] { left: 1377px !important; }
+:is(body[data-sponsorspot=top]:is([data-scene=intro], [data-scene=pause], [data-scene=end]), body[data-sponsorspot=top] :is([data-scene=intro], [data-scene=pause], [data-scene=end])) > .sponsor.in-bar { left: auto !important; right: 57px; top: 190px !important; width: 520px !important; height: 116px !important; }
+:is(body:is([data-sponsorspot=top], [data-sponsorshown="0"]):is([data-scene^=cast-duo], [data-scene^=cast-solo]), body:is([data-sponsorspot=top], [data-sponsorshown="0"]) :is([data-scene^=cast-duo], [data-scene^=cast-solo])) > [data-part=title] { left: 254px !important; width: 1100px !important; }
+:is(body:is([data-sponsorspot=top], [data-sponsorshown="0"]):is([data-scene^=cast-duo], [data-scene^=cast-solo]), body:is([data-sponsorspot=top], [data-sponsorshown="0"]) :is([data-scene^=cast-duo], [data-scene^=cast-solo])) > [data-part=matchup] { left: 1386px !important; width: 280px !important; }
+:is(body[data-sponsorspot=top]:is([data-scene^=cast-duo], [data-scene^=cast-solo]), body[data-sponsorspot=top] :is([data-scene^=cast-duo], [data-scene^=cast-solo])) > .sponsor.in-bar { left: auto !important; right: 57px; top: 47px !important; width: 440px !important; height: 125px !important; }
+body[data-sponsorspot=top] .sponsor.in-bar .box-head { --kh: 40px; --kf: 22px; letter-spacing: .12em; }
+body[data-sponsorspot=top] .music:not(.on) ~ .sponsor.in-bar { top: 47px !important; }

@@ -305,7 +305,11 @@
     const boxes = $$(".sponsor");
     const visible = S.on !== false && (S.sceneList || {})[currentSceneName()] !== false && list.length > 0;
     const keyName = JSON.stringify([list, S.seconds, visible, S.bar === true]);
+    const spot = S.spot === "top" ? "top" : "bar";                     // Platz: in der unteren Leiste (3.0) oder oben rechts
+    if (document.body.dataset.sponsorspot !== spot) document.body.dataset.sponsorspot = spot;
     const bar = S.bar === true && list.length > 1;
+    // kein Sponsor in dieser Szene: die Leiste ohne Lücke (rückt auf die mittigen Plätze ohne Sponsor)
+    if (document.body.dataset.sponsorshown !== (visible ? "1" : "0")) document.body.dataset.sponsorshown = visible ? "1" : "0";
     boxes.forEach(b => {
       b.classList.toggle("on", visible);
       let line = b.querySelector(".sponsor-bar");

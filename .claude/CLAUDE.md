@@ -3,7 +3,7 @@
 Desktop-App in Python (PySide6 / Qt WebEngine, Windows/Linux/macOS) zum Casten von CS2-Matches mit OBS. Ein Python-Server
 liefert die Steuerseite (eigenes App-Fenster) und die Overlays aus; OBS zeigt alles in **einer** Browserquelle (`overlay.html`).
 Nutzer: Julius (Twitch 29_THE_P4TCH3R), macht Production für Casts (DACH CS Masters, ESEA, Uniliga) – kein Caster, programmiert nicht selbst.
-Aufbau und Rezepte für Änderungen: `ENTWICKLUNG.md` (bei neuen Bausteinen dort mitpflegen).
+Aufbau und Rezepte für Änderungen: `docs/ENTWICKLUNG.md` (bei neuen Bausteinen dort mitpflegen).
 **Alle Namen im Code englisch** (Python und `web/`: Variablen, Funktionen, CSS-Klassen, IDs, API-Pfade, JSON-Felder, Dateien).
 **Python-Code: englische Kommentare, sauber dokumentiert (Docstrings je Modul/Klasse).**
 **Oberfläche, Texte für Nutzer und Doku auf Deutsch; Kommentare in `web/` dürfen deutsch bleiben.**
@@ -57,7 +57,7 @@ Aufbau und Rezepte für Änderungen: `ENTWICKLUNG.md` (bei neuen Bausteinen dort
 - Stream-Overlays dürfen keine Bedien-Hinweise zeigen – Hinweise nur in der Vorschau (`body.idle`).
 - Nach Änderungen an Übergängen: `tests/live/transitions.py` und `tests/live/flicker.py` müssen sauber bleiben.
 - Nach Änderungen an `casting_app/`: `python -m pytest` (unter Linux mit `xvfb-run -a`) muss sauber bleiben.
-- **Doku:** nur zwei Dateien – `README.md` (Startseite + Anleitung für Nutzer) und `ENTWICKLUNG.md` (Entwickler). Keine weiteren `.md`-Dateien anlegen.
+- **Doku:** nur zwei Dateien – `README.md` (Startseite + Anleitung für Nutzer) und `docs/ENTWICKLUNG.md` (Entwickler; später ins Wiki). Keine weiteren `.md`-Dateien anlegen.
 - **Zwei Sprachen** (App und Overlays, unabhängig): neuer sichtbarer Text in der Steuerseite → Übersetzung in
   `web/lang-en.js`; feste Overlay-Texte → `OVERLAY_TEXTS`/`OVERLAY_WORDS` in `web/cast-core.js` (beide Sprachen);
   Texte aus Python → `casting_app/texts.py`. Werte, die der Code vergleicht, nie aus sichtbarem Text ableiten.
@@ -73,6 +73,7 @@ Aufbau und Rezepte für Änderungen: `ENTWICKLUNG.md` (bei neuen Bausteinen dort
 - Szenen neu erzeugen: `python3 tools/generate_scenes.py`
 
 ## Geplant
+- Doku ins GitHub-Wiki umziehen, sobald der Zugang da ist (README = Nutzer-Anleitung, docs/ENTWICKLUNG.md = Entwickler); bis dahin nur diese zwei Dateien.
 - Notarisierung für macOS einschalten, sobald ein Apple-Entwicklerkonto da ist; Windows-Signatur mit eigenem Zertifikat.
 - Konzept 3 vollständig umsetzen: Match-Stepper + Spieltag, Turnier-Phasen, Teams-Vorstellung, Fernsteuerung (Touch Portal).
 - DACH-Rahmen für Interview Single/Duo exakt vermessen (Video/Screenshots vom Nutzer); Singlecam, Duocam, Interaktion und eigene Contentpause sind vermessen.

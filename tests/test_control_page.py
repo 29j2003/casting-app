@@ -234,7 +234,9 @@ def test_dach_pages_keep_running_when_app_audio_changes(server, browser):
     page.wait_for_timeout(1500)
     before = page.evaluate("""(() => { const d = document.getElementById('p').contentDocument;
         const pages = [...d.querySelectorAll('.dach-page')];
-        pages.forEach(f => { f._loads = 0; f.addEventListener('load', () => f._loads++); });
+        // a reload by the overlay means writing src again (even the same value) or a new frame – not a late first load
+        window._pages = pages; window._srcWrites = 0;
+        new MutationObserver(r => window._srcWrites += r.filter(m => m.target.classList.contains('dach-page')).length).observe(d.body, { subtree: true, attributes: true, attributeFilter: ['src'] });
         return { allow: pages.map(f => f.getAttribute('allow')), src: pages.map(f => f.getAttribute('src')),
                  cams: [...d.querySelectorAll('.dach-cam')].map(k => getComputedStyle(k).backgroundColor) }; })()""")
     assert before["allow"] == ["autoplay"] * 3, "DACH-Seiten dürfen Videos abspielen"
@@ -244,8 +246,9 @@ def test_dach_pages_keep_running_when_app_audio_changes(server, browser):
         page.evaluate(f"document.getElementById('p').contentWindow.postMessage({{ cast: 'monitor', mode: '{mode}', vol: 100 }}, location.origin)")
         page.wait_for_timeout(1200)
     after = page.evaluate("""(() => { const pages = [...document.getElementById('p').contentDocument.querySelectorAll('.dach-page')];
-        return { loads: pages.map(f => f._loads), src: pages.map(f => f.getAttribute('src')), allow: pages.map(f => f.getAttribute('allow')) }; })()""")
-    assert after["loads"] == [0, 0, 0] and after["src"] == before["src"], "Ton umschalten darf keine DACH-Seite neu laden"
+        return { same: pages.length === window._pages.length && pages.every((f, i) => f === window._pages[i]),
+                 writes: window._srcWrites, src: pages.map(f => f.getAttribute('src')), allow: pages.map(f => f.getAttribute('allow')) }; })()""")
+    assert after["same"] and after["writes"] == 0 and after["src"] == before["src"], f"Ton umschalten darf keine DACH-Seite neu laden: {after}"
     assert after["allow"] == ["autoplay"] * 3
     assert errors == []
 

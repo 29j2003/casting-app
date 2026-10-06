@@ -17,6 +17,7 @@ from PySide6.QtWidgets import QMainWindow, QMessageBox
 from ..files import write_atomic
 from ..texts import text
 from ..version import APP_NAME
+from . import media
 from .audio import AppWindowAudio
 from .web_page import AppWebPage
 
@@ -46,6 +47,7 @@ class MainWindow(QMainWindow):
         self.view.setPage(self.page)
         self.setCentralWidget(self.view)
         self.audio = AppWindowAudio(self.page)
+        self._media_redirect = media.install(profile, self.page, access_key)     # H.264 videos play as WebM
 
         self.page.bridge.close_dialog_shown.connect(self._page_shows_close_dialog)
         self.page.bridge.close_answered.connect(self.handle_close_choice)

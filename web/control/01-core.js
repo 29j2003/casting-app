@@ -88,6 +88,38 @@ function remove(list, i, name, newDraw) {
 }
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const $ = id => document.getElementById(id);
+/* ---------- Icons ----------
+   Knöpfe zeigen SVG statt Zeichen wie 🔓 ⧉ ⏻ – Zeichen hängen von den Schriften des Systems ab
+   (Linux/Windows sahen unterschiedlich aus). icon("lock") → <svg>; im HTML: data-icon="lock" (wird beim Laden vorangestellt). */
+const ICONS = {
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  unlock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.6-1.8"/>',
+  collapse: '<path d="M7 4l5 5 5-5M7 20l5-5 5 5"/>',
+  expand: '<path d="M7 9l5-5 5 5M7 15l5 5 5-5"/>',
+  "panel-close": '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16M8 10l2 2-2 2"/>',
+  "panel-open": '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16M10 10l-2 2 2 2"/>',
+  dock: '<rect x="3" y="3" width="13" height="13" rx="2"/><path d="M8 21h11a2 2 0 0 0 2-2V8"/>',
+  grip: '<g fill="currentColor" stroke="none"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></g>',
+  more: '<g fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></g>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  power: '<path d="M12 3v9"/><path d="M6.3 6.3a8 8 0 1 0 11.4 0"/>',
+  undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  swap: '<path d="M7 4L3 8l4 4M3 8h14M17 12l4 4-4 4M21 16H7"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+  check: '<path d="M5 12l5 5 9-10"/>',
+  star: '<path fill="currentColor" d="M12 3l2.8 5.8 6.2.8-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.8z"/>',
+  "star-empty": '<path d="M12 3l2.8 5.8 6.2.8-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.8z"/>',
+  play: '<path fill="currentColor" d="M7 4l13 8-13 8z"/>',
+  pause: '<g fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></g>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  up: '<path d="M12 19V5M5 12l7-7 7 7"/>',
+  down: '<path d="M12 5v14M5 12l7 7 7-7"/>',
+  left: '<path d="M19 12H5M12 5l-7 7 7 7"/>',
+  right: '<path d="M5 12h14M12 5l7 7-7 7"/>',
+  chevron: '<path d="M6 9l6 6 6-6"/>'
+};
+const icon = name => `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ""}</svg>`;
+document.querySelectorAll("[data-icon]").forEach(e => e.insertAdjacentHTML("afterbegin", icon(e.dataset.icon)));
 let Z = K.load();
 
 /* ---------- Verbindungsdaten (hier im Browser gemerkt) ---------- */

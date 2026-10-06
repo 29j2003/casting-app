@@ -17,7 +17,7 @@
   <div class="workspace-choice">
     <button class="workspace-button" id="workspaceButton" aria-haspopup="menu" title="Arbeitsbereich wechseln, speichern oder das Layout bearbeiten">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="8" height="8" rx="1.5"></rect><rect x="13" y="3" width="8" height="5" rx="1.5"></rect><rect x="13" y="10" width="8" height="11" rx="1.5"></rect><rect x="3" y="13" width="8" height="8" rx="1.5"></rect></svg>
-      <span id="workspaceName">Operator</span> ▾</button>
+      <span id="workspaceName">Operator</span><span data-icon="chevron"></span></button>
     <div class="workspace-menu" id="workspaceMenu" role="menu" hidden></div>
   </div>
   <span class="small bracket-saved" id="saved" title="Alles wird automatisch gespeichert"></span>
@@ -33,8 +33,8 @@
     <span>Suchen &amp; Befehle</span><kbd>Strg K</kbd>
   </button>
   <div class="tools">
-    <button class="tool" id="allClose" title="Alle Bereiche einklappen">⊟</button>
-    <button class="tool" id="allOpen" title="Alle Bereiche aufklappen">⊞</button>
+    <button class="tool" id="allClose" title="Alle Bereiche einklappen" aria-label="Alle Bereiche einklappen" data-icon="collapse"></button>
+    <button class="tool" id="allOpen" title="Alle Bereiche aufklappen" aria-label="Alle Bereiche aufklappen" data-icon="expand"></button>
     <button class="tool" id="zoomSmall" title="Alles kleiner">−</button>
     <button class="tool" id="zoomValue" title="Zurück auf 100 %">100 %</button>
     <button class="tool" id="zoomLarge" title="Alles größer">+</button>
@@ -58,7 +58,7 @@
   <button data-target="log"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 4h14v16H5z"></path><path d="M8 9h8M8 13h8M8 17h5"></path></svg>Log</button>
 </nav>
 <div class="column">
-<button class="lock" data-lock="left" title="Reiter-Spalte sperren – Reihenfolge und Breite bleiben, wie sie sind" aria-label="Reiter-Spalte sperren">🔓</button>
+<button class="lock" data-lock="left" title="Reiter-Spalte sperren – Reihenfolge und Breite bleiben, wie sie sind" aria-label="Reiter-Spalte sperren"></button>
   <p class="small" id="transmission"></p>
   <div class="box-warn" id="bgTip" hidden>
     <b>Hintergrund-Video in OBS:</b> Die Browserquelle in OBS gibt Videos nicht zuverlässig wieder (in der Vorschau hier läuft es).
@@ -107,6 +107,21 @@
       </div>
     </details>
 
+    <details open data-area="scene-tools">
+      <summary>Zur Szene</summary>
+      <div class="content">
+        <div class="scene-tools-head"><b id="sceneToolsName">–</b><span class="small" id="sceneToolsHint"></span></div>
+        <div id="sceneToolsVeto" class="scene-tools-veto" hidden>
+          <div class="line"><label>Format<select id="vFormatLive" aria-label="Format des Vetos"></select></label>
+            <button class="button" id="vBackLive" data-icon="undo">Rückgängig</button><button class="button" id="vNewLive">Neu starten</button></div>
+          <div id="vUpnextLive" class="veto-upnext"></div>
+          <div id="vSummaryLive" class="veto-summary"></div>
+          <button class="button link" id="vEditLive">Schritte, Teams und Presets bearbeiten → Match</button>
+        </div>
+        <div class="line" id="sceneToolsOther" hidden><button class="button" id="sceneToolsVetoShow">Map-Veto trotzdem hier zeigen</button></div>
+      </div>
+    </details>
+
     <details open data-area="tournament-live">
       <summary>Turnier live</summary>
       <div class="content mbar">
@@ -118,7 +133,7 @@
     <details open data-area="graphics">
       <summary>Einblendungen</summary>
       <div class="content">
-        <p class="small">Jede Einblendung hat eigene Einstellungen (Pfeil links): Dauer, Wiederholung, Position, Szenen. Über „⋯" duplizieren, verschieben oder löschen.</p>
+        <p class="small">Jede Einblendung hat eigene Einstellungen (Pfeil links): Dauer, Wiederholung, Position, Szenen. Über „Mehr“ (drei Punkte) duplizieren, verschieben oder löschen.</p>
         <div class="gfx-bar"><span class="small">Favoriten &amp; aktive</span><div style="flex:1"></div><button class="button" id="gfxAllButton">Alle</button><button class="button" id="gfxNewButton">+ Neu</button></div>
         <div id="gfxList" class="list"></div>
         <div class="line">
@@ -203,7 +218,7 @@
         </div>
         <div id="vUpnext" class="veto-upnext"></div>
         <div class="line">
-          <button class="button" id="vBack">↶ Rückgängig</button>
+          <button class="button" id="vBack" data-icon="undo">Rückgängig</button>
           <button class="button" id="vClear">Alle Maps leeren</button>
         </div>
         <div id="vSteps" class="list"></div>
@@ -222,7 +237,7 @@
         <div id="teamB"></div>
         <div class="line">
           <label class="toggleSwitch"><input type="checkbox" id="result"> Ergebnis statt „VS" anzeigen</label>
-          <button class="button" id="swap">⇄ Teams tauschen</button>
+          <button class="button" id="swap" data-icon="swap">Teams tauschen</button>
         </div>
       </div>
     </details>
@@ -241,8 +256,8 @@
       <div class="content">
         <div class="timer-display" id="timerDisplay">10:00</div>
         <div class="line">
-          <button class="button main" id="tStart">▶ Start</button>
-          <button class="button" id="tPause">⏸ Pause</button>
+          <button class="button main" id="tStart" data-icon="play">Start</button>
+          <button class="button" id="tPause" data-icon="pause">Pause</button>
           <button class="button" id="tMinus">− 1 min</button>
           <button class="button" id="tPlus">+ 1 min</button>
         </div>
@@ -523,7 +538,7 @@
             <div class="line"><button class="button" id="gsiPathSet">Hier ablegen</button><button class="button" id="gsiBrowserOpen">Ordner durchsuchen …</button></div>
             <div id="gsiFinds" class="gsi-finds"></div>
             <div class="folder-browser" id="gsiBrowser" hidden>
-              <div class="fbrowser-head"><button class="button" id="fbrowserUp" aria-label="Eine Ebene höher">↑</button><span id="fbrowserPath"></span><button class="tool" id="fbrowserClose" aria-label="Schließen">✕</button></div>
+              <div class="fbrowser-head"><button class="button" id="fbrowserUp" aria-label="Eine Ebene höher" data-icon="up"></button><span id="fbrowserPath"></span><button class="tool" id="fbrowserClose" aria-label="Schließen" data-icon="close"></button></div>
               <input type="text" id="fbrowserFilter" placeholder="In diesem Ordner suchen …" autocomplete="off" aria-label="Ordner filtern">
               <div class="fbrowser-list" id="fbrowserList"></div>
               <div class="line"><button class="button main" id="fbrowserTake">Diesen Ordner nehmen</button><span class="small" id="fbrowserHint"></span></div>
@@ -593,9 +608,9 @@
 <div class="preview">
   <div class="vs-head"><b class="vs-title">PROGRAMM</b><span id="vsScene"></span><span class="small" id="vsTheme" hidden></span><div style="flex:1"></div>
     <button class="button clean-button" id="cleanButton" title="Nur in Ingame: alle Grafiken ausblenden – im Programm bleibt nur das Spielbild">Cleanfeed</button>
-    <div class="trans-choice"><button class="button" id="transButton" aria-haspopup="dialog">Übergang: <span id="transText">–</span> ▾</button><div class="trans-pop" id="transPop" hidden></div></div></div>
+    <div class="trans-choice"><button class="button" id="transButton" aria-haspopup="dialog">Übergang: <span id="transText">–</span><span data-icon="chevron"></span></button><div class="trans-pop" id="transPop" hidden></div></div></div>
   <div class="preview-head">
-    <button class="tool" id="previewFold" title="Vorschau ein-/ausklappen">⇥</button>
+    <button class="tool" id="previewFold" title="Vorschau ein-/ausklappen" aria-label="Vorschau ein-/ausklappen"></button>
     <label>Vorschau
       <select id="scene">
         <option value="overlay" hidden>Sendung – alles in einer Browserquelle</option>
@@ -625,19 +640,19 @@
   <p class="small" id="previewText"></p>
 </div>
 <div class="divider-h" id="dividerH" title="Ziehen, um die Höhe zu ändern"></div>
-<div class="dock dock-bottom empty" id="dockBottom"><button class="lock" data-lock="bottom" title="Vorschau-Dock sperren – dann ändert sich hier nichts mehr" aria-label="Vorschau-Dock sperren">🔓</button><div class="dock-target">Unter der Vorschau andocken</div></div>
+<div class="dock dock-bottom empty" id="dockBottom"><button class="lock" data-lock="bottom" title="Vorschau-Dock sperren – dann ändert sich hier nichts mehr" aria-label="Vorschau-Dock sperren"></button><div class="dock-target">Unter der Vorschau andocken</div></div>
 </div>
 <div class="divider" id="divider2" title="Ziehen, um die Breite zu ändern"></div>
-<div class="dock dock-right empty" id="dockRight"><button class="lock" data-lock="right" title="Seiten-Dock sperren – dann ändert sich hier nichts mehr" aria-label="Seiten-Dock sperren">🔓</button><div class="dock-target">Rechts andocken</div></div>
+<div class="dock dock-right empty" id="dockRight"><button class="lock" data-lock="right" title="Seiten-Dock sperren – dann ändert sich hier nichts mehr" aria-label="Seiten-Dock sperren"></button><div class="dock-target">Rechts andocken</div></div>
 </div>
 
 
 <div class="dialog" id="appDialog" hidden>
   <div class="dialog-box" role="dialog" aria-label="App-Einstellungen">
-    <div class="dialog-head"><b>⚙ App-Einstellungen</b><button class="tool" id="dialogClose" title="Schließen">✕</button></div>
+    <div class="dialog-head"><b>App-Einstellungen</b><button class="tool" id="dialogClose" title="Schließen" aria-label="Schließen" data-icon="close"></button></div>
     <div class="dialog-content">
       <nav class="settings-nav" aria-label="Bereiche der Einstellungen">
-        <button data-jump="setObs">OBS</button><button data-jump="updateArea">Update</button><button data-jump="setLanguage">Sprache</button><button data-jump="setLook">Aussehen</button><button data-jump="setMusic">Musik</button><button data-jump="setApp">App</button>
+        <button data-jump="setObs">OBS</button><button data-jump="updateArea">Update</button><button data-jump="setLanguage">Sprache</button><button data-jump="setLook">Aussehen</button><button data-jump="setMusic">Musik</button>
       </nav>
       <section id="setObs"><h3>Verbindung zu OBS</h3>
         <p class="small">OBS → Werkzeuge → WebSocket-Server-Einstellungen: „WebSocket-Server aktivieren". Port und Passwort (unter „Verbindungsinformationen anzeigen") nur <b>hier</b> eintragen. Die Overlays brauchen kein Passwort.</p>
@@ -692,11 +707,6 @@
         <label class="toggleSwitch"><input type="checkbox" data-field="music.displayed" data-kind="bool"> In Intro, Pause und Ende anzeigen</label>
         <label>Tuna-Adresse<input type="text" data-field="music.address"></label>
       </section>
-      <section id="setApp"><h3>App</h3>
-        <p class="small">Schließt du dieses Fenster, laufen verbundene OBS-Overlays weiter. Die App beendet sich von selbst, sobald auch OBS zu ist.
-          Fenster wieder öffnen: die App-Datei erneut starten.</p>
-        <div class="line"><button class="button" data-folder="data">Daten &amp; Log öffnen</button><button class="button" id="appQuit">App ganz beenden</button></div>
-      </section>
     </div>
   </div>
 </div>
@@ -711,7 +721,7 @@
   </div>
 </div>
 <aside class="drawer" id="gfxDrawer" hidden aria-label="Einblendung bearbeiten">
-  <div class="drawer-head"><div style="flex:1"><span class="small">Einblendung bearbeiten</span><b id="drawerName"></b></div><button class="tool" id="drawerClose" aria-label="Schließen">✕</button></div>
+  <div class="drawer-head"><div style="flex:1"><span class="small">Einblendung bearbeiten</span><b id="drawerName"></b></div><button class="tool" id="drawerClose" aria-label="Schließen" data-icon="close"></button></div>
   <div class="drawer-content" id="drawerContent"></div>
   <div class="drawer-foot"><button class="button" id="drawerDup">Duplizieren</button><button class="button" id="drawerAway" style="color:var(--red)">Löschen</button><div style="flex:1"></div><button class="button main" id="drawerDone">Fertig</button></div>
 </aside>

@@ -109,7 +109,7 @@ function sponsorsDraw() {
   list.forEach((s, i) => {
     const z = document.createElement("div"); z.className = "row sponsor-row";
     z.innerHTML = `<div class="vb" style="width:90px;height:40px;background-size:contain" title="Logo wählen"></div><input type="text" placeholder="Name">
-      <button class="button" title="Groß einblenden">▶</button><button class="x" title="Nach oben">↑</button><button class="x" title="Entfernen">✕</button><input type="file" accept="image/*" hidden>`;
+      <button class="button" title="Groß einblenden" aria-label="Groß einblenden">${icon("play")}</button><button class="x" title="Nach oben" aria-label="Nach oben">${icon("up")}</button><button class="x" title="Entfernen" aria-label="Entfernen">${icon("close")}</button><input type="file" accept="image/*" hidden>`;
     const image = z.querySelector(".vb"), name = z.querySelector("input[type=text]"), [show] = z.querySelectorAll(".button"),
           [up, away] = z.querySelectorAll(".x"), file = z.querySelector("input[type=file]");
     if (s.logo) image.style.backgroundImage = K.cssUrl(s.logo);
@@ -217,7 +217,7 @@ function fbrowserList() {
   names.forEach(o => {
     const b = document.createElement("button"); b.type = "button";
     if (/^(steamapps|common|counter-strike global offensive|game|csgo|cfg|steam|steamlibrary)$/i.test(o)) b.className = "cs2";
-    b.innerHTML = `<span>📁</span><span>${esc(o)}</span>`;
+    b.innerHTML = `${icon("folder")}<span>${esc(o)}</span>`;
     b.onclick = () => fbrowserLoad(fbrowserPath ? (fbrowserPath.endsWith("\\") || fbrowserPath.endsWith("/") ? fbrowserPath + o : fbrowserPath + (fbrowserPath.includes("\\") ? "\\" : "/") + o) : o);
     l.appendChild(b);
   });
@@ -370,7 +370,7 @@ function graphicsDraw() {
         <div><b>${esc(x.name || GFX_NAMES[x.type] || x.type)}</b>${x.name ? ` <span class="gfx-kind">${esc(GFX_NAMES[x.type] || x.type)}</span>` : ""}</div>
         <span class="gfx-status">${esc(gfxStatus(x))}</span>
         <button class="button ${x.on ? "" : "main"} gfx-show">${x.on ? "Aus" : "Zeigen"}</button>
-        <button class="gfx-more" aria-label="Mehr: duplizieren, verschieben, löschen">⋯</button>
+        <button class="gfx-more" aria-label="Mehr: duplizieren, verschieben, löschen">${icon("more")}</button>
       </div>
       ${quick ? `<div class="gfx-quick">${quick}</div>` : ""}
       <div class="gfx-settings"${settingsOpen ? "" : " hidden"}>
@@ -418,10 +418,10 @@ function graphicsDraw() {
   show.forEach(x => {
     const on = K.gfxVisible(x, Date.now(), Z.broadcast.scene);
     const z = document.createElement("div"); z.className = "gfx-line2" + (x.on ? " on" : ""); z.dataset.id = x.id;
-    z.innerHTML = `<button class="gfx-star${x.favorite !== false ? " fav" : ""}" aria-label="Favorit">${x.favorite !== false ? "★" : "☆"}</button>
+    z.innerHTML = `<button class="gfx-star${x.favorite !== false ? " fav" : ""}" aria-label="Favorit">${icon(x.favorite !== false ? "star" : "star-empty")}</button>
       <div class="gfx-text"><b>${esc(x.name || GFX_NAMES[x.type] || x.type)}</b><span class="gfx-status">${esc(gfxStatus(x))}</span></div>
       <button class="gfx-switch${x.on ? " on" : ""}" role="switch" aria-checked="${!!x.on}" aria-label="Ein- oder ausblenden"><i></i></button>
-      <button class="gfx-more" aria-label="Bearbeiten">⋯</button>`;
+      <button class="gfx-more" aria-label="Bearbeiten">${icon("more")}</button>`;
     z.querySelector(".gfx-star").onclick = () => { x.favorite = x.favorite === false; graphicsDraw(); send(); };
     z.querySelector(".gfx-switch").onclick = () => gfxShow(x, !x.on);
     z.querySelector(".gfx-more").onclick = () => gfxDrawerOpen(x.id);
@@ -471,3 +471,33 @@ document.querySelectorAll("[data-gfx-new]").forEach(b => b.onclick = () => {
   gfxOpen.add(id);
   graphicsDraw(); send();
 });
+
+/* ---------- Zur Szene: was die laufende Szene gerade braucht ----------
+   Zeigt in Live die Bedienung, die zur Szene im Programm gehört – z. B. bei „Map-Veto" das Veto zum Klicken.
+   Dieselben Daten wie unter Match (Z.veto); jede Änderung zeichnet beide Stellen neu (vetoDraw). */
+const SCENE_TOOLS = { "map-veto": "veto" };
+let sceneToolsShown = "", sceneToolsForced = "";             // forced: „trotzdem zeigen" gilt bis zum nächsten Szenenwechsel
+function sceneNow() {
+  if (onSource()) return (Z.broadcast || {}).scene || "";
+  const list = sceneCfg().list, k = Object.keys(list).find(x => list[x].obs && list[x].obs === currentScene);
+  return k || "";
+}
+function sceneToolsDraw() {
+  const k = sceneNow(), tool = SCENE_TOOLS[k] || sceneToolsForced;
+  $("sceneToolsName").textContent = k ? audioSceneTitle(k) : "–";
+  $("sceneToolsHint").textContent = tool ? "" : "Für diese Szene gibt es hier nichts einzustellen.";
+  $("sceneToolsOther").hidden = !!tool;
+  const veto = tool === "veto";
+  $("sceneToolsVeto").hidden = !veto;
+  if (veto) vetoDraw();
+}
+$("sceneToolsVetoShow").onclick = () => { sceneToolsForced = "veto"; sceneToolsDraw(); };
+$("vEditLive").onclick = () => {
+  tabs("match"); ui.below = Object.assign({}, ui.below, { match: "veto" }); uiSave(); belowApply();
+  const d = document.querySelector('[data-area="map-veto"]'); if (d) { d.open = true; d.scrollIntoView({ block: "start", behavior: "smooth" }); }
+};
+setInterval(() => {                                           // jeder Weg zählt: Klick, Strg K, OBS, Sitzung laden
+  const k = sceneNow(); if (k === sceneToolsShown) return;
+  if (sceneToolsShown) sceneToolsForced = "";
+  sceneToolsShown = k; sceneToolsDraw();
+}, 250);

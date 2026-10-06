@@ -30,6 +30,7 @@ from ..secret_store import SecretStore, system_keyring_or_none
 from ..settings import AppSettings
 from ..server.app_server import BASE_URL, CastingServer
 from ..version import APP_NAME, VERSION
+from ..system_open import open_with_system
 from .main_window import MainWindow
 from .tray import TrayIcon
 
@@ -85,7 +86,8 @@ class DesktopApp(QObject):
         self.tray.reload_overlays_requested.connect(self.reload_overlays)
         self.tray.quit_requested.connect(lambda: self.quit("Über das Tray-Menü beendet"))
         server_requests.quit_requested.connect(lambda: self.quit(None))
-        server_requests.open_folder_requested.connect(lambda folder: QDesktopServices.openUrl(QUrl.fromLocalFile(folder)))
+        server_requests.open_folder_requested.connect(
+            lambda folder: open_with_system(folder) or QDesktopServices.openUrl(QUrl.fromLocalFile(folder)))
         server_requests.update_found.connect(self._announce_update)
         server_requests.language_changed.connect(self._change_language)
         self._server_requests = server_requests

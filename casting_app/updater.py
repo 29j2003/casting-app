@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Callable
 
 from .paths import IS_MAC, IS_WINDOWS
+from .system_open import system_environment
 from .version import APP_NAME, VERSION, compare_versions
 
 RELEASES_URL = "https://api.github.com/repos/29j2003/casting-app/releases/latest"
@@ -271,5 +272,6 @@ def start_replacement(kind: str, file: Path, pid: int | None = None) -> None:
                           f"rm -rf {q_old} {q_fresh}; open {q_bundle}")
     else:
         raise ValueError("Für diese Installation gibt es kein automatisches Update")
-    subprocess.Popen(["/bin/sh", "-c", command], start_new_session=True, close_fds=True,
+    env = system_environment() if sys.platform.startswith("linux") else None   # the new AppImage brings its own libraries
+    subprocess.Popen(["/bin/sh", "-c", command], env=env, start_new_session=True, close_fds=True,
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

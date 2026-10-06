@@ -17,6 +17,7 @@ from PySide6.QtWebEngineCore import (QWebEngineDownloadRequest, QWebEnginePage, 
 from PySide6.QtWidgets import QFileDialog
 
 from ..server.app_server import ALLOWED_ORIGINS
+from ..system_open import open_with_system
 from . import media
 from .bridge import PageBridge
 
@@ -77,6 +78,12 @@ def _script(name: str, source: str, world, injection_point) -> QWebEngineScript:
     return script
 
 
+
+def open_link(url: QUrl) -> None:
+    """Show an internet link in the default browser (built Linux app: in the system's environment, see system_open)."""
+    if not open_with_system(url.toString()):
+        QDesktopServices.openUrl(url)
+
 class AppWebPage(QWebEnginePage):
     """Web page of the app window with the bridge to Python."""
 
@@ -115,7 +122,7 @@ class AppWebPage(QWebEnginePage):
         if not is_main_frame or is_own_page(url) or url.scheme() in ("about", "data", "blob"):
             return True
         if url.scheme() in ("http", "https"):
-            QDesktopServices.openUrl(url)
+            open_link(url)
         return False
 
     def createWindow(self, window_type):
@@ -128,6 +135,6 @@ class _ExternalLinkPage(QWebEnginePage):
 
     def acceptNavigationRequest(self, url: QUrl, navigation_type, is_main_frame: bool) -> bool:
         if url.scheme() in ("http", "https"):
-            QDesktopServices.openUrl(url)
+            open_link(url)
         self.deleteLater()
         return False

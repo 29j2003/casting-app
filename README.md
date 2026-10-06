@@ -66,8 +66,8 @@ Sicherungen (`.json`) und Theme-Dateien aus 2.1 lassen sich weiter laden.
 
 ### Aufbau
 
-* **Live** – nur, was du in der Sendung brauchst: Programm-Vorschau, Szenen, **Match** (Punkte, Map, Serie, Timer),
-  **Turnier live** (Gruppe, Team hervorheben, „Tabelle zeigen“), Einblendungen und Ton.
+* **Live** – nur, was du in der Sendung brauchst: Programm-Vorschau, Szenen, **Zur Szene** (was die laufende Szene
+  braucht – bei „Map-Veto“ das Veto zum Klicken), **Match** (Punkte, Map, Serie, Timer), **Turnier live** (Gruppe, Team hervorheben, „Tabelle zeigen“), Einblendungen und Ton.
 * **Match** – Unterseiten: Import & Sitzungen · Teams & Spieler · Map-Veto & Serie · Caster & Kameras · Timer & Texte (und „Alle“).
 * **Turnier** – eigener Bereich für Baum, Tabelle und FACEIT-Abgleich.
 * **Setup** – Unterseiten: Aussehen · Sponsoren · Map-Pool · Hintergrund · Szenen & OBS · CS2-Livedaten.
@@ -90,9 +90,13 @@ Sicherungen (`.json`) und Theme-Dateien aus 2.1 lassen sich weiter laden.
 Speichere ein Match als Sitzung („Speichern“, „Speichern unter …“) und lade es später mit „Laden“. „Sichern (.json)“ und
 „Laden (.json)“ bringen alles auf einen anderen PC. „Alles zurücksetzen“ fragt vorher nach.
 
-### Map-Veto (Match → Map-Veto & Serie)
+### Map-Veto (Live → Zur Szene · Match → Map-Veto & Serie)
 
-Quelle „Manuell“ oder „FACEIT“, Format/Preset wählen, „Neu starten“. „↶ Rückgängig“ nimmt den letzten Schritt zurück.
+**Während der Sendung:** Läuft die Szene **Map-Veto**, zeigt Live → **Zur Szene** das Veto: wer dran ist, die freien Maps
+als Knöpfe, alle Schritte auf einen Blick und bei Picks die Seite. In anderen Szenen holt „Map-Veto trotzdem hier zeigen“
+es bis zum nächsten Szenenwechsel dazu. Unter Match bearbeitest du dasselbe Veto – beide Stellen zeigen immer den gleichen Stand.
+
+**Vorbereitung (Match):** Quelle „Manuell“ oder „FACEIT“, Format/Preset wählen, „Neu starten“. „↶ Rückgängig“ nimmt den letzten Schritt zurück.
 Eigene Abläufe mit „+ Schritt“ bauen und „Als Preset speichern“. Gewonnene Maps zählen auf Wunsch automatisch als Punktestand.
 
 ### Kameras & Quellen (Match → Caster & Kameras)
@@ -131,7 +135,7 @@ Setup → Aussehen → Stil **„DACH CS – Offiziell“** wählen, **Nutzer-ID
 ### Ton (Live → Ton) – geregelt direkt in OBS
 
 Wie im OBS-Mixer: **alle Quellen mit Ton in OBS** (auch Mikrofon, Desktop-Audio, Spiel), die der App zuerst. Die App regelt
-sie live über OBS – **Lautstärke** (bis 300 %), **Stumm**, **Verzögerung** (Synchronisation, −950 bis 20 000 ms, unter ⋯) und
+sie live über OBS – **Lautstärke** (bis 300 %), **Stumm**, **Verzögerung** (Synchronisation, −950 bis 20 000 ms, unter „Mehr“ – drei Punkte) und
 das **Abhören**
 
 als Auswahl wie in OBS:
@@ -161,7 +165,7 @@ Umschalten lädt nichts neu: Videos, Kameras und DACH-Seiten laufen weiter, nur 
 ### Fenster schließen
 
 Klick aufs **X**: das Fenster bleibt erst einmal offen und die App fragt sofort
-**Ganz beenden · Nur Fenster schließen · Abbrechen**. Dieselbe Auswahl öffnet ⏻ oben rechts.
+**Ganz beenden · Nur Fenster schließen · Abbrechen**. Dieselbe Auswahl öffnet der Ein/Aus-Knopf oben rechts.
 * **Nur Fenster schließen:** das Fenster verschwindet, die Overlays in OBS laufen weiter. Im Infobereich der Taskleiste
   (macOS: Menüleiste) bleibt das **29-Symbol** mit dem Menü **Öffnen · Overlays in OBS neu laden · Ganz beenden**.
   Ein Klick aufs Symbol (macOS: öffnet das Menü) oder ein erneuter Start der App holt das Fenster zurück.
@@ -186,7 +190,7 @@ trotzdem in die ganze Szene. In jeder anderen Szene wechseln die Knöpfe ganz no
 
 ### Reiter
 
-* **Live** – während der Sendung: Szenen, Match, Turnier live, Einblendungen, Ton.
+* **Live** – während der Sendung: Szenen, Zur Szene (z. B. Map-Veto), Match, Turnier live, Einblendungen, Ton.
 * **Match** – das aktuelle Spiel: Sitzungen, FACEIT, Map-Veto, Teams, Spieler, Timer, Lauftexte, Caster, Kameras.
 * **Turnier** – Baum, Tabelle, FACEIT-Turnier.
 * **Setup** – Themes, Überschriften, Sponsoren, Map-Pool, Hintergrund, OBS-Szenen, CS2-Daten.
@@ -218,8 +222,8 @@ für dein Org- oder Streamer-Logo (Theme anpassen → Logo-Feld).
 
 ### Einblendungen
 
-Im Bereich Einblendungen stehen deine **Favoriten (★)** mit Schalter; „Alle …“ zeigt alle, „+ Neu“ legt eine neue an.
-**⋯** an einer Einblendung öffnet ihre Einstellungen: **Name in der Liste**, **Position**, **Dauer** (danach automatisch aus),
+Im Bereich Einblendungen stehen deine **Favoriten (Stern)** mit Schalter; „Alle …“ zeigt alle, „+ Neu“ legt eine neue an.
+**Mehr** (drei Punkte) an einer Einblendung öffnet ihre Einstellungen: **Name in der Liste**, **Position**, **Dauer** (danach automatisch aus),
 **Wiederholen alle … Min.** (z. B. Sponsor-Hinweis alle 10 min für 15 s) und **Nur in diesen Szenen**; dazu Duplizieren,
 Nach oben/unten und Löschen (mit Rückgängig). Arten:
 * **Caster:** alle Caster auf einmal, untereinander oder nebeneinander, auf Wunsch mit Gast.
@@ -238,32 +242,31 @@ In der Szene **Ingame** weichen alle Positionen dem Spiel-HUD aus (Minimap, Scor
   **Strg 1–4** springt zu Live, Match, Turnier und Setup.
 
 * **Links** die Reiter, **in der Mitte** die Vorschau. Nur im Modus **Layout bearbeiten** lassen sich Bereiche **unter die Vorschau** oder **rechts daneben** andocken:
-  am Titel (⠿) greifen und ziehen – die möglichen Ablageflächen leuchten auf, eine Linie zeigt, wo der Bereich landet.
-  Zurück in den Reiter: auf die linke Spalte ziehen. Alternativ **⧉** am Bereich → Ort wählen.
+  am Titel (Griff mit Punkten) greifen und ziehen – die möglichen Ablageflächen leuchten auf, eine Linie zeigt, wo der Bereich landet.
+  Zurück in den Reiter: auf die linke Spalte ziehen. Alternativ das Andock-Symbol am Bereich → Ort wählen.
 * Über einer angedockten Karte erscheint ein **Kompass**: Rand = davor/danach einsortieren, **Mitte = als Tab** stapeln.
   Tabs anklicken zum Wechseln, an der Tab-Leiste wieder herausziehen.
 * **Umsortieren:** Bereiche im Reiter einfach nach oben/unten ziehen – die Reihenfolge bleibt gespeichert.
-* **Szenen anordnen:** in „Layout bearbeiten“ im Bereich „Szenen“ auf **✎ Anordnen** – Knöpfe an die gewünschte Stelle ziehen, Haken = Szene wird angezeigt.
+* **Szenen anordnen:** in „Layout bearbeiten“ im Bereich „Szenen“ auf **Anordnen** – Knöpfe an die gewünschte Stelle ziehen, Haken = Szene wird angezeigt.
   Standard sind fünf Gruppen: **Vor dem Spiel** (Intro, Cast Solo, Cast Duo, Line-ups, Map-Veto) · **Im Spiel** (Ingame) ·
   **Stats & Turnier** (Scoreboard, Team A/B, Head-to-Head, Turnierbaum, Serie) · **Pause** (Pause, Sponsoren, Clips) ·
   **Nach dem Spiel** (Interviews, Ende).
 * **Docks zeigen immer alles:** reicht der Platz nicht, scrollt jede Karte für sich. Doppelklick auf die Trennlinie über dem
   Vorschau-Dock passt die Höhe an den Inhalt an.
-* **🔒 Schloss** mittig auf der Trennlinie von Reiter-Spalte, Vorschau-Dock und Seiten-Dock: gesperrt ändert sich dort nichts mehr –
+* **Schloss** mittig auf der Trennlinie von Reiter-Spalte, Vorschau-Dock und Seiten-Dock: gesperrt ändert sich dort nichts mehr –
   nichts hinein- oder herausziehen, keine Größenänderung, Arbeitsbereiche lassen den Bereich in Ruhe.
 * **Lage frei wählbar** (⚙ → Oberfläche oder Strg K): Reiter-Spalte links/rechts, Seiten-Dock links/rechts der Vorschau,
   Vorschau-Dock unter oder über der Vorschau.
-* **Trennlinien** ziehen, um Breite bzw. Höhe zu ändern. **⇥** klappt die Vorschau ein.
-* Oben: Verbindungsanzeige („… von 3 verbunden“: OBS, Overlays, Musik), **Suchen & Befehle**, **⊟ / ⊞** alle Bereiche
-  ein/aus, **− / 100 % / +** alles kleiner/größer, Layout bearbeiten, **⚙** App-Einstellungen, **⏻** Schließen.
+* **Trennlinien** ziehen, um Breite bzw. Höhe zu ändern. Der Knopf oben links an der Vorschau klappt sie ein und wieder auf.
+* Oben: Verbindungsanzeige („… von 3 verbunden“: OBS, Overlays, Musik), **Suchen & Befehle**, **Alle einklappen / aufklappen**, **− / 100 % / +** alles kleiner/größer, Layout bearbeiten, **⚙** App-Einstellungen, **Ein/Aus** Schließen oder ganz beenden.
 
 ### App-Einstellungen (⚙)
 
-Alles, was nur die App betrifft – oben springt eine Leiste direkt zu **OBS · Update · Sprache · Aussehen · Musik · App**
+Alles, was nur die App betrifft – oben springt eine Leiste direkt zu **OBS · Update · Sprache · Aussehen · Musik**
 (der Bereich scrollt, auch in kleinen Fenstern): **Verbindung zu OBS**, **Update**, **Sprache · Language**,
 **Aussehen & Oberfläche** (Dunkel, Hell, Wie Windows; Größe der Oberfläche; Lage von Reiter-Spalte, Seiten-Dock und
-Vorschau-Dock; „Anordnung zurücksetzen“, „‚Erste Schritte‘ wieder zeigen“), **Musik (Spotify über Tuna)** und **App**
-(„Daten & Log öffnen“, „App ganz beenden“). Alles rund um CS bleibt in den Reitern.
+Vorschau-Dock; „Anordnung zurücksetzen“, „‚Erste Schritte‘ wieder zeigen“), **Musik (Spotify über Tuna)**. Beenden geht über den Ein/Aus-Knopf oben rechts, Daten & Log liegen im Reiter **Log**.
+Alles rund um CS bleibt in den Reitern.
 
 **Browserquellen umstellen:** Unter ⚙ → Verbindung zu OBS zeigt die App, welche ihrer Browserquellen noch keinen
 Zugangsschlüssel haben. „Browserquellen umstellen“ stellt sie um – jede lädt dabei einmal kurz neu, also nicht während

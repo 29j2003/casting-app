@@ -374,6 +374,25 @@ def test_dach_cams_sit_under_the_page_and_never_show_the_previous_page(server, b
     assert errors == []
 
 
+def test_app_settings_scroll_down_to_update_on_a_small_window(server, browser):
+    """2.3.0: the settings did not scroll – on a low window Update and App were out of reach."""
+    page = browser.new_page(viewport={"width": 1200, "height": 600})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.click("#dialogOpen")
+    page.wait_for_timeout(300)
+    sizes = page.evaluate("(() => { const c = document.querySelector('.dialog-content'); return [c.scrollHeight, c.clientHeight, innerHeight]; })()")
+    assert sizes[1] <= sizes[2] and sizes[0] > sizes[1], sizes                  # fits the window and scrolls
+    page.click(".settings-nav [data-jump=setApp]")
+    page.wait_for_timeout(900)
+    assert page.evaluate("(() => { const r = document.getElementById('appQuit').getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0; })()")
+    page.click(".settings-nav [data-jump=updateArea]")
+    page.wait_for_timeout(900)
+    assert page.evaluate("(() => { const r = document.getElementById('updateSearch').getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0; })()")
+    assert errors == []
+
+
 def test_css_variables_of_the_control_page_are_defined():
     """Every var(--name) the control page uses (also in JavaScript strings) is defined in its styles (or set from JS)."""
     web = Path(__file__).parent.parent / "web"

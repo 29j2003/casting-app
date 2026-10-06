@@ -41,12 +41,16 @@ def desktop(qapp):
         app.quit("Testende")
 
 
-def _wait_for_volume(qtbot, frame, inspect: str, expected: float, seconds: float = 3) -> None:
-    """Wait until the frame plays at `expected` volume (the factor reaches frames asynchronously)."""
+def _wait_for_volume(qtbot, frame, inspect: str, expected: float, seconds: float = 10) -> None:
+    """Wait until the frame plays at `expected` volume (the factor reaches frames asynchronously –
+    under load, e.g. the whole test suite, this can take several seconds)."""
+    value = None
     for _ in range(int(seconds * 10)):
-        if abs((run_js(qtbot, frame, inspect) or 0) - expected) < 1e-6:
+        value = run_js(qtbot, frame, inspect)
+        if abs((value or 0) - expected) < 1e-6:
             return
         qtbot.wait(100)
+    raise AssertionError(f"Lautstärke im Rahmen nach {seconds} s: {value}, erwartet {expected}")
 
 
 def run_js(qtbot, target, code: str, world=0):

@@ -100,12 +100,17 @@
     actualVolume: element ? volumeProperty.get.call(element) : null,
     contextGain: context && gainOfContext.has(context) ? gainOfContext.get(context).gain.value : null
   });
-  Object.defineProperty(window, KEY, { value: setFactor });
+  // the app pushes every change straight into each frame; after such a push the (older) answer to the
+  // start-up question below must not win – it can arrive later than the push
+  let pushed = false;
+  const pushFactor = newFactor => { pushed = true; setFactor(newFactor); };
+  pushFactor.inspect = setFactor.inspect;
+  Object.defineProperty(window, KEY, { value: pushFactor });
 
-  // ask the control page for the current factor; only its answer is accepted
+  // ask the control page for the current factor; only its answer is accepted, and only before any push
   addEventListener("message", event => {
     const answer = event.data;
-    if (event.source !== window.top || !answer || typeof answer.castingAppVolumeFactor !== "number") return;
+    if (pushed || event.source !== window.top || !answer || typeof answer.castingAppVolumeFactor !== "number") return;
     setFactor(Math.max(0, Math.min(1, answer.castingAppVolumeFactor)));
   });
   try { window.top.postMessage({ castingAppVolumeRequest: true }, "*"); } catch (error) {}

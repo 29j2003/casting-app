@@ -16,5 +16,5 @@ Package layout:
     server/           – local HTTP server for the control page and the overlays
     desktop/          – the desktop window (Qt), tray icon and app-window audio
 
-The control page and the overlays themselves live in web/ (see ENTWICKLUNG.md).
+The control page and the overlays themselves live in web/ (see docs/ENTWICKLUNG.md).
 """

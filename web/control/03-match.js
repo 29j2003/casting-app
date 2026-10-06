@@ -8,6 +8,22 @@ function timerShow() {
   $("timerDisplay").classList.toggle("running", !!Z.timer.running);
 }
 setInterval(timerShow, 250);
+// bei 0:00 einmal in die gewählte Szene wechseln (nur wenn der Timer gerade läuft – nicht nach dem Neuladen eines alten Stands)
+let timerEndDone = 0;
+function timerEndCheck() {
+  const E = (Z.timer || {}).end || {};
+  if (!Z.timer.running || !E.scene || K.timerRest(Z.timer) > 0 || timerEndDone === Z.timer.target) return;
+  timerEndDone = Z.timer.target;
+  if (Date.now() - Z.timer.target < 5000 && sceneNow() !== E.scene) sceneSwitch(E.scene);
+}
+setInterval(timerEndCheck, 500);
+function timerEndDraw() {
+  const E = (Z.timer.end = Object.assign({ text: "", scene: "" }, Z.timer.end || {}));
+  const html = `<option value="">– bleiben –</option>` + OVERLAY_SCENES.map(([k, n]) => `<option value="${k}"${k === E.scene ? " selected" : ""}>${esc(n)}</option>`).join("");
+  if ($("tEndScene")._h !== html) { $("tEndScene").innerHTML = html; $("tEndScene")._h = html; }
+}
+$("tEndScene").onchange = () => { Z.timer.end = Object.assign({}, Z.timer.end, { scene: $("tEndScene").value }); send(); };
+setTimeout(timerEndDraw, 0);
 function mbarDraw() {
   if (!$("mbarNameA")) return;
   ["a", "b"].forEach(k => { const t = Z.teams[k], l = $(k === "a" ? "mbarLogoA" : "mbarLogoB");

@@ -744,9 +744,11 @@
 
   /* ---------- Timer ---------- */
   function timer() {
-    const rest = K.timerRest(Z.timer);
-    const t = K.time(rest).replace(":", '<span class="dp">:</span>');
-    $$(".timer").forEach(e => { if (e.innerHTML !== t) e.innerHTML = t; e.classList.toggle("null", rest <= 0 && Z.timer.running); });
+    const rest = K.timerRest(Z.timer), endText = ((Z.timer || {}).end || {}).text || "";
+    // abgelaufen und ein Text für „bei 0:00" gesetzt (Timer & Texte): Text statt „00:00"
+    const over = rest <= 0 && Z.timer.running && endText;
+    const t = over ? `<span class="timer-end">${esc(endText)}</span>` : K.time(rest).replace(":", '<span class="dp">:</span>');
+    $$(".timer").forEach(e => { if (e.innerHTML !== t) e.innerHTML = t; e.classList.toggle("null", rest <= 0 && Z.timer.running && !over); e.classList.toggle("ended", !!over); });
   }
   setInterval(timer, 250);
 

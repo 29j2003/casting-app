@@ -187,7 +187,7 @@ window.CastCore = (function () {
       c2:   { name: "CASTER 2", addition: "@caster2" },
       guest: { name: "GAST", addition: "Spieler · Team A" }
     },
-    timer: { running: false, target: 0, rest: 10 * 60000 },
+    timer: { running: false, target: 0, rest: 10 * 60000, end: { text: "", scene: "" } },   // end: was bei 0:00 passiert
 
     // Active-Duty-Pool CS2 (Stand Season 5, Juli 2026: Cache ersetzt Overpass) – in der Steuerseite erweiterbar
     mapPool: [

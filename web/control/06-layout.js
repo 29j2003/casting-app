@@ -9,15 +9,58 @@ const SUBPAGES = {
   setup: [["appearance", "Aussehen", ["themes", "theme-adjust", "headings"]], ["sponsors", "Sponsoren", ["sponsors"]], ["maps", "Map-Pool", ["map-pool"]],
           ["background", "Hintergrund", ["background-clips-dronefootage"]], ["sceneList", "Szenen & OBS", ["scenes-setup"]], ["panels", "Szenen-Panels", ["scene-panels"]], ["cs2", "CS2-Livedaten", ["cs2-livedata"]]]
 };
+// Status je Unterseite (Punkt + eine Zeile): Grün = fertig, Gelb = fehlt noch/wartet, Lila = angepasst, Grau = Vorgabe/aus
+function subStatus(group, key) {
+  const t = (k, n) => (Z.teams[k].name || "").trim() || n;
+  try {
+    if (group === "match") {
+      if (key === "import") return activeSession() ? ["ok", "Sitzung „" + activeSession() + "“"] : $("faceitUrl").value.trim() ? ["ok", "FACEIT verknüpft"] : ["", "manuell"];
+      if (key === "teams") { const own = k => !!(Z.teams[k].name || "").trim() && !/^team [ab]$/i.test(Z.teams[k].name.trim()), named = own("a") && own("b");
+        return named ? ["ok", `${t("a", "Team A")} vs ${t("b", "Team B")}`] : ["wait", "Teamnamen fehlen"]; }
+      if (key === "veto") { const st = steps(), done = st.filter(x => x.map || x.action === "decider" && st.filter(y => y.map).length === st.length - 1).length;
+        return done >= st.length ? ["ok", `${(Z.vetoPresets[Z.veto.format] || {}).name || Z.veto.format} · fertig`] : done ? ["wait", `Schritt ${done + 1} von ${st.length}`] : ["", `${(Z.vetoPresets[Z.veto.format] || {}).name || ""} · noch offen`]; }
+      if (key === "caster") { const c = Z.caster || {}, names = ["c1", "c2"].map(k => (c[k] || {}).name || "").filter(n => n && !/^CASTER \d$/.test(n));
+        return names.length ? ["ok", names.join(" · ")] : ["wait", "Caster-Namen fehlen"]; }
+      if (key === "texts") return Z.timer.running ? ["wait", "Timer läuft"] : ["", "Timer " + K.time(K.timerRest(Z.timer))];
+    }
+    if (group === "setup") {
+      if (key === "appearance") return ["ok", (T[Z.theme] || {}).name || Z.theme];
+      if (key === "sponsors") { const l = sponsorEntries(), missing = l.filter(x => !x.logo).length;
+        return !l.length ? ["", "keine Sponsoren"] : missing ? ["wait", `${missing} Logo${missing > 1 ? "s" : ""} fehlt`] : ["ok", `${l.length} Logos`]; }
+      if (key === "maps") { const n = Z.mapPool.filter(m => m.active !== false).length; return [n >= 7 ? "ok" : "wait", `${n} Maps im Pool`]; }
+      if (key === "background") { const l = bgPlaylists(), v = l.reduce((a, p) => a + p.videos.length, 0);
+        return v ? ["ok", `${l.length} Playlist${l.length > 1 ? "en" : ""} · ${(Z.background.source === "obs") ? "OBS spielt ab" : "Overlay spielt ab"}`] : ["", "kein Video"]; }
+      if (key === "sceneList") return channel.obs && channel.obs.isOpen ? ["ok", "OBS verbunden"] : ["wait", "OBS nicht verbunden"];
+      if (key === "panels") { const n = Object.keys(ui.panels || {}).length; return n ? ["next", `${n} angepasst`] : ["", "Vorgabe"]; }
+      if (key === "cs2") return liveLast && Date.now() - liveLast.time < 15000 ? ["ok", "Live-Daten kommen"] : ["wait", "wartet auf Spiel"];
+    }
+  } catch (err) {}
+  return ["", ""];
+}
+function subStatusDraw() {
+  document.querySelectorAll(".subnav").forEach(nav => {
+    const group = nav.dataset.for || (nav.closest(".group") || {}).dataset?.group;
+    nav.querySelectorAll("[data-below]").forEach(b => {
+      const [state, text] = b.dataset.below === "all" ? ["", ""] : subStatus(group, b.dataset.below);
+      const dot = b.querySelector(".sub-dot"), small = b.querySelector(".sub-text");
+      if (dot.className !== "sub-dot " + state) dot.className = "sub-dot " + state;
+      if (small.textContent !== text) small.textContent = text;
+    });
+  });
+}
+setInterval(subStatusDraw, 2000);
+setTimeout(subStatusDraw, 0);
 function belowFrom(group, slug) { const u = (SUBPAGES[group] || []).find(([, , l]) => l.includes(slug)); return u ? u[0] : null; }
 function belowApply() {
   for (const group of Object.keys(SUBPAGES)) {
     const g = document.querySelector(`.group[data-group="${group}"]`), nav = g.querySelector(".subnav");
     const cur = (ui.below || {})[group] || SUBPAGES[group][0][0];
-    nav.innerHTML = [...SUBPAGES[group], ["all", "Alle", []]].map(([k, n]) => `<button data-below="${k}" aria-pressed="${k === cur}">${esc(n)}</button>`).join("");
+    nav.innerHTML = [...SUBPAGES[group], ["all", "Alle", []]].map(([k, n]) =>
+      `<button data-below="${k}" aria-pressed="${k === cur}"><i class="sub-dot"></i><span>${esc(n)}<small class="sub-text"></small></span></button>`).join("");
     nav.querySelectorAll("button").forEach(b => b.onclick = () => { ui.below = Object.assign({}, ui.below, { [group]: b.dataset.below }); uiSave(); belowApply(); });
     [...g.children].filter(x => x.tagName === "DETAILS").forEach(d => { d.hidden = cur !== "all" && belowFrom(group, d.dataset.area) !== cur; if (!d.hidden && cur !== "all") d.open = true; });
   }
+  setTimeout(subStatusDraw, 0);
 }
 
 /* ---------- Oberfläche: Docks wie in OBS, Trennlinien, Einklappen, Zoom, Design ---------- */

@@ -18,7 +18,7 @@ window.CastCore = (function () {
   "use strict";
 
   const KEY = "cast-state-v1";
-  const VERSION = "2.8.0";                     // muss zur App passen – sonst lädt sich die Seite neu
+  const VERSION = "2.9.0";                     // muss zur App passen – sonst lädt sich die Seite neu
   // Läuft die Seite über den Server der App (http://localhost:8787)?
   const SERVER = /^https?:$/.test(location.protocol) && location.port === "8787" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
@@ -213,6 +213,8 @@ window.CastCore = (function () {
     // Schritte: { aktion: "ban"|"pick"|"decider", team: "a"|"b"|"", map: "", bild: "", seite: ""|"ct"|"t" }
     veto: { source: "manual", format: "bo3", steps: [] },
     players: { a: [], b: [] },   // { name, echt, bild, level }
+    // Spieltag: Spiele des Tages in Reihenfolge, je { id, time, a, b, gameId, done } (a/b: { name, short, logo, players }); current = laufendes Spiel
+    matchday: { list: [], current: "" },
     // Serie: Ergebnisse stehen direkt an den Pick-/Decider-Schritten des Vetos (schritt.ergebnis)
     series: { autoPoints: true },
     // Sprecher-Anzeige: Namensschild leuchtet, wenn jemand spricht

@@ -195,6 +195,24 @@ Spielt OBS ab (`source: "obs"`), bekommt die Quelle „Cast – Hintergrund“ d
 `GetPublishedFileDetails`; das Vorschaubild nur über HTTPS von Steams Bild-Servern (auch nach Weiterleitung geprüft),
 größenbegrenzt. Tests: `tests/test_workshop.py`.
 
+### Unterseiten, Status und Stepper (`web/control/06-layout.js`)
+
+`SUBPAGES[group]` = Liste `[key, Name, [data-area …]]` je Bereich mit Unterseiten (Match, Turnier, Setup); die Karten
+(`<details data-area>`) bleiben im HTML, `belowApply()` blendet je Unterseite die passenden ein. `subStatus(group, key)` liefert
+`[Zustand, Zeile]` (`ok|wait|next|""`) für den Punkt in der Liste. Für Bereiche in `STEPPER_GROUPS` hängt `belowApply()` unten
+„← …“ / „Weiter: … →“ an. Neue Unterseite: Karte mit `data-area` anlegen, Eintrag in `SUBPAGES`, Status in `subStatus`.
+
+### Spieltag (`Z.matchday`, `web/control/05-live.js`)
+
+`Z.matchday = { list: [{ id, time, a, b, gameId, done }], current }`; `a`/`b` = `{ name, short, logo, players }` (Spieler wie
+`Z.players`). `mdLoad(id)` setzt `Z.teams`/`Z.players`, leert Spielstand und Veto (`presetSteps`) und schreibt das Ergebnis des
+bisher laufenden Spiels über `gameId` in `Z.tournament.res` – nur bei selbst geführten Turnieren (`gamesSource !== "faceit"`).
+
+### Korrigierte Turnier-Ergebnisse
+
+Ein Spiel in `Z.tournament.res` bekommt `fixed: true`, sobald es von Hand geändert wird und das Turnier mit FACEIT verknüpft ist.
+`faceitResults()` und der Abgleich über Team-IDs überspringen solche Spiele; das Schild „korrigiert ↺“ löscht `fixed` wieder.
+
 ### Box-Stil der Overlays (hell · dunkel · Mischung)
 
 Theme-Feld `boxStyle` (`light` Standard, `dark`, `mixed`; in `Z.themeData[theme]`). `cast.js` → `theme()` setzt

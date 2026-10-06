@@ -223,6 +223,10 @@ trotzdem in die ganze Szene. In jeder anderen Szene wechseln die Knöpfe ganz no
 * **„Turnier übernehmen“** (FACEIT-Link): holt Teams mit Logos, Spielern und Statistiken und übernimmt den **genauen Aufbau** –
   Gruppen mit Tabelle (jeder gegen jeden), **Swiss** (mit Bilanz 2–1 usw.; die Paarungen kommen von FACEIT, ausgelost
   wird nichts) oder den Baum genau so, wie FACEIT ihn führt. „Ergebnisse aktualisieren“ holt neue Spielstände.
+* **Korrekturen bleiben:** Ein von Hand geändertes FACEIT-Ergebnis ist **korrigiert** (gelbes Schild am Spiel) und wird beim
+  Aktualisieren nicht überschrieben. „korrigiert ↺“ nimmt wieder den Wert von FACEIT. Unter den Spielen steht die Quelle
+  („FACEIT · 2 korrigiert“ oder „selbst eingetragen“).
+* Die Turnier-Seite hat vier Unterseiten mit Status: **Aufbau** (Name, Format, Punkteregel) · **Teams & FACEIT** · **Spiele** · **Im Overlay**.
 * **Punkteregel je Turnier** (Gruppen mit Tabelle): Vorlagen wie „Sieg 3 · Niederlage mit Map-Gewinn 1 · Niederlage 0“ oder eigene Werte
   für Sieg 2:0, Sieg 2:1, Niederlage 1:2, Niederlage 0:2 und Unentschieden. Bei Punktgleichheit zählt der direkte Vergleich, dann die
   Rundendifferenz (RD, holt die App von FACEIT), dann die Siege. **„Gruppe im Overlay“** zeigt alle Gruppen oder nur eine –
@@ -264,8 +268,13 @@ Nach oben/unten und Löschen (mit Rückgängig). Arten:
   Unter Setup → Sponsoren → **Platz des Sponsor-Kastens** lässt er sich stattdessen **oben rechts** zeigen; ist kein Sponsor
   zu sehen (aus oder keiner eingetragen), rückt die Leiste ohne Lücke zur Mitte.
   Ohne Logo steht der Sponsor-Name groß im Kasten; lange Namen werden kleiner und brechen bei Bedarf auf zwei Zeilen um.
-* **Unterseiten mit Status:** In Match und Setup steht links neben jeder Unterseite ein Punkt mit einer Zeile – Grün = fertig,
+* **Unterseiten mit Status:** In Match, Turnier und Setup steht links neben jeder Unterseite ein Punkt mit einer Zeile – Grün = fertig,
   Gelb = fehlt noch (z. B. „Caster-Namen fehlen“, „1 Logo fehlt“), Lila = angepasst, Grau = Vorgabe.
+  In Match und Turnier führen **„Weiter: …“** und **„← …“** unter jeder Unterseite Schritt für Schritt durch die Vorbereitung.
+* **Spieltag** (Match → Spieltag & Import): alle Spiele des Tages in Reihenfolge, mit Uhrzeit. Spiele kommen aus dem Turnier
+  (einzeln oder „Alle offenen Spiele“), aus der Team-Bibliothek oder vom aktuellen Match. **„Laden“** bzw. **„Nächstes Spiel laden“**
+  setzt Teams, Kürzel, Logos und Spieler und leert Spielstand, Veto und Serie. Stammt das Spiel aus einem selbst geführten Turnier,
+  steht sein Ergebnis beim Wechsel automatisch im Turnier.
 * **Timer bei 0:00** (Match → Timer & Texte): eigener Text statt „00:00“ (z. B. „GLEICH GEHT'S LOS“) und auf Wunsch ein
   automatischer Wechsel in eine Szene – einmal, genau beim Ablaufen.
 * **Team-Bibliothek** (Match → Teams & Spieler): „Team A/B speichern“ legt Name, Kürzel, Logo, Farben und Spieler auf diesem PC ab;

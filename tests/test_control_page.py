@@ -390,6 +390,52 @@ def test_sponsor_box_moves_between_bar_and_top_right(server, browser):
     assert errors == []
 
 
+def test_matchday_loads_games_one_after_another(server, browser):
+    """Spieltag: games from the tournament load as the current match; the result goes back into the tournament."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("""(() => { const T = tour(); T.format = 'se'; T.gamesSource = ''; T.res = {};
+      T.teams = ['Alpha', 'Bravo', 'Charlie', 'Delta'].map((n, i) => ({ id: 't' + i, name: n, short: n.slice(0, 3), logo: '', players: ['a' + i, 'b' + i], faceitId: '' }));
+      Z.matchday = { list: [], current: '' }; tournamentDraw(); window.confirmDialog = async () => true; })()""")
+    page.evaluate("$('mdAddAllTour').click()")
+    assert page.evaluate("Z.matchday.list.map(x => x.a.name + '-' + x.b.name)") == ["Alpha-Delta", "Bravo-Charlie"]
+    page.evaluate("$('mdNext').click()")
+    page.wait_for_timeout(300)
+    assert page.evaluate("[Z.teams.a.name, Z.teams.b.name, Z.players.a.map(p => p.name).join()]") == ["Alpha", "Delta", "a0,b0"]
+    page.evaluate("Z.teams.a.score = 2; Z.teams.b.score = 0; steps()[0].map = 'Nuke'; $('mdNext').click()")
+    page.wait_for_timeout(300)
+    assert page.evaluate("[Z.teams.a.name, Z.teams.a.score, steps().some(s => s.map)]") == ["Bravo", 0, False]
+    assert page.evaluate("tour().res['W1-1']") == {"a": 2, "b": 0, "done": True}
+    assert page.evaluate("Z.matchday.list.map(x => x.done)") == [True, False]
+    assert errors == []
+
+
+def test_corrected_faceit_results_stay(server, browser):
+    """A FACEIT result changed by hand is marked as corrected and the next refresh keeps it."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("""(() => { const T = tour(); T.format = 'import'; T.gamesSource = 'faceit';
+      T.teams = [{ id: 'ta', name: 'Alpha', faceitId: 'fa', players: [] }, { id: 'tb', name: 'Bravo', faceitId: 'fb', players: [] }];
+      T.games = [{ id: 'Fm1', round: 1, group: 0, a: 'ta', b: 'tb' }]; T.res = { Fm1: { a: 1, b: 0, done: true } };
+      tournamentDraw(); tabs('tournament'); ui.below = Object.assign({}, ui.below, { tournament: 'games' }); belowApply(); })()""")
+    page.fill("#tourTree input[data-s=a]", "0")
+    page.fill("#tourTree input[data-s=b]", "1")
+    page.evaluate("document.querySelector('#tourTree input[data-s=b]').dispatchEvent(new Event('change'))")
+    assert page.evaluate("tour().res.Fm1.fixed") is True
+    assert page.is_visible("#tourTree .tour-fixed")
+    faceit = "[{ match_id: 'm1', status: 'FINISHED', teams: { faction1: { faction_id: 'fa' }, faction2: { faction_id: 'fb' } }, results: { score: { faction1: 1, faction2: 0 } } }]"
+    page.evaluate(f"faceitResults(tour(), {faceit})")
+    assert page.evaluate("[tour().res.Fm1.a, tour().res.Fm1.b]") == [0, 1]
+    page.click("#tourTree .tour-fixed")                                          # back to FACEIT's value
+    page.evaluate(f"faceitResults(tour(), {faceit})")
+    assert page.evaluate("[tour().res.Fm1.a, tour().res.Fm1.b]") == [1, 0]
+    assert errors == []
+
+
 def test_faceit_swiss_is_told_apart_from_a_round_robin(server, browser):
     """Swiss pairs teams with the same record from round 2 on; a round robin does that only for about half the games."""
     page = browser.new_page()

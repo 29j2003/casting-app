@@ -162,6 +162,14 @@ Die Dateien `web/<scene>.html` werden erzeugt – nie von Hand ändern.
 5. Übersetzungen in `web/lang-en.js`. `tests/test_control_page.py` prüft die neue Art im Overlay automatisch mit,
    sobald eine Einblendung dieser Art im Standardzustand steht.
 
+### Bedienung an eine Szene binden (Live → „Zur Szene“)
+
+Die Karte `data-area="scene-tools"` zeigt, was die Szene im Programm braucht (`sceneNow()` in `web/control/05-live.js`,
+auch im Modus mit mehreren OBS-Szenen). Zuordnung in `SCENE_TOOLS` (Szene → Werkzeug), z. B. `"map-veto": "veto"`.
+Ein neues Werkzeug: Bereich in der Karte in `web/control.html` anlegen, in `sceneToolsDraw()` ein-/ausblenden und
+mit derselben Zeichenfunktion füllen wie die Karte unter Match (Beispiel: `vetoUpnextDraw()` für beide Stellen) –
+so bleiben beide Stellen gleich, ohne eigenen Abgleich.
+
 ### Ein neues Theme (Liga-Design)
 1. `web/themes.js`: einen Eintrag nach dem Muster der anderen. Die Felder sind oben in der Datei erklärt.
 2. Logos und Bilder nach `web/media/themes/`, im Theme mit `media/themes/…` angeben.

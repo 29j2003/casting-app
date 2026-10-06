@@ -66,8 +66,8 @@ Sicherungen (`.json`) und Theme-Dateien aus 2.1 lassen sich weiter laden.
 
 ### Aufbau
 
-* **Live** – nur, was du in der Sendung brauchst: Programm-Vorschau, Szenen, **Match** (Punkte, Map, Serie, Timer),
-  **Turnier live** (Gruppe, Team hervorheben, „Tabelle zeigen“), Einblendungen und Ton.
+* **Live** – nur, was du in der Sendung brauchst: Programm-Vorschau, Szenen, **Zur Szene** (was die laufende Szene
+  braucht – bei „Map-Veto“ das Veto zum Klicken), **Match** (Punkte, Map, Serie, Timer), **Turnier live** (Gruppe, Team hervorheben, „Tabelle zeigen“), Einblendungen und Ton.
 * **Match** – Unterseiten: Import & Sitzungen · Teams & Spieler · Map-Veto & Serie · Caster & Kameras · Timer & Texte (und „Alle“).
 * **Turnier** – eigener Bereich für Baum, Tabelle und FACEIT-Abgleich.
 * **Setup** – Unterseiten: Aussehen · Sponsoren · Map-Pool · Hintergrund · Szenen & OBS · CS2-Livedaten.
@@ -90,9 +90,13 @@ Sicherungen (`.json`) und Theme-Dateien aus 2.1 lassen sich weiter laden.
 Speichere ein Match als Sitzung („Speichern“, „Speichern unter …“) und lade es später mit „Laden“. „Sichern (.json)“ und
 „Laden (.json)“ bringen alles auf einen anderen PC. „Alles zurücksetzen“ fragt vorher nach.
 
-### Map-Veto (Match → Map-Veto & Serie)
+### Map-Veto (Live → Zur Szene · Match → Map-Veto & Serie)
 
-Quelle „Manuell“ oder „FACEIT“, Format/Preset wählen, „Neu starten“. „↶ Rückgängig“ nimmt den letzten Schritt zurück.
+**Während der Sendung:** Läuft die Szene **Map-Veto**, zeigt Live → **Zur Szene** das Veto: wer dran ist, die freien Maps
+als Knöpfe, alle Schritte auf einen Blick und bei Picks die Seite. In anderen Szenen holt „Map-Veto trotzdem hier zeigen“
+es bis zum nächsten Szenenwechsel dazu. Unter Match bearbeitest du dasselbe Veto – beide Stellen zeigen immer den gleichen Stand.
+
+**Vorbereitung (Match):** Quelle „Manuell“ oder „FACEIT“, Format/Preset wählen, „Neu starten“. „↶ Rückgängig“ nimmt den letzten Schritt zurück.
 Eigene Abläufe mit „+ Schritt“ bauen und „Als Preset speichern“. Gewonnene Maps zählen auf Wunsch automatisch als Punktestand.
 
 ### Kameras & Quellen (Match → Caster & Kameras)
@@ -186,7 +190,7 @@ trotzdem in die ganze Szene. In jeder anderen Szene wechseln die Knöpfe ganz no
 
 ### Reiter
 
-* **Live** – während der Sendung: Szenen, Match, Turnier live, Einblendungen, Ton.
+* **Live** – während der Sendung: Szenen, Zur Szene (z. B. Map-Veto), Match, Turnier live, Einblendungen, Ton.
 * **Match** – das aktuelle Spiel: Sitzungen, FACEIT, Map-Veto, Teams, Spieler, Timer, Lauftexte, Caster, Kameras.
 * **Turnier** – Baum, Tabelle, FACEIT-Turnier.
 * **Setup** – Themes, Überschriften, Sponsoren, Map-Pool, Hintergrund, OBS-Szenen, CS2-Daten.

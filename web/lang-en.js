@@ -6,6 +6,15 @@
    ===================================================================== */
 window.CastLanguages = window.CastLanguages || {};
 window.CastLanguages.en = {
+ "Zur Szene": "For this scene",
+ "Format": "Format",
+ "Format des Vetos": "Format of the veto",
+ "Schritte, Teams und Presets bearbeiten → Match": "Edit steps, teams and presets → Match",
+ "Map-Veto trotzdem hier zeigen": "Show map veto here anyway",
+ "Für diese Szene gibt es hier nichts einzustellen.": "Nothing to set here for this scene.",
+ "Seite des Gegners": "Side of the opponent",
+ "Format wechseln?": "Change format?",
+ "Das Veto beginnt mit dem neuen Format von vorn – eingetragene Bans und Picks werden geleert.": "The veto starts over with the new format – entered bans and picks are cleared.",
  "Aussehen & Oberfläche": "Appearance & interface",
  "Unten": "Bottom",
  "Oben": "Top",

@@ -107,6 +107,21 @@
       </div>
     </details>
 
+    <details open data-area="scene-tools">
+      <summary>Zur Szene</summary>
+      <div class="content">
+        <div class="scene-tools-head"><b id="sceneToolsName">–</b><span class="small" id="sceneToolsHint"></span></div>
+        <div id="sceneToolsVeto" class="scene-tools-veto" hidden>
+          <div class="line"><label>Format<select id="vFormatLive" aria-label="Format des Vetos"></select></label>
+            <button class="button" id="vBackLive">↶ Rückgängig</button><button class="button" id="vNewLive">Neu starten</button></div>
+          <div id="vUpnextLive" class="veto-upnext"></div>
+          <div id="vSummaryLive" class="veto-summary"></div>
+          <button class="button link" id="vEditLive">Schritte, Teams und Presets bearbeiten → Match</button>
+        </div>
+        <div class="line" id="sceneToolsOther" hidden><button class="button" id="sceneToolsVetoShow">Map-Veto trotzdem hier zeigen</button></div>
+      </div>
+    </details>
+
     <details open data-area="tournament-live">
       <summary>Turnier live</summary>
       <div class="content mbar">

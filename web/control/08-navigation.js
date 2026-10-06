@@ -4,8 +4,8 @@
 
 /* ---------- Arbeitsbereiche: Vorlagen + eigene gespeicherte Anordnungen ---------- */
 const TEMPLATES = {
-  "Operator": { dock: { bottom: ["sceneList", "audio"], right: ["match", "graphics", "tournament-live"] }, b2: 450, hU: 320, previewClose: false, tabs: "live", large: false },
-  "Caster – große Knöpfe": { dock: { bottom: ["sceneList"], right: ["match", "graphics"] }, b2: 470, hU: 330, previewClose: false, tabs: "live", large: true },
+  "Operator": { dock: { bottom: ["sceneList", "audio"], right: ["scene-tools", "match", "graphics", "tournament-live"] }, b2: 450, hU: 320, previewClose: false, tabs: "live", large: false },
+  "Caster – große Knöpfe": { dock: { bottom: ["sceneList"], right: ["scene-tools", "match", "graphics"] }, b2: 470, hU: 330, previewClose: false, tabs: "live", large: true },
   "Laptop / neben OBS": { dock: { bottom: [], right: [] }, previewClose: true, tabs: "live", large: false },
   "Vorbereitung": { dock: { bottom: [], right: [] }, previewClose: false, tabs: "match", large: false }
 };
@@ -75,6 +75,14 @@ if (!ui.workspaces) {
 }
 document.body.classList.toggle("large", !!ui.large);
 if (!ui.konzept3) { ui.konzept3 = true; uiSave(); setTimeout(() => workspaceChoose("Operator"), 0); }
+// neue Karte „Zur Szene" (2.5): wer schon ein Layout mit rechtem Dock hat, bekommt sie dort oben dazu
+if (!ui.sceneTools) {
+  ui.sceneTools = true; uiSave();
+  setTimeout(() => {
+    const d = areaAfter("scene-tools");
+    if (d && placeFrom(d) === "left" && cardsIn(DOCKS.right).length) { DOCKS.right.insertBefore(d, cardsIn(DOCKS.right)[0]); d.open = true; dockRemember(); uiSave(); }
+  }, 0);
+}
 workspaceDraw();
 
 /* ---------- Unterseiten in Match und Setup anwenden (Deklarationen: Abschnitt „Unterseiten“ vor der Oberfläche) ---------- */

@@ -472,3 +472,73 @@ def test_css_variables_of_the_control_page_are_defined():
     defined = set(re.findall(r"--([a-z0-9-]+)\s*:", text))
     defined |= set(re.findall(r"setProperty\([\"']--([a-z0-9-]+)", text))      # set from JavaScript
     assert not used - defined, f"nicht definiert: {sorted(used - defined)}"
+
+
+def test_background_playlists_follow_the_scene(server, browser):
+    """2.7: videos chosen up to 2.6 become the playlist „Standard"; each scene plays its playlist, the corner in Live
+    changes it until the next scene switch, and a clip is sent once with its own id."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("""Z.background.playlists = []; Z.background.videos = ['media/videos/a.mp4', 'media/videos/b.mp4']; everything()""")
+    lists = page.evaluate("Z.background.playlists.map(p => [p.name, p.kind, p.videos.length, p.scenes.includes('pause'), p.scenes.includes('ingame')])")
+    assert lists == [["Standard", "list", 2, True, False]]
+    page.evaluate("""(() => { const p = { id: 'drone', name: 'Drohne', kind: 'loop', videos: ['media/videos/c.mp4', 'media/videos/d.mp4'],
+        order: 'seq', transition: 'black', fade: 800, scenes: [] };
+      const clips = { id: 'clips', name: 'Clips', kind: 'clips', videos: ['media/videos/e.mp4'], audio: true, scenes: [] };
+      Z.background.playlists.push(p, clips); bgChosen = 'drone'; bgDraw(); })()""")
+    page.evaluate("document.querySelector('#bgScenes .bg-scene').click()")         # first scene (Intro) → Drohne
+    assert page.evaluate("Z.background.playlists[0].scenes.includes('intro')") is False
+    page.evaluate("tabs('live'); sceneSwitch('intro')")
+    page.wait_for_timeout(400)
+    assert page.evaluate("[Z.background.videos, Z.background.play.transition]") == [["media/videos/c.mp4"], "black"]
+    page.evaluate("sceneSwitch('pause')")
+    page.wait_for_timeout(400)
+    assert page.evaluate("Z.background.videos.length") == 2
+    page.select_option("#bgCornerList", "drone")                                    # the corner: only until the next switch
+    assert page.evaluate("Z.background.videos") == ["media/videos/c.mp4"]
+    page.evaluate("sceneSwitch('end'); sceneSwitch('pause')")
+    page.wait_for_timeout(400)
+    assert page.evaluate("Z.background.videos.length") == 2
+    page.evaluate("$('bgClipPlay').click()")
+    clip = page.evaluate("Z.background.clip")
+    assert clip["videos"] == ["media/videos/e.mp4"] and clip["audio"] is True and clip["id"] > 0
+    assert errors == []
+
+
+def test_timer_shows_its_text_and_switches_the_scene_at_zero(server, browser):
+    """2.8: at 0:00 the overlay shows the chosen text instead of „00:00" and the control page switches the scene once."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("tabs('live'); sceneSwitch('intro')")
+    page.evaluate("Z.timer.end = { text: 'GLEICH GEHT LOS', scene: 'cast-duo' }; timerEndDraw(); Z.timer.running = true; Z.timer.target = Date.now() + 800; send()")
+    page.wait_for_timeout(2200)
+    assert page.evaluate("Z.broadcast.scene") == "cast-duo"
+    page.evaluate("sceneSwitch('intro')")                                # only once – going back stays
+    page.wait_for_timeout(1200)
+    assert page.evaluate("Z.broadcast.scene") == "intro"
+    overlay = browser.new_page(viewport={"width": 1920, "height": 1080})
+    overlay_errors = watch(overlay)
+    overlay.goto(f"{BASE_URL}/intro.html?access={server.access_key}")
+    overlay.wait_for_timeout(1500)
+    assert "GLEICH GEHT LOS" in overlay.inner_text(".timer")
+    assert errors == [] and overlay_errors == []
+
+
+def test_team_library_saves_and_loads_a_team_with_its_players(server, browser):
+    """2.8: a team saved to the library (name, logo, players) comes back as team B – the score of the match stays."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("Z.teams.a.name = 'Bravo Esports'; Z.teams.a.short = 'BRV'; Z.players.a = [{ name: 'p1' }, { name: 'p2' }]; Z.teams.b.score = 1")
+    page.evaluate("teamLibSave('a')")
+    page.wait_for_timeout(400)
+    assert page.evaluate("[...$('teamLib').options].map(o => o.value)") == ["Bravo Esports"]
+    page.evaluate("teamLibLoad('b')")
+    page.wait_for_timeout(400)
+    assert page.evaluate("[Z.teams.b.name, Z.teams.b.short, Z.teams.b.score, Z.players.b.length]") == ["Bravo Esports", "BRV", 1, 2]
+    assert errors == []

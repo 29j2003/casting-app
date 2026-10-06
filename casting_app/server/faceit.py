@@ -1,4 +1,4 @@
-"""FACEIT match data – the app's only connection to the internet.
+"""FACEIT match data (besides the Steam Workshop lookup and the update check, the app's only connection to the internet).
 
 The control page asks /api/faceit/<path>; the server forwards only whitelisted
 paths and adds the API key itself, so the key never reaches the page.

@@ -53,7 +53,8 @@ async function sceneSwitch(k) {
     if (!c.on) return;
     const before = Z.broadcast.scene;
     Z.broadcast.scene = k; Z.broadcast.num = (Z.broadcast.num || 0) + 1;
-    scenesDraw(); send();
+    if (before !== k) Z.background.override = null;                   // eine Änderung in der Live-Ecke gilt bis zum Szenenwechsel
+    bgApply(k); scenesDraw(); send();
     if (k === "ingame" && before !== "ingame") obsBackgroundVisible(false, Z.broadcast.transition === "cut" ? 0 : (Z.broadcast.duration || 0) * (Z.broadcast.transition === "stinger" ? .5 : 1));
     if (k !== "ingame" && before === "ingame") obsBackgroundVisible(true, 0);
     return;
@@ -64,7 +65,7 @@ async function sceneSwitch(k) {
   try {
     if (transitionTo) await channel.obs.question("SetCurrentSceneTransition", { transitionName: transitionTo }).catch(() => {});
     await channel.obs.question("SetCurrentProgramScene", { sceneName: e.obs });
-    currentScene = e.obs; scenesDraw();
+    currentScene = e.obs; Z.background.override = null; bgApply(k); send(); scenesDraw();
   } catch (err) { $("sceneHint").textContent = "Wechsel fehlgeschlagen: " + err.message; }
 }
 // Stats während Ingame über dem Spiel

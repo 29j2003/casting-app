@@ -181,6 +181,20 @@ Ein neues Feld:
    `mbarPoint()`), Eingaben mit `data-field` – dasselbe Feld darf an mehreren Stellen stehen, die anderen ziehen mit (01-core „Felder“).
 So bleiben alle Stellen gleich, ohne eigenen Abgleich. Neue Texte → `web/lang-en.js`.
 
+### Hintergrund-Playlisten
+
+`Z.background.playlists` (Felder in `web/control/07-background.js`, Abschnitt „Playlisten“). `bgApply(scene)` schreibt vor
+jedem Senden, was laufen soll, nach `Z.background.videos` (Liste) und `Z.background.play` (Übergang, Dauer, Reihenfolge) –
+das Overlay (`cast.js`: `background()`) kennt keine Playlisten. Clips: `Z.background.clip = { id: Zeitpunkt, videos, audio }`,
+jede Seite spielt einen Abruf einmal (`clips()`). Alte Zustände: `bgPlaylists()` macht aus `videos` die Playlist „Standard“.
+Spielt OBS ab (`source: "obs"`), bekommt die Quelle „Cast – Hintergrund“ die Videos (`obsBackground(true)`).
+
+### Steam Workshop (`casting_app/server/workshop.py`)
+
+`/api/workshop?id=<Link oder Nummer>` → `{id, title, image}`. Nur die Nummer geht an Steams öffentliche
+`GetPublishedFileDetails`; das Vorschaubild nur über HTTPS von Steams Bild-Servern (auch nach Weiterleitung geprüft),
+größenbegrenzt. Tests: `tests/test_workshop.py`.
+
 ### Form und Farbe (Konzept 3.0)
 
 Abschnitt „Konzept 3.0“ am Ende von `web/control.css`: `.button` = Taste (erhaben, lila Leuchten, sinkt beim Drücken),

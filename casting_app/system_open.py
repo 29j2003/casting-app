@@ -32,9 +32,9 @@ def system_environment(environment: dict[str, str] | None = None, bundle: str | 
     if bundle:
         for name, value in list(env.items()):
             if bundle in value:
-                parts = [p for p in value.split(os.pathsep) if bundle not in p]
-                if parts and os.pathsep in value:
-                    env[name] = os.pathsep.join(parts)
+                parts = [p for p in value.split(":") if bundle not in p]     # Linux path lists (":")
+                if parts and ":" in value:
+                    env[name] = ":".join(parts)
                 else:
                     del env[name]
     return env

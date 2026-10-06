@@ -343,6 +343,37 @@ def test_sponsor_lists_saved_by_2_2_still_load(server, browser):
     assert errors == []
 
 
+def test_dach_cams_sit_under_the_page_and_never_show_the_previous_page(server, browser):
+    """Order while switching: previous page (1) · cams (2) · new page (3); afterwards cams stay under the page,
+    so its frame line and name tag lie on top and no hole ever shows the previous page."""
+    page = browser.new_page(viewport={"width": 1920, "height": 1080})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/overlay.html?access={server.access_key}")
+    page.wait_for_timeout(800)
+    page.evaluate("""(() => { const z = JSON.parse(JSON.stringify(CastCore.DEFAULT)); z.theme = 'dachcs-official';
+        z.broadcast.scene = 'dach-overview'; z.broadcast.active = true; z.broadcast.transition = 'fade'; z.broadcast.duration = 1500;
+        z.revision = Date.now(); window._z = z; fetch('/api/state', { method: 'POST', body: JSON.stringify(z) }); })()""")
+    page.wait_for_timeout(2500)
+    page.evaluate("""(() => { const z = window._z; z.broadcast.scene = 'dach-duocast'; z.revision = Date.now();
+        fetch('/api/state', { method: 'POST', body: JSON.stringify(z) }); })()""")
+    order = "(() => { const z = e => +getComputedStyle(e).zIndex || 0, cams = z(document.querySelector('.dach-cams'));" \
+            " return { cams, pages: [...document.querySelectorAll('.dach-page.on')].map(z).sort() }; })()"
+    during = None
+    for _ in range(60):                                         # catch the moment both pages are shown
+        page.wait_for_timeout(50)
+        state = page.evaluate(order)
+        if len(state["pages"]) == 2:
+            during = state
+            break
+    assert during and during["pages"][0] < during["cams"] < during["pages"][1], during
+    page.wait_for_timeout(2000)
+    after = page.evaluate(order)
+    assert len(after["pages"]) == 1 and after["cams"] < after["pages"][0], after
+    frames = page.evaluate("[...document.querySelectorAll('.dach-cam')].map(k => [k.dataset.source, k.style.left, k.style.width])")
+    assert sorted(frames) == [["c1", "39px", "902px"], ["c2", "980px", "903px"]]
+    assert errors == []
+
+
 def test_css_variables_of_the_control_page_are_defined():
     """Every var(--name) the control page uses (also in JavaScript strings) is defined in its styles (or set from JS)."""
     web = Path(__file__).parent.parent / "web"

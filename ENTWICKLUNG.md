@@ -221,6 +221,14 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
 
 ## Technische Details
 
+* **DACH CS – Offiziell** (`web/broadcast.js`, `dachShow`): drei iframes im Wechsel. Ebenen: vorige Seite (z 1) ·
+  `.dach-cams` (z 2) · aktuelle Seite (z 3). Die DACH-Seiten haben durchsichtige Löcher für Kameras; die Rahmen aus
+  `DACH_FRAME` (`web/cast-core.js`, gemessen inkl. gelber Linie) liegen darunter, Linie und Namensschild der Seite darüber.
+  Beim Wechsel sitzen die Kameras sofort in den neuen Rahmen und laufen mit derselben Animation wie die neue Seite;
+  `.dach-under` (z 0) füllt die Löcher beider Seiten schwarz, bis der Wechsel fertig ist. Neue Seite vermessen:
+  Video/Screenshot der Seite, gelbe Linie suchen (1920 × 1080), Werte in `DACH_FRAME` eintragen.
+* **Videoformate:** Qt WebEngine aus PySide6 kann kein H.264/AAC (VP8/VP9/AV1 ja). OBS (CEF) kann H.264 – Overlays in OBS
+  sind nicht betroffen; im App-Fenster zeigt `dachNote()` auf DACH-Seiten mit Video einen Hinweis (nur Vorschau).
 * **Schließen:** `closeEvent` wird ignoriert, die Steuerseite zeigt sofort ihren eigenen Dialog
   (Ganz beenden · Nur Fenster schließen · Abbrechen). Bestätigt die Seite nicht binnen 1 s, fragt ein Systemdialog.
   „Nur Fenster schließen“ versteckt das Fenster; das Tray-Symbol bietet Öffnen · Overlays in OBS neu laden · Ganz beenden.

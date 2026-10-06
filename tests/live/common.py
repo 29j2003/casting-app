@@ -1,4 +1,4 @@
-"""Shared helpers for the live test scripts (they drive a running Casting-App, see README.md here).
+"""Shared helpers for the live test scripts (they drive a running Casting-App, see ENTWICKLUNG.md → Live-Tests).
 
 The scripts open the control page and an overlay in Playwright's Chromium, change the state through the
 control page's own functions (sceneSwitch, dachSwitch, send …) and look at what the overlay shows.

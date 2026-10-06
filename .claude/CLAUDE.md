@@ -2,7 +2,7 @@
 
 Desktop-App in Python (PySide6 / Qt WebEngine, Windows/Linux/macOS) zum Casten von CS2-Matches mit OBS. Ein Python-Server
 liefert die Steuerseite (eigenes App-Fenster) und die Overlays aus; OBS zeigt alles in **einer** Browserquelle (`overlay.html`).
-Nutzer: Julius (Twitch 29_THE_P4TCH3R), castet DACH CS Masters, ESEA, Uniliga.
+Nutzer: Julius (Twitch 29_THE_P4TCH3R), macht Production für Casts (DACH CS Masters, ESEA, Uniliga) – kein Caster, programmiert nicht selbst.
 Aufbau und Rezepte für Änderungen: `ENTWICKLUNG.md` (bei neuen Bausteinen dort mitpflegen).
 **Alle Namen im Code englisch** (Python und `web/`: Variablen, Funktionen, CSS-Klassen, IDs, API-Pfade, JSON-Felder, Dateien).
 **Python-Code: englische Kommentare, sauber dokumentiert (Docstrings je Modul/Klasse).**
@@ -12,7 +12,8 @@ Aufbau und Rezepte für Änderungen: `ENTWICKLUNG.md` (bei neuen Bausteinen dort
 - `casting_app/__main__.py` – Start: Desktop-App oder `--no-window`/`--ohne-fenster` (nur Server), `--no-gpu`/`--ohne-gpu`.
 - `casting_app/server/` – HTTP-Server (Port 8787, nur localhost): `app_server.py` (Anfrage-Prüfung, alle `/api`-Routen,
   Zustand, Bilder, DACH-Weiterleitung `/dach/<page>`), `event_hub.py` (SSE `/api/events`), `static_files.py`,
-  `game_state.py` + `cs2_setup.py` (CS2-GSI lokal + Port 8788 mit Token), `faceit.py`, `video_info.py`.
+  `game_state.py` + `cs2_setup.py` (CS2-GSI lokal + Port 8788 mit Token), `faceit.py`, `video_info.py`,
+  `media_converter.py` (H.264 → WebM mit FFmpeg für das App-Fenster, `/api/media`).
   Alte Adressen aus 2.1 (`steuerung.html`, `spieler.html` …, `/medien/…`, `/api/ereignisse`, `/api/beenden`) bleiben als
   Weiterleitung bzw. Alias – OBS-Quellen und ältere Versionen funktionieren weiter (`LEGACY_PAGES`, `_reload_legacy_page`).
 - `casting_app/secret_store.py` – FACEIT-Key, DACH-CS-ID/-Key nur im Schlüsselbund (`keyring`), keine Dateien;
@@ -26,7 +27,8 @@ Aufbau und Rezepte für Änderungen: `ENTWICKLUNG.md` (bei neuen Bausteinen dort
 - `casting_app/desktop/` – `app.py` (Start, eine Instanz per `QLocalServer`, Tray, Auto-Beenden, Beenden),
   `main_window.py` (Fenster, `closeEvent` → Dialog der Steuerseite, Systemdialog nur als Rückfall), `web_page.py`
   (Rechte, Links, Downloads, Skripte), `bridge.py` + `scripts/page_bridge.js`/`app_bridge.js` (window.castApp ↔ isolierte
-  Welt mit QWebChannel), `audio.py` + `scripts/volume.js` (Ton im App-Fenster), `tray.py`.
+  Welt mit QWebChannel), `audio.py` + `scripts/volume.js` (Ton im App-Fenster), `media.py` + `scripts/codecs.js`
+  (H.264-Videos im App-Fenster über `/api/media`), `tray.py`.
 - `web/control.html` (Aufbau) + `web/control.css` (Aussehen) + `web/control/01-core.js … 13-app.js` (Logik nach Themen,
   Lageplan in `01-core.js`; der Server liefert sie verbunden als `/control.js`) – die Steueroberfläche:
   Bereiche Live · Match · Turnier · Setup · Log, Docks, Arbeitsbereiche, Befehlspalette (Strg K), Ton über OBS-WebSocket.
@@ -53,7 +55,7 @@ Aufbau und Rezepte für Änderungen: `ENTWICKLUNG.md` (bei neuen Bausteinen dort
 - Stream-Overlays dürfen keine Bedien-Hinweise zeigen – Hinweise nur in der Vorschau (`body.idle`).
 - Nach Änderungen an Übergängen: `tests/live/transitions.py` und `tests/live/flicker.py` müssen sauber bleiben.
 - Nach Änderungen an `casting_app/`: `python -m pytest` (unter Linux mit `xvfb-run -a`) muss sauber bleiben.
-- **Doku:** Nutzer-Anleitung nur in `LIESMICH.md`, Entwickler-Doku nur in `ENTWICKLUNG.md`, `README.md` bleibt kurz. Keine weiteren `.md`-Dateien anlegen.
+- **Doku:** nur zwei Dateien – `README.md` (Startseite + Anleitung für Nutzer) und `ENTWICKLUNG.md` (Entwickler). Keine weiteren `.md`-Dateien anlegen.
 - **Zwei Sprachen** (App und Overlays, unabhängig): neuer sichtbarer Text in der Steuerseite → Übersetzung in
   `web/lang-en.js`; feste Overlay-Texte → `OVERLAY_TEXTS`/`OVERLAY_WORDS` in `web/cast-core.js` (beide Sprachen);
   Texte aus Python → `casting_app/texts.py`. Werte, die der Code vergleicht, nie aus sichtbarem Text ableiten.

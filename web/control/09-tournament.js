@@ -45,6 +45,10 @@ function tournamentDraw() {
 }
 function tournamentTreeDraw() {
   const T = tour(), B = K.tournamentBuild(T, CastI18n.language), box = $("tourTree"); box.innerHTML = "";
+  const linked = T.gamesSource === "faceit" || T.teams.some(t => t.faceitId);       // Ergebnisse können von FACEIT kommen
+  const sourceDraw = () => { const n = Object.values(T.res).filter(e => e && e.fixed).length;
+    $("tourSource").textContent = linked ? `Quelle: FACEIT${n ? ` · ${n} korrigiert` : ""}` : "Quelle: selbst eingetragen"; };
+  sourceDraw();
   const name = id => id === "BYE" ? "Freilos" : ((T.teams.find(t => t.id === id) || {}).name || (id ? "?" : "–"));
   const card = (m, title) => {
     const d = document.createElement("div"); d.className = "tour-m" + (m.done ? " done" : "");
@@ -53,8 +57,18 @@ function tournamentTreeDraw() {
     d.innerHTML = [["a", m.a], ["b", m.b]].map(([s, id]) => `<div class="tour-z"><button type="button" data-team="${esc(id || "")}" class="${id && id === T.focused ? "focused" : ""}"${!id || id === "BYE" ? " disabled" : ""}>${esc(name(id))}</button>
       <input type="number" min="0" data-s="${s}" value="${e2[s] ?? ""}"${undecided ? " disabled" : ""} aria-label="Ergebnis"></div>`).join("") +
       `<div class="tour-foot"><span>${esc(title || m.title || m.id)}</span><label class="toggleSwitch"><input type="checkbox"${m.done ? " checked" : ""}${undecided ? " disabled" : ""}> fertig</label></div>`;
-    d.querySelectorAll("input[data-s]").forEach(f => f.oninput = () => { T.res[m.id] = Object.assign({}, T.res[m.id], { [f.dataset.s]: f.value === "" ? "" : +f.value }); laterSend(); });
-    d.querySelector("input[type=checkbox]").onchange = ev => { T.res[m.id] = Object.assign({}, T.res[m.id], { done: ev.target.checked }); tournamentTreeDraw(); send(); };
+    // von Hand geändert = korrigiert: „Ergebnisse aktualisieren“ überschreibt den Wert nicht mehr
+    const chip = () => {
+      if (d.querySelector(".tour-fixed")) return;
+      const b = document.createElement("button"); b.type = "button"; b.className = "tour-fixed"; b.textContent = "korrigiert ↺";
+      b.title = "Wieder den Wert von FACEIT nehmen (beim nächsten „Ergebnisse aktualisieren“)";
+      b.onclick = () => { delete T.res[m.id].fixed; tournamentTreeDraw(); send(); tourStatus("Beim nächsten „Ergebnisse aktualisieren“ gilt wieder der Wert von FACEIT."); };
+      d.querySelector(".tour-foot label").before(b);
+    };
+    if (e2.fixed && linked) chip();
+    const fix = changes => { T.res[m.id] = Object.assign({}, T.res[m.id], changes, linked ? { fixed: true } : {}); if (linked) { chip(); sourceDraw(); } };
+    d.querySelectorAll("input[data-s]").forEach(f => f.oninput = () => { fix({ [f.dataset.s]: f.value === "" ? "" : +f.value }); laterSend(); });
+    d.querySelector("input[type=checkbox]").onchange = ev => { fix({ done: ev.target.checked }); tournamentTreeDraw(); send(); };
     d.querySelectorAll("button[data-team]").forEach(b => b.onclick = () => { T.focused = T.focused === b.dataset.team ? "" : b.dataset.team; tournamentTreeDraw(); send(); });
     return d;
   };
@@ -66,6 +80,7 @@ function tournamentTreeDraw() {
     B.bottom.forEach(r => column(r.title, r.matches));
     if (B.finale) column("Grand Final", [B.finale]);
   }
+  if (typeof mdDraw === "function") mdDraw();                                  // Spieltag: offene Turnierspiele zur Auswahl
 }
 $("tourName").oninput = () => { tour().name = $("tourName").value; laterSend(); };
 $("tourFormat").onchange = async () => {
@@ -148,7 +163,8 @@ function faceitResults(T, games) {
   games.forEach(x => {
     const f = x.teams || {}, a = tid((f.faction1 || {}).faction_id), b = tid((f.faction2 || {}).faction_id), sc = (x.results || {}).score || {};
     const id = "F" + x.match_id; if (!a || !b) return;
-    if (x.results) { const previous = T.res[id] || {}; T.res[id] = Object.assign({ a: sc.faction1 ?? "", b: sc.faction2 ?? "", done: x.status === "FINISHED" }, previous.rdA !== undefined ? { rdA: previous.rdA, rdB: previous.rdB } : {}); n++; }
+    if (x.results) { const previous = T.res[id] || {}; if (previous.fixed) return;   // korrigiert: bleibt
+      T.res[id] = Object.assign({ a: sc.faction1 ?? "", b: sc.faction2 ?? "", done: x.status === "FINISHED" }, previous.rdA !== undefined ? { rdA: previous.rdA, rdB: previous.rdB } : {}); n++; }
   });
   return n;
 }
@@ -256,7 +272,7 @@ $("tourFaceitResult").onclick = async () => {
       const B = K.tournamentBuild(T, CastI18n.language), all = [...B.rounds.flatMap(r => r.matches), ...B.bottom.flatMap(r => r.matches), ...(B.finale ? [B.finale] : []), ...B.groups.flatMap(g => g.matches)];
       let fresh = 0;
       all.forEach(m => {
-        const fa = fid(m.a), fb = fid(m.b); if (!fa || !fb || (T.res[m.id] || {}).done) return;
+        const fa = fid(m.a), fb = fid(m.b); if (!fa || !fb || (T.res[m.id] || {}).done || (T.res[m.id] || {}).fixed) return;
         const s = games.find(x => { const f = x.teams || {}; const i1 = (f.faction1 || {}).faction_id, i2 = (f.faction2 || {}).faction_id; return (i1 === fa && i2 === fb) || (i1 === fb && i2 === fa); });
         if (!s) return;
         const sc = (s.results || {}).score || {}, one = ((s.teams || {}).faction1 || {}).faction_id === fa;

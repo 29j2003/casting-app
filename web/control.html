@@ -199,6 +199,27 @@
 
   <div class="group" data-group="match">
     <div class="subnav" data-for="match"></div>
+    <details open data-area="matchday">
+      <summary>Spieltag</summary>
+      <div class="content">
+        <p class="small">Alle Spiele des Tages in Reihenfolge. <b>Laden</b> macht ein Spiel zum aktuellen Match (Teams, Kürzel, Logos, Spieler)
+          und leert Spielstand, Veto und Serie. Stammt das Spiel aus dem Turnier, geht das Ergebnis beim Wechsel ins Turnier.</p>
+        <div id="mdList" class="md-list"></div>
+        <div class="line"><button class="button main" id="mdNext">Nächstes Spiel laden</button><button class="button" id="mdClear">Liste leeren</button></div>
+        <div class="line" style="align-items:end">
+          <label style="flex:2">Aus dem Turnier<select id="mdTourGame"></select></label>
+          <button class="button" id="mdAddTour">+ Hinzufügen</button><button class="button" id="mdAddAllTour">Alle offenen Spiele</button>
+        </div>
+        <div class="line" style="align-items:end">
+          <label>Team-Bibliothek: Team A<select id="mdLibA"></select></label>
+          <label>Team B<select id="mdLibB"></select></label>
+          <button class="button" id="mdAddLib">+ Hinzufügen</button>
+        </div>
+        <div class="line"><button class="button" id="mdAddCurrent">Aktuelles Match als Spiel eintragen</button></div>
+        <p class="small" id="mdStatus"></p>
+      </div>
+    </details>
+
     <details open data-area="sessions">
       <summary>Sitzungen</summary>
       <div class="content">
@@ -353,8 +374,9 @@
   </div>
 
   <div class="group" data-group="tournament">
+    <div class="subnav" data-for="tournament"></div>
     <details open data-area="tournament">
-      <summary>Turnier</summary>
+      <summary>Aufbau</summary>
       <div class="content">
         <div class="line">
           <label style="flex:2">Name des Turniers<input type="text" id="tourName" placeholder="z. B. Uniliga Playoffs"></label>
@@ -393,6 +415,12 @@
           <button class="button main" id="tourDraw" style="align-self:end">Nächste Runde auslosen</button>
           <span class="small" id="tourDrawFaceit" hidden style="align-self:end">Die Paarungen kommen von FACEIT – „Ergebnisse aktualisieren“ holt neue Runden.</span>
         </div>
+      </div>
+    </details>
+
+    <details open data-area="tournament-teams">
+      <summary>Teams &amp; FACEIT</summary>
+      <div class="content">
         <span class="small">Teams – Reihenfolge = Setzliste (bis 32). Spieler mit Komma trennen.</span>
         <div id="tourTeams" class="list"></div>
         <div class="line"><button class="button" id="tourNewTeam">+ Team</button><button class="button" id="tourStats">Team-Statistiken von FACEIT laden</button></div>
@@ -401,14 +429,29 @@
           <button class="button main" id="tourFaceitAll">Turnier übernehmen</button><button class="button" id="tourFaceitResult">Ergebnisse aktualisieren</button>
         </div>
         <p class="small" id="tourStatus"></p>
-        <span class="small">Spiele – Ergebnis eintragen, Haken = fertig. <b>Klick auf ein Team</b> hebt es im Overlay hervor und zeigt sein Profil.</span>
+      </div>
+    </details>
+
+    <details open data-area="tournament-games">
+      <summary>Spiele</summary>
+      <div class="content">
+        <span class="small">Ergebnis eintragen, Haken = fertig. <b>Klick auf ein Team</b> hebt es im Overlay hervor und zeigt sein Profil.
+          Von Hand geänderte FACEIT-Ergebnisse sind <b>korrigiert</b> und bleiben beim Aktualisieren stehen.</span>
         <div id="tourTree" class="tour-tree"></div>
+        <p class="small" id="tourSource"></p>
+        <div class="line"><button class="button" id="tourReset">Alle Ergebnisse löschen</button></div>
+      </div>
+    </details>
+
+    <details open data-area="tournament-overlay">
+      <summary>Im Overlay</summary>
+      <div class="content">
         <div class="line" style="align-items:end">
           <label>Im Overlay zeigen<select id="tourMode"><option value="all">Alles</option><option value="reveal">Runde für Runde aufdecken – bis Runde</option><option value="fromRound">Erst ab Runde</option></select></label>
           <label style="flex:0 0 90px">Runde<input type="number" id="tourRound" min="1" max="12" value="1"></label>
           <label class="toggleSwitch" style="align-self:center"><input type="checkbox" id="tourResultOff"> Ergebnisse ausblenden (nur, wer weiterkommt)</label>
         </div>
-        <div class="line"><button class="button" id="tourFocusOff">Hervorhebung aufheben</button><button class="button" id="tourReset">Alle Ergebnisse löschen</button></div>
+        <div class="line"><button class="button" id="tourFocusOff">Hervorhebung aufheben</button></div>
       </div>
     </details>
 

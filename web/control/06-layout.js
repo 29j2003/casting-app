@@ -4,16 +4,20 @@
 
 /* ---------- Unterseiten in Match und Setup ---------- */
 const SUBPAGES = {
-  match: [["import", "Import & Sitzungen", ["sessions", "faceit"]], ["teams", "Teams & Spieler", ["teams-result", "players"]],
+  match: [["import", "Spieltag & Import", ["matchday", "sessions", "faceit"]], ["teams", "Teams & Spieler", ["teams-result", "players"]],
           ["veto", "Map-Veto & Serie", ["map-veto", "series-map-results"]], ["caster", "Caster & Kameras", ["caster-guest", "cameras-sources"]], ["texts", "Timer & Texte", ["timer", "tickers-title"]]],
+  tournament: [["setup", "Aufbau", ["tournament"]], ["teams", "Teams & FACEIT", ["tournament-teams"]], ["games", "Spiele", ["tournament-games"]], ["overlay", "Im Overlay", ["tournament-overlay"]]],
   setup: [["appearance", "Aussehen", ["themes", "theme-adjust", "headings"]], ["sponsors", "Sponsoren", ["sponsors"]], ["maps", "Map-Pool", ["map-pool"]],
           ["background", "Hintergrund", ["background-clips-dronefootage"]], ["sceneList", "Szenen & OBS", ["scenes-setup"]], ["panels", "Szenen-Panels", ["scene-panels"]], ["cs2", "CS2-Livedaten", ["cs2-livedata"]]]
 };
+const STEPPER_GROUPS = ["match", "tournament"];
 // Status je Unterseite (Punkt + eine Zeile): Grün = fertig, Gelb = fehlt noch/wartet, Lila = angepasst, Grau = Vorgabe/aus
 function subStatus(group, key) {
   const t = (k, n) => (Z.teams[k].name || "").trim() || n;
   try {
     if (group === "match") {
+      if (key === "import" && ((Z.matchday || {}).list || []).length) { const l = Z.matchday.list, i = l.findIndex(x => x.id === Z.matchday.current);
+        return i >= 0 ? ["ok", `Spiel ${i + 1} von ${l.length}`] : ["wait", `${l.length} Spiele geplant`]; }
       if (key === "import") return activeSession() ? ["ok", "Sitzung „" + activeSession() + "“"] : $("faceitUrl").value.trim() ? ["ok", "FACEIT verknüpft"] : ["", "manuell"];
       if (key === "teams") { const own = k => !!(Z.teams[k].name || "").trim() && !/^team [ab]$/i.test(Z.teams[k].name.trim()), named = own("a") && own("b");
         return named ? ["ok", `${t("a", "Team A")} vs ${t("b", "Team B")}`] : ["wait", "Teamnamen fehlen"]; }
@@ -22,6 +26,15 @@ function subStatus(group, key) {
       if (key === "caster") { const c = Z.caster || {}, names = ["c1", "c2"].map(k => (c[k] || {}).name || "").filter(n => n && !/^CASTER \d$/.test(n));
         return names.length ? ["ok", names.join(" · ")] : ["wait", "Caster-Namen fehlen"]; }
       if (key === "texts") return Z.timer.running ? ["wait", "Timer läuft"] : ["", "Timer " + K.time(K.timerRest(Z.timer))];
+    }
+    if (group === "tournament") {
+      const T = tour(), B = K.tournamentBuild(T, CastI18n.language), FORMAT = { se: "Single Elimination", de: "Double Elimination", swiss: "Swiss", gsl: "Gruppen (GSL)", table: "Tabelle", import: "Baum wie bei FACEIT" };
+      const all = [...B.rounds.flatMap(r => r.matches), ...B.bottom.flatMap(r => r.matches), ...(B.finale ? [B.finale] : []), ...B.groups.flatMap(g => g.matches)].filter(m => m.a && m.b && m.a !== "BYE" && m.b !== "BYE");
+      if (key === "setup") return T.teams.length >= 2 ? ["ok", `${FORMAT[T.format] || T.format}${T.name ? " · " + T.name : ""}`] : ["", FORMAT[T.format] || T.format];
+      if (key === "teams") return T.teams.length >= 2 ? ["ok", `${T.teams.length} Teams${T.teams.some(t => t.faceitId) ? " · FACEIT" : ""}`] : ["wait", "Teams fehlen"];
+      if (key === "games") { const done = all.filter(m => m.done).length, fixed = Object.values(T.res).filter(e => e && e.fixed).length;
+        return !all.length ? ["", "noch keine Spiele"] : [done >= all.length ? "ok" : "wait", `${done} von ${all.length} fertig${fixed ? ` · ${fixed} korrigiert` : ""}`]; }
+      if (key === "overlay") { const V = T.visible; return V.mode === "all" && !V.resultsOff && !T.focused ? ["", "alles sichtbar"] : ["next", V.mode === "reveal" ? `bis Runde ${V.round}` : V.mode === "fromRound" ? `ab Runde ${V.round}` : T.focused ? "Team hervorgehoben" : "ohne Ergebnisse"]; }
     }
     if (group === "setup") {
       if (key === "appearance") return ["ok", (T[Z.theme] || {}).name || Z.theme];
@@ -59,6 +72,18 @@ function belowApply() {
       `<button data-below="${k}" aria-pressed="${k === cur}"><i class="sub-dot"></i><span>${esc(n)}<small class="sub-text"></small></span></button>`).join("");
     nav.querySelectorAll("button").forEach(b => b.onclick = () => { ui.below = Object.assign({}, ui.below, { [group]: b.dataset.below }); uiSave(); belowApply(); });
     [...g.children].filter(x => x.tagName === "DETAILS").forEach(d => { d.hidden = cur !== "all" && belowFrom(group, d.dataset.area) !== cur; if (!d.hidden && cur !== "all") d.open = true; });
+    // Stepper (Match, Turnier): Zurück / Weiter zur nächsten Unterseite – Schritt für Schritt durch die Vorbereitung
+    if (STEPPER_GROUPS.includes(group)) {
+      let step = g.querySelector(":scope > .stepper");
+      if (!step) { step = document.createElement("div"); step.className = "stepper"; g.appendChild(step); }
+      const list = SUBPAGES[group], i = list.findIndex(([k]) => k === cur);
+      step.hidden = i < 0;
+      const go = k => { ui.below = Object.assign({}, ui.below, { [group]: k }); uiSave(); belowApply(); g.scrollIntoView({ block: "start" }); };
+      step.innerHTML = i < 0 ? "" : `<span class="small">Schritt ${i + 1} von ${list.length}</span>` +
+        (i > 0 ? `<button class="button" data-step="${list[i - 1][0]}">← ${esc(list[i - 1][1])}</button>` : "") +
+        (i < list.length - 1 ? `<button class="button main" data-step="${list[i + 1][0]}">Weiter: ${esc(list[i + 1][1])} →</button>` : "");
+      step.querySelectorAll("[data-step]").forEach(b => b.onclick = () => go(b.dataset.step));
+    }
   }
   setTimeout(subStatusDraw, 0);
 }

@@ -35,7 +35,7 @@ window.__samples = [];
   const video = Math.min(1, shown.reduce((sum, v) => sum + o(v), 0)) * o(b);
   const empty = b.querySelector('.bg-empty');
   const theme = (getComputedStyle(empty).display === 'none' ? 0 : o(empty)) * o(b);
-  window.__samples.push({ video, theme });
+  window.__samples.push({ video, theme, t: performance.now() });
   if (window.__samples.length < %d) requestAnimationFrame(sample); })();
 """ % FRAMES
 
@@ -44,7 +44,9 @@ def check(name: str, samples: list[dict], start: float, end: float, steady: bool
     """Problems of one switch: jumps in the video share, the theme showing, the wrong start or end."""
     video = [s["video"] for s in samples]
     problems = []
-    jumps = [round(b - a, 2) for a, b in zip(video, video[1:]) if abs(b - a) > 0.25]
+    # a jump = a big change between two frames that follow closely (a frame the browser delivers late is no jump)
+    jumps = [(round(b["video"] - a["video"], 2), round(b["t"] - a["t"])) for a, b in zip(samples, samples[1:])
+             if abs(b["video"] - a["video"]) > 0.25 and b["t"] - a["t"] < 60]
     if jumps:
         problems.append(f"{name}: Video springt {jumps}")
     if max(s["theme"] for s in samples) > 0.05:

@@ -108,6 +108,14 @@ def public_host(address: str) -> bool:
     return ip.is_global
 
 
+def own_video(address: str) -> bool:
+    """True for the user's own videos served by this app (/media/videos/…, 2.1: /medien/…) – the app window
+    converts those too (background playlists, clips), although they come from this PC."""
+    parts = urllib.parse.urlsplit(address)
+    return (parts.scheme == "http" and (parts.hostname or "").lower() in ("localhost", "127.0.0.1") and parts.port == PORT
+            and parts.path.startswith(("/media/videos/", "/medien/")) and ".." not in parts.path)
+
+
 class BodyTooLarge(ValueError):
     """A request body over the limit of its route (answered with 413)."""
 
@@ -417,13 +425,16 @@ class CastingServer:
         """/api/media?src=…&t=…: a video as WebM for the app window (see media_converter.py).
 
         Only with the media token (derived from the access key, known to the app window only) and only
-        for http(s) addresses – no other program can use the app to fetch things.
+        for http(s) addresses on the internet or the user's own videos – no other program can use the app to fetch
+        things, and no page in the window can make it reach devices on this PC or in the local network.
         """
         token, source = str(query.get("t", "")), str(query.get("src", ""))
         if not hmac.compare_digest(token.encode(), media_token(self.access_key).encode()):
             return request.send_plain(403)
-        if not re.match(r"^https?://", source) or len(source) > 4000 or (self.media_public_only and not public_host(source)):
+        if not re.match(r"^https?://", source) or len(source) > 4000 or (self.media_public_only and not public_host(source) and not own_video(source)):
             return request.send_json(400, {"error": "ungültige Adresse"})
+        if own_video(source):                     # the server listens on 127.0.0.1 only ("localhost" may mean ::1)
+            source = urllib.parse.urlsplit(source)._replace(netloc=f"127.0.0.1:{PORT}").geturl()
         referer = str(query.get("ref", ""))
         self.media.serve(request, source, referer if re.match(r"^https?://", referer) and len(referer) < 2000 else "")
 

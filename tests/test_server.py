@@ -182,7 +182,8 @@ def test_without_the_access_key_only_what_an_overlay_needs(server):
 
 @pytest.mark.parametrize("length", ["-1", "abc", "99999999999999"])
 def test_odd_content_length_is_refused_before_reading(server, length):
-    assert request("POST", "/api/report", "{}", headers={"Content-Length": length}, access=False)[0] == 400
+    # no body: the server answers without reading and closes – unread bytes would make Windows reset the connection
+    assert request("POST", "/api/report", None, headers={"Content-Length": length}, access=False)[0] == 400
 
 
 def test_overlays_without_the_key_get_the_state_without_camera_links(server):

@@ -148,22 +148,22 @@ scene('cast-solo-clips.html', 'Cast Solo + Clips',
       title_box(482, 47, 1381, .2) + cam(57, 212, 1344, 756, 'Clips / Browser', .3) +
       cam(1433, 212, 430, 242, 'Caster', .4, 'c1') + matchup(1433, 600, 430, .6, h=150), max_brand=400)
 scene('cast-duo-interview.html', 'Cast Duo + Interview',
-      cam(48, 290, 592, 333, 'Caster 1', .2, 'c1') + cam(664, 290, 592, 333, 'Caster 2', .3, 'c2') + cam(1280, 290, 592, 333, 'Gast', .4, 'guest', True) + bottom_cast(.8, with_sponsor=True))
+      cam(48, 305, 592, 333, 'Caster 1', .2, 'c1') + cam(664, 305, 592, 333, 'Caster 2', .3, 'c2') + cam(1280, 305, 592, 333, 'Gast', .4, 'guest', True) + bottom_cast(.8, with_sponsor=True))
 scene('cast-solo-interview.html', 'Cast Solo + Interview',
       cam(120, 230, 800, 450, 'Caster', .2, 'c1') + cam(1000, 230, 800, 450, 'Gast', .3, 'guest', True) + bottom_cast(.7, with_sponsor=True))
 # 3 casters: side by side (like the interview) or the host large with two co-casters stacked on the right
 scene('cast-trio.html', 'Cast Trio',
-      cam(48, 290, 592, 333, 'Caster 1', .2, 'c1') + cam(664, 290, 592, 333, 'Caster 2', .3, 'c2') + cam(1280, 290, 592, 333, 'Caster 3', .4, 'c3') +
+      cam(48, 305, 592, 333, 'Caster 1', .2, 'c1') + cam(664, 305, 592, 333, 'Caster 2', .3, 'c2') + cam(1280, 305, 592, 333, 'Caster 3', .4, 'c3') +
       bottom_cast(.8, with_sponsor=True))
 scene('cast-trio-host.html', 'Cast Trio – Moderator groß',
       cam(120, 162, 1088, 612, 'Caster 1', .2, 'c1') + cam(1320, 162, 480, 270, 'Caster 2', .3, 'c2') + cam(1320, 516, 480, 270, 'Caster 3', .4, 'c3') +
       bottom_cast(.8, with_sponsor=True))
-# 4 persons: both casters and two more people (guest, analyst, tournament admin …) in a 2 × 2 grid –
-# right edge in line with the match-up box (1666), so the logo (at most 400 px, like the clips scenes) never touches a camera
+# 4 persons: both casters and two more people (guest, analyst, tournament admin …) in a 2 × 2 grid, centered;
+# the rows leave room for the name plates (they hang 74 px below a camera) – wide logos shrink to 300 px (data-max)
 scene('cast-quad.html', 'Cast 4 Personen',
-      cam(488, 50, 569, 320, 'Caster 1', .2, 'c1') + cam(1097, 50, 569, 320, 'Caster 2', .3, 'c2') +
-      cam(488, 462, 569, 320, 'Person 3', .4, 'p3') + cam(1097, 462, 569, 320, 'Person 4', .5, 'p4') + bottom_cast(.8, with_sponsor=True),
-      max_brand=400)
+      cam(396, 40, 544, 306, 'Caster 1', .2, 'c1') + cam(980, 40, 544, 306, 'Caster 2', .3, 'c2') +
+      cam(396, 470, 544, 306, 'Person 3', .4, 'p3') + cam(980, 470, 544, 306, 'Person 4', .5, 'p4') + bottom_cast(.8, with_sponsor=True),
+      max_brand=300)
 # viewer cams: a wall of six tiles, or four tiles with both casters on the right (like the clips scene)
 scene('viewers.html', 'Zuschauer-Cams',
       head_box(482, 47, 1381, .2, 'viewersTitle', VS_FIELD) +

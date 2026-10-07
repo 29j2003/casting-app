@@ -204,12 +204,14 @@ mit Ausgabe „Szene“, NDI oder Source Record).
 
 ### Stats über dem Spiel
 
-Läuft **Ingame**, tragen Scoreboard, Team A/B, Head-to-Head, Turnierbaum und Serie den Hinweis „ÜBER SPIEL“: ein Klick zeigt die
-Ansicht über dem Spielbild (leicht abgedunkelt), ein zweiter blendet sie aus – Ingame läuft weiter. Nach der eingestellten Zeit
-(Knopf „Übergang: …“ in der Programm-Karte → „Stats über dem Spiel (während Ingame) ausblenden nach … Sekunden“,
-Standard 15, 0 = bleibt stehen) verschwindet sie von selbst. **Umschalt-Klick** wechselt
-trotzdem in die ganze Szene. In jeder anderen Szene wechseln die Knöpfe ganz normal.
-Dieselben Knöpfe stehen in Live im **Panel der Szene** von Ingame unter **„Über dem Spiel“** – dort sieht man auch, was gerade läuft.
+Läuft **Ingame**, klappt unter dem Ingame-Knopf ein Feld **„Über dem Spiel“** auf: Scoreboard, Team A/B, Head-to-Head,
+Turnierbaum und Serie. Ein Klick zeigt die Ansicht über dem Spielbild (leicht abgedunkelt), ein zweiter blendet sie aus – Ingame
+läuft weiter. Nach der eingestellten Zeit (Knopf „Übergang: …“ in der Programm-Karte → „Stats über dem Spiel (während Ingame)
+ausblenden nach … Sekunden“, Standard 15, 0 = bleibt stehen) verschwindet sie von selbst. Die Knöpfe derselben Szenen weiter unten
+in der Liste wechseln immer in die ganze Szene. Dieselben Knöpfe stehen in Live im **Panel der Szene** von Ingame.
+
+Kommen gerade **keine CS2-Daten**, sind Scoreboard, Team A/B und Head-to-Head grau und mit „CS2“ markiert – schon bevor du
+klickst. Die Szene lässt sich trotzdem zeigen; im Overlay steht dann „Warte auf CS2-Daten …“.
 
 ### Studio-Modus
 
@@ -278,7 +280,7 @@ Nach oben/unten und Löschen (mit Rückgängig). Arten:
   Ohne Logo steht der Sponsor-Name groß im Kasten; lange Namen werden kleiner und brechen bei Bedarf auf zwei Zeilen um.
 * **Mehr Personen und Zuschauer-Cams** (Szenen im Stil der Cast-Szenen, mit Sponsor in der Leiste):
   **Cast Trio** (drei Caster nebeneinander) · **Trio – Moderator groß** (Caster 1 groß, zwei kleiner rechts) ·
-  **4 Personen** (Caster 1/2 und Person 3/4 im 2 × 2-Raster) · **Zuschauer + Caster** (vier Zuschauer-Kacheln, rechts die Caster) ·
+  **4 Personen** (Caster 1/2 und Person 3/4 im 2 × 2-Raster; das Logo wird dafür kleiner statt das Raster zu verschieben) · **Zuschauer + Caster** (vier Zuschauer-Kacheln, rechts die Caster) ·
   **Zuschauer-Cams** (Wand mit sechs Kacheln und Kopfzeile). „Trio – Moderator groß“ und „Zuschauer-Cams“ sind Varianten und
   erscheinen erst, wenn du sie unter Setup → Szenen & OBS einschaltest. Namen: Match → Caster & Kameras → „Weitere Personen“
   (Zuschauer nur mit Namen, als kleines Schild in der Kachel); Kameras: „Weitere Kameras“ (VDO.Ninja, Gerät, Bild oder leer).
@@ -304,6 +306,8 @@ In der Szene **Ingame** weichen alle Positionen dem Spiel-HUD aus (Minimap, Scor
 ### Die Oberfläche (wie in OBS)
 
 * **Oben** wählst du den Arbeitsbereich (Operator, Caster – große Knöpfe, Laptop / neben OBS, Vorbereitung oder eigene).
+  *Operator* startet aufgeräumt: offen sind Szenen, Szenen-Werkzeuge und Einblendungen; Ton, Match-Leiste und Turnier sind
+  eingeklappt (Klick auf den Titel öffnet sie, der Zustand bleibt gespeichert).
 * **Strg K** öffnet „Suchen & Befehle“: Szene wechseln, Einblendung zeigen, Bereich öffnen oder andocken – alles per Tastatur.
   **Strg 1–4** springt zu Live, Match, Turnier und Setup.
 
@@ -328,8 +332,9 @@ In der Szene **Ingame** weichen alle Positionen dem Spiel-HUD aus (Minimap, Scor
 
 ### App-Einstellungen (⚙)
 
-Eine eigene Seite für alles, was nur die App auf diesem PC betrifft – links die Liste (mit Status-Punkt), rechts ein Bereich;
-**Schließen** oder Esc führt zurück:
+Ein Panel, das von rechts über die Steuerseite fährt – für alles, was nur die App auf diesem PC betrifft. Oben die Bereiche als
+Knöpfe (mit Status-Punkt, ein Klick springt hin), darunter alle Bereiche untereinander; **Schließen**, Esc oder ein Klick daneben
+führt zurück:
 
 * **Verbindungen & Zugänge** – OBS (Port, Passwort), **FACEIT-Schlüssel**, **DACH CS** (Nutzer-ID, Key), Musik (Spotify über Tuna).
   Schlüssel liegen im Schlüsselbund des Systems und werden nach dem Speichern nie wieder angezeigt – nur ersetzen oder löschen.

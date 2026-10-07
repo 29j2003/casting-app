@@ -88,6 +88,12 @@
     stinger.getAnimations({ subtree: true }).forEach(x => x.cancel());
   }
 
+  // Lage der neuen Szene übernehmen – Werte, die das Zeichnen gesetzt hat (Logo-Größe), bleiben
+  function restyle(w) {
+    const scale = w.el.style.getPropertyValue("--brand-scale");
+    w.el.setAttribute("style", w.target);
+    if (scale) w.el.style.setProperty("--brand-scale", scale);
+  }
   async function switchTo(scene, kind, duration) {
     if (scene === currentScene) return;
     const fresh = await layer(scene);
@@ -122,7 +128,7 @@
     // Nur die NEUEN Teile verstecken, bis sie gefüllt sind. Weiterverwendete Teile bleiben die ganze Zeit sichtbar
     // (früher war die ganze neue Schicht kurz versteckt – dadurch verschwanden Logo, Titel & Co. für 1–2 Bilder).
     const newParts = [...come, ...cross.map(p => p[1])];
-    newParts.forEach(e => { e.style.visibility = "hidden"; });
+    newParts.forEach(e => e.classList.add("pending"));   // .pending versteckt auch Kinder, die selbst visibility: visible haben (Folien)
     stage.appendChild(fresh);
     C().newDraw();                                   // neue Teile mit Inhalt füllen
     await awaiting(50);
@@ -130,20 +136,23 @@
     // anders), bleiben stehen statt überzublenden: zwei halb durchsichtige gleiche Bilder übereinander flackern sichtbar
     for (let i = cross.length - 1; i >= 0; i--) {
       const [a, n] = cross[i];
-      if (a.className !== n.className || a.innerHTML !== n.innerHTML) continue;
+      const look = e => [...e.classList].filter(c => c !== "pending").sort().join(" ");
+      if (look(a) !== look(n) || a.innerHTML !== n.innerHTML) continue;
       [...n.attributes].forEach(x => { if (x.name.startsWith("data-")) a.setAttribute(x.name, x.value); });
       a._cacheKey = n._cacheKey;                       // schon passend gezeichnet – nicht neu zeichnen (Bild würde neu laden)
-      n.style.visibility = "";                         // (nur zum Füllen versteckt – die Lage übernimmt a)
+      const scale = n.style.getPropertyValue("--brand-scale");   // Logo-Größe der neuen Szene: gleitet per CSS-Übergang
+      if (scale) a.style.setProperty("--brand-scale", scale); else a.style.removeProperty("--brand-scale");
+      n.classList.remove("pending");                   // (nur zum Füllen versteckt – die Lage übernimmt a)
       proceed.push({ el: a, from: placement(a.getAttribute("style")), post: placement(n.getAttribute("style")), target: n.getAttribute("style") });
       newParts.splice(newParts.indexOf(n), 1);
       n.replaceWith(a); cross.splice(i, 1);
     }
     const go = [...previous.children].filter(e => !cross.some(p => p[0] === e));
     window.__lastSwitch = { proceed: proceed.map(w => w.el.dataset.part), cross: cross.map(p => p[1].dataset.part), come: come.map(e => e.dataset.part || e.className), go: go.map(e => e.dataset.part || e.className) };
-    const show = () => newParts.forEach(e => { e.style.visibility = ""; });
+    const show = () => newParts.forEach(e => e.classList.remove("pending"));
 
     const done = () => {
-      proceed.forEach(w => { w.el.getAnimations().forEach(x => { if (!(x instanceof CSSAnimation)) x.cancel(); }); w.el.setAttribute("style", w.target); delete w.el.dataset.corner; });
+      proceed.forEach(w => { w.el.getAnimations().forEach(x => { if (!(x instanceof CSSAnimation) && !(x instanceof CSSTransition)) x.cancel(); }); restyle(w); delete w.el.dataset.corner; });
       [...fresh.children].forEach(e => e.getAnimations().forEach(x => { if (!(x instanceof CSSAnimation)) x.cancel(); }));
       show(); previous.remove(); currentLayer = fresh; overGame(C().Z);
       if (C().corners) C().corners();                         // Ecken passend zur neuen Lage
@@ -151,8 +160,8 @@
 
     if (kind === "stinger" && duration > 0) {
       await stingerIn(duration);
-      previous.style.visibility = "hidden";
-      proceed.forEach(w => w.el.setAttribute("style", w.target));
+      previous.classList.add("pending");
+      proceed.forEach(restyle);
       done();
       await stingerOut(duration);
       return;
@@ -179,7 +188,7 @@
       jobs.push(anim(n, [Object.assign({ opacity: 0 }, ga), Object.assign({ opacity: on }, gn)], duration));
     });
     // 3) was wegfällt, geht – was neu ist, kommt (leicht versetzt); Unsichtbares bleibt unsichtbar
-    go.forEach((e, i) => { const o = opacity(e); if (o > .02) jobs.push(anim(e, out(o), duration * .55, { delay: i * 25 })); else e.style.visibility = "hidden"; });
+    go.forEach((e, i) => { const o = opacity(e); if (o > .02) jobs.push(anim(e, out(o), duration * .55, { delay: i * 25 })); else e.classList.add("pending"); });
     const comeDeck = come.map(opacity);
     come.forEach((e, i) => { if (comeDeck[i] > .02) jobs.push(anim(e, enter(comeDeck[i]), duration * .6, { delay: duration * .4 + i * 45 })); });
     show();                                             // Animationen stehen – jetzt dürfen die neuen Teile sichtbar werden
@@ -298,8 +307,12 @@
             : [{ opacity: 0 }, { opacity: 1 }];
     const out = [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(-6%)" }];
     const cams = dachLayer.querySelector(".dach-cams");
-    const runs = [fresh.animate(k, opt), cams.animate(k, opt)];
-    if (kind === "slide") runs.push(previous.animate(out, opt), ...(before ? [before.animate(out, opt)] : []));
+    // Schieben: die alte Seite geht in der ersten Hälfte, die neue kommt leicht versetzt (wie bei den eigenen Szenen) –
+    // sonst stehen beide lange halb durchsichtig übereinander
+    const inOpt = kind === "slide" ? Object.assign({}, opt, { duration: d * .65, delay: d * .35 }) : opt;
+    const outOpt = Object.assign({}, opt, { duration: d * .55 });
+    const runs = [fresh.animate(k, inOpt), cams.animate(k, inOpt)];
+    if (kind === "slide") runs.push(previous.animate(out, outOpt), ...(before ? [before.animate(out, outOpt)] : []));
     try { await runs[0].finished; } catch (e) {}
     runs.forEach(r => r.cancel());
   }

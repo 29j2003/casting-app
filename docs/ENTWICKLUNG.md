@@ -149,6 +149,11 @@ Die Dateien `web/<scene>.html` werden erzeugt – nie von Hand ändern.
    * `web/control/…` → `SCENE_DEFAULT` (wo sie in der Reihenfolge im Reiter Live steht)
    * `web/control.html` → `<select id="scene">` (Auswahl der Vorschau)
    * den Namen in `web/lang-en.js` übersetzen.
+   * Varianten, die erst nach Einschalten erscheinen sollen: `SCENES_OFF` (`web/control/04-obs-scenes.js`).
+   * Hat sie den Sponsor in der Leiste (`bottom_cast(…, with_sponsor=True)`): in `SPONSOR_SCENES` (`05-live.js`) und
+     `sponsors.sceneList` (`cast-core.js`) eintragen; die Regeln „Sponsor oben rechts / ohne Sponsor“ in `cast.css` greifen
+     automatisch für jede Szene mit `.sponsor.in-bar` (außer Intro/Pause/Ende, die eigene Positionen haben).
+   * Neue Personen/Kameras: Schlüssel in `Z.caster` und `SLOTS` (`03-match.js`); `cam(…, small=True)` = kleines Namensschild in der Kachel.
 4. Neue Szene auch in `tests/live/common.py` → `SCENES` eintragen; dann `tests/live/transitions.py` und `flicker.py` laufen lassen.
 
 ### Eine neue Einblendungsart

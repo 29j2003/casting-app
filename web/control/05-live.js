@@ -238,7 +238,7 @@ function sponsorShowgfx(i) {
   Z.sponsors.gfx = { num: i, until: Date.now() + Math.max(3, +$("sponsorDuration").value || 10) * 1000 };
   send();
 }
-const SPONSOR_SCENES = [["intro", "Intro"], ["pause", "Pause"], ["end", "Ende"], ["cast-duo", "Cast Duo"], ["cast-solo", "Cast Solo"], ["cast-duo-interview", "Duo + Interview"], ["cast-solo-interview", "Solo + Interview"], ["ingame", "Ingame"]];
+const SPONSOR_SCENES = [["intro", "Intro"], ["pause", "Pause"], ["end", "Ende"], ["cast-duo", "Cast Duo"], ["cast-solo", "Cast Solo"], ["cast-duo-interview", "Duo + Interview"], ["cast-solo-interview", "Solo + Interview"], ["cast-trio", "Cast Trio"], ["cast-trio-host", "Trio – Moderator groß"], ["cast-quad", "4 Personen"], ["ingame", "Ingame"]];
 function sponsorsDraw() {
   const list = sponsorEntries(), box = $("sponsorEntries"); box.innerHTML = "";
   box.insertAdjacentHTML("beforeend", `<b style="font-size:13px">Sponsoren für ${esc((T[Z.theme] || {}).name || Z.theme)}</b>`);
@@ -639,6 +639,7 @@ const PANEL_FIELDS = [["veto", "Map-Veto"], ["score", "Spielstand"], ["timer", "
 const PANEL_DEFAULTS = {
   "intro": ["timer", "texts", "sponsor"], "cast-duo": ["timer", "texts", "note"], "cast-solo": ["timer", "texts", "note"],
   "cast-duo-clips": ["note"], "cast-solo-clips": ["note"], "cast-duo-interview": ["series", "texts", "note"], "cast-solo-interview": ["series", "texts", "note"],
+  "cast-trio": ["timer", "texts", "note"], "cast-trio-host": ["timer", "texts", "note"], "cast-quad": ["series", "texts", "note"], "viewers": ["texts", "note"], "viewers-cast": ["texts", "note"],
   "map-veto": ["veto", "series"], "players": ["series", "note"], "series": ["series", "score"], "sponsors": ["sponsor"],
   "ingame": ["score", "series", "note"], "pause": ["timer", "texts", "sponsor"], "end": ["series", "texts", "sponsor"],
   "scoreboard": ["score", "series"], "team-a": ["score", "series"], "team-b": ["score", "series"], "h2h": ["score", "series"], "bracket": ["note"]

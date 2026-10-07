@@ -387,6 +387,10 @@ def test_sponsor_box_moves_between_bar_and_top_right(server, browser):
     assert places["bar"][0][1] > 800 and places["top"][0][1] < 300          # sponsor: bottom bar → top right
     assert places["top"][1][0] > places["bar"][1][0]                         # the bar moves to the middle without it
     assert places["none"][1] == places["top"][1]
+    overlay.goto(f"{BASE_URL}/cast-duo-clips.html")                             # Clips: own layout, nothing moves
+    control.evaluate("Z.sponsors.on = true; Z.sponsors.spot = 'top'; send()")
+    overlay.wait_for_timeout(900)
+    assert overlay.evaluate(f"{box}('[data-part=title]')") == [482, 47]
     assert errors == []
 
 

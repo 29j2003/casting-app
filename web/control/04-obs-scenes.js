@@ -8,16 +8,20 @@ const OVERLAY_SCENES = [
   ["intro", "Intro"], ["cast-duo", "Cast Duo"], ["cast-solo", "Cast Solo"],
   ["cast-duo-clips", "Duo + Clips"], ["cast-solo-clips", "Solo + Clips"],
   ["cast-duo-interview", "Duo + Interview"], ["cast-solo-interview", "Solo + Interview"],
+  ["cast-trio", "Cast Trio"], ["cast-trio-host", "Trio – Moderator groß"], ["cast-quad", "4 Personen"],
+  ["viewers", "Zuschauer-Cams"], ["viewers-cast", "Zuschauer + Caster"],
   ["map-veto", "Map-Veto"], ["players", "Line-ups"], ["series", "Serie"],
   ["sponsors", "Sponsoren"], ["ingame", "Ingame"], ["pause", "Pause"], ["end", "Ende"],
   ["scoreboard", "Scoreboard"], ["team-a", "Team A"], ["team-b", "Team B"], ["h2h", "Head-to-Head"], ["bracket", "Turnierbaum"]
 ];
+// Varianten, die erst nach Einschalten (Setup → Szenen & OBS) als Knopf erscheinen
+const SCENES_OFF = ["cast-trio-host", "viewers"];
 let obsScenes = [], currentScene = "", transitions = [], obsTransition = "";
 function sceneCfg() {
   Z.sceneList = Object.assign({ on: true, defaultChoice: "", list: {} }, Z.sceneList || {});
   if (!Z.sceneList.list || Array.isArray(Z.sceneList.list)) Z.sceneList.list = {};
   OVERLAY_SCENES.forEach(([k, n]) => {
-    Z.sceneList.list[k] = Object.assign({ on: true, obs: "", transition: "" }, Z.sceneList.list[k] || {});
+    Z.sceneList.list[k] = Object.assign({ on: !SCENES_OFF.includes(k), obs: "", transition: "" }, Z.sceneList.list[k] || {});
   });
   return Z.sceneList;
 }
@@ -79,10 +83,10 @@ function overGameToggle(k) {
 }
 setInterval(() => { const U = Z.broadcast.overGame; if (U && U.until && U.until <= Date.now()) { Z.broadcast.overGame = null; scenesDraw(); } }, 1000);
 // Reihenfolge wie eine Sendung abläuft – eigene Reihenfolge per Ziehen („Anordnen“)
-const SCENE_DEFAULT = ["#pregame", "intro", "cast-solo", "cast-duo", "players", "map-veto",
+const SCENE_DEFAULT = ["#pregame", "intro", "cast-solo", "cast-duo", "cast-trio", "cast-trio-host", "cast-quad", "players", "map-veto",
   "#during", "ingame",
   "#stats", "scoreboard", "team-a", "team-b", "h2h", "bracket", "series",
-  "#pause", "pause", "sponsors", "cast-duo-clips", "cast-solo-clips",
+  "#pause", "pause", "sponsors", "cast-duo-clips", "cast-solo-clips", "viewers-cast", "viewers",
   "#post", "cast-duo-interview", "cast-solo-interview", "end"];
 const SCENE_GROUPS = { "#pregame": "Vor dem Spiel", "#during": "Im Spiel", "#stats": "Stats & Turnier", "#pause": "Pause", "#post": "Nach dem Spiel", "#between": "Zwischen den Maps" };
 let sceneArrange = false;

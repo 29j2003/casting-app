@@ -530,7 +530,9 @@ $("faceitLoad").onclick = async () => {
 setInterval(() => { if ($("faceitAuto").checked) faceitLoad(true); }, 15000);
 
 /* ---------- Kameras & Quellen ---------- */
-const SLOTS = [["c1", "Caster 1"], ["c2", "Caster 2"], ["guest", "Interview-Gast"], ["content", "Clips / Browser-Rahmen"]];
+const SLOTS = [["c1", "Caster 1"], ["c2", "Caster 2"], ["guest", "Interview-Gast"], ["content", "Clips / Browser-Rahmen"],
+  ["c3", "Caster 3", "more"], ["p3", "Person 3", "more"], ["p4", "Person 4", "more"],
+  ...[1, 2, 3, 4, 5, 6].map(i => ["v" + i, "Zuschauer " + i, "more"])];          // „more“: unter „Weitere Kameras“
 let cameras = [];
 async function devicesSearch(ask) {
   const md = navigator.mediaDevices;
@@ -550,7 +552,10 @@ $("devicesSearch").onclick = () => devicesSearch(true);
 function sourcesDraw() {
   const box = $("sources"); box.innerHTML = "";
   Z.sources = Z.sources || {};
-  SLOTS.forEach(([k, name]) => {
+  const more = document.createElement("details"); more.className = "sources-more"; more.open = !!ui.sourcesMore;
+  more.innerHTML = `<summary>Weitere Kameras – Caster 3, Person 3/4, Zuschauer 1–6</summary><div class="list"></div>`;
+  more.ontoggle = () => { ui.sourcesMore = more.open; uiSave(); };
+  SLOTS.forEach(([k, name, group]) => {
     const Q = Z.sources[k] = Object.assign({ type: "empty", url: "", device: "", deviceName: "", audio: true, mirror: false, adjust: k === "content" ? "whole" : "fill", image: "" }, Z.sources[k] || {});
     const d = document.createElement("div"); d.className = "source-box";
     const types = [["empty", "Leer (OBS-Quelle darüber)"], ["link", "VDO.Ninja / Link"], ["device", "Gerät (Webcam/Capture)"], ["image", "Bild"]];
@@ -597,6 +602,7 @@ function sourcesDraw() {
       inp.onchange = async () => { if (!inp.files[0]) return; Q.image = (await imageForArea(inp.files[0], [1024, 576])).image; sourcesDraw(); send(); };
       f.append(r, rendering());
     }
-    box.appendChild(d);
+    (group === "more" ? more.querySelector(".list") : box).appendChild(d);
   });
+  box.appendChild(more);
 }

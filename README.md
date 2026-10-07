@@ -268,6 +268,12 @@ Nach oben/unten und Löschen (mit Rückgängig). Arten:
   Unter Setup → Sponsoren → **Platz des Sponsor-Kastens** lässt er sich stattdessen **oben rechts** zeigen; ist kein Sponsor
   zu sehen (aus oder keiner eingetragen), rückt die Leiste ohne Lücke zur Mitte.
   Ohne Logo steht der Sponsor-Name groß im Kasten; lange Namen werden kleiner und brechen bei Bedarf auf zwei Zeilen um.
+* **Mehr Personen und Zuschauer-Cams** (Szenen im Stil der Cast-Szenen, mit Sponsor in der Leiste):
+  **Cast Trio** (drei Caster nebeneinander) · **Trio – Moderator groß** (Caster 1 groß, zwei kleiner rechts) ·
+  **4 Personen** (Caster 1/2 und Person 3/4 im 2 × 2-Raster) · **Zuschauer + Caster** (vier Zuschauer-Kacheln, rechts die Caster) ·
+  **Zuschauer-Cams** (Wand mit sechs Kacheln und Kopfzeile). „Trio – Moderator groß“ und „Zuschauer-Cams“ sind Varianten und
+  erscheinen erst, wenn du sie unter Setup → Szenen & OBS einschaltest. Namen: Match → Caster & Kameras → „Weitere Personen“
+  (Zuschauer nur mit Namen, als kleines Schild in der Kachel); Kameras: „Weitere Kameras“ (VDO.Ninja, Gerät, Bild oder leer).
 * **Unterseiten mit Status:** In Match, Turnier und Setup steht links neben jeder Unterseite ein Punkt mit einer Zeile – Grün = fertig,
   Gelb = fehlt noch (z. B. „Caster-Namen fehlen“, „1 Logo fehlt“), Lila = angepasst, Grau = Vorgabe.
   In Match und Turnier führen **„Weiter: …“** und **„← …“** unter jeder Unterseite Schritt für Schritt durch die Vorbereitung.
@@ -295,8 +301,8 @@ In der Szene **Ingame** weichen alle Positionen dem Spiel-HUD aus (Minimap, Scor
   Tabs anklicken zum Wechseln, an der Tab-Leiste wieder herausziehen.
 * **Umsortieren:** Bereiche im Reiter einfach nach oben/unten ziehen – die Reihenfolge bleibt gespeichert.
 * **Szenen anordnen:** in „Layout bearbeiten“ im Bereich „Szenen“ auf **Anordnen** – Knöpfe an die gewünschte Stelle ziehen, Haken = Szene wird angezeigt.
-  Standard sind fünf Gruppen: **Vor dem Spiel** (Intro, Cast Solo, Cast Duo, Line-ups, Map-Veto) · **Im Spiel** (Ingame) ·
-  **Stats & Turnier** (Scoreboard, Team A/B, Head-to-Head, Turnierbaum, Serie) · **Pause** (Pause, Sponsoren, Clips) ·
+  Standard sind fünf Gruppen: **Vor dem Spiel** (Intro, Cast Solo, Cast Duo, Cast Trio, 4 Personen, Line-ups, Map-Veto) · **Im Spiel** (Ingame) ·
+  **Stats & Turnier** (Scoreboard, Team A/B, Head-to-Head, Turnierbaum, Serie) · **Pause** (Pause, Sponsoren, Clips, Zuschauer + Caster) ·
   **Nach dem Spiel** (Interviews, Ende).
 * **Docks zeigen immer alles:** reicht der Platz nicht, scrollt jede Karte für sich. Doppelklick auf die Trennlinie über dem
   Vorschau-Dock passt die Höhe an den Inhalt an.

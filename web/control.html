@@ -350,11 +350,24 @@
     </details>
 
     <details open data-area="caster-guest">
-      <summary>Caster &amp; Gast</summary>
+      <summary>Caster &amp; Personen</summary>
       <div class="content">
         <div class="line"><label>Caster 1<input type="text" data-field="caster.c1.name"></label><label>Zusatz<input type="text" data-field="caster.c1.addition"></label></div>
         <div class="line"><label>Caster 2<input type="text" data-field="caster.c2.name"></label><label>Zusatz<input type="text" data-field="caster.c2.addition"></label></div>
         <div class="line"><label>Interview-Gast<input type="text" data-field="caster.guest.name"></label><label>Zusatz<input type="text" data-field="caster.guest.addition"></label></div>
+        <details class="persons-more"><summary>Weitere Personen – Cast Trio, 4 Personen, Zuschauer-Cams</summary>
+          <div class="line"><label>Caster 3<input type="text" data-field="caster.c3.name"></label><label>Zusatz<input type="text" data-field="caster.c3.addition"></label></div>
+          <div class="line"><label>Person 3<input type="text" data-field="caster.p3.name"></label><label>Zusatz<input type="text" data-field="caster.p3.addition"></label></div>
+          <div class="line"><label>Person 4<input type="text" data-field="caster.p4.name"></label><label>Zusatz<input type="text" data-field="caster.p4.addition"></label></div>
+          <span class="small">Zuschauer-Cams (nur Name, klein in der Kachel)</span>
+          <div class="line">
+            <label>Zuschauer 1<input type="text" data-field="caster.v1.name"></label><label>Zuschauer 2<input type="text" data-field="caster.v2.name"></label><label>Zuschauer 3<input type="text" data-field="caster.v3.name"></label>
+          </div>
+          <div class="line">
+            <label>Zuschauer 4<input type="text" data-field="caster.v4.name"></label><label>Zuschauer 5<input type="text" data-field="caster.v5.name"></label><label>Zuschauer 6<input type="text" data-field="caster.v6.name"></label>
+          </div>
+          <p class="small">Die Szenen findest du unter Live. „Trio – Moderator groß“ und „Zuschauer-Cams“ (Wand mit 6 Kacheln) schaltest du unter Setup → Szenen &amp; OBS ein.</p>
+        </details>
       </div>
     </details>
 
@@ -513,6 +526,7 @@
         <div class="line">
           <label>Map-Veto<input type="text" data-field="texts.mapVeto"></label>
           <label>Line-ups<input type="text" data-field="texts.lineups"></label>
+          <label>Zuschauer-Cams<input type="text" data-field="texts.viewersTitle"></label>
         </div>
         <div class="line">
           <label>Ban<input type="text" data-field="texts.ban"></label>
@@ -748,6 +762,11 @@
         <option value="cast-solo-clips">Cast Solo + Clips</option>
         <option value="cast-duo-interview">Cast Duo + Interview</option>
         <option value="cast-solo-interview">Cast Solo + Interview</option>
+        <option value="cast-trio">Cast Trio</option>
+        <option value="cast-trio-host">Cast Trio – Moderator groß</option>
+        <option value="cast-quad">Cast 4 Personen</option>
+        <option value="viewers">Zuschauer-Cams</option>
+        <option value="viewers-cast">Zuschauer + Caster</option>
         <option value="map-veto">Map-Veto</option>
         <option value="series">Serie</option>
         <option value="sponsors">Sponsoren</option>

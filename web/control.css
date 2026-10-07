@@ -717,3 +717,7 @@ body.pages-mode .group > .stepper { grid-column: 2; }
 .md-teams { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .md-teams b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .md-logo { flex: 0 0 28px; height: 28px; border-radius: 6px; background: var(--f1) center / contain no-repeat; display: grid; place-items: center; font-style: normal; font-size: 10px; font-weight: 800; color: var(--muted); }
+.sources-more, .persons-more { margin-top: 8px; }
+.sources-more > summary, .persons-more > summary { cursor: pointer; font-weight: 700; padding: 6px 0; }
+.sources-more > .list { margin-top: 8px; }
+.persons-more { display: grid; gap: 8px; }

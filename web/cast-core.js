@@ -18,7 +18,7 @@ window.CastCore = (function () {
   "use strict";
 
   const KEY = "cast-state-v1";
-  const VERSION = "2.9.0";                     // muss zur App passen – sonst lädt sich die Seite neu
+  const VERSION = "2.10.0";                     // muss zur App passen – sonst lädt sich die Seite neu
   // Läuft die Seite über den Server der App (http://localhost:8787)?
   const SERVER = /^https?:$/.test(location.protocol) && location.port === "8787" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
@@ -95,7 +95,8 @@ window.CastCore = (function () {
       next: "NEXT",
       mapFact: "MAP-FAKT",
       round: "RUNDE",
-      players: "SPIELER"
+      players: "SPIELER",
+      viewersTitle: "ZUSCHAUER-CAMS"
     },
     en: {
       title: "GRAND FINAL",
@@ -131,7 +132,8 @@ window.CastCore = (function () {
       next: "NEXT",
       mapFact: "MAP FACT",
       round: "ROUND",
-      players: "PLAYERS"
+      players: "PLAYERS",
+      viewersTitle: "VIEWER CAMS"
     }
   };
   const OVERLAY_WORDS = {
@@ -185,7 +187,13 @@ window.CastCore = (function () {
     caster: {
       c1:   { name: "CASTER 1", addition: "@caster1" },
       c2:   { name: "CASTER 2", addition: "@caster2" },
-      guest: { name: "GAST", addition: "Spieler · Team A" }
+      guest: { name: "GAST", addition: "Spieler · Team A" },
+      // weitere Personen: dritter Caster, Person 3/4 (Szene „4 Personen“), Zuschauer 1–6 (Zuschauer-Cams, nur Name)
+      c3: { name: "CASTER 3", addition: "@caster3" },
+      p3: { name: "PERSON 3", addition: "Analyse" },
+      p4: { name: "PERSON 4", addition: "Gast" },
+      v1: { name: "ZUSCHAUER 1" }, v2: { name: "ZUSCHAUER 2" }, v3: { name: "ZUSCHAUER 3" },
+      v4: { name: "ZUSCHAUER 4" }, v5: { name: "ZUSCHAUER 5" }, v6: { name: "ZUSCHAUER 6" }
     },
     timer: { running: false, target: 0, rest: 10 * 60000, end: { text: "", scene: "" } },   // end: was bei 0:00 passiert
 
@@ -222,7 +230,8 @@ window.CastCore = (function () {
     // Sponsoren pro Theme
     sponsors: {
       on: true, seconds: 8, inTicker: false, bar: false, spot: "bar",   // bar: Restzeit-Balken · spot: "bar" (untere Leiste) | "top" (oben rechts)
-      sceneList: { intro: true, pause: true, end: true, "cast-duo": true, "cast-solo": true, "cast-duo-interview": true, "cast-solo-interview": true },
+      sceneList: { intro: true, pause: true, end: true, "cast-duo": true, "cast-solo": true, "cast-duo-interview": true, "cast-solo-interview": true,
+                   "cast-trio": true, "cast-trio-host": true, "cast-quad": true },
       byTheme: {},                // { themeKey: [ { name, logo } ] } (bis 2.2: „listen“)
       gfx: { num: -1, until: 0 }
     },

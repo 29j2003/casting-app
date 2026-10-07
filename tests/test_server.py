@@ -182,7 +182,8 @@ def test_without_the_access_key_only_what_an_overlay_needs(server):
 
 @pytest.mark.parametrize("length", ["-1", "abc", "99999999999999"])
 def test_odd_content_length_is_refused_before_reading(server, length):
-    assert request("POST", "/api/report", "{}", headers={"Content-Length": length}, access=False)[0] == 400
+    # no body: the server answers without reading and closes – unread bytes would make Windows reset the connection
+    assert request("POST", "/api/report", None, headers={"Content-Length": length}, access=False)[0] == 400
 
 
 def test_overlays_without_the_key_get_the_state_without_camera_links(server):
@@ -286,6 +287,12 @@ def test_h264_video_is_converted_to_webm_for_the_app_window(server, tmp_path):
     finally:
         server.media_public_only = True
         source_server.shutdown()
+    # the user's own videos (background playlists, clips) come from this PC and are still converted
+    (server.folders.videos / "eigenes.mp4").write_bytes(clip.read_bytes())
+    for host in ("localhost", "127.0.0.1"):
+        own = f"http://{host}:8787/media/videos/eigenes.mp4"
+        status, headers, body = request("GET", "/api/media?" + urllib.parse.urlencode({"src": own, "t": media_token(server.access_key)}))
+        assert status == 200 and headers.get("Content-Type") == "video/webm" and body[:4] == b"\x1a\x45\xdf\xa3", host
 
 
 def test_quitting_needs_the_access_key(server):
@@ -308,3 +315,15 @@ def test_ping_proves_the_access_key(server):
 def test_media_converter_only_fetches_from_the_internet(address, public):
     from casting_app.server.app_server import public_host
     assert public_host(address) is public
+
+
+@pytest.mark.parametrize("address, own", [
+    ("http://localhost:8787/media/videos/hintergrund.mp4", True), ("http://127.0.0.1:8787/media/videos/a/b.mp4", True),
+    ("http://localhost:8787/medien/alt.mp4", True), ("http://localhost:8787/api/state", False),
+    ("http://localhost:9999/media/videos/x.mp4", False), ("http://localhost:8787/media/videos/../../x", False),
+    ("https://localhost:8787/media/videos/x.mp4", False),
+])
+def test_own_videos_are_converted_for_the_app_window(address, own):
+    """Background playlists and clips from the videos folder still play in the app window (H.264 → WebM)."""
+    from casting_app.server.app_server import own_video
+    assert own_video(address) is own

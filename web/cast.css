@@ -27,6 +27,8 @@ html, body { width: 1920px; height: 1080px; overflow: hidden; }
 body { position: relative; background: transparent; font-family: var(--font); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
 body > * { position: absolute; }
 .off { display: none !important; }
+/* Szenenwechsel: noch nicht gefüllte bzw. schon weggeräumte Teile – auch Kinder mit eigenem visibility: visible (broadcast.js) */
+.pending, .pending * { visibility: hidden !important; }
 
 /* Einblenden: nur Transform & Deckkraft (flüssig in OBS) */
 .enter { animation: enter .9s var(--soft) both; animation-delay: var(--d, 0s); }

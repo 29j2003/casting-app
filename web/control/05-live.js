@@ -635,11 +635,11 @@ document.querySelectorAll("[data-gfx-new]").forEach(b => b.onclick = () => {
    gemerkt in ui.panels (diese Oberfläche, nicht Teil der Sendung). Die Felder bedienen dieselben Daten wie
    Match und Setup (Z.veto, Z.teams, Z.timer, Z.texts) – jede Änderung zeichnet beide Stellen neu. */
 const PANEL_FIELDS = [["veto", "Map-Veto"], ["score", "Spielstand"], ["timer", "Timer"], ["series", "Serie"],
-  ["texts", "Texte im Overlay"], ["sponsor", "Sponsoren"], ["note", "Notiz"]];
+  ["texts", "Texte im Overlay"], ["sponsor", "Sponsoren"], ["slides", "Folien"], ["note", "Notiz"]];
 const PANEL_DEFAULTS = {
   "intro": ["timer", "texts", "sponsor"], "cast-duo": ["timer", "texts", "note"], "cast-solo": ["timer", "texts", "note"],
   "cast-duo-clips": ["note"], "cast-solo-clips": ["note"], "cast-duo-interview": ["series", "texts", "note"], "cast-solo-interview": ["series", "texts", "note"],
-  "cast-trio": ["timer", "texts", "note"], "cast-trio-host": ["timer", "texts", "note"], "cast-quad": ["series", "texts", "note"], "viewers": ["texts", "note"], "viewers-cast": ["texts", "note"],
+  "cast-trio": ["timer", "texts", "note"], "cast-trio-host": ["timer", "texts", "note"], "cast-quad": ["series", "texts", "note"], "viewers": ["texts", "note"], "viewers-cast": ["texts", "note"], "teams": ["slides", "note"],
   "map-veto": ["veto", "series"], "players": ["series", "note"], "series": ["series", "score"], "sponsors": ["sponsor"],
   "ingame": ["score", "series", "note"], "pause": ["timer", "texts", "sponsor"], "end": ["series", "texts", "sponsor"],
   "scoreboard": ["score", "series"], "team-a": ["score", "series"], "team-b": ["score", "series"], "h2h": ["score", "series"], "bracket": ["note"]
@@ -680,7 +680,74 @@ function panelValues() {
     names.forEach((n, i) => { const b = document.createElement("button"); b.className = "button"; b.innerHTML = icon("play") + esc(n); b.onclick = () => sponsorShowgfx(i); $("pSponsors").appendChild(b); });
   }
   $("pSponsorsEmpty").hidden = !!names.length;
+  slidesDraw();
 }
+/* ---------- Teams-Vorstellung: Folien wählen, automatisch weiter, Werte aus dem Turnier ---------- */
+// als Funktion (nicht const): panelValues kann schon beim Laden laufen, bevor diese Zeile erreicht ist
+function tiSlides() { return [["a", Z.teams.a.name || "Team A"], ["b", Z.teams.b.name || "Team B"], ["compare", "Vergleich"]]; }
+// fehlende Werte im vorhandenen Objekt ergänzen (nie ersetzen – sonst ändern Aufrufer eine Kopie, die nicht im Zustand hängt)
+function teamIntroState() {
+  const d = K.DEFAULT.teamIntro, I = Z.teamIntro = Z.teamIntro || K.clone(d);
+  for (const k of Object.keys(d)) if (I[k] === undefined) I[k] = K.clone(d[k]);
+  for (const k of Object.keys(d.slides)) if (I.slides[k] === undefined) I.slides[k] = true;
+  for (const team of ["a", "b"]) { I.stats[team] = I.stats[team] || {}; for (const k of Object.keys(d.stats[team])) if (I.stats[team][k] === undefined) I.stats[team][k] = ""; }
+  return I;
+}
+function tiOrder() { return tiSlides().map(([k]) => k).filter(k => teamIntroState().slides[k] !== false); }
+// laufende Folie – dieselbe Rechnung wie im Overlay (cast.js → teamIntroSlide)
+function tiCurrent() {
+  const I = teamIntroState(), order = tiOrder();
+  if (!order.length) return "";
+  if (I.auto > 0 && I.started) return order[Math.floor(Math.max(0, Date.now() - I.started) / (I.auto * 1000)) % order.length];
+  return order.includes(I.slide) ? I.slide : order[0];
+}
+function slidesDraw() {
+  if (!$("pSlides")) return;
+  const I = teamIntroState(), cur = tiCurrent(), order = tiOrder();
+  const key = JSON.stringify([order, cur, I.auto, Z.teams.a.name, Z.teams.b.name]);
+  if ($("pSlides")._k !== key) {
+    $("pSlides")._k = key;
+    $("pSlides").innerHTML = tiSlides().filter(([k]) => order.includes(k)).map(([k, n]) => `<button class="button${k === cur ? " main" : ""}" data-slide="${k}" aria-pressed="${k === cur}">${esc(n)}</button>`).join("") ||
+      `<span class="small">Alle Folien sind aus – Match → Teams-Vorstellung.</span>`;
+    $("pSlides").querySelectorAll("[data-slide]").forEach(b => b.onclick = () => tiShow(b.dataset.slide));
+  }
+  $("pSlidesAuto").checked = I.auto > 0;
+  $("tiAuto").value = String(I.auto || 0);
+  $("tiNameA").textContent = Z.teams.a.name || "Team A"; $("tiNameB").textContent = Z.teams.b.name || "Team B";
+}
+// Folie zeigen; läuft „automatisch“, geht es ab dieser Folie weiter
+function tiShow(k) {
+  const I = teamIntroState(), i = tiOrder().indexOf(k);
+  I.slide = k;
+  if (I.auto > 0 && i >= 0) I.started = Date.now() - i * I.auto * 1000;
+  send(); slidesDraw();
+}
+function tiAuto(seconds) {
+  const I = teamIntroState(), i = Math.max(0, tiOrder().indexOf(tiCurrent()));
+  I.auto = seconds; I.started = seconds > 0 ? Date.now() - i * seconds * 1000 : 0;
+  if (seconds > 0) ui.tiAuto = seconds;
+  uiSave(); send(); slidesDraw();
+}
+$("pSlidesAuto").onchange = () => tiAuto($("pSlidesAuto").checked ? (ui.tiAuto || 12) : 0);
+$("tiAuto").onchange = () => tiAuto(+$("tiAuto").value || 0);
+document.querySelectorAll(".ti-slide-on").forEach(c => c.addEventListener("change", () => setTimeout(slidesDraw, 0)));
+setInterval(() => { if ((Z.teamIntro || {}).auto > 0) slidesDraw(); }, 1000);     // laufende Folie im Panel mitzeigen
+// Werte aus dem Turnier: gleiches Team (Name oder Kürzel), Setzplatz = Reihenfolge der Teams, Statistik von FACEIT
+$("tiFromTour").onclick = () => {
+  const T = tour(), I = teamIntroState(), norm = s => String(s || "").trim().toLowerCase();
+  const found = [];
+  ["a", "b"].forEach(k => {
+    const name = norm(Z.teams[k].name), short = norm(Z.teams[k].short);
+    const i = T.teams.findIndex(t => norm(t.name) === name || (short && norm(t.short) === short));
+    if (i < 0) return;
+    const t = T.teams[i], st = t.stats || {};
+    Object.assign(I.stats[k], { seed: String(i + 1), winrate: st.winrate ? String(st.winrate) : I.stats[k].winrate, matches: st.matches ? String(st.matches) : I.stats[k].matches,
+      streak: st.series !== undefined && st.series !== "" ? String(st.series) : I.stats[k].streak, last: (st.last || []).length ? st.last.slice(0, 5).map(x => x === "1" ? "S" : "N").join("") : I.stats[k].last });
+    found.push(t.name);
+  });
+  fieldsFill(); send();
+  $("tiStatus").textContent = found.length ? `✓ Übernommen: ${found.join(" · ")}` : "Keins der beiden Teams steht im Turnier (Name oder Kürzel muss passen).";
+};
 $("pPlusA").onclick = () => mbarPoint("a", 1); $("pMinusA").onclick = () => mbarPoint("a", -1);
 $("pPlusB").onclick = () => mbarPoint("b", 1); $("pMinusB").onclick = () => mbarPoint("b", -1);
 $("pStart").onclick = () => $("mbarStart").click();

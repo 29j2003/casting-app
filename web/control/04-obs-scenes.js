@@ -10,7 +10,7 @@ const OVERLAY_SCENES = [
   ["cast-duo-interview", "Duo + Interview"], ["cast-solo-interview", "Solo + Interview"],
   ["cast-trio", "Cast Trio"], ["cast-trio-host", "Trio – Moderator groß"], ["cast-quad", "4 Personen"],
   ["viewers", "Zuschauer-Cams"], ["viewers-cast", "Zuschauer + Caster"],
-  ["map-veto", "Map-Veto"], ["players", "Line-ups"], ["series", "Serie"],
+  ["map-veto", "Map-Veto"], ["players", "Line-ups"], ["teams", "Teams-Vorstellung"], ["series", "Serie"],
   ["sponsors", "Sponsoren"], ["ingame", "Ingame"], ["pause", "Pause"], ["end", "Ende"],
   ["scoreboard", "Scoreboard"], ["team-a", "Team A"], ["team-b", "Team B"], ["h2h", "Head-to-Head"], ["bracket", "Turnierbaum"]
 ];
@@ -83,7 +83,7 @@ function overGameToggle(k) {
 }
 setInterval(() => { const U = Z.broadcast.overGame; if (U && U.until && U.until <= Date.now()) { Z.broadcast.overGame = null; scenesDraw(); } }, 1000);
 // Reihenfolge wie eine Sendung abläuft – eigene Reihenfolge per Ziehen („Anordnen“)
-const SCENE_DEFAULT = ["#pregame", "intro", "cast-solo", "cast-duo", "cast-trio", "cast-trio-host", "cast-quad", "players", "map-veto",
+const SCENE_DEFAULT = ["#pregame", "intro", "cast-solo", "cast-duo", "cast-trio", "cast-trio-host", "cast-quad", "players", "teams", "map-veto",
   "#during", "ingame",
   "#stats", "scoreboard", "team-a", "team-b", "h2h", "bracket", "series",
   "#pause", "pause", "sponsors", "cast-duo-clips", "cast-solo-clips", "viewers-cast", "viewers",

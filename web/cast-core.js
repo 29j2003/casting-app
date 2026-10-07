@@ -18,7 +18,7 @@ window.CastCore = (function () {
   "use strict";
 
   const KEY = "cast-state-v1";
-  const VERSION = "2.10.0";                     // muss zur App passen – sonst lädt sich die Seite neu
+  const VERSION = "2.11.0";                     // muss zur App passen – sonst lädt sich die Seite neu
   // Läuft die Seite über den Server der App (http://localhost:8787)?
   const SERVER = /^https?:$/.test(location.protocol) && location.port === "8787" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
@@ -96,7 +96,8 @@ window.CastCore = (function () {
       mapFact: "MAP-FAKT",
       round: "RUNDE",
       players: "SPIELER",
-      viewersTitle: "ZUSCHAUER-CAMS"
+      viewersTitle: "ZUSCHAUER-CAMS",
+      teamIntro: "TEAM-VORSTELLUNG"
     },
     en: {
       title: "GRAND FINAL",
@@ -133,7 +134,8 @@ window.CastCore = (function () {
       mapFact: "MAP FACT",
       round: "ROUND",
       players: "PLAYERS",
-      viewersTitle: "VIEWER CAMS"
+      viewersTitle: "VIEWER CAMS",
+      teamIntro: "TEAM INTRO"
     }
   };
   const OVERLAY_WORDS = {
@@ -144,7 +146,8 @@ window.CastCore = (function () {
           noTournament: "Noch kein Turnier angelegt", cameraMissing: "Kamera nicht verfügbar",
           previewNoH264: "Das Video dieser DACH-Seite (H.264) spielt nur im Stream in OBS – die Vorschau im App-Fenster kann dieses Format nicht abspielen.",
           tableTeam: "TEAM", tableGames: "SP", tableWins: "S", tableLosses: "N", tablePoints: "PKT",
-          winRate: "SIEGQUOTE", matches: "SPIELE", streak: "SERIE", formWin: "S", formLoss: "N" },
+          winRate: "SIEGQUOTE", matches: "SPIELE", streak: "SERIE", formWin: "S", formLoss: "N",
+          seed: "SETZPLATZ", lastFive: "LETZTE 5", compare: "IM VERGLEICH" },
     en: { final: "FINAL", upperFinal: "UPPER FINAL", lowerFinal: "LOWER FINAL", semifinal: "SEMIFINAL", quarterfinal: "QUARTERFINAL",
           roundOf16: "ROUND OF 16", round: "ROUND", upperRound: "UPPER R", lowerRound: "LOWER R", group: "GROUP", table: "TABLE",
           opening: "OPENING", winners: "WINNERS", elimination: "ELIMINATION", decider: "DECIDER", bye: "Bye",
@@ -152,7 +155,8 @@ window.CastCore = (function () {
           noTournament: "No tournament set up yet", cameraMissing: "Camera not available",
           previewNoH264: "The video of this DACH page (H.264) only plays in the stream in OBS – the preview in the app window cannot play this format.",
           tableTeam: "TEAM", tableGames: "P", tableWins: "W", tableLosses: "L", tablePoints: "PTS",
-          winRate: "WIN RATE", matches: "MATCHES", streak: "STREAK", formWin: "W", formLoss: "L" }
+          winRate: "WIN RATE", matches: "MATCHES", streak: "STREAK", formWin: "W", formLoss: "L",
+          seed: "SEED", lastFive: "LAST 5", compare: "HEAD TO HEAD" }
   };
   /** A fixed overlay word in the overlay language of the state. */
   const word = (Z, key) => (OVERLAY_WORDS[(Z || {}).overlayLanguage] || OVERLAY_WORDS.de)[key];
@@ -221,6 +225,10 @@ window.CastCore = (function () {
     // Schritte: { aktion: "ban"|"pick"|"decider", team: "a"|"b"|"", map: "", bild: "", seite: ""|"ct"|"t" }
     veto: { source: "manual", format: "bo3", steps: [] },
     players: { a: [], b: [] },   // { name, echt, bild, level }
+    // Teams-Vorstellung (Szene „teams“): Folien an/aus, laufende Folie, automatisch weiter alle `auto` s ab `started`;
+    // stats je Team: seed, winrate, matches, streak, last (Folge aus W/L, neueste zuerst)
+    teamIntro: { slides: { a: true, b: true, compare: true }, slide: "a", auto: 0, started: 0,
+                 stats: { a: { seed: "", winrate: "", matches: "", streak: "", last: "" }, b: { seed: "", winrate: "", matches: "", streak: "", last: "" } } },
     // Spieltag: Spiele des Tages in Reihenfolge, je { id, time, a, b, gameId, done } (a/b: { name, short, logo, players }); current = laufendes Spiel
     matchday: { list: [], current: "" },
     // Serie: Ergebnisse stehen direkt an den Pick-/Decider-Schritten des Vetos (schritt.ergebnis)

@@ -581,3 +581,22 @@ body[data-sponsorspot=top] .music:not(.on) ~ .sponsor.in-bar { top: 47px !import
 .cam[data-tag="small"] > .badge { top: auto; bottom: 12px; left: 12px; min-width: 0; transform: scale(.62); transform-origin: left bottom; }
 .cam[data-tag="small"] > .badge .box-field { display: none; }
 .cam[data-tag="small"] > .badge .box-head { padding-right: 28px; }
+
+/* Teams-Vorstellung: Folien Team A · Team B · Vergleich (data-tislide an der Szene, cast.js) */
+.ti-slides { inset: 0; pointer-events: none; }
+.ti-slide { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .5s var(--soft), visibility 0s .5s; }
+.ti-slide > * { position: absolute; }
+[data-tislide="a"] .ti-slide[data-slide="a"], [data-tislide="b"] .ti-slide[data-slide="b"], [data-tislide="compare"] .ti-slide[data-slide="compare"] {
+  opacity: 1; visibility: visible; transition: opacity .5s var(--soft), visibility 0s; }
+[data-only] { display: none; }
+[data-tislide="a"] [data-only="a"], [data-tislide="b"] [data-only="b"], [data-tislide="compare"] [data-only="compare"] { display: inline; }
+.ti-logo .box-field { height: 78px; font-size: 40px; }
+.ti-players .players-card { width: auto; flex: 1; }
+.ti-value { font-size: 44px; }
+.ti-form { display: flex; gap: 8px; justify-content: center; }
+.ti-form i { width: 40px; height: 40px; display: grid; place-items: center; font-style: normal; font-size: 22px; font-weight: 800; background: var(--accent); color: var(--dark); }
+.ti-form i.n { background: var(--dark); color: rgba(255, 255, 255, .55); }
+.ti-compare .box-field.ti-tape { display: grid; padding: 0; height: auto; }
+.ti-tape { display: grid; grid-template-columns: 1fr 320px 1fr; }
+.ti-tape > div { height: 92px; display: grid; place-items: center; font-size: 40px; font-weight: 800; border-bottom: 2px solid rgba(0, 0, 0, .08); }
+.ti-tape > .lab { background: var(--dark); color: #fff; font-size: 22px; letter-spacing: .14em; }

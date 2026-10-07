@@ -4,10 +4,12 @@
 
 /* ---------- Turnier ---------- */
 function tour() {
-  Z.tournament = Object.assign({ name: "", format: "se", teams: [], res: {}, swiss: { wins: 3, losses: 3, rounds: [] }, visible: { mode: "all", round: 1, resultsOff: false }, focused: "" }, Z.tournament || {});
-  Z.tournament.swiss = Object.assign({ wins: 3, losses: 3, rounds: [] }, Z.tournament.swiss || {});
-  Z.tournament.visible = Object.assign({ mode: "all", round: 1, resultsOff: false }, Z.tournament.visible || {});
-  return Z.tournament;
+  const T = ensure(Z, "tournament", { name: "", format: "se", teams: [], res: {}, focused: "" });
+  ensure(T, "swiss", { wins: 3, losses: 3, rounds: [] });
+  ensure(T, "visible", { mode: "all", round: 1, resultsOff: false });
+  if (!Array.isArray(T.teams)) T.teams = [];
+  if (!T.res || typeof T.res !== "object") T.res = {};
+  return T;
 }
 const tourStatus = t => { $("tourStatus").textContent = t; };
 function tournamentDraw() {
@@ -55,7 +57,7 @@ function tournamentTreeDraw() {
     const e2 = T.res[m.id] || {};
     const undecided = !m.a || !m.b || m.a === "BYE" || m.b === "BYE";
     d.innerHTML = [["a", m.a], ["b", m.b]].map(([s, id]) => `<div class="tour-z"><button type="button" data-team="${esc(id || "")}" class="${id && id === T.focused ? "focused" : ""}"${!id || id === "BYE" ? " disabled" : ""}>${esc(name(id))}</button>
-      <input type="number" min="0" data-s="${s}" value="${e2[s] ?? ""}"${undecided ? " disabled" : ""} aria-label="Ergebnis"></div>`).join("") +
+      <input type="number" min="0" data-s="${s}" value="${esc(e2[s] ?? "")}"${undecided ? " disabled" : ""} aria-label="Ergebnis"></div>`).join("") +
       `<div class="tour-foot"><span>${esc(title || m.title || m.id)}</span><label class="toggleSwitch"><input type="checkbox"${m.done ? " checked" : ""}${undecided ? " disabled" : ""}> fertig</label></div>`;
     // von Hand geändert = korrigiert: „Ergebnisse aktualisieren“ überschreibt den Wert nicht mehr
     const chip = () => {
@@ -309,7 +311,7 @@ function selection({ title, text, buttons, whenShown }) {
     const hotkey = ev => { if (ev.key === "Escape") close(""); };
     addEventListener("keydown", hotkey);
     d.querySelectorAll("button").forEach(b => b.onclick = () => close(b.dataset.w));
-    d.querySelector('[data-w=window]')?.focus();
+    (d.querySelector('[data-w=window]') || d.querySelector('.button.main'))?.focus();
   });
 }
 $("workspaceButton") && document.querySelector(".topbar .tools").insertAdjacentHTML("beforeend", `<button class="tool" id="quitButton" title="Schließen oder ganz beenden" aria-label="Schließen oder beenden">${icon("power")}</button>`);

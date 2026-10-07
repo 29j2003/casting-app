@@ -25,7 +25,6 @@ function connectedDraw() {
 new MutationObserver(connectedDraw).observe($("statusPop"), { subtree: true, attributes: true, attributeFilter: ["class"] });
 connectedDraw();
 // Übergang als Auswahl im Kopf der Programm-Karte
-const transHome = $("sceneTransition").parentElement, transAfter = $("sceneTransition").nextSibling;
 function transPopClose() { $("transPop").hidden = true; }
 $("transPop").appendChild($("sceneTransition"));
 $("transPop").insertAdjacentHTML("beforeend", `<label style="display:grid;gap:4px;font-size:13px">Stats über dem Spiel (während Ingame) ausblenden nach

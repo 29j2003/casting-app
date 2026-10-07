@@ -18,7 +18,7 @@ function timerEndCheck() {
 }
 setInterval(timerEndCheck, 500);
 function timerEndDraw() {
-  const E = (Z.timer.end = Object.assign({ text: "", scene: "" }, Z.timer.end || {}));
+  const E = ensure(Z.timer, "end", { text: "", scene: "" });
   const html = `<option value="">– bleiben –</option>` + OVERLAY_SCENES.map(([k, n]) => `<option value="${k}"${k === E.scene ? " selected" : ""}>${esc(n)}</option>`).join("");
   if ($("tEndScene")._h !== html) { $("tEndScene").innerHTML = html; $("tEndScene")._h = html; }
 }
@@ -104,7 +104,7 @@ function teamDraw(k) {
       <div class="line"><label style="flex:1">Team ${k.toUpperCase()}<input type="text" value=""></label>
         <label style="width:96px" title="Kürzel – das Overlay zeigt es, wenn der Name nicht ohne starkes Verkleinern passt">Kürzel<input type="text" class="team-short" maxlength="5" value=""></label></div>
       <div class="line" style="align-items:center">
-        <div class="score"><button class="button">−</button><b>${t.score || 0}</b><button class="button">+</button></div>
+        <div class="score"><button class="button">−</button><b>${esc(t.score || 0)}</b><button class="button">+</button></div>
         <button class="button">Logo entfernen</button>
       </div>
     </div>
@@ -123,7 +123,16 @@ function teamDraw(k) {
   plus.onclick = () => { t.score = (t.score || 0) + 1; teamDraw(k); send(); };
 }
 $("result").onchange = () => { Z.teams.result = $("result").checked; send(); };
-$("swap").onclick = () => { [Z.teams.a, Z.teams.b] = [Z.teams.b, Z.teams.a]; teamDraw("a"); teamDraw("b"); send(); };
+// Teams tauschen: alles, was zu einem Team gehört, wandert mit (Spieler, Werte der Teams-Vorstellung, Head-to-Head, Veto und Serie)
+$("swap").onclick = () => {
+  const flip = o => { if (o && typeof o === "object") [o.a, o.b] = [o.b, o.a]; };
+  flip(Z.teams); flip(Z.players); flip((Z.teamIntro || {}).stats); flip(Z.h2h);
+  for (const s of (Z.veto || {}).steps || []) {
+    if (s.team === "a" || s.team === "b") s.team = s.team === "a" ? "b" : "a";
+    if (s.result) flip(s.result);
+  }
+  teamDraw("a"); teamDraw("b"); playersDraw("a"); playersDraw("b"); vetoDraw(); seriesDraw(); mbarDraw(); fieldsFill(); send();
+};
 
 /* ---------- Bilder in optimaler Größe ---------- */
 // So groß werden die Bilder im Overlay angezeigt (1920×1080)
@@ -272,7 +281,7 @@ function vetoUpnextDraw(box) {
   if (upnext < 0) { box.insertAdjacentHTML("beforeend", "<b>✓ Veto abgeschlossen</b>"); return; }
   if (Z.veto.source === "faceit") return;
   const x = s[upnext];
-  box.insertAdjacentHTML("beforeend", `<b>Schritt ${upnext + 1}: ${x.team ? esc(teamName(x.team)) + " " + (VETO_WORD[x.action] || x.action) : "Decider"}</b><div class="map-buttons"></div>`);
+  box.insertAdjacentHTML("beforeend", `<b>Schritt ${upnext + 1}: ${x.team ? esc(teamName(x.team)) + " " + esc(VETO_WORD[x.action] || x.action) : "Decider"}</b><div class="map-buttons"></div>`);
   const k = box.querySelector(".map-buttons");
   freeMaps().forEach(m => {
     const b = document.createElement("button"); b.className = "button" + (x.action === "ban" ? "" : " main"); b.textContent = m.name;

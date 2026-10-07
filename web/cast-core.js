@@ -18,7 +18,7 @@ window.CastCore = (function () {
   "use strict";
 
   const KEY = "cast-state-v1";
-  const VERSION = "2.11.0";                     // muss zur App passen – sonst lädt sich die Seite neu
+  const VERSION = "2.12.0";                     // muss zur App passen – sonst lädt sich die Seite neu
   // Läuft die Seite über den Server der App (http://localhost:8787)?
   const SERVER = /^https?:$/.test(location.protocol) && location.port === "8787" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
@@ -291,13 +291,19 @@ window.CastCore = (function () {
     }
     return source;
   }
+  // Zusammenführen mit Typprüfung: wo der Standard ein Objekt oder eine Liste hat, zählt nur ein Objekt bzw. eine Liste
+  // (eine importierte Datei mit "teams": null oder "graphics": [null] würde sonst Steuerseite und Overlays abstürzen lassen)
   function merge(target, source) {
     if (!isObj(source)) return target;
     source = renamedFields(source);
     for (const k of Object.keys(source)) {
       if (FORBIDDEN.has(k)) continue;
-      const v = source[k];
-      if (isObj(v)) target[k] = merge(isObj(target[k]) ? target[k] : {}, v);
+      let v = source[k];
+      const before = target[k];
+      if (isObj(before) && !isObj(v)) continue;
+      if (Array.isArray(before) && !Array.isArray(v)) continue;
+      if (Array.isArray(v) && Array.isArray(before) && before.length && isObj(before[0])) v = v.filter(isObj);   // Liste von Objekten
+      if (isObj(v)) target[k] = merge(isObj(before) ? before : {}, v);
       else if (v !== undefined) target[k] = Array.isArray(v) ? clone(v) : v;
     }
     return target;
@@ -395,7 +401,9 @@ window.CastCore = (function () {
 
   // Stand-Nummer („revision“): Zeitstempel, aber immer über dem letzten eigenen und dem des Servers
   let serverRevision = 0;
-  const nextRevision = previous => Math.max(Date.now(), (+previous || 0) + 1, serverRevision + 1);
+  // nur ganze Zahlen in sicherem Bereich (eine importierte Datei mit „1e300“ würde sonst jede weitere Änderung blockieren)
+  const safeRevision = n => Number.isSafeInteger(+n) && +n > 0 ? +n : 0;
+  const nextRevision = previous => Math.max(Date.now(), safeRevision(previous) + 1, safeRevision(serverRevision) + 1);
 
   /* ---------- Kanal: alle Wege zusammen ---------- */
   function channel(opt) {
@@ -621,6 +629,7 @@ window.CastCore = (function () {
         const ms = games.filter(x => (+x.group || 0) === gi).map(x => Object.assign(resolve(fresh(x.id, null, null, { team: x.a }, { team: x.b })), { round: x.round, title: x.round ? W.round + " " + x.round : "" }));
         // Punkte je Turnier einstellbar: Sieg ohne/mit Map-Verlust, Niederlage mit/ohne Map-Gewinn, Unentschieden
         const P = Object.assign({ win: 3, winClose: 3, lossClose: 1, loss: 0, draws: 1 }, T.points || {});
+        for (const k of Object.keys(P)) P[k] = +P[k] || 0;                 // immer Zahlen (Punkte kommen auch aus Importen)
         const pointsFor = (own, opponent) => own > opponent ? (opponent > 0 ? P.winClose : P.win) : own < opponent ? (own > 0 ? P.lossClose : P.loss) : P.draws;
         const row = {}; ids.forEach(id => { row[id] = { id, played: 0, wins: 0, losses: 0, draws: 0, diff: 0, rd: 0, pts: 0 }; });
         let withRounds = false;
@@ -724,7 +733,12 @@ window.CastCore = (function () {
   function dachFrame(Z, page) {
     const own = ((Z || {}).dachFrame || {})[page] || {};
     const std = DACH_FRAME[page] || {};
-    const r = {}; Object.keys(std).forEach(k => { r[k] = Object.assign({}, std[k], own[k] || {}); });
+    const r = {};
+    Object.keys(std).forEach(k => {
+      const o = Object.assign({}, std[k], isObj(own[k]) ? own[k] : {});
+      for (const f of ["x", "y", "w", "h"]) o[f] = Math.round(+o[f]) || 0;                 // nur Zahlen
+      r[k] = o;
+    });
     return r;
   }
 

@@ -206,6 +206,7 @@ function settingsNavDraw() {
   $("navLanguage").textContent = `App ${CastI18n.language === "en" ? "English" : "Deutsch"} · Overlays ${(Z.overlayLanguage || "de") === "en" ? "English" : "Deutsch"}`;
   $("navLook").innerHTML = `<span>${({ dark: "Dunkel", light: "Hell", system: "Wie das System" })[ui.design || "dark"]}</span> · <span>${ui.zoom === "auto" ? "Größe automatisch" : Math.round((ui.zoom || 1) * 100) + " %"}</span>`;
   $("navUpdate").textContent = $("updateState").textContent;
+  $("navUpdateDot").className = /available|error/.test(lastUpdateState || "") ? "wait" : lastUpdateState === "current" ? "ok" : "";
   $("aboutVersion").textContent = $("appVersion").textContent;
 }
 document.querySelectorAll(".settings-nav [data-jump]").forEach(b => b.onclick = () => settingsShow(b.dataset.jump));

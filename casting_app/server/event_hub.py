@@ -11,8 +11,10 @@ import threading
 import time
 
 MAX_CLIENTS = 40
+MAX_UNTRUSTED_CLIENTS = 15        # pages without the access key (old OBS sources) – the rest stays free for the app's own pages
 KEEPALIVE_SECONDS = 20
 MAX_QUEUED_EVENTS = 500
+MAX_QUEUED_BYTES = 32_000_000     # a page that stops reading is cut off before its queue holds many copies of a large state
 CONTROL_PAGE = "control"          # page name the control page reports itself with
 
 
@@ -28,6 +30,8 @@ class EventClient:
         self.version = version
         self.connected_at = int(time.time() * 1000)
         self._queue: queue.Queue = queue.Queue(MAX_QUEUED_EVENTS)
+        self._queued_bytes = 0
+        self._bytes_lock = threading.Lock()
         self.closed = False
 
     @property
@@ -37,17 +41,26 @@ class EventClient:
 
     def send(self, event: str, data: str) -> None:
         """Queue one event; data must not contain line breaks."""
+        message = f"event: {event}\ndata: {data}\n\n"
+        with self._bytes_lock:
+            if self._queued_bytes + len(message) > MAX_QUEUED_BYTES:
+                self.closed = True
+                return
+            self._queued_bytes += len(message)
         try:
-            self._queue.put_nowait(f"event: {event}\ndata: {data}\n\n")
+            self._queue.put_nowait(message)
         except queue.Full:
             self.closed = True
 
     def next_message(self) -> str:
         """Next message to write, or a keepalive comment after a quiet period."""
         try:
-            return self._queue.get(timeout=KEEPALIVE_SECONDS)
+            message = self._queue.get(timeout=KEEPALIVE_SECONDS)
         except queue.Empty:
             return ": still\n\n"
+        with self._bytes_lock:
+            self._queued_bytes -= len(message)
+        return message
 
     def describe(self) -> dict:
         """Client info for the control page."""
@@ -75,6 +88,8 @@ class EventHub:
         """Register a page; False when too many are connected."""
         with self._lock:
             if len(self._clients) >= MAX_CLIENTS:
+                return False
+            if not client.trusted and sum(1 for c in self._clients if not c.trusted) >= MAX_UNTRUSTED_CLIENTS:
                 return False
             self._clients.add(client)
         self.send_client_list()

@@ -18,12 +18,10 @@ const OVERLAY_SCENES = [
 const SCENES_OFF = ["cast-trio-host", "viewers"];
 let obsScenes = [], currentScene = "", transitions = [], obsTransition = "";
 function sceneCfg() {
-  Z.sceneList = Object.assign({ on: true, defaultChoice: "", list: {} }, Z.sceneList || {});
-  if (!Z.sceneList.list || Array.isArray(Z.sceneList.list)) Z.sceneList.list = {};
-  OVERLAY_SCENES.forEach(([k, n]) => {
-    Z.sceneList.list[k] = Object.assign({ on: !SCENES_OFF.includes(k), obs: "", transition: "" }, Z.sceneList.list[k] || {});
-  });
-  return Z.sceneList;
+  const c = ensure(Z, "sceneList", { on: true, defaultChoice: "" });
+  ensure(c, "list", {});
+  OVERLAY_SCENES.forEach(([k]) => ensure(c.list, k, { on: !SCENES_OFF.includes(k), obs: "", transition: "" }));
+  return c;
 }
 const obsName = label => "Cast – " + label;
 // passende OBS-Szene automatisch finden (gleicher Name, „Cast – …" oder ähnlich)
@@ -169,7 +167,7 @@ function scenesSetupDraw() {
   $("onSourceText").hidden = false;
   const opt = (list, value, empty) => `<option value="">${empty}</option>` + list.map(x => `<option value="${esc(x)}"${x === value ? " selected" : ""}>${esc(x)}</option>`).join("")
     + (value && !list.includes(value) ? `<option value="${esc(value)}" selected>${esc(value)} (fehlt in OBS)</option>` : "");
-  $("sceneDefault").innerHTML = opt(transitions, c.defaultChoice, obsTransition ? `wie in OBS (${obsTransition})` : "wie in OBS");
+  $("sceneDefault").innerHTML = opt(transitions, c.defaultChoice, obsTransition ? `wie in OBS (${esc(obsTransition)})` : "wie in OBS");
   $("sceneDefault").onchange = () => { c.defaultChoice = $("sceneDefault").value; send(); };
   box.insertAdjacentHTML("beforeend", `<div class="row scene-row small" style="background:none"><span></span><b>Szene</b><b>${single ? "" : "OBS-Szene"}</b><b>${single ? "" : "Übergang"}</b></div>`);
   OVERLAY_SCENES.forEach(([k, n]) => {

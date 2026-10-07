@@ -56,12 +56,26 @@ def vault_exists(data_dir: Path) -> bool:
     return (data_dir / FILE_NAME).exists()
 
 
-def vault_from_environment(data_dir: Path, log) -> "PasswordVault | None":
+_environment_password: str | None = None
+
+
+def take_environment_password() -> str | None:
+    """CASTING_APP_VAULT_PASSWORD, removed from the environment on the first call (main() calls it at start, also
+    when a system keyring makes it unnecessary): child processes – browser engine, FFmpeg, opened programs – must
+    never inherit it."""
+    global _environment_password
+    if ENVIRONMENT_VARIABLE in os.environ:
+        _environment_password = os.environ.pop(ENVIRONMENT_VARIABLE)
+    return _environment_password
+
+
+def vault_from_environment(data_dir: Path, log, password: str | None = None) -> "PasswordVault | None":
     """The vault opened with CASTING_APP_VAULT_PASSWORD, or None if that variable is not set or does not open it.
 
     Used by the server-only mode and by unattended starts of the desktop app (no password dialog then).
+    `password`: the value already taken with take_environment_password().
     """
-    password = os.environ.pop(ENVIRONMENT_VARIABLE, None)     # removed at once: child processes must not inherit it
+    password = password or take_environment_password()
     if not password or not is_available():
         return None
     try:

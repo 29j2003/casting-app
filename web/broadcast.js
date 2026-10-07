@@ -92,6 +92,9 @@
     if (scene === currentScene) return;
     const fresh = await layer(scene);
     const previous = currentLayer;
+    // Hintergrund (bei Ingame aus) blendet genauso lange wie die Teile der Szene – nie vorher weg, nie hinterher
+    const fadeMs = !previous || kind === "cut" || duration <= 0 ? 0 : kind === "stinger" ? duration / 2 : duration * (scene === "ingame" ? .55 : .6);
+    document.body.style.setProperty("--scene-fade", Math.round(fadeMs) + "ms");
     document.body.dataset.currentscene = scene;
     currentScene = scene;
 
@@ -115,8 +118,6 @@
         n.replaceWith(a);
       } else cross.push([a, n]);
     });
-    const go = [...previous.children].filter(e => !cross.some(p => p[0] === e));
-    window.__lastSwitch = { proceed: proceed.map(w => w.el.dataset.part), cross: cross.map(p => p[1].dataset.part), come: come.map(e => e.dataset.part || e.className), go: go.map(e => e.dataset.part || e.className) };
     fresh.querySelectorAll(".enter").forEach(e => e.classList.remove("enter"));
     // Nur die NEUEN Teile verstecken, bis sie gefüllt sind. Weiterverwendete Teile bleiben die ganze Zeit sichtbar
     // (früher war die ganze neue Schicht kurz versteckt – dadurch verschwanden Logo, Titel & Co. für 1–2 Bilder).
@@ -125,6 +126,20 @@
     stage.appendChild(fresh);
     C().newDraw();                                   // neue Teile mit Inhalt füllen
     await awaiting(50);
+    // Teile, die nach dem Zeichnen genau gleich aussehen (z. B. das Logo – nur seine Größengrenze data-max ist je Szene
+    // anders), bleiben stehen statt überzublenden: zwei halb durchsichtige gleiche Bilder übereinander flackern sichtbar
+    for (let i = cross.length - 1; i >= 0; i--) {
+      const [a, n] = cross[i];
+      if (a.className !== n.className || a.innerHTML !== n.innerHTML) continue;
+      [...n.attributes].forEach(x => { if (x.name.startsWith("data-")) a.setAttribute(x.name, x.value); });
+      a._cacheKey = n._cacheKey;                       // schon passend gezeichnet – nicht neu zeichnen (Bild würde neu laden)
+      n.style.visibility = "";                         // (nur zum Füllen versteckt – die Lage übernimmt a)
+      proceed.push({ el: a, from: placement(a.getAttribute("style")), post: placement(n.getAttribute("style")), target: n.getAttribute("style") });
+      newParts.splice(newParts.indexOf(n), 1);
+      n.replaceWith(a); cross.splice(i, 1);
+    }
+    const go = [...previous.children].filter(e => !cross.some(p => p[0] === e));
+    window.__lastSwitch = { proceed: proceed.map(w => w.el.dataset.part), cross: cross.map(p => p[1].dataset.part), come: come.map(e => e.dataset.part || e.className), go: go.map(e => e.dataset.part || e.className) };
     const show = () => newParts.forEach(e => { e.style.visibility = ""; });
 
     const done = () => {

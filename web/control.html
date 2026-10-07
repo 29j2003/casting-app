@@ -147,6 +147,10 @@
             <div class="map-buttons" id="pSponsors"></div>
             <span class="small" id="pSponsorsEmpty">Noch keine Sponsoren für dieses Theme – Setup → Sponsoren.</span>
           </section>
+          <section class="panel-field" data-panel="over" hidden>
+            <h4>Über dem Spiel <span class="small" id="pOverHint"></span></h4>
+            <div class="map-buttons" id="pOver"></div>
+          </section>
           <section class="panel-field" data-panel="slides" hidden>
             <h4>Folien</h4>
             <div class="map-buttons" id="pSlides"></div>
@@ -778,6 +782,7 @@
 <div class="middle" id="middle">
 <div class="preview">
   <div class="vs-head"><b class="vs-title">PROGRAMM</b><span id="vsScene"></span><span class="small" id="vsTheme" hidden></span><div style="flex:1"></div>
+    <button class="button" id="studioButton" aria-pressed="false" title="Studio-Modus (wie in OBS): Szene erst links in der Vorschau wählen, dann mit „Übergang“ live schalten">Studio-Modus</button>
     <button class="button clean-button" id="cleanButton" title="Nur in Ingame: alle Grafiken ausblenden – im Programm bleibt nur das Spielbild">Cleanfeed</button>
     <div class="trans-choice"><button class="button" id="transButton" aria-haspopup="dialog">Übergang: <span id="transText">–</span><span data-icon="chevron"></span></button><div class="trans-pop" id="transPop" hidden></div></div></div>
   <div class="preview-head">
@@ -813,7 +818,11 @@
       </select>
     </label>
   </div>
-  <div class="stage-slot" id="stageSlot"><div class="stage" id="stage"><iframe id="frame" allow="autoplay" title="Vorschau"></iframe></div></div>
+  <div class="stage-slot" id="stageSlot">
+    <div class="studio-side" id="studioSide" hidden><div class="studio-label"><b>VORSCHAU</b> <span id="studioName"></span></div><div class="stage studio-stage" id="studioStage"><iframe id="studioFrame" allow="autoplay" title="Vorschau – nächste Szene"></iframe></div></div>
+    <button class="button main studio-take" id="studioTake" hidden title="Vorschau live schalten (mit dem gewählten Übergang)">Übergang <span data-icon="right"></span></button>
+    <div class="studio-program"><div class="studio-label" id="programLabel" hidden><b>PROGRAMM</b></div><div class="stage" id="stage"><iframe id="frame" allow="autoplay" title="Vorschau"></iframe></div></div>
+  </div>
   <div class="bg-corner" id="bgCorner"><span class="small">HINTERGRUND</span><select id="bgCornerList" aria-label="Hintergrund dieser Szene"></select>
     <button class="button" id="bgCornerKeep" title="Diese Playlist ab jetzt immer für diese Szene">Für die Szene merken</button><span style="flex:1"></span>
     <select id="bgClipList" aria-label="Clip-Playlist"></select><button class="button" id="bgClipPlay" data-icon="play">Clip zeigen</button><button class="button" id="bgClipStop" hidden>Clip stoppen</button></div>

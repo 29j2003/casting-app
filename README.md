@@ -209,6 +209,14 @@ Ansicht über dem Spielbild (leicht abgedunkelt), ein zweiter blendet sie aus �
 (Knopf „Übergang: …“ in der Programm-Karte → „Stats über dem Spiel (während Ingame) ausblenden nach … Sekunden“,
 Standard 15, 0 = bleibt stehen) verschwindet sie von selbst. **Umschalt-Klick** wechselt
 trotzdem in die ganze Szene. In jeder anderen Szene wechseln die Knöpfe ganz normal.
+Dieselben Knöpfe stehen in Live im **Panel der Szene** von Ingame unter **„Über dem Spiel“** – dort sieht man auch, was gerade läuft.
+
+### Studio-Modus
+
+Wie in OBS: Knopf **Studio-Modus** oben in der Programm-Karte. Links erscheint die **Vorschau**, rechts bleibt das **Programm**.
+Ein Klick auf eine Szene legt sie nur in die Vorschau (grün umrandet); **„Übergang“** in der Mitte schaltet sie live – mit dem
+gewählten Übergang. Danach liegt die vorige Programm-Szene in der Vorschau. Noch ein Klick auf „Studio-Modus“ schaltet zurück auf
+direktes Umschalten. Gibt es nur mit einer Browserquelle (overlay.html); mit einzelnen OBS-Szenen nutzt du den Studio-Modus von OBS.
 
 ### Reiter
 

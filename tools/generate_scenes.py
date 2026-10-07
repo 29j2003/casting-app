@@ -158,10 +158,12 @@ scene('cast-trio.html', 'Cast Trio',
 scene('cast-trio-host.html', 'Cast Trio – Moderator groß',
       cam(120, 162, 1088, 612, 'Caster 1', .2, 'c1') + cam(1320, 162, 480, 270, 'Caster 2', .3, 'c2') + cam(1320, 516, 480, 270, 'Caster 3', .4, 'c3') +
       bottom_cast(.8, with_sponsor=True))
-# 4 persons: both casters and two more people (guest, analyst, tournament admin …) in a 2 × 2 grid
+# 4 persons: both casters and two more people (guest, analyst, tournament admin …) in a 2 × 2 grid –
+# right edge in line with the match-up box (1666), so the logo (at most 400 px, like the clips scenes) never touches a camera
 scene('cast-quad.html', 'Cast 4 Personen',
-      cam(371, 50, 569, 320, 'Caster 1', .2, 'c1') + cam(980, 50, 569, 320, 'Caster 2', .3, 'c2') +
-      cam(371, 462, 569, 320, 'Person 3', .4, 'p3') + cam(980, 462, 569, 320, 'Person 4', .5, 'p4') + bottom_cast(.8, with_sponsor=True))
+      cam(488, 50, 569, 320, 'Caster 1', .2, 'c1') + cam(1097, 50, 569, 320, 'Caster 2', .3, 'c2') +
+      cam(488, 462, 569, 320, 'Person 3', .4, 'p3') + cam(1097, 462, 569, 320, 'Person 4', .5, 'p4') + bottom_cast(.8, with_sponsor=True),
+      max_brand=400)
 # viewer cams: a wall of six tiles, or four tiles with both casters on the right (like the clips scene)
 scene('viewers.html', 'Zuschauer-Cams',
       head_box(482, 47, 1381, .2, 'viewersTitle', VS_FIELD) +

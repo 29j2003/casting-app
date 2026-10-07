@@ -256,15 +256,58 @@ function preview() {
 }
 $("scene").onchange = preview;
 $("frame").onload = () => $("frame").contentWindow.postMessage({ cast: "state", z: Z }, location.origin);
-// Vorschau so groß wie möglich, ohne Verzerrung (wie in OBS)
+// Vorschau so groß wie möglich, ohne Verzerrung (wie in OBS); im Studio-Modus zwei Bilder nebeneinander
 function previewSize() {
-  const p = $("stageSlot"), w = p.clientWidth, h = p.clientHeight;
+  const p = $("stageSlot"), studio = p.classList.contains("studio");
+  const w = studio ? Math.max(0, (p.clientWidth - $("studioTake").offsetWidth - 24) / 2) : p.clientWidth;
+  const h = studio ? p.clientHeight - 22 : p.clientHeight;
   let s = w / 1920;
   if (h > 60 && getComputedStyle(p).display !== "block") s = Math.min(s, h / 1080);
   s = Math.max(0.05, s);
   if (getComputedStyle(p).display !== "block") { $("stage").style.width = Math.floor(1920 * s) + "px"; $("stage").style.height = Math.floor(1080 * s) + "px"; }
   $("frame").style.transform = `scale(${getComputedStyle(p).display === "block" ? $("stage").clientWidth / 1920 : s})`;
+  if (studio) {
+    $("studioStage").style.width = $("stage").style.width; $("studioStage").style.height = $("stage").style.height;
+    $("studioFrame").style.transform = $("frame").style.transform;
+  }
 }
+
+/* ---------- Studio-Modus (wie in OBS) ----------
+   Ein Klick auf eine Szene legt sie nur in die Vorschau (links); „Übergang“ schaltet sie live. Danach liegt die
+   vorige Programm-Szene in der Vorschau (wie OBS). Nur mit einer Browserquelle – mit einzelnen OBS-Szenen hat OBS
+   seinen eigenen Studio-Modus. Die Vorschau ist eine zweite overlay.html mit ?studio=<Szene>, stumm. */
+// var/function: scenesDraw (04) läuft schon beim Laden, bevor diese Zeilen erreicht sind
+var studioNext = "";
+function studioOn() { return !!ui.studio && onSource(); }
+function studioDraw() {
+  const on = studioOn();
+  $("studioButton").hidden = !onSource();
+  $("studioButton").setAttribute("aria-pressed", on);
+  $("studioButton").classList.toggle("main", on);
+  $("stageSlot").classList.toggle("studio", on);
+  $("studioSide").hidden = $("studioTake").hidden = $("programLabel").hidden = !on;
+  const f = $("studioFrame");
+  if (!on) { if (f._live) { f.src = "about:blank"; f._live = false; f._scene = ""; } previewSize(); return; }   // entladen: spart Leistung
+  if (!studioNext) studioNext = Z.broadcast.scene || "intro";
+  // einmal laden, danach nur die Szene schicken (kein Neuladen, kein Flackern)
+  if (!f._live) { f.src = "overlay.html?preview=1&studio=" + encodeURIComponent(studioNext); f._live = true; }
+  else if (f._scene !== studioNext) try { f.contentWindow.postMessage({ cast: "studio", scene: studioNext }, location.origin); } catch (err) {}
+  f._scene = studioNext;
+  $("studioName").textContent = (OVERLAY_SCENES.find(([k]) => k === studioNext) || [, studioNext])[1];
+  $("studioTake").disabled = studioNext === Z.broadcast.scene;
+  previewSize();
+}
+function studioPick(k) { studioNext = k; studioDraw(); scenesDraw(); }
+function studioTake() {
+  const k = studioNext, before = Z.broadcast.scene;
+  if (!k || k === before) return;
+  sceneSwitch(k);
+  studioNext = before || k;                     // wie OBS: die vorige Programm-Szene liegt jetzt in der Vorschau
+  studioDraw(); scenesDraw();
+}
+$("studioButton").onclick = () => { ui.studio = !ui.studio; uiSave(); studioNext = ""; studioDraw(); scenesDraw(); };
+$("studioTake").onclick = studioTake;
+$("studioFrame").onload = () => { if ($("studioFrame")._live) try { $("studioFrame").contentWindow.postMessage({ cast: "state", z: Z }, location.origin); } catch (err) {} };
 new ResizeObserver(previewSize).observe($("stageSlot"));
 
 /* ---------- Reiter ---------- */

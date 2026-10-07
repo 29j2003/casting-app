@@ -31,8 +31,9 @@ VIAddVersionKey /LANG=1031 "LegalCopyright" "© 29_THE_P4TCH3R"
 !insertmacro MUI_LANGUAGE "German"
 
 Section "Casting-App"
-  ; a running Casting-App is asked to quit first (the new version would replace it anyway)
-  nsExec::Exec 'powershell -NoProfile -Command "try { Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8787/api/beenden -Headers @{Host=''localhost:8787''} -TimeoutSec 2 } catch {}"'
+  ; a running Casting-App is stopped first (the new version replaces it anyway); since 2.12 its quit address needs
+  ; the access key, so the process is ended – its data is safe, the app writes every file atomically
+  nsExec::Exec 'taskkill /IM Casting-App.exe /F'
   Sleep 1500
   SetOutPath "$INSTDIR"
   RMDir /r "$INSTDIR\_internal"
@@ -51,9 +52,16 @@ Section "Casting-App"
 SectionEnd
 
 Section "Uninstall"
-  ; settings, images and log in %APPDATA%\Casting-App and the keyring entries stay
+  ; settings, images and log in %APPDATA%\Casting-App and the keyring entries stay; the video cache goes
+  nsExec::Exec 'taskkill /IM Casting-App.exe /F'
+  Sleep 1000
   Delete "$SMPROGRAMS\Casting-App.lnk"
   Delete "$DESKTOP\Casting-App.lnk"
-  RMDir /r "$INSTDIR"
+  ; only the app's own files – the folder may have been chosen freely (e.g. Documents), so never delete it as a whole
+  RMDir /r "$INSTDIR\_internal"
+  Delete "$INSTDIR\Casting-App.exe"
+  Delete "$INSTDIR\Deinstallieren.exe"
+  RMDir "$INSTDIR"
+  RMDir /r "$APPDATA\Casting-App\media-cache"
   DeleteRegKey HKCU "${UNINSTALL_KEY}"
 SectionEnd

@@ -138,13 +138,6 @@ button.pill:hover { border-color: var(--accent); color: var(--text); }
 .gfx-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .gfx-chips button { height: 26px; padding: 0 9px; border-radius: 13px; border: 1px solid var(--line); background: var(--f1); font-size: 12px; cursor: pointer; }
 .gfx-chips button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #151515; font-weight: 700; }
-.gfx-row { grid-template-columns: 1fr; gap: 6px; }
-.gfx-row .gfx-top, .gfx-row .gfx-bottom { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.gfx-row .gfx-top b { flex: 0 0 96px; }
-.gfx-row .gfx-top input, .gfx-row .gfx-top select { flex: 1 1 120px; min-width: 0; }
-.gfx-row .gfx-bottom select { width: auto; }
-.gfx-row .gfx-bottom .button { margin-left: auto; }
-.gfx-row.on { box-shadow: inset 3px 0 0 var(--ok); }
 .steps { display: grid; gap: 6px; }
 .step { display: grid; grid-template-columns: 24px 1fr auto; gap: 8px; align-items: center; padding: 8px 10px; background: var(--f2); border-radius: 8px; }
 .step .num { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--bg); border: 1px solid var(--line); font-size: 12px; font-weight: 700; }
@@ -218,7 +211,6 @@ textarea { min-height: 80px; resize: vertical; }
 .row { display: grid; gap: 6px; align-items: center; background: var(--f2); padding: 6px; border-radius: 7px; }
 .row input, .row select { padding: 6px 7px; }
 .v-row { grid-template-columns: 24px 88px 92px 1fr 78px 30px; }
-.p-row { grid-template-columns: 36px 1fr 26px; align-items: start; }
 details.facts { background: none; border: 0; }
 details.facts summary { padding: 2px 0; font-weight: 600; justify-content: flex-start; gap: 6px; }
 details.facts summary::after { content: none; }
@@ -226,7 +218,6 @@ details.facts textarea { min-height: 70px; width: 100%; }
 .s-row { grid-template-columns: 70px 1fr 26px; }
 .vb { border-radius: 4px; background: #0e0f11 center / cover no-repeat; border: 1px dashed var(--line); cursor: pointer; }
 .vb-players { width: 70px; height: 48px; }
-.vb-map { width: 36px; height: 65px; }
 .row .line input, .row .line select { min-width: 0; }
 .row .hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .x { padding: 4px 0; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 16px; }
@@ -235,9 +226,6 @@ details.facts textarea { min-height: 70px; width: 100%; }
 .veto-upnext b { font-size: 16px; }
 .map-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
 .map-buttons button { padding: 9px 14px; font-weight: 700; }
-.scene-tools-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.scene-tools-head b { font-size: 15px; }
-.scene-tools-veto { display: grid; gap: 10px; }
 .veto-summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 6px; }
 .veto-chip { display: grid; gap: 2px; padding: 6px 8px; border-radius: 6px; background: var(--f2); border-left: 3px solid var(--muted); min-width: 0; }
 .veto-chip.pick { border-left-color: var(--ok); }
@@ -358,7 +346,7 @@ kbd { font: 600 11px Barlow, sans-serif; padding: 2px 6px; border-radius: 4px; b
 .topbar { flex-wrap: nowrap; overflow: hidden; } .topbar > * { flex-shrink: 0; } .topbar .bracket-flex { flex-shrink: 1; min-width: 0; }
 @media (max-width: 1700px) { .bracket-search span { display: none; } .bracket-search { min-width: 0; } .bracket-saved { display: none; } }
 @media (max-width: 1450px) { .topbar #zoomSmall, .topbar #zoomValue, .topbar #zoomLarge, .topbar #allClose, .topbar #allOpen { display: none; } .bracket-brand .version { display: none; } }
-@media (max-width: 1250px) { .topbar .statusbar .pill span { display: none; } .bracket-layouts button { padding: 0 9px; } }
+@media (max-width: 1250px) { .topbar .statusbar .pill span { display: none; } }
 /* Turnier */
 .tour-team { display: grid; grid-template-columns: 26px 1fr 70px 46px; gap: 6px; align-items: center; padding: 8px; border-radius: 8px; background: var(--f2); }
 .tour-team .wide { grid-column: 2 / -1; display: flex; gap: 6px; } .tour-team .wide input { flex: 1; min-width: 0; }
@@ -468,7 +456,6 @@ body.large .scenes-buttons.columns button { height: 56px !important; font-size: 
 .mbar-series span.running { background: var(--accent-soft); border-color: var(--accent); } .mbar-series span.pending { color: var(--muted); }
 /* Einblendungen: kompakte Zeilen */
 .gfx-bar { display: flex; align-items: center; gap: 6px; } .gfx-bar .button { height: 28px; padding: 0 10px; font-size: 13px; }
-#gfxNewChoice { display: flex; flex-wrap: wrap; gap: 6px; }
 .gfx-line2 { display: flex; align-items: center; gap: 10px; min-height: 50px; padding: 0 10px; border-radius: 8px; background: var(--f2); }
 .gfx-line2.on { background: var(--accent-soft); }
 .gfx-star { width: 22px; height: 22px; border: 0; background: transparent; cursor: pointer; padding: 0; color: var(--muted); font-size: 16px; line-height: 1; }

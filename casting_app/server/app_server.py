@@ -13,6 +13,7 @@ are kept as aliases: see LEGACY_PAGES and the last entries of _api_routes().
 import base64
 import hashlib
 import hmac
+import ipaddress
 import json
 import re
 import secrets
@@ -64,8 +65,8 @@ DACH_MISSING_PAGE = ('<body style="margin:0;background:transparent;font:600 28px
                      'display:grid;place-items:center;height:100vh"><div style="background:rgba(0,0,0,.6);padding:24px 32px;'
                      'border-radius:12px">{text}</div></body>')
 # shown in OBS instead of the DACH page, in the overlay language of the cast
-DACH_MISSING_TEXT = {"de": "DACH-CS-Zugang fehlt – in der Casting-App unter Setup → Aussehen eintragen",
-                     "en": "DACH CS access missing – enter it in the Casting-App under Setup → Appearance"}
+DACH_MISSING_TEXT = {"de": "DACH-CS-Zugang fehlt – in der Casting-App unter ⚙ App-Einstellungen → Verbindungen & Zugänge eintragen",
+                     "en": "DACH CS access missing – enter it in the Casting-App under ⚙ App settings → Connections & access"}
 DACH_NO_ACCESS_TEXT = {"de": "Diese Browserquelle braucht den Zugangsschlüssel der App – Casting-App mit OBS verbinden und „Umstellen“ wählen",
                        "en": "This browser source needs the app's access key – connect the Casting-App to OBS and choose “Update”"}
 
@@ -76,9 +77,13 @@ ACCESS_HEADER = "X-Casting-Access"
 ACCESS_CODE_SECONDS = 120
 OPEN_EXPIRED_TEXT = {"de": "Dieser Link ist abgelaufen oder wurde schon benutzt – in der App erneut auf „Steuerseite im Browser öffnen“ klicken.",
                      "en": "This link has expired or was already used – click “Open control page in browser” in the app again."}
-# /api paths an overlay in OBS needs – open without the key (nothing secret, nothing that changes the cast)
+# /api paths an overlay in OBS needs – open without the key (nothing secret, nothing that changes the cast).
+# Quitting needs the key (2.12+): otherwise any program on this PC could stop the app and take over its port.
 OPEN_API = {("GET", "/api/ping"), ("GET", "/api/events"), ("GET", "/api/ereignisse"), ("GET", "/api/state"),
-            ("POST", "/api/report"), ("POST", "/api/quit"), ("POST", "/api/beenden")}
+            ("POST", "/api/report")}
+PING_NONCE = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
+VIDEO_SUFFIXES = (".mp4", ".m4v", ".webm", ".mov")
+FONT_SUFFIXES = (".ttf", ".otf", ".woff", ".woff2")
 OVERLAY_LANGUAGE = re.compile(r'"overlayLanguage"\s*:\s*"(de|en)"')
 
 
@@ -89,6 +94,27 @@ LEGACY_PAGES = {"steuerung.html": "control.html", "ende.html": "end.html", "seri
 
 # parts of the state that only pages with the access key get (camera links can carry passwords)
 PRIVATE_SOURCE_FIELDS = ("url", "device", "deviceName")
+
+
+def public_host(address: str) -> bool:
+    """False for addresses on this PC or in the local network (the app must not be used to reach those)."""
+    host = (urllib.parse.urlsplit(address).hostname or "").lower()
+    if not host or host == "localhost" or host.endswith(".localhost") or host.endswith(".local"):
+        return False
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return True                               # a name: resolved by FFmpeg (names of local machines are rare in links)
+    return ip.is_global
+
+
+class BodyTooLarge(ValueError):
+    """A request body over the limit of its route (answered with 413)."""
+
+
+def ping_proof(access_key: str, nonce: str) -> str:
+    """HMAC that shows a server knows the access key (answer of /api/ping?nonce=…)."""
+    return hmac.new(access_key.encode(), b"casting-app ping:" + nonce.encode(), "sha256").hexdigest()
 
 
 def public_state(text: str) -> str:
@@ -132,6 +158,7 @@ class CastingServer:
         self._routes = self._api_routes()
         self.access_key = self._load_access_key()
         self.media = MediaConverter(folders.data / "media-cache", log.write)   # H.264 for the app window
+        self.media_public_only = True             # /api/media fetches only from the internet (tests switch it off)
         self._access_codes: dict[str, float] = {}    # one-time codes for "open the control page in the browser"
 
         self._state_file = folders.data / "state.json"
@@ -164,13 +191,13 @@ class CastingServer:
         self._schedule_image_cleanup(60)
 
     def stop(self) -> None:
-        """Save the state and stop listening."""
-        self.save_state_now()
-        self.media.stop()
+        """Stop listening, then save the state (a change arriving in between would otherwise be lost)."""
         for server in self._servers:
             server.shutdown()
             server.server_close()
+        self.media.stop()
         self.game_state.set_lan_receiver(False)
+        self.save_state_now()
 
     def reload_overlays(self) -> int:
         """Make every connected overlay reload itself; returns how many were told."""
@@ -227,7 +254,7 @@ class CastingServer:
                 text = self._state_text
             if text:
                 try:
-                    write_atomic(self._state_file, text)
+                    write_atomic(self._state_file, text, private=True)   # camera links can carry passwords
                 except OSError as error:
                     self.log.error(f"Speichern fehlgeschlagen: {error}")
 
@@ -283,6 +310,9 @@ class CastingServer:
             self._route(request)
         except (BrokenPipeError, ConnectionResetError):
             pass
+        except BodyTooLarge:
+            request.close_connection = True       # the unread body must not be taken for the next request
+            request.send_json(413, {"error": "zu groß"})
         except Exception as error:               # never let one request take the server down
             self.log.error(f"Fehler: {error}")
             try:
@@ -392,7 +422,7 @@ class CastingServer:
         token, source = str(query.get("t", "")), str(query.get("src", ""))
         if not hmac.compare_digest(token.encode(), media_token(self.access_key).encode()):
             return request.send_plain(403)
-        if not re.match(r"^https?://", source) or len(source) > 4000:
+        if not re.match(r"^https?://", source) or len(source) > 4000 or (self.media_public_only and not public_host(source)):
             return request.send_json(400, {"error": "ungültige Adresse"})
         referer = str(query.get("ref", ""))
         self.media.serve(request, source, referer if re.match(r"^https?://", referer) and len(referer) < 2000 else "")
@@ -480,7 +510,13 @@ class CastingServer:
     def _api_ping(self, request, query: dict) -> None:
         """Who is running here: newer versions use it to replace older ones (instance.py)."""
         # "dienst" lets version 2.1 and older recognise a newer running app (and leave it alone)
-        request.send_json(200, {"ok": True, "service": "cast", "dienst": "cast", "version": VERSION})
+        answer = {"ok": True, "service": "cast", "dienst": "cast", "version": VERSION}
+        # proof that this really is the Casting-App (only it knows the access key) – instance.py checks it
+        # before it hands a server its window, the key or the camera; ping_proof() must stay in sync
+        nonce = str(query.get("nonce", ""))
+        if PING_NONCE.match(nonce):
+            answer["proof"] = ping_proof(self.access_key, nonce)
+        request.send_json(200, answer)
 
     def _api_quit(self, request, query: dict) -> None:
         """Quit the app (control page or a newer version); answers first, quits 0.2 s later."""
@@ -517,7 +553,7 @@ class CastingServer:
 
     def _api_fonts(self, request, query: dict) -> None:
         """The user's own font files (Documents/Casting-App/Schriften)."""
-        fonts = sorted(f.name for f in self.folders.fonts.iterdir() if f.suffix.lower() in (".ttf", ".otf", ".woff", ".woff2"))
+        fonts = sorted(f.name for f in self.folders.fonts.iterdir() if f.suffix.lower() in FONT_SUFFIXES)
         request.send_json(200, {"folder": str(self.folders.fonts), "fonts": fonts})
 
     def _reload_legacy_page(self, request) -> None:
@@ -613,7 +649,10 @@ class CastingServer:
 
     def _api_gsi_cfg_into_folder(self, request) -> None:
         """Put the cfg file into a typed/chosen folder – but only into CS2's cfg folder."""
-        folder = Path(str(request.read_json(4000).get("path") or ".").strip() or ".").resolve()
+        raw = str(request.read_json(4000).get("path") or ".").strip() or "."
+        if cs2_setup.network_path(raw):
+            return request.send_json(200, {"ok": False, "error": "Netzwerkpfade werden nicht unterstützt."})
+        folder = Path(raw).resolve()
         if not cs2_setup.is_cs2_cfg_folder(folder):
             return request.send_json(200, {"ok": False, "error": "Das ist nicht der CS2-Ordner. Er endet auf „game\\csgo\\cfg“."})
         try:
@@ -769,7 +808,7 @@ class CastingServer:
         """The user's background videos with codec, size and resolution."""
         videos = []
         for video in sorted(self.folders.videos.iterdir()):
-            if video.suffix.lower() in (".mp4", ".m4v", ".webm", ".mov"):
+            if video.suffix.lower() in VIDEO_SUFFIXES:
                 try:
                     videos.append(video_info(video))
                 except OSError:
@@ -781,12 +820,15 @@ class CastingServer:
         folder = {"videos": self.folders.videos, "fonts": self.folders.fonts, "data": self.folders.data}.get(which or "")
         if not folder:
             return request.send_json(400, {"error": "unbekannt"})
+        opened = True
         if self._open_folder:
             self._open_folder(folder)
         elif IS_WINDOWS:
             import os
             os.startfile(folder)                  # noqa: S606 – shows our own folder in Explorer
-        request.send_json(200, {"ok": True, "folder": str(folder)})
+        else:                                     # server without window: the page shows the path instead
+            opened = False
+        request.send_json(200, {"ok": opened, "folder": str(folder)})
 
     # --- files ---
 
@@ -809,9 +851,15 @@ class CastingServer:
         suffix = Path(relative).suffix.lower()
         if suffix not in CONTENT_TYPES:
             return request.send_json(404, {"error": "nicht gefunden"})
+        # the user's folders hold files from anywhere (downloaded packs): only videos and fonts from there –
+        # an .html or .svg in them would otherwise run as one of our own pages
         if relative.startswith("media/videos/"):
+            if suffix not in VIDEO_SUFFIXES:
+                return request.send_json(404, {"error": "nicht gefunden"})
             full = path_inside(self.folders.videos, relative[len("media/videos/"):])
         elif relative.startswith("fonts/"):
+            if suffix not in FONT_SUFFIXES:
+                return request.send_json(404, {"error": "nicht gefunden"})
             own_font = path_inside(self.folders.fonts, relative[len("fonts/"):])
             full = own_font if own_font and own_font.exists() else path_inside(WEB_DIR, relative)
         else:
@@ -878,7 +926,7 @@ class _JsonHandler(BaseHTTPRequestHandler):
         """The request body as text; raises ValueError if it is larger than `max_size`."""
         length = content_length(self.headers) or 0
         if length > max_size:
-            raise ValueError("zu groß")
+            raise BodyTooLarge("zu groß")
         self.body_was_read = True
         return self.rfile.read(length).decode("utf-8", "replace")
 
@@ -887,6 +935,8 @@ class _JsonHandler(BaseHTTPRequestHandler):
         try:
             data = json.loads(self.read_body(max_size) or "{}")
             return data if isinstance(data, dict) else {}
+        except BodyTooLarge:
+            raise
         except ValueError:
             return {}
 

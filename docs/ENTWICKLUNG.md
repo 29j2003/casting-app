@@ -290,6 +290,10 @@ Gespeichert werden:
   - `settings.json`, `gsi.json`, `window.json`
   - `images/`, `app-window/` (Browserspeicher des Fensters)
   - `log.txt`
+  - `media-cache/` (umgewandelte Videos, höchstens 3 GB), `update/` (Download eines Updates, Versionsmerker)
+  - `secrets.vault` (nur ohne Schlüsselbund: Passwort-Tresor), `instance.sock` (Linux/macOS: eine Instanz)
+  - `….damaged` – beiseitegelegte kaputte Dateien
+  Der Ordner ist nur für den eigenen Nutzer lesbar (Linux/macOS: Rechte 0700).
 * **im Browser der Steuerseite:** der Zustand, die Oberfläche (`ui`) sowie Datenbanken für Bilder und Sitzungen.
 * **in Dateien der Nutzer:** Sicherungen (`.json`) und Theme-Exporte.
 
@@ -325,7 +329,10 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
   isolierten Skript-Welt (`app_bridge.js`), die den `QWebChannel` zu Python hält. Eingebettete fremde Seiten erreichen Python nicht.
 * **Eine Instanz / Update-Ablösung:** `QLocalServer` – ein zweiter Start holt das Fenster nach vorn. Läuft eine **ältere**
   Version (auch 1.x), wird sie über `/api/ping` erkannt und über `/api/beenden` beendet (den Namen versteht jede Version;
-  neu heißt er `/api/quit`). Eine ältere Version löst nie eine neuere ab.
+  neu heißt er `/api/quit`; ab 2.12 nur mit Zugangsschlüssel). Eine ältere Version löst nie eine neuere ab.
+  Antwortet auf Port 8787 eine gleiche oder neuere Version, prüft der Start mit `/api/ping?nonce=…`, ob sie echt ist:
+  Nur wer den Zugangsschlüssel kennt, kann `proof` (HMAC über die Zufallszahl) richtig ausrechnen
+  (`instance.genuine_server`). Sonst startet die App nicht und meldet den belegten Port.
 * **Alte Adressen** aus 2.1 und älter leitet der Server weiter (`/steuerung.html`, `/spieler.html`, `/medien/…`); eine noch
   offene Seite der alten Version (z. B. in OBS) lädt sich einmal neu.
 * **Leistung:** Grafikbeschleunigung an (Ausweg `--no-gpu`), keine Hintergrund-Drosselung (Chromium-Schalter in
@@ -357,7 +364,7 @@ Datei mit danebenliegendem Schlüssel wäre nur scheinbar sicher und gibt es des
 * Im Repository liegen keine Zugangsdaten. Die CI liest den SignPath-Token nur aus den GitHub-Secrets.
 * **Zugangsschlüssel (ab 2.3):** Beim ersten Start erzeugt der Server einen Zufallsschlüssel (`access-key` im
   Schlüsselbund). Ohne ihn liefert er nur, was ein Overlay braucht (`OPEN_API` in `app_server.py`: Zustand lesen,
-  Live-Verbindung, Bilder, Meldungen, Ping, Beenden) – kein `/dach/…`, keine OBS-Anmeldung, keine Änderung, keine
+  Live-Verbindung, Bilder, Meldungen, Ping) – kein `/dach/…`, keine OBS-Anmeldung, keine Änderung, keine
   Tokens oder Pfade. So kommt auch ein Programm auf diesem PC, das Browser-Kopfzeilen fälscht, an nichts heran.
   - **App-Fenster:** Python gibt den Schlüssel beim Anlegen der Seite in `window.castApp.accessKey` (`page_bridge.js`) –
     nie in einer Adresse, im Verlauf oder im Browser-Speicher. Vorschau-Rahmen lesen ihn vom Fenster (`window.top`).
@@ -367,7 +374,9 @@ Datei mit danebenliegendem Schlüssel wäre nur scheinbar sicher und gibt es des
     Ältere Quellen ohne Schlüssel findet die Steuerseite beim Verbinden mit OBS und stellt sie nach Rückfrage um (`accessCheck`).
   - `cast-core.js` hängt ihn an jede `/api/…`-Anfrage (Kopfzeile `X-Casting-Access`) und an die Live-Verbindung (`?access=`).
   - **Ohne Schlüssel** bekommt ein Overlay den Zustand ohne Kamera-Links und Geräte (`public_state` – VDO.Ninja-Links
-    können Passwörter enthalten); `/api/quit` bleibt offen, weil der Windows-Installer eine laufende App beenden muss.
+    können Passwörter enthalten). Höchstens 15 Live-Verbindungen ohne Schlüssel gleichzeitig.
+  - **Beenden** (`/api/quit`, `/api/beenden`) braucht ab 2.12 den Schlüssel; der Windows-Installer beendet die App
+    mit `taskkill` (die CI prüft beides).
   - Ohne Fenster steht die Adresse mit Schlüssel nur in der Konsole, nie im Log.
   - Ist der Schlüsselbund beim Start gesperrt, gilt ein vorläufiger Schlüssel – der gespeicherte wird nie überschrieben.
   - Neue Route, die ein Overlay ohne Schlüssel braucht → in `OPEN_API` eintragen (nur, wenn nichts Geheimes drin ist).

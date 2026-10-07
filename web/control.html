@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: 'unsafe-inline'; style-src 'self' file: 'unsafe-inline'; img-src * data: blob:; media-src 'self' file: blob: data:; font-src 'self' file: data:; frame-src 'self' file: https://user.dachcs.de; connect-src 'self' ws://127.0.0.1:* ws://localhost:* http://localhost:8787 http://localhost:1608 http://127.0.0.1:1608 https://open.faceit.com https://api.faceit.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file:; style-src 'self' file: 'unsafe-inline'; img-src * data: blob:; media-src 'self' file: blob: data:; font-src 'self' file: data:; frame-src 'self' file: https://user.dachcs.de; connect-src 'self' ws://127.0.0.1:* ws://localhost:* http://localhost:8787 http://localhost:1608 http://127.0.0.1:1608 https://open.faceit.com https://api.faceit.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Casting-App</title>
 <link rel="icon" type="image/svg+xml" href="media/app-logo-small.svg">
@@ -176,7 +176,7 @@
         <div class="gfx-bar"><span class="small">Favoriten &amp; aktive</span><div style="flex:1"></div><button class="button" id="gfxAllButton">Alle</button><button class="button" id="gfxNewButton">+ Neu</button></div>
         <div id="gfxList" class="list"></div>
         <div class="line">
-          <span id="gfxNewBrand" hidden></span><button class="button" data-gfx-new="caster">+ Caster</button>
+          <button class="button" data-gfx-new="caster">+ Caster</button>
           <button class="button" data-gfx-new="lowerthird">+ Bauchbinde</button>
           <button class="button" data-gfx-new="hint">+ Hinweis</button>
           <button class="button" data-gfx-new="score">+ Punktestand</button>

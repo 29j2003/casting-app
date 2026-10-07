@@ -15,7 +15,7 @@ import json
 import random
 
 import websockets
-from common import BASE_URL, DACH_PAGES, control_and_overlay, finish, switch_scene
+from common import DACH_PAGES, control_and_overlay, finish, switch_scene
 
 OBS_PORT = 4455
 SOURCE = "Cast – Overlay"

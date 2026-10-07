@@ -58,7 +58,10 @@ def open_or_offer_vault(data_dir: Path, settings: AppSettings):
         password = _ask(APP_NAME, text("vault.new", length=password_vault.MIN_PASSWORD_LENGTH))
         if password is None:
             return None
-        if _ask(APP_NAME, text("vault.repeat")) != password:
+        repeated = _ask(APP_NAME, text("vault.repeat"))
+        if repeated is None:                     # cancelled: no vault, secrets for this session only
+            return None
+        if repeated != password:
             QMessageBox.warning(None, APP_NAME, text("vault.mismatch"))
             continue
         try:

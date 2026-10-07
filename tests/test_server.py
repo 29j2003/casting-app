@@ -265,6 +265,8 @@ def test_h264_video_is_converted_to_webm_for_the_app_window(server, tmp_path):
     try:
         source = f"http://127.0.0.1:{source_server.server_address[1]}/clip.mp4"
         token = media_token(server.access_key)
+        assert request("GET", "/api/media?" + urllib.parse.urlencode({"src": source, "t": token}))[0] == 400   # this PC: never
+        server.media_public_only = False                                                      # the test clip runs on 127.0.0.1
         path = "/api/media?" + urllib.parse.urlencode({"src": source, "t": token})
         assert request("GET", "/api/media?" + urllib.parse.urlencode({"src": source, "t": "falsch"}), access=False)[0] == 403
         assert request("GET", "/api/media?" + urllib.parse.urlencode({"src": "file:///etc/passwd", "t": token}))[0] == 400
@@ -282,4 +284,27 @@ def test_h264_video_is_converted_to_webm_for_the_app_window(server, tmp_path):
         status, headers, again = request("GET", path, headers={"Range": "bytes=0-99"})
         assert status == 206 and len(again) == 100 and headers.get("Content-Type") == "video/webm"
     finally:
+        server.media_public_only = True
         source_server.shutdown()
+
+
+def test_quitting_needs_the_access_key(server):
+    """Since 2.12 no other program can end the app (the Windows installer uses taskkill)."""
+    for path in ("/api/quit", "/api/beenden"):
+        assert request("POST", path, access=False)[0] == 403, path
+
+
+def test_ping_proves_the_access_key(server):
+    """A program that took port 8787 cannot pass itself off as the Casting-App (instance.genuine_server)."""
+    assert instance.genuine_server(server.access_key)
+    assert not instance.genuine_server("falscher-schluessel")
+
+
+@pytest.mark.parametrize("address, public", [
+    ("https://example.com/v.mp4", True), ("https://93.184.216.34/v.mp4", True),
+    ("http://127.0.0.1:8787/api/state", False), ("http://localhost/x", False), ("http://192.168.0.1/", False),
+    ("http://10.0.0.5/", False), ("http://[::1]/", False), ("http://169.254.169.254/", False), ("http://nas.local/", False),
+])
+def test_media_converter_only_fetches_from_the_internet(address, public):
+    from casting_app.server.app_server import public_host
+    assert public_host(address) is public

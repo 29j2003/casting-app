@@ -23,6 +23,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from .paths import WEB_DIR
+from .files import write_atomic
 
 TABLE_FILE = WEB_DIR / "legacy.js"
 TABLE = re.compile(r"/\*BEGIN\*/(.*)/\*END\*/", re.S)
@@ -89,7 +90,7 @@ def migrate_data_folder(data_dir: Path, log=lambda text, level="info": None) -> 
             data = json.loads(old.read_text(encoding="utf-8"))
             if old_name == new_name and not _uses_old_names(data):
                 continue
-            new.write_text(json.dumps(migrate(data), ensure_ascii=False), encoding="utf-8")
+            write_atomic(new, json.dumps(migrate(data), ensure_ascii=False))
             if old != new:
                 old.unlink()
             log(f"Daten aus Version 2.1 übernommen ({old_name})", "info")

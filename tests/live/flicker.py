@@ -8,6 +8,7 @@ frame while the switch runs. Rules:
   * a part that leaves only fades out, one that arrives only fades in (no jumps back)
   * sponsor and music must not flash up
   * no frame between start and end may be completely empty
+  * the logo (brand) is never cross-faded: two half transparent copies of the same logo look like a flicker
 """
 
 import asyncio
@@ -17,7 +18,8 @@ from common import control_and_overlay, finish, switch_scene
 
 PAIRS = [("intro", "cast-duo"), ("cast-duo", "cast-duo-interview"), ("cast-duo-interview", "cast-solo-clips"),
          ("cast-solo-clips", "cast-duo-clips"), ("cast-duo-clips", "cast-solo"), ("cast-solo", "intro"), ("intro", "pause"),
-         ("pause", "end"), ("end", "map-veto"), ("map-veto", "players"), ("players", "ingame"), ("ingame", "cast-duo")]
+         ("pause", "end"), ("end", "map-veto"), ("map-veto", "players"), ("players", "ingame"), ("ingame", "cast-duo"),
+         ("cast-duo", "teams"), ("teams", "intro")]
 FRAMES = 200
 
 # runs in the overlay: records {part id: visibility 0…1} for FRAMES animation frames into window.__samples
@@ -72,9 +74,12 @@ async def main() -> None:
             await switch_scene(control, target, transition)
             await overlay.wait_for_timeout(3300)
             problems = problems_in(await overlay.evaluate("window.__samples"))
+            if "brand" in ((await overlay.evaluate("window.__lastSwitch || {}")).get("cross") or []):
+                problems.append("brand is cross-faded instead of staying")
             total += len(problems)
             print(f"{start:>20} → {target:<20}", "ok" if not problems else problems)
     finish(total == 0 and not errors, f"{transition}: {total} problem(s) · JavaScript errors: {errors[:3]}")
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

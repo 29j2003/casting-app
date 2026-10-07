@@ -87,7 +87,7 @@ lädt sie beim nächsten Start neu. Änderungen an Python brauchen einen Neustar
 | Test | Wann |
 |---|---|
 | `python -m pytest` (Linux ohne Bildschirm: `xvfb-run -a python -m pytest`) | nach jeder Änderung – dauert etwa 1,5 Minuten |
-| `tests/live/transitions.py`, `tests/live/flicker.py` | nach Änderungen an Szenen, Übergängen, `broadcast.js` |
+| `tests/live/transitions.py`, `tests/live/flicker.py`, `tests/live/background.py` | nach Änderungen an Szenen, Übergängen, Hintergrund, `broadcast.js` |
 | `tests/live/fast_switching.py`, `tests/live/memory.py` | nach Änderungen an Ton, DACH CS oder größeren Umbauten |
 
 Die CI (`.github/workflows/build.yml`) führt bei jedem Push alles aus und baut die App für Windows, Linux und macOS.
@@ -107,7 +107,8 @@ python -m casting_app --debug          # = QTWEBENGINE_REMOTE_DEBUGGING=9222
 | Skript | Prüft |
 |---|---|
 | `transitions.py` | jede Szene mit jeder Übergangsart: danach genau eine Szene, alles sichtbar, Stinger weg |
-| `flicker.py [art]` | Bild für Bild während eines Wechsels: nichts blitzt auf, flackert oder verschwindet kurz |
+| `flicker.py [art]` | Bild für Bild während eines Wechsels: nichts blitzt auf, flackert oder verschwindet kurz; das Logo wird nie überblendet |
+| `background.py` | Bild für Bild: das Hintergrund-Video blendet mit der Szene (Intro ↔ Ingame, Playlist-Wechsel), nie ein Schnitt aufs Theme |
 | `fast_switching.py` | schnelle Klicks (eigene Szenen und DACH CS – Offiziell), Ton-Regler an ein nachgebautes OBS, Schließen-Frage |
 | `memory.py [runden]` | lange Sitzung im App-Fenster: Speicher, DOM und Listener wachsen nicht |
 | `cs2_simulation.py [url] [runden]` | kein Test – schickt simulierte CS2-Spielstände, um die Live-Statistik ohne CS2 auszuprobieren |
@@ -494,6 +495,8 @@ kommen aus `tools/build.py` – wer sie ändert, muss `asset_suffix()` anpassen.
   zeigen auf `/control.js` – die Zeilen davor `// ===== control/<datei>.js =====` sagen, aus welcher Datei sie stammen.
 * **Overlays im normalen Browser:** `http://localhost:8787/overlay.html` oder eine einzelne Szene, z. B.
   `http://localhost:8787/players.html?preview=1`.
+* **Studio-Modus:** zweite `overlay.html?preview=1&studio=<szene>` (`#studioFrame`, `13-app.js`); sie zeigt immer die gewählte
+  Szene (cast.js setzt `Z.broadcast.scene` nur dort um), Wechsel per `postMessage({cast: "studio", scene})` ohne Neuladen.
 
 ## Worauf man achten muss
 

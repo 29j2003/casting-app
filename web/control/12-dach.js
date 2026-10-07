@@ -17,7 +17,6 @@ const DACH_SCENES = [
 ];
 const DACH_GROUPS = { pregame: "Vor dem Spiel", during: "Im Spiel", stats: "Stats & Liga", pause: "Pause", post: "Nach dem Spiel" };
 let dachMode = () => Z.theme === "dachcs-official";
-const dachObsName = n => "DACH – " + n;
 // Nutzer-ID und Key verlassen die App nie wieder – die Seite erfährt nur, OB sie gespeichert sind
 let dachInfo = { idSet: false, keySet: false };
 async function dachInfoFetch() {
@@ -40,13 +39,6 @@ $("dachDelete").onclick = async () => {
 };
 
 
-let dachSwitch = async function (k) {
-  const e = DACH_SCENES.find(x => x[1] === k); if (!e) return;
-  Z.dach = Object.assign({}, Z.dach, { scene: k }); scenesDraw(); send();
-  if ($("frame").getAttribute("src") !== K.dachUrl(e[3])) $("frame").src = K.dachUrl(e[3]);   // Vorschau zeigt die DACH-Seite
-  if (channel.obs.isOpen) { try { await channel.obs.question("SetCurrentProgramScene", { sceneName: dachObsName(e[2]) }); } catch (err) { toastError && toastError("OBS-Szene „" + dachObsName(e[2]) + "“ fehlt – Setup → Aussehen → „In OBS einrichten“"); } }
-};
-const toastError = t => { if ($("dachObsStatus")) $("dachObsStatus").textContent = t; };
 function dachScenesDraw(box) {
   box.classList.remove("arrange"); box.classList.add("columns");
   const cur = Z.broadcast.scene;
@@ -69,7 +61,7 @@ dachInfoFetch();
 /* ---------- DACH CS – Offiziell als Stil (eine Quelle) ---------- */
 const DACH_STYLE = "dachcs-official";
 dachMode = () => Z.theme === DACH_STYLE;
-dachSwitch = function (k) { if (!K.DACH_PAGES[k]) return; Z.broadcast.scene = k; Z.dach = Object.assign({}, Z.dach, { scene: k }); scenesDraw(); send(); };
+function dachSwitch(k) { if (!K.DACH_PAGES[k]) return; Z.broadcast.scene = k; Z.dach = Object.assign({}, Z.dach, { scene: k }); scenesDraw(); send(); };
 function dachCardShow() { const card = document.querySelector(".dach-card"); if (card) card.hidden = !dachMode(); }
 const DFRAME_NAMES = { c1: "Caster 1", c2: "Caster 2", guest: "Gast", content: "Inhalt" };
 function dframeDraw() {
@@ -79,7 +71,7 @@ function dframeDraw() {
   const page = sel.value || pages[0], r = K.dachFrame(Z, page), box = $("dframeFields"); box.innerHTML = "";
   Object.entries(r).forEach(([q, w]) => {
     const z = document.createElement("div"); z.className = "dframe-row";
-    z.innerHTML = `<b>${DFRAME_NAMES[q] || q}</b>` + ["x", "y", "w", "h"].map(f => `<label class="small">${f.toUpperCase()}<input type="number" step="1" data-f="${f}" value="${w[f]}"></label>`).join("");
+    z.innerHTML = `<b>${DFRAME_NAMES[q] || q}</b>` + ["x", "y", "w", "h"].map(f => `<label class="small">${f.toUpperCase()}<input type="number" step="1" data-f="${f}" value="${esc(w[f])}"></label>`).join("");
     z.querySelectorAll("input").forEach(i => i.oninput = () => {
       Z.dachFrame = Z.dachFrame || {}; Z.dachFrame[page] = Z.dachFrame[page] || {};
       Z.dachFrame[page][q] = Object.assign({}, K.dachFrame(Z, page)[q], { [i.dataset.f]: Math.round(+i.value || 0) }); laterSend();

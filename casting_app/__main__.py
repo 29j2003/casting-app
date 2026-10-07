@@ -16,9 +16,9 @@ import threading
 from . import instance, password_vault
 from .app_log import AppLog
 from .paths import DATA_DIR, create_folders
-from .secret_store import SecretStore, system_keyring_or_none
+from .secret_store import ACCESS_KEY, SecretStore, system_keyring_or_none
 from .server.app_server import BASE_URL, CastingServer
-from .version import APP_NAME, VERSION
+from .version import APP_NAME, VERSION, compare_versions
 
 
 def parse_arguments(arguments: list[str] | None = None) -> argparse.Namespace:
@@ -40,17 +40,16 @@ def run_server_only() -> int:
     log = AppLog(DATA_DIR / "log.txt", echo_to_console=True)
     log.catch_unhandled_errors()
     running = instance.running_version()
-    if running and instance.compare_versions(running, VERSION) >= 0:
+    if running and compare_versions(running, VERSION) >= 0:
         print(f"{APP_NAME} {running} läuft bereits: {BASE_URL}")
         return 0
+    quit_event = threading.Event()
+    folders = create_folders(log=log.write)
+    store = SecretStore(folders.data, log.write, keyring_backend=_secret_backend(folders.data, log))
     if running:
         log.warn(f"Version {running} läuft noch – wird durch {VERSION} ersetzt")
-        instance.ask_running_app_to_quit()
-
-    quit_event = threading.Event()
-    folders = create_folders()
-    server = CastingServer(folders, SecretStore(folders.data, log.write, keyring_backend=_secret_backend(folders.data, log)),
-                           log, on_quit_requested=quit_event.set)
+        instance.ask_running_app_to_quit(access_key=store.get(ACCESS_KEY) or "")
+    server = CastingServer(folders, store, log, on_quit_requested=quit_event.set)
     log.info(f"{APP_NAME} {VERSION} startet · Daten: {folders.data} · Videos: {folders.videos}")
     try:
         server.start()
@@ -76,9 +75,10 @@ def run_server_only() -> int:
 
 def _secret_backend(data_dir, log: AppLog):
     """System keyring; without one, a password vault opened with CASTING_APP_VAULT_PASSWORD (if set)."""
+    password = password_vault.take_environment_password()
     if system_keyring_or_none() is not None:
         return "system"
-    return password_vault.vault_from_environment(data_dir, log.write) or "system"
+    return password_vault.vault_from_environment(data_dir, log.write, password) or "system"
 
 
 def main(arguments: list[str] | None = None) -> int:
@@ -86,6 +86,7 @@ def main(arguments: list[str] | None = None) -> int:
     if sys.stdout:                               # a windowed build on Windows has no console at all
         sys.stdout.reconfigure(errors="replace")
     options = parse_arguments(arguments)
+    password_vault.take_environment_password()   # out of the environment before any child process starts
     if options.debug:                            # Chrome/Edge → http://localhost:9222 (also used by tests/live)
         os.environ.setdefault("QTWEBENGINE_REMOTE_DEBUGGING", "9222")
     if options.no_window:

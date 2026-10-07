@@ -91,7 +91,11 @@ $("themeFile").onchange = async () => {
     const allowed = ["name", "dark", "light", "textDark", "accent", "stroke", "bold", "iconDisk", "corners", "boxStyle", "icon", "fontImage", "brandImage", "brandBox",
                      "backgroundImage", "line1", "line2", "font", "fontFile", "headText", "brandText", "rowsSwap"];
     const d = {};
-    allowed.forEach(k => { if (k in j.theme) d[k] = j.theme[k]; });
+    // nur einfache Werte (Text, Zahl, ja/nein) – ein Objekt oder eine Liste an dieser Stelle brächte Overlay und Steuerseite zum Absturz
+    allowed.forEach(k => { const v = j.theme[k]; if (["string", "number", "boolean"].includes(typeof v)) d[k] = v; });
+    if (d.fontFile && !/^fonts\/[^"\\/]+\.(ttf|otf|woff2?)$/i.test(String(d.fontFile))) delete d.fontFile;
+    if (d.boxStyle && !["light", "dark", "mixed"].includes(d.boxStyle)) delete d.boxStyle;
+    for (const k of Object.keys(d)) if (typeof d[k] === "string" && !/Image$|^icon$/.test(k)) d[k] = d[k].slice(0, 200);
     ["icon", "fontImage", "brandImage", "backgroundImage"].forEach(k => { if (d[k] && !/^(data:image\/|medien\/)/.test(d[k])) delete d[k]; });
     ["dark", "light", "textDark", "accent", "iconDisk", "headText"].forEach(k => { if (d[k] && !/^#[0-9a-f]{3,8}$/i.test(d[k])) delete d[k]; });
     const k = themeCreate(d, String(d.name || "Importiertes Theme").slice(0, 60));
@@ -226,12 +230,12 @@ function themeAdjust() {
     <div class="image-row"><select style="flex:1"></select><button class="button">Ordner öffnen</button></div>`;
   const choice = sd.querySelector("select"), [openButton] = sd.querySelectorAll(".button");
   const current = tw("fontFile") || "";
-  choice.innerHTML = `<option value="">– keine –</option>` + (current ? `<option value="${esc(current)}" selected>${esc(current.replace(/^fonts\//, ""))}</option>` : "");
+  choice.innerHTML = `<option value="">– keine –</option>` + (current ? `<option value="${esc(current)}" selected>${esc(String(current).replace(/^fonts\//, ""))}</option>` : "");
   fetch("/api/fonts", { cache: "no-store" }).then(r => r.json()).then(d => {
     choice.innerHTML = `<option value="">– keine –</option>` + d.fonts.map(f => `<option value="fonts/${esc(f)}"${"fonts/" + f === current ? " selected" : ""}>${esc(f)}</option>`).join("");
   }).catch(() => {});
   choice.onchange = () => { td().fontFile = choice.value; themeAdjust(); fresh(); };
-  openButton.onclick = () => fetch("/api/folder?which=fonts", { method: "POST" });
+  openButton.onclick = () => openFolder("fonts");
   box.appendChild(sd);
 
   const lw = document.createElement("div"); lw.style.cssText = "display:grid;gap:6px";

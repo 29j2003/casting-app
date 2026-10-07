@@ -112,10 +112,18 @@ def search_cfg_folders() -> list[str]:
     return sorted(found)
 
 
+def network_path(raw_path: str) -> bool:
+    """True for network paths (\\\\server\\share, //server/share): Windows would contact that server and send
+    the user's login hash – the folder browser and the cfg file only ever need local drives."""
+    return raw_path.strip().startswith(("\\\\", "//"))
+
+
 def list_subfolders(raw_path: str) -> dict:
     """Subfolder names for the folder browser on the setup page (names only, no contents)."""
     if not raw_path:
         return {"path": "", "parent": None, "folder": drive_roots()}
+    if network_path(raw_path):
+        return {"path": raw_path, "error": "Netzwerkpfade werden nicht unterstützt", "folder": []}
     path = Path(raw_path).resolve()
     try:
         names = sorted((e.name for e in os.scandir(path) if e.is_dir() and not re.match(r"^(\$|System Volume Information$|\.)", e.name, re.I)),

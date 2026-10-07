@@ -166,6 +166,7 @@ def test_app_window_audio_is_off_by_default_and_regulates_foreign_frames(qtbot, 
 def test_h264_videos_of_foreign_pages_play_in_the_app_window(qtbot, desktop):
     """Qt WebEngine has no H.264: the app converts it (media.py → /api/media → WebM), also from <source type=video/mp4>."""
     page = wait_for_page(qtbot, desktop)
+    desktop._server.media_public_only = False                 # the "foreign" test page runs on 127.0.0.1
     with _https_test_page(with_video=True) as https_url:
         url = https_url + "?source"
         qtbot.waitUntil(lambda: run_js(qtbot, page, "!!($('frame').contentDocument && $('frame').contentDocument.readyState === 'complete')"),

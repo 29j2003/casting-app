@@ -66,9 +66,9 @@ Sicherungen (`.json`) und Theme-Dateien aus 2.1 lassen sich weiter laden.
 
 * **Live** – nur, was du in der Sendung brauchst: Programm-Vorschau, Szenen, **Panel der Szene** (was die laufende Szene
   braucht – bei „Map-Veto“ das Veto zum Klicken, bei Ingame Spielstand und Serie), **Match** (Punkte, Map, Serie, Timer), **Turnier live** (Gruppe, Team hervorheben, „Tabelle zeigen“), Einblendungen und Ton.
-* **Match** – Unterseiten: Import & Sitzungen · Teams & Spieler · Map-Veto & Serie · Caster & Kameras · Timer & Texte (und „Alle“).
+* **Match** – Unterseiten: Spieltag & Import · Teams & Spieler · Map-Veto & Serie · Caster & Kameras · Timer & Texte (und „Alle“).
 * **Turnier** – eigener Bereich für Baum, Tabelle und FACEIT-Abgleich.
-* **Setup** – Unterseiten: Aussehen · Sponsoren · Map-Pool · Hintergrund · Szenen & OBS · CS2-Livedaten.
+* **Setup** – Unterseiten: Aussehen · Sponsoren · Map-Pool · Hintergrund · Szenen & OBS · Szenen-Panels · CS2-Livedaten.
 * **Arbeitsbereiche** (oben links): Vorlagen *Operator*, *Caster – große Knöpfe*, *Laptop / neben OBS*, *Vorbereitung*
   und eigene („Aktuelle Anordnung speichern als …“). Ein Arbeitsbereich merkt sich Docks, Größen, Lage, Schlösser und Knopfgröße.
   Dein bisheriges Layout wurde als „Mein bisheriges Layout“ übernommen.
@@ -108,7 +108,7 @@ Das Panel zeigt, was die Szene im Programm gerade braucht – es wechselt mit je
 * **Serie** (Live → Match): Hat ein Team eine Map gewonnen (13 Runden, in der Verlängerung 16, 19 …), erscheint in der
   Zeile **„✓ Map beenden?“** – ein Klick trägt die Map als „Fertig“ ein.
 
-### Sitzungen & Sicherung (Match → Import & Sitzungen)
+### Sitzungen & Sicherung (Match → Spieltag & Import)
 
 Speichere ein Match als Sitzung („Speichern“, „Speichern unter …“) und lade es später mit „Laden“. „Sichern (.json)“ und
 „Laden (.json)“ bringen alles auf einen anderen PC. „Alles zurücksetzen“ fragt vorher nach.
@@ -381,7 +381,7 @@ Kameras laufen dabei ohne Neuladen weiter.
   * **Das Overlay**: am sichersten WebM (VP9). MP4 (H.264) spielt OBS ab, die Vorschau im App-Fenster aber nicht. Die App prüft jedes Video.
 * **Einstellungen, Bilder und Log** liegen in *%APPDATA%\Casting-App* (Linux/macOS: *~/.casting-app*). Der Reiter **Log** zeigt, was gerade passiert,
   welche Overlays verbunden sind (auch die in OBS) und öffnet alle Ordner.
-* **FACEIT:** ⚙ App-Einstellungen → Verbindungen & Zugänge → FACEIT: API-Key (Server side, von developers.faceit.com) → „Schlüssel speichern“; dann unter Match → Import & Sitzungen den
+* **FACEIT:** ⚙ App-Einstellungen → Verbindungen & Zugänge → FACEIT: API-Key (Server side, von developers.faceit.com) → „Schlüssel speichern“; dann unter Match → Spieltag & Import den
   Matchroom-Link einfügen, „Daten holen" (optional „alle 15 s aktualisieren“).
 * **CS2-Livedaten:** Setup → CS2-Livedaten führt Schritt für Schritt durch die Einrichtung – für CS2 auf diesem PC
   („Automatisch einrichten“, „Auf allen Laufwerken suchen“, Pfad direkt eintippen – mit Vorschlägen – oder „Ordner durchsuchen …“
@@ -438,7 +438,9 @@ Die macOS-App ist nur ad-hoc signiert (ohne Apple-Konto); die Beglaubigung durch
 * **Vom PC geht nur nach außen:** FACEIT-Abfragen (Match, Turnier, Team-Statistiken – mit deinem API-Key), die
   DACH-CS-Seiten (mit ID und Key), Kameras und Clips, die du selbst einträgst, beim Klick auf „Aus dem Workshop holen“
   die Workshop-Nummer an Steam (Name und Vorschaubild zurück), und die Frage an GitHub, ob es eine
-  neuere Version gibt (nur die Versionsliste; abschaltbar unter ⚙ → Update). Updates kommen nur aus den Releases dieses Projekts und nur mit passender Prüfsumme.
+  neuere Version gibt (nur die Versionsliste; abschaltbar unter ⚙ → Update) – beim Klick auf „Installieren“ auch der Download.
+  Updates kommen nur aus den Releases dieses Projekts und nur mit passender Prüfsumme. Videos aus dem Netz, die du im
+  App-Fenster abspielst, holt FFmpeg zum Umwandeln selbst ab (nur http/https, keine Adressen im eigenen Netz).
 * Das **OBS-Passwort** liegt ebenfalls im Schlüsselbund. Die Anmeldung bei OBS rechnet die App selbst aus, das Passwort
   steht nicht im Browser-Speicher der Steuerseite (ein altes wird beim ersten Start umgezogen).
 * Der **FACEIT-Schlüssel** sowie **Nutzer-ID und Key für DACH CS** liegen nur im Schlüsselbund des Systems – Windows:

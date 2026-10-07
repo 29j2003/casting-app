@@ -21,7 +21,7 @@ async function obsBackground(idle) {
   try {
     const info = await (await fetch("/api/videos", { cache: "no-store" })).json();
     const sep = info.folder.includes("\\") ? "\\" : "/";
-    const files = (H.videos || []).map(p => info.folder + sep + p.replace(/^medien\/videos\//, ""));
+    const files = (H.videos || []).map(p => info.folder + sep + p.replace(/^(media|medien)\/videos\//, ""));
     if (!files.length) { st.textContent = "Erst unten Videos anhaken."; return; }
     const kinds = (await channel.obs.question("GetInputKindList", { unversioned: true })).inputKinds || [];
     const list = files.length > 1 && kinds.includes("vlc_source");
@@ -90,7 +90,6 @@ async function obsBackgroundVisible(on, delay) {
    Je Szene läuft die Playlist, in deren scenes sie steht (Clips nie von selbst); die Ecke in Live kann das für die
    laufende Szene ändern (override, gilt bis zum nächsten Szenenwechsel). bgApply() schreibt das Ergebnis nach
    Z.background.videos/play – das liest das Overlay (cast.js: background()). */
-const BG_PASSAGES = ["cut", "fade", "black"];
 let bgChosen = "";
 function bgPlaylists() {
   const H = Z.background;

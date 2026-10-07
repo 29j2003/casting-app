@@ -109,9 +109,17 @@ jobs:
           }
           if (-not $ok) { throw "installierte App antwortet nicht" }
           Write-Host "Installierte App läuft: Version $($ping.version)"
-          Invoke-RestMethod -Method Post http://127.0.0.1:8787/api/quit -Headers @{Host = "localhost:8787"} | Out-Null
-          Start-Sleep 3
+          # ohne Zugangsschlüssel darf niemand die App beenden (seit 2.12)
+          $denied = $false
+          try { Invoke-RestMethod -Method Post http://127.0.0.1:8787/api/quit -Headers @{Host = "localhost:8787"} | Out-Null } catch { $denied = $true }
+          if (-not $denied) { throw "/api/quit ohne Schlüssel wurde angenommen" }
+          # das Deinstallieren beendet die App selbst und entfernt ihre Dateien (der Deinstaller startet sich neu aus %TEMP%, daher warten)
           Start-Process "$env:LOCALAPPDATA\Programs\Casting-App\Deinstallieren.exe" -ArgumentList "/S" -Wait
+          for ($i = 0; $i -lt 30 -and (Test-Path $exe); $i++) { Start-Sleep 1 }
+          if (Test-Path $exe) { throw "Deinstallieren hat die App nicht entfernt" }
+          $alive = $false
+          try { Invoke-RestMethod http://127.0.0.1:8787/api/ping -Headers @{Host = "localhost:8787"} -TimeoutSec 2 | Out-Null; $alive = $true } catch {}
+          if ($alive) { throw "App läuft nach dem Deinstallieren noch" }
       - uses: actions/upload-artifact@v7
         with:
           name: casting-app-${{ matrix.name }}
@@ -135,6 +143,8 @@ jobs:
           python3 -m compileall -q casting_app tools tests
           for f in web/*.js casting_app/desktop/scripts/*.js; do node --check "$f"; done
           cat web/control/*.js > "$RUNNER_TEMP/control.js" && node --check "$RUNNER_TEMP/control.js"
+      - name: Ungenutzte Importe und Namen in Python (pyflakes)
+        run: pipx run pyflakes casting_app tools tests
       - name: Szenen passen zu tools/generate_scenes.py (nie von Hand ändern)
         run: python3 tools/generate_scenes.py && git diff --exit-code -- web/
 
@@ -156,11 +166,12 @@ jobs:
           # ohne Schlüsselbund würde der Tresor-Dialog den Start anhalten
           CASTING_APP_VAULT_PASSWORD=nur-fuer-tests QTWEBENGINE_REMOTE_DEBUGGING=9222 xvfb-run -a -s "-screen 0 1920x1080x24" python -m casting_app > app.log 2>&1 &
           for i in $(seq 1 60); do curl -sf http://localhost:8787/api/ping && break; sleep 1; done
+          curl -sf http://localhost:8787/api/ping > /dev/null || { echo "App antwortet nicht"; exit 1; }
           python tests/live/transitions.py
           for transition in fade slide wipe stinger; do python tests/live/flicker.py $transition; done
           python tests/live/fast_switching.py
           python tests/live/memory.py 6
-          curl -s -X POST http://localhost:8787/api/quit
+          kill %1 || true
       - if: failure()
         run: cat app.log || true
 
@@ -190,7 +201,7 @@ jobs:
           fi
           echo "name=$tag" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v8
-        with: { path: dist, merge-multiple: true }
+        with: { path: dist, pattern: "casting-app-*", merge-multiple: true }
       - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.tag.outputs.name }}

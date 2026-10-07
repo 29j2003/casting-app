@@ -3,7 +3,6 @@
    (der Server verbindet alle Dateien zu einem Skript – siehe dort) */
 
 /* ---------- Statusleiste, Verbindung zur App, Erste Schritte ---------- */
-let helperRunning = false, musicRunning = null;
 function pill(id, text, state) { const p = $(id); p.className = "pill " + (state || ""); p.lastElementChild.textContent = text; }
 // zu einem Bereich springen: passenden Reiter öffnen, Bereich aufklappen, hinscrollen, kurz leuchten
 // Bereich öffnen: über seinen festen Schlüssel (data-area) – oder über den angezeigten Titel (Befehlspalette)
@@ -26,9 +25,8 @@ async function musicCheck() {
   try {
     const r = await fetch(/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(Z.music.address || "") ? Z.music.address : "http://localhost:1608/", { cache: "no-store" });
     const d = await r.json();
-    musicRunning = true;
     pill("musicStatus", d && d.title ? "Musik: " + d.title.slice(0, 22) : "Musik: bereit", "ok");
-  } catch (e) { musicRunning = false; pill("musicStatus", "Musik: Tuna aus", "off"); }
+  } catch (e) { pill("musicStatus", "Musik: Tuna aus", "off"); }
 }
 setInterval(helperCheck, 5000); setInterval(musicCheck, 5000);
 
@@ -87,7 +85,14 @@ async function videoInfoDraw() {
   });
 }
 $("videosNew").onclick = videoInfoDraw;
-document.querySelectorAll("[data-folder]").forEach(b => b.onclick = () => fetch("/api/folder?which=" + b.dataset.folder, { method: "POST" }));
+// Ordner im Dateimanager zeigen; geht das nicht (nur Server unter Linux/macOS), steht der Pfad im Hinweis
+async function openFolder(which) {
+  try {
+    const d = await (await fetch("/api/folder?which=" + which, { method: "POST" })).json();
+    if (d.ok === false && d.folder) alert("Ordner: " + d.folder);
+  } catch (err) { /* App beendet */ }
+}
+document.querySelectorAll("[data-folder]").forEach(b => b.onclick = () => openFolder(b.dataset.folder));
 
 /* ---------- Log-Reiter ---------- */
 let clientsList = [];
@@ -173,7 +178,9 @@ async function appSettingsFetch() {
 const UPDATE_STATES = { idle: "noch nicht gesucht", checking: "suche …", current: "✓ aktuell", available: "Neue Version {} verfügbar",
   downloading: "lade Version {} … {} %", installing: "installiere Version {} – die App startet gleich neu", error: "Update fehlgeschlagen: {}" };
 let updateTimer = 0;
+var lastUpdateState = "";                          // var: schon vor dieser Zeile lesbar (settingsNavDraw); für den Punkt in den App-Einstellungen (settingsNavDraw)
 function updateDraw(u) {
+  lastUpdateState = u.state || "";
   if (!u) return;
   $("updateCurrent").textContent = "v" + (u.current || K.VERSION);
   $("updateState").textContent = (UPDATE_STATES[u.state] || u.state).replace("{}", u.state === "error" ? u.error : u.version).replace("{}", u.progress);
@@ -216,16 +223,26 @@ $("logCopy").onclick = () => navigator.clipboard.writeText($("logText").innerTex
 $("logOnlyError").onchange = logDraw;
 
 /* ---------- Sichern / Laden ---------- */
-$("export").onclick = () => {
+// Kamera-Links (VDO.Ninja) können Passwörter enthalten: zum Weitergeben ohne sie sichern
+$("export").onclick = async () => {
+  const w = await selection({ title: "Sitzung sichern", text: "Kamera-Links und Geräte können Passwörter enthalten. Zum Weitergeben an andere besser ohne sie sichern.",
+    buttons: [["share", "Ohne Kamera-Links", "main"], ["own", "Mit Kamera-Links (eigene Sicherung)", ""], ["", "Abbrechen", ""]] });
+  if (!w) return;
+  const data = K.clone(Z);
+  if (w === "share") for (const q of Object.values(data.sources || {})) if (q && typeof q === "object") { q.url = ""; q.device = ""; q.deviceName = ""; }
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(Z, null, 2)], { type: "application/json" }));
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
   a.download = "cast-sitzung.json"; a.click();
 };
 $("import").onclick = () => $("importFile").click();
 $("importFile").onchange = () => {
   const f = $("importFile").files[0]; if (!f) return;
   if (f.size > 8 * 1024 * 1024) return alert("Die Datei ist zu groß für eine Sitzung.");
-  f.text().then(t => { Z = K.merge(K.clone(K.DEFAULT), CastLegacy.migrateImport(JSON.parse(t))); everything(); send(); }).catch(() => alert("Datei konnte nicht gelesen werden."));
+  f.text().then(t => {
+    const data = CastLegacy.migrateImport(JSON.parse(t));
+    if (data && typeof data === "object") delete data.revision;       // die Stand-Nummer bestimmt diese App, nie die Datei
+    Z = K.merge(K.clone(K.DEFAULT), data); everything(); send();
+  }).catch(() => alert("Datei konnte nicht gelesen werden."));
 };
 $("reset").onclick = async () => { if (await confirmDialog({ title: "Alles zurücksetzen?", text: "Teams, Texte, Veto, Spieler, Sponsoren, Themes und Einstellungen gehen auf Standard. Tipp: vorher „Sichern (.json)“.", button: "Alles zurücksetzen" })) { Z = K.clone(K.DEFAULT); everything(); send(); } };
 
@@ -267,7 +284,16 @@ document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => { tabs(
 tabs((() => { try { return localStorage.getItem("cast-tabs") || "live"; } catch (e) { return "live"; } })());
 
 setTimeout(audioFetch, 1500);
-function everything() { bgApply(); bgDraw(); timerEndDraw(); languageDraw(); if (typeof dachCardShow === "function") { dachCardShow(); dframeDraw(); } audioDraw(); cleanDraw(); mbarDraw(); tournamentDraw(); mdDraw(); bgSourceDraw(); graphicsDraw(); poolComplete(); scenesDraw(); scenesSetupDraw(); sponsorsDraw(); seriesDraw(); videoInfoDraw(); sourcesDraw(); themesDraw(); themeAdjust(); fieldsFill(); teamDraw("a"); teamDraw("b"); timerShow(); poolDraw(); vetoDraw(); playersDraw("a"); playersDraw("b"); }
+// alles neu zeichnen – jedes Teil für sich: ein Fehler (z. B. aus einer importierten Datei) legt nicht die ganze Seite lahm
+function everything() {
+  const parts = [bgApply, bgDraw, timerEndDraw, languageDraw, () => { if (typeof dachCardShow === "function") { dachCardShow(); dframeDraw(); } },
+    audioDraw, cleanDraw, mbarDraw, tournamentDraw, mdDraw, bgSourceDraw, graphicsDraw, poolComplete, scenesDraw, scenesSetupDraw, sponsorsDraw,
+    seriesDraw, videoInfoDraw, sourcesDraw, themesDraw, themeAdjust, fieldsFill, () => teamDraw("a"), () => teamDraw("b"), timerShow, poolDraw,
+    vetoDraw, () => playersDraw("a"), () => playersDraw("b")];
+  for (const part of parts) {
+    try { part(); } catch (err) { console.error("Anzeige-Fehler", part.name || "Teil", err); }
+  }
+}
 everything();
 helperCheck(); musicCheck();
 (async () => {

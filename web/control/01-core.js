@@ -87,6 +87,14 @@ function remove(list, i, name, newDraw) {
   undo(`${name} entfernt`, () => { list.splice(Math.min(i, list.length), 0, away); newDraw(); send(); });
 }
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// Teil des Zustands holen und fehlende Werte ergänzen – IM vorhandenen Objekt, nie durch ein neues ersetzen:
+// sonst ändert, wer sich das Objekt vorher geholt hat, eine Kopie, die nicht mehr im Zustand hängt (und nie gesendet wird)
+function ensure(parent, key, defaults) {
+  if (!parent[key] || typeof parent[key] !== "object" || Array.isArray(parent[key])) parent[key] = {};
+  const o = parent[key];
+  for (const [k, v] of Object.entries(defaults)) if (o[k] === undefined) o[k] = v && typeof v === "object" ? JSON.parse(JSON.stringify(v)) : v;
+  return o;
+}
 const $ = id => document.getElementById(id);
 /* ---------- Icons ----------
    Knöpfe zeigen SVG statt Zeichen wie 🔓 ⧉ ⏻ – Zeichen hängen von den Schriften des Systems ab

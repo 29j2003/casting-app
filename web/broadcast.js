@@ -177,7 +177,8 @@
     const S = (Z || {}).broadcast || {};
     if (dachOfficial(Z)) { dachShow(Z); return; }
     else if (dachLayer) dachOff();
-    const target = /^[a-z0-9-]{2,40}$/.test(S.scene || "") && !/^dach-/.test(S.scene) ? S.scene : "intro";
+    // nur Szenen-Seiten – nie die Steuerseite oder diese Seite selbst auf Sendung
+    const target = /^[a-z0-9-]{2,40}$/.test(S.scene || "") && !/^(dach-|control$|overlay$)/.test(S.scene) ? S.scene : "intro";
     if (target === currentScene && !planned) return;
     if (planned) { planned.target = target; planned.kind = S.transition; planned.duration = S.duration; return; }
     planned = { target, kind: S.transition, duration: S.duration };
@@ -292,7 +293,7 @@
     const frames = [old, next].filter(Boolean).flatMap(p => Object.values(window.CastCore.dachFrame(Z, p)));
     if (!frames.length) return null;
     const under = document.createElement("div"); under.className = "dach-under";
-    under.innerHTML = frames.map(r => `<div style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px"></div>`).join("");
+    under.innerHTML = frames.map(r => `<div style="left:${+r.x || 0}px;top:${+r.y || 0}px;width:${+r.w || 0}px;height:${+r.h || 0}px"></div>`).join("");
     dachLayer.insertBefore(under, dachLayer.firstChild);
     return under;
   }

@@ -22,7 +22,6 @@ from .audio import AppWindowAudio
 from .web_page import AppWebPage
 
 PAGE_CONFIRM_TIMEOUT_MS = 1000
-CLOSE_CHOICES = ("quit", "window", "")        # quit · hide window · cancel
 
 
 class MainWindow(QMainWindow):

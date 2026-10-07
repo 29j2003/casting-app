@@ -13,6 +13,7 @@ Package layout:
     instance.py       – detecting / replacing an already running Casting-App
     updater.py        – update from inside the app (GitHub Releases, checksum, replace and restart)
     files.py          – safe writing/reading of the app's own files
+    system_open.py    – opening folders and links with the system's programs (built Linux app)
     server/           – local HTTP server for the control page and the overlays
     desktop/          – the desktop window (Qt), tray icon and app-window audio
 

@@ -721,3 +721,10 @@ body.pages-mode .group > .stepper { grid-column: 2; }
 .sources-more > summary, .persons-more > summary { cursor: pointer; font-weight: 700; padding: 6px 0; }
 .sources-more > .list { margin-top: 8px; }
 .persons-more { display: grid; gap: 8px; }
+
+/* Teams-Vorstellung: Werte-Tabelle */
+.ti-stats { width: 100%; border-collapse: collapse; margin: 6px 0; }
+.ti-stats th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 4px 8px 4px 0; }
+.ti-stats thead th { color: var(--text); font-size: 13px; }
+.ti-stats td { padding: 3px 6px 3px 0; }
+.ti-stats input { width: 100%; }

@@ -585,6 +585,53 @@
     });
   }
 
+  /* ---------- Teams-Vorstellung: Folien Team A · Team B · Vergleich ----------
+     Welche Folie läuft: von Hand (slide) oder automatisch alle `auto` s ab `started` – jeder Browser rechnet gleich. */
+  function teamIntroSlide() {
+    const I = Z.teamIntro || {}, on = I.slides || {};
+    const order = ["a", "b", "compare"].filter(k => on[k] !== false);
+    if (!order.length) return "a";
+    if (I.auto > 0 && I.started) return order[Math.floor(Math.max(0, Date.now() - I.started) / (I.auto * 1000)) % order.length];
+    return order.includes(I.slide) ? I.slide : order[0];
+  }
+  function teamIntro() {
+    const boxes = $$(".ti-slides");
+    if (!boxes.length) return;
+    const I = Z.teamIntro || {}, S = I.stats || {}, W = key => esc(K.word(Z, key)), slide = teamIntroSlide();
+    boxes.forEach(b => { const root = b.parentElement; if (root.dataset.tislide !== slide) root.dataset.tislide = slide; });
+    const keyName = JSON.stringify([I.stats, Z.players, Z.overlayLanguage]);
+    const fresh = boxes.filter(b => newNeeded(b, keyName));
+    if (!fresh.length) return;
+    const value = (k, f) => {
+      const v = String(((S[k] || {})[f]) ?? "").trim();
+      if (!v) return "–";
+      if (f === "winrate") return esc(v.replace(/\s*%$/, "")) + " %";
+      if (f === "last") return `<span class="ti-form">${[...v.toUpperCase().replace(/[^WLSN]/g, "")].slice(0, 5)
+        .map(c => /[WS]/.test(c) ? `<i class="s">${W("formWin")}</i>` : `<i class="n">${W("formLoss")}</i>`).join("")}</span>`;
+      return esc(v);
+    };
+    const head = k => { const seed = String((S[k] || {}).seed || "").trim(); return seed ? `${W("seed")} ${esc(seed.startsWith("#") ? seed : "#" + seed)}` : `${W("tableTeam")} ${k.toUpperCase()}`; };
+    fresh.forEach(b => {
+      b.querySelectorAll("[data-ti-word]").forEach(e => { e.innerHTML = W(e.dataset.tiWord); });
+      b.querySelectorAll("[data-ti]").forEach(e => { const [k, f] = e.dataset.ti.split("."); e.innerHTML = f === "head" ? head(k) : value(k, f); });
+      b.querySelectorAll("[data-ti-players]").forEach(box => {
+        const list = ((Z.players || {})[box.dataset.tiPlayers] || []).slice(0, 5);
+        while (list.length < 5) list.push(null);
+        box.innerHTML = list.map(p => {
+          if (!p || !p.name) return `<div class="box players-card empty"><div class="players-image"></div><div class="box-head">–</div><div class="box-field"></div></div>`;
+          const image = p.image ? `<img${p.imageMode === "whole" ? ' class="whole"' : ""} src="${esc(p.image)}" alt="">` : `<div class="initial">${esc(p.name[0].toUpperCase())}</div>`;
+          const level = p.level ? `<div class="players-level">${esc(p.level)}</div>` : "";
+          return `<div class="box players-card"><div class="players-image">${image}${level}</div><div class="box-head">${esc(p.name)}</div><div class="box-field">${esc(p.real || "")}</div></div>`;
+        }).join("");
+      });
+      b.querySelectorAll("[data-ti-tape]").forEach(e => {
+        e.innerHTML = [["seed", "seed"], ["winRate", "winrate"], ["matches", "matches"], ["streak", "streak"], ["lastFive", "last"]]
+          .map(([w, f]) => `<div>${f === "seed" ? value("a", f).replace(/^(?!–|#)/, "#") : value("a", f)}</div><div class="lab">${W(w)}</div><div>${f === "seed" ? value("b", f).replace(/^(?!–|#)/, "#") : value("b", f)}</div>`).join("");
+      });
+    });
+  }
+  // automatisch weiter: nur nachsehen, solange die Szene da ist und „automatisch“ an ist
+  setInterval(() => { if ((Z.teamIntro || {}).auto > 0 && document.querySelector(".ti-slides")) teamIntro(); }, 500);
 
   /* ---------- Ton je Quelle: Lautstärke (bis 300 %), stumm, Verzögerung, Abhören ----------
      Programm (OBS): spielt, wenn nicht stumm und nicht „nur abhören“. Vorschau in der App: spielt, wenn Abhören an ist. */
@@ -1040,7 +1087,7 @@
     });
   }
   function draw() {
-    diagnose(); theme(); graphics(); veto(); series(); players(); texts(); teams(); fit(); timer(); ticker(); background(); clips(); sources(); sponsors();
+    diagnose(); theme(); graphics(); veto(); series(); players(); teamIntro(); texts(); teams(); fit(); timer(); ticker(); background(); clips(); sources(); sponsors();
     if (!(Z.speaker || {}).on) $$(".cam.speaks").forEach(k => k.classList.remove("speaks"));
     $$(".music").forEach(m => m.classList.toggle("off", Z.music.displayed === false));
     if (musicData && $$(".music").some(b => !b._music)) musicShow(musicData);

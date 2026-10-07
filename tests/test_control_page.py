@@ -440,6 +440,31 @@ def test_corrected_faceit_results_stay(server, browser):
     assert errors == []
 
 
+def test_team_intro_slides_switch_and_take_values_from_the_tournament(server, browser):
+    """Teams scene: values come from the tournament; the slides switch by hand and run on automatically."""
+    control, overlay = browser.new_page(), browser.new_page(viewport={"width": 1920, "height": 1080})
+    errors = watch(control) + watch(overlay)
+    control.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    control.wait_for_timeout(1200)
+    control.evaluate("""(() => { Z.teams.a.name = 'Alpha'; Z.teams.b.name = 'Bravo'; Z.teamIntro = K.clone(K.DEFAULT.teamIntro);
+      tour().teams = [{ id: 't1', name: 'Alpha', players: [], stats: { winrate: '64', matches: '12', series: '3', last: ['1', '0'] } },
+                      { id: 't2', name: 'Bravo', players: [], stats: { winrate: '40', matches: '10', series: '0', last: [] } }];
+      $('tiFromTour').click(); send(); })()""")
+    assert control.evaluate("[Z.teamIntro.stats.a.seed, Z.teamIntro.stats.a.last, Z.teamIntro.stats.b.seed]") == ["1", "SN", "2"]
+    overlay.goto(f"{BASE_URL}/teams.html")
+    overlay.wait_for_timeout(1000)
+    slide = "document.body.dataset.tislide"
+    assert overlay.evaluate(slide) == "a"
+    assert overlay.inner_text("[data-slide=a] [data-ti='a.winrate']") == "64 %"
+    control.evaluate("tiShow('compare')")
+    overlay.wait_for_timeout(700)
+    assert overlay.evaluate(slide) == "compare"
+    control.evaluate("Z.teamIntro.slides.b = false; tiAuto(8); Z.teamIntro.started = Date.now() - 16100; send()")   # step 2 of [a, compare] → a again (b is off)
+    overlay.wait_for_timeout(900)
+    assert overlay.evaluate(slide) == "a"
+    assert errors == []
+
+
 def test_faceit_swiss_is_told_apart_from_a_round_robin(server, browser):
     """Swiss pairs teams with the same record from round 2 on; a round robin does that only for about half the games."""
     page = browser.new_page()

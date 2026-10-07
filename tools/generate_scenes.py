@@ -217,6 +217,35 @@ scene('sponsors.html', 'Sponsoren',
       '<div class="sponsor-grid enter" data-part="sponsor-grid" style="left:57px;right:57px;top:230px;height:600px;--d:.35s"></div>\n' +
       bottom_cast(.6), max_brand=400)
 
+# Team introduction: one scene, three slides (team A, team B, comparison) – shown one after another (by hand or automatically);
+# cast.js fills players and values and sets data-tislide on the scene. Head and bottom bar stay, the slides fade.
+def ti_team(k, d):
+    """Slide of one team: logo box, five player cards, four values."""
+    vals = ''.join(f'<div class="box enter" style="left:{530 + i * 339}px;top:646px;width:316px;height:166px;--d:{d + .2 + i * .05}s">'
+                   f'<div class="box-head" data-ti-word="{w}"></div><div class="box-field ti-value" data-ti="{k}.{f}"></div></div>\n'
+                   for i, (w, f) in enumerate([('winRate', 'winrate'), ('matches', 'matches'), ('streak', 'streak'), ('lastFive', 'last')]))
+    return (f'<div class="ti-slide" data-slide="{k}">\n'
+            f'<div class="box lineup-team ti-logo enter" style="left:57px;top:212px;width:440px;height:600px;--d:{d}s">'
+            f'<div class="box-head" data-ti="{k}.head"></div><div class="team-logo {k}"></div>'
+            f'<div class="box-field"><span data-team-name="{k}" data-matching></span></div></div>\n'
+            f'<div class="lineup ti-players enter" data-ti-players="{k}" style="left:530px;top:212px;width:1333px;height:400px;--d:{d + .1}s"></div>\n'
+            + vals + '</div>\n')
+
+
+TI_HEAD = ('<span data-only="a"><span data-team-name="a" data-matching></span></span>'
+           '<span data-only="b"><span data-team-name="b" data-matching></span></span>'
+           f'<span data-only="compare">{VS_FIELD}</span>')
+scene('teams.html', 'Teams-Vorstellung',
+      head_box(482, 47, 1381, .2, 'teamIntro', TI_HEAD) +
+      '<div class="ti-slides" data-part="ti-slides">\n' + ti_team('a', .3) + ti_team('b', .3) +
+      '<div class="ti-slide" data-slide="compare">\n' +
+      ''.join(f'<div class="box lineup-team ti-logo enter" style="left:{x}px;top:212px;width:420px;height:600px;--d:.3s">'
+              f'<div class="box-head" data-ti="{k}.head"></div><div class="team-logo {k}"></div>'
+              f'<div class="box-field"><span data-team-name="{k}" data-matching></span></div></div>\n' for k, x in (('a', 57), ('b', 1443))) +
+      '<div class="box ti-compare enter" style="left:500px;top:212px;width:920px;height:600px;--d:.4s">'
+      '<div class="box-head" data-ti-word="compare"></div><div class="box-field ti-tape" data-ti-tape></div></div>\n'
+      '</div>\n</div>\n' + bottom_cast(.7), max_brand=400)
+
 # Ingame: almost empty – the game HUD stays free. Only sponsor and graphics.
 scene('ingame.html', 'Ingame', sponsor(0, 480, 340, 100, right=30), without_backdrop=True, without_brand=True)
 

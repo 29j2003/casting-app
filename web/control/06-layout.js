@@ -4,7 +4,7 @@
 
 /* ---------- Unterseiten in Match und Setup ---------- */
 const SUBPAGES = {
-  match: [["import", "Spieltag & Import", ["matchday", "sessions", "faceit"]], ["teams", "Teams & Spieler", ["teams-result", "players"]],
+  match: [["import", "Spieltag & Import", ["matchday", "sessions", "faceit"]], ["teams", "Teams & Spieler", ["teams-result", "players", "team-intro"]],
           ["veto", "Map-Veto & Serie", ["map-veto", "series-map-results"]], ["caster", "Caster & Kameras", ["caster-guest", "cameras-sources"]], ["texts", "Timer & Texte", ["timer", "tickers-title"]]],
   tournament: [["setup", "Aufbau", ["tournament"]], ["teams", "Teams & FACEIT", ["tournament-teams"]], ["games", "Spiele", ["tournament-games"]], ["overlay", "Im Overlay", ["tournament-overlay"]]],
   setup: [["appearance", "Aussehen", ["themes", "theme-adjust", "headings"]], ["sponsors", "Sponsoren", ["sponsors"]], ["maps", "Map-Pool", ["map-pool"]],

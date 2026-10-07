@@ -98,6 +98,7 @@ function scenesDraw() {
   if (typeof vsHead === "function") vsHead();
   if (typeof cleanDraw === "function") try { cleanDraw(); } catch (err) {}
   if (typeof headDraw === "function") try { headDraw(); } catch (err) {}
+  try { studioDraw(); } catch (err) {}                                  // Studio-Modus: Vorschau und „Übergang“ aktuell halten
   const c = sceneCfg(), box = $("sceneButtons"); box.innerHTML = "";
   $("sceneOn").checked = !!c.on;
   const connected = !!(channel && channel.obs && channel.obs.isOpen);
@@ -142,7 +143,8 @@ function scenesDraw() {
       if (on) b.classList.add("over-on");
       b.title = "Während Ingame: erscheint über dem Spiel. Umschalt-Klick = ganze Szene wechseln.";
     }
-    b.onclick = ev => over && !ev.shiftKey ? overGameToggle(k) : sceneSwitch(k);
+    if (studioOn() && k === studioNext) b.classList.add("studio-next");
+    b.onclick = ev => over && !ev.shiftKey ? overGameToggle(k) : studioOn() ? studioPick(k) : sceneSwitch(k);
     (column && !sceneArrange ? column : box).appendChild(b);
   });
   box.style.setProperty("--scene-columns", Math.max(1, box.querySelectorAll(".scene-column").length));

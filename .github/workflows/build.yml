@@ -169,6 +169,7 @@ jobs:
           curl -sf http://localhost:8787/api/ping > /dev/null || { echo "App antwortet nicht"; exit 1; }
           python tests/live/transitions.py
           for transition in fade slide wipe stinger; do python tests/live/flicker.py $transition; done
+          python tests/live/background.py
           python tests/live/fast_switching.py
           python tests/live/memory.py 6
           kill %1 || true

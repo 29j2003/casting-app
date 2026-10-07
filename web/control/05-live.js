@@ -634,14 +634,14 @@ document.querySelectorAll("[data-gfx-new]").forEach(b => b.onclick = () => {
    bei Ingame Spielstand und Serie. Jede Szene hat Vorgaben (PANEL_DEFAULTS); „Felder" ändert sie,
    gemerkt in ui.panels (diese Oberfläche, nicht Teil der Sendung). Die Felder bedienen dieselben Daten wie
    Match und Setup (Z.veto, Z.teams, Z.timer, Z.texts) – jede Änderung zeichnet beide Stellen neu. */
-const PANEL_FIELDS = [["veto", "Map-Veto"], ["score", "Spielstand"], ["timer", "Timer"], ["series", "Serie"],
+const PANEL_FIELDS = [["veto", "Map-Veto"], ["over", "Über dem Spiel"], ["score", "Spielstand"], ["timer", "Timer"], ["series", "Serie"],
   ["texts", "Texte im Overlay"], ["sponsor", "Sponsoren"], ["slides", "Folien"], ["note", "Notiz"]];
 const PANEL_DEFAULTS = {
   "intro": ["timer", "texts", "sponsor"], "cast-duo": ["timer", "texts", "note"], "cast-solo": ["timer", "texts", "note"],
   "cast-duo-clips": ["note"], "cast-solo-clips": ["note"], "cast-duo-interview": ["series", "texts", "note"], "cast-solo-interview": ["series", "texts", "note"],
   "cast-trio": ["timer", "texts", "note"], "cast-trio-host": ["timer", "texts", "note"], "cast-quad": ["series", "texts", "note"], "viewers": ["texts", "note"], "viewers-cast": ["texts", "note"], "teams": ["slides", "note"],
   "map-veto": ["veto", "series"], "players": ["series", "note"], "series": ["series", "score"], "sponsors": ["sponsor"],
-  "ingame": ["score", "series", "note"], "pause": ["timer", "texts", "sponsor"], "end": ["series", "texts", "sponsor"],
+  "ingame": ["over", "score", "series", "note"], "pause": ["timer", "texts", "sponsor"], "end": ["series", "texts", "sponsor"],
   "scoreboard": ["score", "series"], "team-a": ["score", "series"], "team-b": ["score", "series"], "h2h": ["score", "series"], "bracket": ["note"]
 };
 let sceneToolsShown = "";
@@ -680,8 +680,23 @@ function panelValues() {
     names.forEach((n, i) => { const b = document.createElement("button"); b.className = "button"; b.innerHTML = icon("play") + esc(n); b.onclick = () => sponsorShowgfx(i); $("pSponsors").appendChild(b); });
   }
   $("pSponsorsEmpty").hidden = !!names.length;
-  slidesDraw();
+  slidesDraw(); overDraw();
 }
+/* ---------- Über dem Spiel (Ingame): Scoreboard, Team A/B, Head-to-Head … über dem Spielbild, ohne Szenenwechsel ---------- */
+function overDraw() {
+  if (!$("pOver")) return;
+  const U = Z.broadcast.overGame || {}, on = overGameVisible() ? U.scene : "", d = Z.broadcast.overGameDuration ?? 15;
+  const ingame = Z.broadcast.scene === "ingame", key = JSON.stringify([on, ingame, d]);
+  if ($("pOver")._k === key) return;
+  $("pOver")._k = key;
+  $("pOver").innerHTML = OVER_GAME.map(k => `<button class="button${k === on ? " main" : ""}" data-over="${k}" aria-pressed="${k === on}">${esc((OVERLAY_SCENES.find(([x]) => x === k) || [, k])[1])}</button>`).join("");
+  $("pOver").querySelectorAll("[data-over]").forEach(b => b.onclick = () => {
+    if (Z.broadcast.scene !== "ingame") sceneSwitch("ingame");
+    overGameToggle(b.dataset.over); overDraw();
+  });
+  $("pOverHint").textContent = !ingame ? "nur in Ingame" : d > 0 ? `blendet nach ${d} s aus` : "bleibt stehen, bis du es ausschaltest";
+}
+setInterval(() => { if (Z.broadcast.overGame) overDraw(); }, 1000);       // abgelaufen → Knopf wieder aus
 /* ---------- Teams-Vorstellung: Folien wählen, automatisch weiter, Werte aus dem Turnier ---------- */
 // als Funktion (nicht const): panelValues kann schon beim Laden laufen, bevor diese Zeile erreicht ist
 function tiSlides() { return [["a", Z.teams.a.name || "Team A"], ["b", Z.teams.b.name || "Team B"], ["compare", "Vergleich"]]; }

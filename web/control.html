@@ -147,6 +147,11 @@
             <div class="map-buttons" id="pSponsors"></div>
             <span class="small" id="pSponsorsEmpty">Noch keine Sponsoren für dieses Theme – Setup → Sponsoren.</span>
           </section>
+          <section class="panel-field" data-panel="slides" hidden>
+            <h4>Folien</h4>
+            <div class="map-buttons" id="pSlides"></div>
+            <label class="toggleSwitch"><input type="checkbox" id="pSlidesAuto"> automatisch weiter</label>
+          </section>
           <section class="panel-field" data-panel="note" hidden>
             <h4>Notiz <span class="small">nur für dich – nie im Stream</span></h4>
             <textarea id="pNote" rows="3" placeholder="z. B. Timeout Team B noch 1×"></textarea>
@@ -306,6 +311,30 @@
         <div id="playersA"></div>
         <div id="playersB"></div>
         <p class="small">Die ersten 5 Spieler je Team erscheinen auf der Line-up-Seite. <b>Optimal: 280 × 190 px</b>. „Füllen" schneidet passend zu, „Ganz" zeigt das komplette Bild. Mit FACEIT werden sie automatisch gefüllt.</p>
+      </div>
+    </details>
+
+    <details open data-area="team-intro">
+      <summary>Teams-Vorstellung</summary>
+      <div class="content">
+        <p class="small">Szene „Teams-Vorstellung“ mit drei Folien nacheinander: Team A, Team B (je Logo, Spieler, Werte) und der Vergleich. Spieler kommen aus „Spieler“, Logos und Namen aus dem Match. Leere Werte zeigt das Overlay als „–“.</p>
+        <div class="line" style="align-items:end">
+          <label class="toggleSwitch"><input type="checkbox" data-field="teamIntro.slides.a" data-kind="bool" class="ti-slide-on"> Folie Team A</label>
+          <label class="toggleSwitch"><input type="checkbox" data-field="teamIntro.slides.b" data-kind="bool" class="ti-slide-on"> Folie Team B</label>
+          <label class="toggleSwitch"><input type="checkbox" data-field="teamIntro.slides.compare" data-kind="bool" class="ti-slide-on"> Folie Vergleich</label>
+          <label>Weiterschalten<select id="tiAuto"><option value="0">von Hand</option><option value="8">automatisch alle 8 s</option><option value="12">automatisch alle 12 s</option><option value="20">automatisch alle 20 s</option><option value="30">automatisch alle 30 s</option></select></label>
+        </div>
+        <table class="ti-stats">
+          <thead><tr><th></th><th id="tiNameA">Team A</th><th id="tiNameB">Team B</th></tr></thead>
+          <tbody>
+            <tr><th>Setzplatz</th><td><input type="text" data-field="teamIntro.stats.a.seed" placeholder="z. B. 1" aria-label="Setzplatz Team A"></td><td><input type="text" data-field="teamIntro.stats.b.seed" placeholder="z. B. 1" aria-label="Setzplatz Team B"></td></tr>
+            <tr><th>Siegquote in %</th><td><input type="text" data-field="teamIntro.stats.a.winrate" placeholder="z. B. 64" aria-label="Siegquote in % Team A"></td><td><input type="text" data-field="teamIntro.stats.b.winrate" placeholder="z. B. 64" aria-label="Siegquote in % Team B"></td></tr>
+            <tr><th>Spiele</th><td><input type="text" data-field="teamIntro.stats.a.matches" placeholder="z. B. 128" aria-label="Spiele Team A"></td><td><input type="text" data-field="teamIntro.stats.b.matches" placeholder="z. B. 128" aria-label="Spiele Team B"></td></tr>
+            <tr><th>Serie (Siege in Folge)</th><td><input type="text" data-field="teamIntro.stats.a.streak" placeholder="z. B. 3" aria-label="Serie (Siege in Folge) Team A"></td><td><input type="text" data-field="teamIntro.stats.b.streak" placeholder="z. B. 3" aria-label="Serie (Siege in Folge) Team B"></td></tr>
+            <tr><th>Letzte 5 (S/N, neuestes zuerst)</th><td><input type="text" data-field="teamIntro.stats.a.last" placeholder="z. B. SSNSS" aria-label="Letzte 5 (S/N, neuestes zuerst) Team A"></td><td><input type="text" data-field="teamIntro.stats.b.last" placeholder="z. B. SSNSS" aria-label="Letzte 5 (S/N, neuestes zuerst) Team B"></td></tr>
+          </tbody>
+        </table>
+        <div class="line"><button class="button" id="tiFromTour">Aus dem Turnier übernehmen</button><span class="small" id="tiStatus"></span></div>
       </div>
     </details>
 
@@ -527,6 +556,7 @@
           <label>Map-Veto<input type="text" data-field="texts.mapVeto"></label>
           <label>Line-ups<input type="text" data-field="texts.lineups"></label>
           <label>Zuschauer-Cams<input type="text" data-field="texts.viewersTitle"></label>
+          <label>Teams-Vorstellung<input type="text" data-field="texts.teamIntro"></label>
         </div>
         <div class="line">
           <label>Ban<input type="text" data-field="texts.ban"></label>
@@ -771,6 +801,7 @@
         <option value="series">Serie</option>
         <option value="sponsors">Sponsoren</option>
         <option value="players">Line-ups</option>
+        <option value="teams">Teams-Vorstellung</option>
         <option value="ingame">Ingame</option>
         <option value="scoreboard">Scoreboard</option>
         <option value="team-a">Team A</option>

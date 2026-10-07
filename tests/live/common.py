@@ -13,7 +13,7 @@ BASE_URL = "http://localhost:8787"
 
 # all scenes of the "own" themes (every scene file in web/ except control.html and overlay.html)
 SCENES = ["intro", "cast-duo", "cast-solo", "cast-duo-clips", "cast-solo-clips", "cast-duo-interview", "cast-solo-interview",
-          "cast-trio", "cast-trio-host", "cast-quad", "viewers", "viewers-cast",
+          "cast-trio", "cast-trio-host", "cast-quad", "viewers", "viewers-cast", "teams",
           "map-veto", "players", "series", "sponsors", "ingame", "pause", "end"]
 TRANSITIONS = ["cut", "fade", "slide", "wipe", "stinger"]
 # DACH CS – official: scene name → page of the official browser source (/dach/<page>)

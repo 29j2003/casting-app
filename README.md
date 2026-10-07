@@ -274,6 +274,11 @@ Nach oben/unten und Löschen (mit Rückgängig). Arten:
   **Zuschauer-Cams** (Wand mit sechs Kacheln und Kopfzeile). „Trio – Moderator groß“ und „Zuschauer-Cams“ sind Varianten und
   erscheinen erst, wenn du sie unter Setup → Szenen & OBS einschaltest. Namen: Match → Caster & Kameras → „Weitere Personen“
   (Zuschauer nur mit Namen, als kleines Schild in der Kachel); Kameras: „Weitere Kameras“ (VDO.Ninja, Gerät, Bild oder leer).
+* **Teams-Vorstellung** (Szene, Match → Teams & Spieler → „Teams-Vorstellung“): drei Folien nacheinander –
+  **Team A** und **Team B** (Logo mit Setzplatz, fünf Spielerkarten, Siegquote, Spiele, Serie, letzte 5) und der **Vergleich**
+  (beide Logos, die Werte Zeile für Zeile). Folien einzeln an/aus; **weiterschalten von Hand** (Knöpfe im Live-Panel „Folien“)
+  oder **automatisch alle 8–30 s**. Die Werte trägst du ein oder holst sie mit **„Aus dem Turnier übernehmen“** (Setzplatz =
+  Reihenfolge im Turnier, Statistik von FACEIT über „Team-Statistiken von FACEIT laden“). Leere Werte zeigt das Overlay als „–“.
 * **Unterseiten mit Status:** In Match, Turnier und Setup steht links neben jeder Unterseite ein Punkt mit einer Zeile – Grün = fertig,
   Gelb = fehlt noch (z. B. „Caster-Namen fehlen“, „1 Logo fehlt“), Lila = angepasst, Grau = Vorgabe.
   In Match und Turnier führen **„Weiter: …“** und **„← …“** unter jeder Unterseite Schritt für Schritt durch die Vorbereitung.
@@ -301,7 +306,7 @@ In der Szene **Ingame** weichen alle Positionen dem Spiel-HUD aus (Minimap, Scor
   Tabs anklicken zum Wechseln, an der Tab-Leiste wieder herausziehen.
 * **Umsortieren:** Bereiche im Reiter einfach nach oben/unten ziehen – die Reihenfolge bleibt gespeichert.
 * **Szenen anordnen:** in „Layout bearbeiten“ im Bereich „Szenen“ auf **Anordnen** – Knöpfe an die gewünschte Stelle ziehen, Haken = Szene wird angezeigt.
-  Standard sind fünf Gruppen: **Vor dem Spiel** (Intro, Cast Solo, Cast Duo, Cast Trio, 4 Personen, Line-ups, Map-Veto) · **Im Spiel** (Ingame) ·
+  Standard sind fünf Gruppen: **Vor dem Spiel** (Intro, Cast Solo, Cast Duo, Cast Trio, 4 Personen, Line-ups, Teams-Vorstellung, Map-Veto) · **Im Spiel** (Ingame) ·
   **Stats & Turnier** (Scoreboard, Team A/B, Head-to-Head, Turnierbaum, Serie) · **Pause** (Pause, Sponsoren, Clips, Zuschauer + Caster) ·
   **Nach dem Spiel** (Interviews, Ende).
 * **Docks zeigen immer alles:** reicht der Platz nicht, scrollt jede Karte für sich. Doppelklick auf die Trennlinie über dem

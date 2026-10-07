@@ -213,6 +213,14 @@ größenbegrenzt. Tests: `tests/test_workshop.py`.
 `Z.players`). `mdLoad(id)` setzt `Z.teams`/`Z.players`, leert Spielstand und Veto (`presetSteps`) und schreibt das Ergebnis des
 bisher laufenden Spiels über `gameId` in `Z.tournament.res` – nur bei selbst geführten Turnieren (`gamesSource !== "faceit"`).
 
+### Teams-Vorstellung (Szene `teams`, Folien)
+
+Eine Szene mit drei Folien (`.ti-slide[data-slide=a|b|compare]` in `.ti-slides`); Kopfzeile und untere Leiste bleiben stehen.
+`cast.js` → `teamIntro()` setzt `data-tislide` an der Szene (Body bzw. `.layer`) und füllt Spielerkarten (`data-ti-players`),
+Werte (`data-ti="a.winrate"` …) und den Vergleich (`data-ti-tape`). Welche Folie läuft, rechnen Overlay und Steuerseite gleich:
+von Hand `Z.teamIntro.slide`, automatisch aus `auto` (Sekunden) und `started` (`teamIntroSlide()` / `tiCurrent()`).
+Neue Folie: Markup in `tools/generate_scenes.py` (`ti_*`), Schlüssel in `slides`, CSS-Regel für `[data-tislide=…]`, `tiSlides()` in `05-live.js`.
+
 ### Korrigierte Turnier-Ergebnisse
 
 Ein Spiel in `Z.tournament.res` bekommt `fixed: true`, sobald es von Hand geändert wird und das Turnier mit FACEIT verknüpft ist.

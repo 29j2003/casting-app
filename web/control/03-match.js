@@ -4,8 +4,8 @@
 
 /* ---------- Timer ---------- */
 function timerShow() {
-  $("timerDisplay").textContent = K.time(K.timerRest(Z.timer));
-  $("timerDisplay").classList.toggle("running", !!Z.timer.running);
+  setText($("timerDisplay"), K.time(K.timerRest(Z.timer)));
+  if ($("timerDisplay").classList.contains("running") !== !!Z.timer.running) $("timerDisplay").classList.toggle("running", !!Z.timer.running);
 }
 setInterval(timerShow, 250);
 // bei 0:00 einmal in die gewählte Szene wechseln (nur wenn der Timer gerade läuft – nicht nach dem Neuladen eines alten Stands)
@@ -27,18 +27,18 @@ setTimeout(timerEndDraw, 0);
 function mbarDraw() {
   if (!$("mbarNameA")) return;
   ["a", "b"].forEach(k => { const t = Z.teams[k], l = $(k === "a" ? "mbarLogoA" : "mbarLogoB");
-    if (t.logo) { l.style.backgroundImage = K.cssUrl(t.logo); l.textContent = ""; } else { l.style.backgroundImage = ""; l.textContent = (t.short || (t.name || "").split(/\s+/).filter(Boolean).map(w => w[0]).join("").slice(0, 3) || (k === "a" ? "TA" : "TB")).toUpperCase(); } });
+    setImage(l, t.logo || ""); setText(l, t.logo ? "" : (t.short || (t.name || "").split(/\s+/).filter(Boolean).map(w => w[0]).join("").slice(0, 3) || (k === "a" ? "TA" : "TB")).toUpperCase()); });
   try {
     const maps = steps().filter(x => x.action !== "ban" && x.map);
-    $("mbarSeries").innerHTML = maps.map(x => { const r = x.result || {}, st = r.status || "pending";
-      return `<span class="${st === "running" ? "running" : st === "pending" ? "pending" : ""}">${esc(x.map)}${st === "done" ? ` ${esc(r.a)}:${esc(r.b)}` : st === "running" ? " <span>läuft</span>" : ""}</span>`; }).join("");
+    setHtml($("mbarSeries"), maps.map(x => { const r = x.result || {}, st = r.status || "pending";
+      return `<span class="${st === "running" ? "running" : st === "pending" ? "pending" : ""}">${esc(x.map)}${st === "done" ? ` ${esc(r.a)}:${esc(r.b)}` : st === "running" ? " <span>läuft</span>" : ""}</span>`; }).join(""));
     const run = maps.findIndex(x => (x.result || {}).status === "running");
-    $("mbarMap").textContent = maps.length ? `Map ${run >= 0 ? run + 1 : Math.min(maps.length, maps.filter(x => (x.result || {}).status === "done").length + 1)} von ${maps.length}${run >= 0 ? " · " + maps[run].map : ""}` : "";
+    setText($("mbarMap"), maps.length ? `Map ${run >= 0 ? run + 1 : Math.min(maps.length, maps.filter(x => (x.result || {}).status === "done").length + 1)} von ${maps.length}${run >= 0 ? " · " + maps[run].map : ""}` : "");
   } catch (err) {}
-  $("mbarCs2").textContent = typeof liveLast !== "undefined" && liveLast && Date.now() - liveLast.time < 15000 ? `● CS2 · Runde ${liveLast.round + 1}` : "";
-  $("mbarNameA").textContent = Z.teams.a.name || "Team A"; $("mbarNameB").textContent = Z.teams.b.name || "Team B";
-  $("mbarScoreA").textContent = Z.teams.a.score || 0; $("mbarScoreB").textContent = Z.teams.b.score || 0;
-  $("mbarTimer").textContent = K.time(K.timerRest(Z.timer)); $("mbarStart").textContent = Z.timer.running ? "Pause" : "Start";
+  setText($("mbarCs2"), typeof liveLast !== "undefined" && liveLast && Date.now() - liveLast.time < 15000 ? `● CS2 · Runde ${liveLast.round + 1}` : "");
+  setText($("mbarNameA"), Z.teams.a.name || "Team A"); setText($("mbarNameB"), Z.teams.b.name || "Team B");
+  setText($("mbarScoreA"), Z.teams.a.score || 0); setText($("mbarScoreB"), Z.teams.b.score || 0);
+  setText($("mbarTimer"), K.time(K.timerRest(Z.timer))); setText($("mbarStart"), Z.timer.running ? "Pause" : "Start");
   panelValues();
   const T = Z.tournament || {}, B = K.tournamentBuild(T, CastI18n.language);
   const groups = `<option value="">Alle Gruppen</option>` + (B.groups || []).map((g, i) => `<option value="${i}"${String(T.showGroup ?? "") === String(i) ? " selected" : ""}>${esc(g.name)}</option>`).join("");
@@ -56,7 +56,7 @@ $("mbarGroup").onchange = () => { tour().showGroup = $("mbarGroup").value; send(
 $("mbarFocus").onchange = () => { tour().focused = $("mbarFocus").value; if (typeof tournamentTreeDraw === "function") tournamentTreeDraw(); send(); };
 $("mbarTournament").onclick = () => sceneSwitch("bracket");
 setInterval(mbarDraw, 3000);
-setInterval(() => { if ($("mbarTimer")) $("mbarTimer").textContent = K.time(K.timerRest(Z.timer)); }, 250);
+setInterval(() => setText($("mbarTimer"), K.time(K.timerRest(Z.timer))), 250);
 $("tStart").onclick = () => { if (Z.timer.running) return; Z.timer.target = Date.now() + K.timerRest(Z.timer); Z.timer.running = true; send(); timerShow(); };
 $("tPause").onclick = () => { if (!Z.timer.running) return; Z.timer.rest = K.timerRest(Z.timer); Z.timer.running = false; send(); timerShow(); };
 function shift(ms) {

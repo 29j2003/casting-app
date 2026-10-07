@@ -109,9 +109,15 @@
       const max = +m.dataset.max || 0;
       const onlyIcon = mode === "icon" && !!T.icon;
       brandDraw(m, T, onlyIcon);
-      // „auto": passt das volle Logo nicht in den freien Platz, nur das Icon zeigen
-      if (mode === "auto" && max && T.icon) {
-        const check = () => { if (m.offsetWidth > max) brandDraw(m, T, true); };
+      // Passt das volle Logo nicht in den freien Platz (data-max), wird es kleiner (--brand-scale, gleitet beim Szenenwechsel);
+      // nur wenn es dafür zu stark schrumpfen müsste (unter 55 %), zeigt „auto" das Icon allein
+      m.style.removeProperty("--brand-scale");
+      if (max) {
+        const check = () => {
+          const w = m.offsetWidth, s = w > max ? max / w : 1;
+          if (s < .55 && mode === "auto" && T.icon) brandDraw(m, T, true);
+          else if (s < 1) m.style.setProperty("--brand-scale", s.toFixed(3));
+        };
         const images = [...m.querySelectorAll("img")].filter(i => !i.complete);
         if (images.length) images.forEach(i => i.addEventListener("load", check, { once: true })); else check();
       }

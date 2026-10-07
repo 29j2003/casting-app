@@ -850,7 +850,7 @@
 <p class="small">Gilt für die App auf diesem PC – nicht fürs Match.</p>
 </nav>
 <div class="dialog-main">
-<div class="dialog-head"><b id="settingsTitle">Verbindungen &amp; Zugänge</b><button class="button" id="dialogClose">Schließen <kbd>Esc</kbd></button></div>
+<div class="dialog-head"><b id="settingsTitle">App-Einstellungen</b><button class="button" id="dialogClose">Schließen <kbd>Esc</kbd></button></div>
 <div class="dialog-content">
 <section id="setLinks"><h3>Verbindungen &amp; Zugänge</h3>
 <p class="small">Womit die App spricht. Schlüssel liegen im Schlüsselbund des Systems und werden nach dem Speichern nie wieder angezeigt – nur ersetzen oder löschen.</p>
@@ -888,7 +888,7 @@
 <ul><li>Gespeichert im Schlüsselbund des Systems – keine Datei, kein Export.</li><li>Nach dem Speichern nie wieder angezeigt – nur ersetzen oder löschen.</li>
 <li>Nie in Overlays, Log, Sitzungs- oder Theme-Exporten.</li><li>Der Server der App hört nur auf diesem PC.</li></ul></div>
 </section>
-<section id="setLanguage" hidden><h3>Sprache · Language</h3>
+<section id="setLanguage"><h3>Sprache · Language</h3>
         <span class="small">Sprache der App</span>
         <div class="segment" id="appLanguage"><button data-language="de">Deutsch</button><button data-language="en">English</button></div>
         <p class="small">Oberfläche, Dialoge und Tray-Menü. Die App lädt danach neu.</p>
@@ -896,7 +896,7 @@
         <div class="segment" id="overlayLanguage"><button data-language="de">Deutsch</button><button data-language="en">English</button></div>
         <p class="small">Feste Texte in den Overlays (Szenen-Überschriften, Statistiken). Eigene Texte bleiben, wie du sie eingetragen hast.</p>
       </section>
-<section id="setLook" hidden><h3>Oberfläche</h3>
+<section id="setLook"><h3>Oberfläche</h3>
         <div class="segment" id="appDesign">
           <button data-design="dark">Dunkel</button><button data-design="light">Hell</button><button data-design="system">Wie das System</button>
         </div>
@@ -915,7 +915,7 @@
           <button class="button" id="stepsAgain">„Erste Schritte" wieder zeigen</button>
         </div>
       </section>
-<section id="updateArea" hidden><h3>Update</h3>
+<section id="updateArea"><h3>Update</h3>
         <p class="small">Installiert: <b id="updateCurrent"></b> <span id="updateFrom"></span> · <span id="updateState">noch nicht gesucht</span></p>
         <div class="update-progress" id="updateProgress" hidden><i></i></div>
         <div class="line">
@@ -927,13 +927,13 @@
         <p class="small">Die neue Version wird von GitHub geladen, mit der Prüfsumme verglichen und installiert; die App startet danach neu.
           Einstellungen, Bilder und Zugänge bleiben. Nicht während einer laufenden Sendung aktualisieren.</p>
       </section>
-<section id="setData" hidden><h3>Daten &amp; Sicherung</h3>
+<section id="setData"><h3>Daten &amp; Sicherung</h3>
 <p class="small">Alles speichert sich von selbst. Für einen anderen PC oder als Sicherung: den ganzen Stand als Datei sichern und dort laden.</p>
 <div class="line"><button class="button" id="setExport">Sichern (.json)</button><button class="button" id="setImport">Laden (.json)</button></div>
 <p class="small">Videos und eigene Schriften liegen in deinen Dokumenten, Einstellungen und Log im Datenordner:</p>
 <div class="line"><button class="button" data-folder="videos">Videos-Ordner</button><button class="button" data-folder="fonts">Schriften-Ordner</button><button class="button" data-folder="data">Daten &amp; Log</button></div>
 </section>
-<section id="setAbout" hidden><h3>Über die App</h3>
+<section id="setAbout"><h3>Über die App</h3>
 <p>Casting-App <b id="aboutVersion"></b> – Overlays und Steuerung für CS2-Casts mit OBS.</p>
 <p class="small">Frei verwendbar (Public Domain, siehe LICENSE). Mitgelieferte Schriften und Programme haben eigene Lizenzen (Ordner LICENSES).</p>
 <div class="line"><a class="button" href="https://github.com/29j2003/casting-app" target="_blank" rel="noopener">Projekt auf GitHub</a><a class="button" href="https://github.com/29j2003/casting-app/issues" target="_blank" rel="noopener">Fehler melden</a><button class="button" id="aboutSteps">„Erste Schritte" wieder zeigen</button></div>

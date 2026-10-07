@@ -142,7 +142,7 @@ async function obsOverlaysNewLoad(fromHand) {
 }
 async function logDraw() {
   if (document.querySelector('.group[data-group="log"]').hidden) return;
-  let d; try { d = await (await fetch("/api/log", { cache: "no-store" })).json(); } catch (e) { $("logText").textContent = "App nicht erreichbar."; return; }
+  let d; try { d = await (await fetch("/api/log", { cache: "no-store" })).json(); } catch (e) { setHtml($("logText"), "App nicht erreichbar."); return; }
   const time = t => new Date(t).toLocaleTimeString("de-DE");
   const since = t => { const s = Math.round((Date.now() - t) / 1000); return s < 60 ? s + " s" : Math.round(s / 60) + " min"; };
   const st = [
@@ -151,12 +151,12 @@ async function logDraw() {
     ["CS2-Live-Daten", d.gsi == null ? "keine" : "vor " + Math.round(d.gsi / 1000) + " s"]
   ];
   const ov = d.clients.filter(c => c.page !== "control");
-  $("logStatus").innerHTML = st.map(([a, b]) => `<div class="st-row"><b>${a}</b><span>${esc(b)}</span></div>`).join("")
-    + `<div class="st-row"><b>Verbundene Overlays</b><span>${ov.length ? ov.map(c => esc(c.page + (c.obs ? " (OBS)" : "") + (c.v !== K.VERSION ? " – alte Version " + c.v : ""))).join(", ") : "keine"}</span></div>`;
-  $("folderPaths").textContent = `Videos: ${d.folder.videos} · Schriften: ${d.folder.fonts} · Daten: ${d.folder.data}`;
+  setHtml($("logStatus"), st.map(([a, b]) => `<div class="st-row"><b>${a}</b><span>${esc(b)}</span></div>`).join("")
+    + `<div class="st-row"><b>Verbundene Overlays</b><span>${ov.length ? ov.map(c => esc(c.page + (c.obs ? " (OBS)" : "") + (c.v !== K.VERSION ? " – alte Version " + c.v : ""))).join(", ") : "keine"}</span></div>`);
+  setText($("folderPaths"), `Videos: ${d.folder.videos} · Schriften: ${d.folder.fonts} · Daten: ${d.folder.data}`);
   const only = $("logOnlyError").checked;
   const bottom = $("logText").scrollTop + $("logText").clientHeight >= $("logText").scrollHeight - 20;
-  $("logText").innerHTML = d.log.filter(z => !only || z.kind !== "info").map(z => `<span class="${z.kind}">${time(z.time)}  ${esc(z.text)}</span>`).join("\n");
+  setHtml($("logText"), d.log.filter(z => !only || z.kind !== "info").map(z => `<span class="${z.kind}">${time(z.time)}  ${esc(z.text)}</span>`).join("\n"));
   if (bottom) $("logText").scrollTop = $("logText").scrollHeight;
 }
 setInterval(logDraw, 2000);

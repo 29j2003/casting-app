@@ -48,6 +48,7 @@ async def fake_obs(socket) -> None:
 async def check_audio(control) -> bool:
     """Change volume, mute, monitoring and delay of the first audio row; all four must reach OBS."""
     row = "#audioList .audio-z"
+    await control.evaluate("document.querySelectorAll('[data-area=audio]').forEach(d => d.open = true)")   # (2.14: starts collapsed)
     await control.evaluate(f"""(() => {{ const r = document.querySelector('{row} input[type=range]');
         r.value = 180; r.dispatchEvent(new Event('input')); }})()""")
     await control.wait_for_timeout(300)

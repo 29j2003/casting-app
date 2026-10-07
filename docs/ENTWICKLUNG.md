@@ -309,6 +309,17 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
 
 ## Technische Details
 
+* **Szenenwechsel im Detail** (`web/broadcast.js`, `switchTo`): Teile beider Szenen werden gepaart – *bleibt* (dasselbe
+  Element gleitet), *Überblendung* (verschiedener Inhalt), *kommt*/*geht*. Neue Teile tragen bis zu ihrem Einsatz die Klasse
+  `.pending` (`cast.css`: `.pending, .pending * { visibility: hidden !important }` – auch Kinder mit eigenem `visibility`
+  bleiben verborgen; `tests/live/flicker.py` meldet das als „content of hidden parts shows“). Sieht ein Überblend-Paar nach
+  dem Zeichnen gleich aus (Klassen als Menge ohne `pending`, `data-*`), wird es zu *bleibt*. `restyle()` setzt am Ende den
+  Stil der Zielszene, behält aber `--brand-scale`.
+* **Logo kleiner statt Raster verschieben:** Ein Szenen-Logo mit `data-max` (Breite in px, z. B. „4 Personen“ über
+  `max_brand` in `tools/generate_scenes.py`) wird über `--brand-scale` verkleinert (`cast.js`, Theme); erst wenn es dabei
+  unter 55 % fiele, steht nur das Icon. Die CSS-Regel `.brand { scale: var(--brand-scale, 1) }` gleitet beim Wechsel mit.
+* **Steuerseite schreibt nur Änderungen:** Zeitgeber (Timer alle 250 ms, Match-Leiste, Log) nutzen `setText`, `setImage`,
+  `setHtml` (`01-core.js`) – das DOM wird nur angefasst, wenn sich der Wert wirklich ändert (spart Layout und Bildaufbau).
 * **DACH CS – Offiziell** (`web/broadcast.js`, `dachShow`): drei iframes im Wechsel. Ebenen: vorige Seite (z 1) ·
   `.dach-cams` (z 2) · aktuelle Seite (z 3). Die DACH-Seiten haben durchsichtige Löcher für Kameras; die Rahmen aus
   `DACH_FRAME` (`web/cast-core.js`, gemessen inkl. gelber Linie) liegen darunter, Linie und Namensschild der Seite darüber.

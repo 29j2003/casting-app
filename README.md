@@ -440,7 +440,8 @@ Die macOS-App ist nur ad-hoc signiert (ohne Apple-Konto); die Beglaubigung durch
   die Workshop-Nummer an Steam (Name und Vorschaubild zurück), und die Frage an GitHub, ob es eine
   neuere Version gibt (nur die Versionsliste; abschaltbar unter ⚙ → Update) – beim Klick auf „Installieren“ auch der Download.
   Updates kommen nur aus den Releases dieses Projekts und nur mit passender Prüfsumme. Videos aus dem Netz, die du im
-  App-Fenster abspielst, holt FFmpeg zum Umwandeln selbst ab (nur http/https, keine Adressen im eigenen Netz).
+  App-Fenster abspielst, holt FFmpeg zum Umwandeln selbst ab (nur http/https, keine anderen Geräte im eigenen Netz;
+  deine Videos aus dem Videos-Ordner laufen wie gewohnt).
 * Das **OBS-Passwort** liegt ebenfalls im Schlüsselbund. Die Anmeldung bei OBS rechnet die App selbst aus, das Passwort
   steht nicht im Browser-Speicher der Steuerseite (ein altes wird beim ersten Start umgezogen).
 * Der **FACEIT-Schlüssel** sowie **Nutzer-ID und Key für DACH CS** liegen nur im Schlüsselbund des Systems – Windows:

@@ -72,6 +72,17 @@ async function sceneSwitch(k) {
 }
 // Stats während Ingame über dem Spiel
 const OVER_GAME = ["scoreboard", "team-a", "team-b", "h2h", "bracket", "series"];
+// Szenen, die ohne CS2-Livedaten nur „Warte auf CS2-Daten …“ zeigen – ihre Knöpfe sagen das vorher
+const LIVE_SCENES = ["scoreboard", "team-a", "team-b", "h2h"];
+function liveFresh() { return !!(liveLast && Date.now() - liveLast.time < 15000); }
+function overSubDraw() {
+  const U = Z.broadcast.overGame || {}, on = overGameVisible() ? U.scene : "", d = Z.broadcast.overGameDuration ?? 15;
+  const sub = document.createElement("div"); sub.className = "scene-sub";
+  sub.innerHTML = `<b>ÜBER DEM SPIEL <span>${d > 0 ? `blendet nach ${d} s aus` : "bleibt stehen"}</span></b>` + OVER_GAME.map(k =>
+    `<button type="button" data-over="${k}" class="${k === on ? "on" : ""}${LIVE_SCENES.includes(k) && !liveFresh() ? " needs-data" : ""}" aria-pressed="${k === on}">${esc((OVERLAY_SCENES.find(([x]) => x === k) || [, k])[1])}</button>`).join("");
+  sub.querySelectorAll("[data-over]").forEach(b => b.onclick = () => { overGameToggle(b.dataset.over); if (typeof overDraw === "function") overDraw(); });
+  return sub;
+}
 function overGameVisible() { const U = Z.broadcast.overGame || {}; return !!U.scene && (!U.until || U.until > Date.now()); }
 function overGameToggle(k) {
   const U = Z.broadcast.overGame || {};
@@ -136,16 +147,12 @@ function scenesDraw() {
     b.className = (single ? Z.broadcast.scene === k : e.obs && e.obs === currentScene) ? "active" : "";
     b.disabled = !c.on || (!single && (!connected || !e.obs));
     b.title = e.obs ? "OBS-Szene: " + e.obs : "Keine OBS-Szene zugeordnet (Setup → Szenen einrichten)";
-    const over = single && Z.broadcast.scene === "ingame" && OVER_GAME.includes(k);
-    if (over) {
-      const on = (Z.broadcast.overGame || {}).scene === k && overGameVisible();
-      b.insertAdjacentHTML("beforeend", `<span class="scene-over">${on ? "ÜBER SPIEL · AN" : "ÜBER SPIEL"}</span>`);
-      if (on) b.classList.add("over-on");
-      b.title = "Während Ingame: erscheint über dem Spiel. Umschalt-Klick = ganze Szene wechseln.";
-    }
+    if (LIVE_SCENES.includes(k) && !liveFresh()) { b.classList.add("needs-data"); b.title = "Wartet auf CS2-Daten – im Overlay steht dann „Warte auf CS2-Daten …“. " + b.title; }
     if (studioOn() && k === studioNext) b.classList.add("studio-next");
-    b.onclick = ev => over && !ev.shiftKey ? overGameToggle(k) : studioOn() ? studioPick(k) : sceneSwitch(k);
+    b.onclick = () => studioOn() ? studioPick(k) : sceneSwitch(k);
     (column && !sceneArrange ? column : box).appendChild(b);
+    // läuft Ingame: direkt darunter „Über dem Spiel“ – Scoreboard, Team A … über dem Spielbild, ohne die Szene zu wechseln
+    if (k === "ingame" && single && Z.broadcast.scene === "ingame") (column || box).appendChild(overSubDraw());
   });
   box.style.setProperty("--scene-columns", Math.max(1, box.querySelectorAll(".scene-column").length));
   const without = OVERLAY_SCENES.filter(([k]) => c.list[k].on && !c.list[k].obs).length;

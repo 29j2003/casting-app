@@ -360,7 +360,7 @@ def test_scene_panel_shows_the_fields_of_each_scene(server, browser):
     before = page.evaluate("Z.teams.a.score || 0")
     page.evaluate("$('pPlusA').click()")
     assert page.evaluate("Z.teams.a.score") == before + 1
-    assert page.inner_text("#mbarScoreA") == page.inner_text("#pScoreA") == str(before + 1)
+    assert page.text_content("#mbarScoreA") == page.inner_text("#pScoreA") == str(before + 1)
     page.fill("#pNote", "Timeout Team B noch 1x")
     page.evaluate("sceneSwitch('intro')")
     page.wait_for_timeout(400)
@@ -373,6 +373,33 @@ def test_scene_panel_shows_the_fields_of_each_scene(server, browser):
     page.wait_for_timeout(400)
     assert page.input_value("#pNote") == "Timeout Team B noch 1x"
     assert "Timeout" not in page.evaluate("JSON.stringify(Z)")
+    assert errors == []
+
+
+def test_ingame_button_opens_the_stats_over_the_game(server, browser):
+    """2.14: while Ingame runs, a field below its button puts Scoreboard, Team A … over the game picture (no scene switch);
+    without CS2 data the buttons of live scenes say so before you click."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("Z.theme = 'regular'; everything(); tabs('live'); Z.broadcast.active = true; sceneArrange = false; "
+                  "const c = sceneCfg(); c.on = true; ['ingame', 'scoreboard', 'h2h'].forEach(k => c.list[k].on = true); "
+                  "liveLast = null; send(); sceneSwitch('intro')")
+    page.wait_for_timeout(300)
+    assert page.evaluate("document.querySelectorAll('#sceneButtons .scene-sub').length") == 0
+    assert page.evaluate("document.querySelector('#sceneButtons [data-scene-def=scoreboard]').classList.contains('needs-data')")
+    page.evaluate("sceneSwitch('ingame')")
+    page.wait_for_timeout(300)
+    assert page.evaluate("[...document.querySelectorAll('#sceneButtons .scene-sub [data-over]')].map(b => b.dataset.over)") == \
+        ["scoreboard", "team-a", "team-b", "h2h", "bracket", "series"]
+    page.evaluate("document.querySelector('#sceneButtons .scene-sub [data-over=h2h]').click()")
+    assert page.evaluate("[Z.broadcast.scene, Z.broadcast.overGame.scene]") == ["ingame", "h2h"]
+    assert page.evaluate("document.querySelector('#sceneButtons .scene-sub [data-over=h2h]').classList.contains('on')")
+    page.evaluate("document.querySelector('#sceneButtons .scene-sub [data-over=h2h]').click()")
+    assert page.evaluate("Z.broadcast.overGame") is None
+    page.evaluate("document.querySelector('#sceneButtons [data-scene-def=scoreboard]').click()")   # its own button switches
+    assert page.evaluate("Z.broadcast.scene") == "scoreboard"
     assert errors == []
 
 
@@ -538,9 +565,9 @@ def test_dach_cams_sit_under_the_page_and_never_show_the_previous_page(server, b
     assert errors == []
 
 
-def test_app_settings_are_a_page_with_one_section_at_a_time(server, browser):
-    """3.0: the settings are their own page – list on the left, one section on the right that also scrolls in a low
-    window (2.3.0 could not reach Update); the access keys of FACEIT and DACH CS live there now."""
+def test_app_settings_are_a_panel_with_all_sections(server, browser):
+    """2.14: the settings open as a panel from the right (like before 2.6) – all sections one below the other, the chips
+    on top jump to a section, the panel scrolls in a low window; the access keys of FACEIT and DACH CS live there."""
     page = browser.new_page(viewport={"width": 1200, "height": 600})
     errors = watch(page)
     page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
@@ -548,19 +575,24 @@ def test_app_settings_are_a_page_with_one_section_at_a_time(server, browser):
     page.evaluate("zoomSet(1)")                                                 # sizes below in page pixels
     page.click("#dialogOpen")
     page.wait_for_timeout(300)
-    visible = "[...document.querySelectorAll('.dialog-content > section')].filter(x => !x.hidden).map(x => x.id)"
-    assert page.evaluate(visible) == ["setLinks"]
+    hidden = "[...document.querySelectorAll('.dialog-content > section')].filter(x => x.hidden).map(x => x.id)"
+    assert page.evaluate(hidden) == []
     assert page.evaluate("!!$('faceitKey').offsetParent && !!$('dachKey').offsetParent && !!$('obsPort').offsetParent")
+    box = page.evaluate("(() => { const r = document.querySelector('.dialog-box').getBoundingClientRect(); return [r.left, r.right, innerWidth]; })()")
+    assert box[0] > 0 and abs(box[1] - box[2]) < 2, box                        # a panel on the right, not the whole page
     sizes = page.evaluate("(() => { const c = document.querySelector('.dialog-content'); return [c.scrollHeight, c.clientHeight, innerHeight]; })()")
     assert sizes[1] <= sizes[2] and sizes[0] > sizes[1], sizes                  # fits the window and scrolls
     page.click(".settings-nav [data-jump=updateArea]")
-    assert page.evaluate(visible) == ["updateArea"]
+    page.wait_for_timeout(200)
+    assert page.evaluate("document.querySelector('.settings-nav [data-jump=updateArea]').getAttribute('aria-current')") == "true"
     assert page.evaluate("(() => { const r = document.getElementById('updateSearch').getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0; })()")
     page.keyboard.press("Escape")
     assert page.evaluate("$('appDialog').hidden")
     page.evaluate("tabs('match')")                                              # the pointer under Match leads there
     page.evaluate("document.querySelector('#faceitKeyHint [data-settings]').click()")
-    assert page.evaluate(visible) == ["setLinks"] and not page.evaluate("$('appDialog').hidden")
+    page.wait_for_timeout(200)
+    assert not page.evaluate("$('appDialog').hidden")
+    assert page.evaluate("(() => { const r = $('faceitKey').getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0; })()")
     assert errors == []
 
 

@@ -403,6 +403,7 @@ $("gsiDemo").onclick = () => {
   $("gsiDemo").innerHTML = icon("pause") + "Testdaten stoppen";
 };
 function liveShow() {
+  if (liveFresh() !== liveShow.fresh) { liveShow.fresh = liveFresh(); scenesDraw(); }   // Szenen-Knöpfe: „CS2“-Hinweis an/aus
   const d = liveLast, on = d && Date.now() - d.time < 15000;
   $("gsiDisplay").classList.toggle("on", !!on);
   $("gsiDisplay").querySelector("span").textContent = !d ? "Noch keine Daten von CS2"
@@ -618,7 +619,7 @@ setInterval(() => {
     if (!k) return;
     const s = k.querySelector(".gfx-status"), t = gfxStatus(x);
     if (s.textContent !== t) s.textContent = t;
-    k.classList.toggle("on", K.gfxVisible(x, Date.now(), Z.broadcast.scene));
+    const on = K.gfxVisible(x, Date.now(), Z.broadcast.scene); if (k.classList.contains("on") !== on) k.classList.toggle("on", on);
   });
 }, 1000);
 document.querySelectorAll("[data-gfx-new]").forEach(b => b.onclick = () => {
@@ -668,12 +669,12 @@ function sceneToolsDraw() {
 // Werte der Felder: Spielstand, Timer, Serie, Sponsoren (aufgerufen von mbarDraw und beim Szenenwechsel)
 function panelValues() {
   if (!$("pNameA")) return;
-  $("pNameA").textContent = Z.teams.a.name || "Team A"; $("pNameB").textContent = Z.teams.b.name || "Team B";
-  $("pScoreA").textContent = Z.teams.a.score || 0; $("pScoreB").textContent = Z.teams.b.score || 0;
-  $("pTimer").textContent = K.time(K.timerRest(Z.timer)); $("pStart").textContent = Z.timer.running ? "Pause" : "Start";
-  const series = $("mbarSeries") ? $("mbarSeries").innerHTML : "";
-  if ($("pSeries").innerHTML !== series) $("pSeries").innerHTML = series;
-  $("pSeriesEmpty").hidden = !!series;
+  setText($("pNameA"), Z.teams.a.name || "Team A"); setText($("pNameB"), Z.teams.b.name || "Team B");
+  setText($("pScoreA"), Z.teams.a.score || 0); setText($("pScoreB"), Z.teams.b.score || 0);
+  setText($("pTimer"), K.time(K.timerRest(Z.timer))); setText($("pStart"), Z.timer.running ? "Pause" : "Start");
+  const series = $("mbarSeries") ? $("mbarSeries")._h || "" : "";
+  setHtml($("pSeries"), series);
+  if ($("pSeriesEmpty").hidden !== !!series) $("pSeriesEmpty").hidden = !!series;
   const names = sponsorEntries().map((x, i) => x.name || "Sponsor " + (i + 1)), key = names.join("\n");
   if ($("pSponsors")._k !== key) {
     $("pSponsors")._k = key; $("pSponsors").innerHTML = "";
@@ -828,7 +829,7 @@ $("vEditLive").onclick = () => {
   const d = document.querySelector('[data-area="map-veto"]'); if (d) { d.open = true; d.scrollIntoView({ block: "start", behavior: "smooth" }); }
 };
 setInterval(() => {                                           // jeder Weg zählt: Klick, Strg K, OBS, Sitzung laden
-  if (!$("panelFields").querySelector('[data-panel="timer"]').hidden) $("pTimer").textContent = K.time(K.timerRest(Z.timer));
+  if (!$("panelFields").querySelector('[data-panel="timer"]').hidden) setText($("pTimer"), K.time(K.timerRest(Z.timer)));
   const k = sceneNow(); if (k === sceneToolsShown) return;
   const first = !sceneToolsShown; sceneToolsShown = k; sceneToolsDraw();
   if (!first) panelReveal();

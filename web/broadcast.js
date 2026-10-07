@@ -88,6 +88,12 @@
     stinger.getAnimations({ subtree: true }).forEach(x => x.cancel());
   }
 
+  // Lage der neuen Szene übernehmen – Werte, die das Zeichnen gesetzt hat (Logo-Größe), bleiben
+  function restyle(w) {
+    const scale = w.el.style.getPropertyValue("--brand-scale");
+    w.el.setAttribute("style", w.target);
+    if (scale) w.el.style.setProperty("--brand-scale", scale);
+  }
   async function switchTo(scene, kind, duration) {
     if (scene === currentScene) return;
     const fresh = await layer(scene);
@@ -134,6 +140,8 @@
       if (look(a) !== look(n) || a.innerHTML !== n.innerHTML) continue;
       [...n.attributes].forEach(x => { if (x.name.startsWith("data-")) a.setAttribute(x.name, x.value); });
       a._cacheKey = n._cacheKey;                       // schon passend gezeichnet – nicht neu zeichnen (Bild würde neu laden)
+      const scale = n.style.getPropertyValue("--brand-scale");   // Logo-Größe der neuen Szene: gleitet per CSS-Übergang
+      if (scale) a.style.setProperty("--brand-scale", scale); else a.style.removeProperty("--brand-scale");
       n.classList.remove("pending");                   // (nur zum Füllen versteckt – die Lage übernimmt a)
       proceed.push({ el: a, from: placement(a.getAttribute("style")), post: placement(n.getAttribute("style")), target: n.getAttribute("style") });
       newParts.splice(newParts.indexOf(n), 1);
@@ -144,7 +152,7 @@
     const show = () => newParts.forEach(e => e.classList.remove("pending"));
 
     const done = () => {
-      proceed.forEach(w => { w.el.getAnimations().forEach(x => { if (!(x instanceof CSSAnimation)) x.cancel(); }); w.el.setAttribute("style", w.target); delete w.el.dataset.corner; });
+      proceed.forEach(w => { w.el.getAnimations().forEach(x => { if (!(x instanceof CSSAnimation) && !(x instanceof CSSTransition)) x.cancel(); }); restyle(w); delete w.el.dataset.corner; });
       [...fresh.children].forEach(e => e.getAnimations().forEach(x => { if (!(x instanceof CSSAnimation)) x.cancel(); }));
       show(); previous.remove(); currentLayer = fresh; overGame(C().Z);
       if (C().corners) C().corners();                         // Ecken passend zur neuen Lage
@@ -153,7 +161,7 @@
     if (kind === "stinger" && duration > 0) {
       await stingerIn(duration);
       previous.classList.add("pending");
-      proceed.forEach(w => w.el.setAttribute("style", w.target));
+      proceed.forEach(restyle);
       done();
       await stingerOut(duration);
       return;
@@ -299,8 +307,12 @@
             : [{ opacity: 0 }, { opacity: 1 }];
     const out = [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(-6%)" }];
     const cams = dachLayer.querySelector(".dach-cams");
-    const runs = [fresh.animate(k, opt), cams.animate(k, opt)];
-    if (kind === "slide") runs.push(previous.animate(out, opt), ...(before ? [before.animate(out, opt)] : []));
+    // Schieben: die alte Seite geht in der ersten Hälfte, die neue kommt leicht versetzt (wie bei den eigenen Szenen) –
+    // sonst stehen beide lange halb durchsichtig übereinander
+    const inOpt = kind === "slide" ? Object.assign({}, opt, { duration: d * .65, delay: d * .35 }) : opt;
+    const outOpt = Object.assign({}, opt, { duration: d * .55 });
+    const runs = [fresh.animate(k, inOpt), cams.animate(k, inOpt)];
+    if (kind === "slide") runs.push(previous.animate(out, outOpt), ...(before ? [before.animate(out, outOpt)] : []));
     try { await runs[0].finished; } catch (e) {}
     runs.forEach(r => r.cancel());
   }

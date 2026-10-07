@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "casting-app"
-version = "2.10.0"                     # keep equal to casting_app/version.py and web/cast-core.js
+version = "2.11.0"                     # keep equal to casting_app/version.py and web/cast-core.js
 description = "Steuerung und Overlays für CS2-Casts in OBS"
 requires-python = ">=3.11"
 dependencies = [

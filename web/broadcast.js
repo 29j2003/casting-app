@@ -122,7 +122,7 @@
     // Nur die NEUEN Teile verstecken, bis sie gefüllt sind. Weiterverwendete Teile bleiben die ganze Zeit sichtbar
     // (früher war die ganze neue Schicht kurz versteckt – dadurch verschwanden Logo, Titel & Co. für 1–2 Bilder).
     const newParts = [...come, ...cross.map(p => p[1])];
-    newParts.forEach(e => { e.style.visibility = "hidden"; });
+    newParts.forEach(e => e.classList.add("pending"));   // .pending versteckt auch Kinder, die selbst visibility: visible haben (Folien)
     stage.appendChild(fresh);
     C().newDraw();                                   // neue Teile mit Inhalt füllen
     await awaiting(50);
@@ -130,17 +130,18 @@
     // anders), bleiben stehen statt überzublenden: zwei halb durchsichtige gleiche Bilder übereinander flackern sichtbar
     for (let i = cross.length - 1; i >= 0; i--) {
       const [a, n] = cross[i];
-      if (a.className !== n.className || a.innerHTML !== n.innerHTML) continue;
+      const look = e => [...e.classList].filter(c => c !== "pending").sort().join(" ");
+      if (look(a) !== look(n) || a.innerHTML !== n.innerHTML) continue;
       [...n.attributes].forEach(x => { if (x.name.startsWith("data-")) a.setAttribute(x.name, x.value); });
       a._cacheKey = n._cacheKey;                       // schon passend gezeichnet – nicht neu zeichnen (Bild würde neu laden)
-      n.style.visibility = "";                         // (nur zum Füllen versteckt – die Lage übernimmt a)
+      n.classList.remove("pending");                   // (nur zum Füllen versteckt – die Lage übernimmt a)
       proceed.push({ el: a, from: placement(a.getAttribute("style")), post: placement(n.getAttribute("style")), target: n.getAttribute("style") });
       newParts.splice(newParts.indexOf(n), 1);
       n.replaceWith(a); cross.splice(i, 1);
     }
     const go = [...previous.children].filter(e => !cross.some(p => p[0] === e));
     window.__lastSwitch = { proceed: proceed.map(w => w.el.dataset.part), cross: cross.map(p => p[1].dataset.part), come: come.map(e => e.dataset.part || e.className), go: go.map(e => e.dataset.part || e.className) };
-    const show = () => newParts.forEach(e => { e.style.visibility = ""; });
+    const show = () => newParts.forEach(e => e.classList.remove("pending"));
 
     const done = () => {
       proceed.forEach(w => { w.el.getAnimations().forEach(x => { if (!(x instanceof CSSAnimation)) x.cancel(); }); w.el.setAttribute("style", w.target); delete w.el.dataset.corner; });
@@ -151,7 +152,7 @@
 
     if (kind === "stinger" && duration > 0) {
       await stingerIn(duration);
-      previous.style.visibility = "hidden";
+      previous.classList.add("pending");
       proceed.forEach(w => w.el.setAttribute("style", w.target));
       done();
       await stingerOut(duration);
@@ -179,7 +180,7 @@
       jobs.push(anim(n, [Object.assign({ opacity: 0 }, ga), Object.assign({ opacity: on }, gn)], duration));
     });
     // 3) was wegfällt, geht – was neu ist, kommt (leicht versetzt); Unsichtbares bleibt unsichtbar
-    go.forEach((e, i) => { const o = opacity(e); if (o > .02) jobs.push(anim(e, out(o), duration * .55, { delay: i * 25 })); else e.style.visibility = "hidden"; });
+    go.forEach((e, i) => { const o = opacity(e); if (o > .02) jobs.push(anim(e, out(o), duration * .55, { delay: i * 25 })); else e.classList.add("pending"); });
     const comeDeck = come.map(opacity);
     come.forEach((e, i) => { if (comeDeck[i] > .02) jobs.push(anim(e, enter(comeDeck[i]), duration * .6, { delay: duration * .4 + i * 45 })); });
     show();                                             // Animationen stehen – jetzt dürfen die neuen Teile sichtbar werden

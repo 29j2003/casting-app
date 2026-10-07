@@ -652,7 +652,7 @@ def test_studio_mode_picks_first_and_takes_with_transition(server, browser):
     errors = watch(page)
     page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
     page.wait_for_timeout(1200)
-    page.evaluate("tabs('live'); sceneSwitch('intro'); $('studioButton').click()")
+    page.evaluate("Z.theme = 'regular'; everything(); send(); tabs('live'); sceneSwitch('intro'); $('studioButton').click()")
     page.wait_for_timeout(1500)
     assert not page.evaluate("$('studioSide').hidden")
     page.evaluate("document.querySelector(\"#sceneButtons [data-scene-def='cast-duo']\").click()")
@@ -664,5 +664,12 @@ def test_studio_mode_picks_first_and_takes_with_transition(server, browser):
     assert page.evaluate("[Z.broadcast.scene, studioNext]") == ["cast-duo", "intro"]
     page.evaluate("$('studioButton').click(); document.querySelector(\"#sceneButtons [data-scene-def='pause']\").click()")
     assert page.evaluate("[Z.broadcast.scene, $('studioSide').hidden]") == ["pause", True]
-    page.evaluate("ui.studio = false; uiSave()")
+    # DACH CS – Offiziell: dieselbe Bedienung mit den DACH-Szenen
+    page.evaluate("Z.theme = 'dachcs-official'; everything(); dachSwitch('dach-overview'); send(); $('studioButton').click()")
+    page.wait_for_timeout(800)
+    page.evaluate("document.querySelector(\"#sceneButtons [data-scene-def='dach-pause']\").click()")
+    assert page.evaluate("[Z.broadcast.scene, studioNext, $('studioName').textContent]") == ["dach-overview", "dach-pause", "Pausescreen"]
+    page.evaluate("$('studioTake').click()")
+    assert page.evaluate("[Z.broadcast.scene, Z.dach.scene, studioNext]") == ["dach-pause", "dach-pause", "dach-overview"]
+    page.evaluate("ui.studio = false; uiSave(); Z.theme = 'regular'; everything(); send()")
     assert errors == []

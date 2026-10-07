@@ -293,7 +293,7 @@ function studioDraw() {
   if (!f._live) { f.src = "overlay.html?preview=1&studio=" + encodeURIComponent(studioNext); f._live = true; }
   else if (f._scene !== studioNext) try { f.contentWindow.postMessage({ cast: "studio", scene: studioNext }, location.origin); } catch (err) {}
   f._scene = studioNext;
-  $("studioName").textContent = (OVERLAY_SCENES.find(([k]) => k === studioNext) || [, studioNext])[1];
+  $("studioName").textContent = (OVERLAY_SCENES.find(([k]) => k === studioNext) || DACH_SCENES.find(x => x[1] === studioNext) && [, DACH_SCENES.find(x => x[1] === studioNext)[2]] || [, studioNext])[1];
   $("studioTake").disabled = studioNext === Z.broadcast.scene;
   previewSize();
 }
@@ -301,7 +301,7 @@ function studioPick(k) { studioNext = k; studioDraw(); scenesDraw(); }
 function studioTake() {
   const k = studioNext, before = Z.broadcast.scene;
   if (!k || k === before) return;
-  sceneSwitch(k);
+  if (K.DACH_PAGES[k]) dachSwitch(k); else sceneSwitch(k);           // DACH CS – Offiziell: eigene Szenen
   studioNext = before || k;                     // wie OBS: die vorige Programm-Szene liegt jetzt in der Vorschau
   studioDraw(); scenesDraw();
 }

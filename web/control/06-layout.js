@@ -184,14 +184,14 @@ function settings(unfolded, section) {
   $("appDialog").hidden = !unfolded;
   if (unfolded) { settingsShow(section || ui.settingsSection || "setLinks"); settingsNavDraw(); }
 }
+// alle Bereiche stehen untereinander; die Sprungleiste scrollt zum Bereich (oder zu einer Karte darin, z. B. „setObs")
 function settingsShow(id) {
-  if (!$(id) || $(id).closest(".dialog-content") !== document.querySelector(".dialog-content")) id = "setLinks";
-  document.querySelectorAll(".dialog-content > section").forEach(x => x.hidden = x.id !== id);
-  document.querySelectorAll(".settings-nav [data-jump]").forEach(b => b.setAttribute("aria-current", b.dataset.jump === id));
-  const b = document.querySelector(`.settings-nav [data-jump="${id}"]`);
-  $("settingsTitle").textContent = b ? b.querySelector("span").firstChild.textContent.trim() : "";
-  document.querySelector(".dialog-content").scrollTop = 0;
-  ui.settingsSection = id; uiSave();
+  if (!$(id) || !$(id).closest(".dialog-content")) id = "setLinks";
+  document.querySelectorAll(".dialog-content > section[hidden]").forEach(x => { x.hidden = false; });   // (bis 2.13 je ein Bereich)
+  const section = $(id).closest(".dialog-content > section") || $(id);
+  document.querySelectorAll(".settings-nav [data-jump]").forEach(b => b.setAttribute("aria-current", b.dataset.jump === section.id));
+  requestAnimationFrame(() => $(id).scrollIntoView({ block: "start" }));
+  ui.settingsSection = section.id; uiSave();
 }
 // Status je Bereich: Grün = verbunden/gespeichert, Gelb = fehlt/wartet, Grau = aus – nur Anzeige
 function settingsNavDraw() {

@@ -96,6 +96,10 @@ function ensure(parent, key, defaults) {
   return o;
 }
 const $ = id => document.getElementById(id);
+// Text/Bild nur schreiben, wenn sich etwas ändert (spart Layout-Arbeit bei Zeitgebern)
+function setText(el, v) { v = String(v); if (el && el.textContent !== v) el.textContent = v; }
+function setImage(el, url) { if (el && el._image !== url) { el._image = url; el.style.backgroundImage = url ? K.cssUrl(url) : ""; } }
+function setHtml(el, html) { if (el && el._h !== html) { el._h = html; el.innerHTML = html; } }
 /* ---------- Icons ----------
    Knöpfe zeigen SVG statt Zeichen wie 🔓 ⧉ ⏻ – Zeichen hängen von den Schriften des Systems ab
    (Linux/Windows sahen unterschiedlich aus). icon("lock") → <svg>; im HTML: data-icon="lock" (wird beim Laden vorangestellt). */

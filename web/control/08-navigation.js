@@ -4,7 +4,9 @@
 
 /* ---------- Arbeitsbereiche: Vorlagen + eigene gespeicherte Anordnungen ---------- */
 const TEMPLATES = {
-  "Operator": { dock: { bottom: ["sceneList", "audio"], right: ["scene-tools", "match", "graphics", "tournament-live"] }, b2: 450, hU: 320, previewClose: false, tabs: "live", large: false },
+  // { area, open: false } = beim Start eingeklappt (ein Klick öffnet) – Live soll aufgeräumt beginnen
+  "Operator": { dock: { bottom: ["sceneList", { area: "audio", open: false }], right: ["scene-tools", { area: "match", open: false }, "graphics", { area: "tournament-live", open: false }] },
+    b2: 450, hU: 320, previewClose: false, tabs: "live", large: false },
   "Caster – große Knöpfe": { dock: { bottom: ["sceneList"], right: ["scene-tools", "match", "graphics"] }, b2: 470, hU: 330, previewClose: false, tabs: "live", large: true },
   "Laptop / neben OBS": { dock: { bottom: [], right: [] }, previewClose: true, tabs: "live", large: false },
   "Vorbereitung": { dock: { bottom: [], right: [] }, previewClose: false, tabs: "match", large: false }
@@ -16,7 +18,10 @@ function arrangementNow() {
 function arrangementApply(A) {
   areas.forEach(d => { if (placeFrom(d) !== "left") afterHome(d); });
   for (const place of ["bottom", "right"]) ((A.dock || {})[place] || []).forEach(entry => {
-    if (typeof entry === "string") { const d = areaAfter(entry); if (d) { DOCKS[place].insertBefore(d, DOCKS[place].querySelector(".dock-target")); d.open = true; } return; }
+    if (typeof entry === "string" || entry.area) {
+      const d = areaAfter(entry.area || entry); if (d) { DOCKS[place].insertBefore(d, DOCKS[place].querySelector(".dock-target")); d.open = entry.open !== false; }
+      return;
+    }
     const cards = (entry.tabs || []).map(areaAfter).filter(Boolean);
     if (cards.length < 2) { cards.forEach(d => DOCKS[place].insertBefore(d, DOCKS[place].querySelector(".dock-target"))); return; }
     const g = groupNew(DOCKS[place], null, entry.active); cards.forEach(d => g.appendChild(d)); tabsDraw(g);
@@ -74,7 +79,9 @@ if (!ui.workspaces) {
   uiSave();
 }
 document.body.classList.toggle("large", !!ui.large);
-if (!ui.konzept3) { ui.konzept3 = true; uiSave(); setTimeout(() => workspaceChoose("Operator"), 0); }
+if (!ui.konzept3) { ui.konzept3 = true; ui.compact214 = true; uiSave(); setTimeout(() => workspaceChoose("Operator"), 0); }
+// 2.14: Operator beginnt aufgeräumter (Ton, Match, Turnier live eingeklappt) – einmal anwenden, wer Operator nutzt
+else if (!ui.compact214) { ui.compact214 = true; uiSave(); if ((ui.workspace || "Operator") === "Operator") setTimeout(() => workspaceChoose("Operator"), 0); }
 // neue Karte „Zur Szene" (2.5): wer schon ein Layout mit rechtem Dock hat, bekommt sie dort oben dazu
 if (!ui.sceneTools) {
   ui.sceneTools = true; uiSave();

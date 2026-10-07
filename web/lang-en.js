@@ -1232,5 +1232,9 @@ window.CastLanguages.en = {
  "Über dem Spiel": "Over the game",
  "nur in Ingame": "only in Ingame",
  "blendet nach {} s aus": "fades out after {} s",
- "bleibt stehen, bis du es ausschaltest": "stays until you switch it off"
+ "bleibt stehen, bis du es ausschaltest": "stays until you switch it off",
+ "ÜBER DEM SPIEL": "OVER THE GAME",
+ "bleibt stehen": "stays",
+ "Wartet auf CS2-Daten – im Overlay steht dann „Warte auf CS2-Daten …“. {}": "Waiting for CS2 data – the overlay then shows “Waiting for CS2 data …”. {}",
+ "Wartet auf CS2-Daten – im Overlay steht dann „Warte auf CS2-Daten …“.": "Waiting for CS2 data – the overlay then shows “Waiting for CS2 data …”."
 };

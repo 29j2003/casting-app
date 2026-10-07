@@ -1223,5 +1223,14 @@ window.CastLanguages.en = {
  "Netzwerkpfade werden nicht unterstützt": "Network paths are not supported",
  "Netzwerkpfade werden nicht unterstützt.": "Network paths are not supported.",
  "Video konnte nicht umgewandelt werden: {}": "Video could not be converted: {}",
- "Ordner: {}": "Folder: {}"
+ "Ordner: {}": "Folder: {}",
+ "Studio-Modus": "Studio mode",
+ "Studio-Modus (wie in OBS): Szene erst links in der Vorschau wählen, dann mit „Übergang“ live schalten": "Studio mode (like in OBS): pick a scene in the preview on the left first, then take it live with “Transition”",
+ "VORSCHAU": "PREVIEW",
+ "Vorschau live schalten (mit dem gewählten Übergang)": "Take the preview live (with the chosen transition)",
+ "Vorschau – nächste Szene": "Preview – next scene",
+ "Über dem Spiel": "Over the game",
+ "nur in Ingame": "only in Ingame",
+ "blendet nach {} s aus": "fades out after {} s",
+ "bleibt stehen, bis du es ausschaltest": "stays until you switch it off"
 };

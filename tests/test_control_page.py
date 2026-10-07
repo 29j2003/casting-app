@@ -350,7 +350,13 @@ def test_scene_panel_shows_the_fields_of_each_scene(server, browser):
     shown = "[...document.querySelectorAll('#panelFields [data-panel]')].filter(e => !e.hidden).map(e => e.dataset.panel)"
     page.evaluate("tabs('live'); sceneSwitch('ingame')")
     page.wait_for_timeout(400)
-    assert page.evaluate(shown) == ["score", "series", "note"]
+    assert page.evaluate(shown) == ["over", "score", "series", "note"]
+    # „Über dem Spiel“: Scoreboard über dem Spielbild ein und wieder aus, ohne die Szene zu wechseln
+    page.evaluate("document.querySelector('#pOver [data-over=scoreboard]').click()")
+    assert page.evaluate("[Z.broadcast.scene, Z.broadcast.overGame.scene]") == ["ingame", "scoreboard"]
+    assert page.evaluate("document.querySelector('#pOver [data-over=scoreboard]').getAttribute('aria-pressed')") == "true"
+    page.evaluate("document.querySelector('#pOver [data-over=scoreboard]').click()")
+    assert page.evaluate("Z.broadcast.overGame") is None
     before = page.evaluate("Z.teams.a.score || 0")
     page.evaluate("$('pPlusA').click()")
     assert page.evaluate("Z.teams.a.score") == before + 1
@@ -636,4 +642,34 @@ def test_team_library_saves_and_loads_a_team_with_its_players(server, browser):
     page.evaluate("teamLibLoad('b')")
     page.wait_for_timeout(400)
     assert page.evaluate("[Z.teams.b.name, Z.teams.b.short, Z.teams.b.score, Z.players.b.length]") == ["Bravo Esports", "BRV", 1, 2]
+    assert errors == []
+
+
+def test_studio_mode_picks_first_and_takes_with_transition(server, browser):
+    """Studio mode (like OBS): a click only puts the scene into the preview, „Übergang“ takes it live,
+    and the previous program scene then waits in the preview. Off again = direct switching."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("Z.theme = 'regular'; everything(); send(); tabs('live'); sceneSwitch('intro'); $('studioButton').click()")
+    page.wait_for_timeout(1500)
+    assert not page.evaluate("$('studioSide').hidden")
+    page.evaluate("document.querySelector(\"#sceneButtons [data-scene-def='cast-duo']\").click()")
+    page.wait_for_timeout(800)
+    assert page.evaluate("[Z.broadcast.scene, studioNext]") == ["intro", "cast-duo"]
+    assert page.evaluate("$('studioFrame').contentDocument.body.dataset.currentscene") == "cast-duo"   # Vorschau zeigt sie
+    page.evaluate("$('studioTake').click()")
+    page.wait_for_timeout(800)
+    assert page.evaluate("[Z.broadcast.scene, studioNext]") == ["cast-duo", "intro"]
+    page.evaluate("$('studioButton').click(); document.querySelector(\"#sceneButtons [data-scene-def='pause']\").click()")
+    assert page.evaluate("[Z.broadcast.scene, $('studioSide').hidden]") == ["pause", True]
+    # DACH CS – Offiziell: dieselbe Bedienung mit den DACH-Szenen
+    page.evaluate("Z.theme = 'dachcs-official'; everything(); dachSwitch('dach-overview'); send(); $('studioButton').click()")
+    page.wait_for_timeout(800)
+    page.evaluate("document.querySelector(\"#sceneButtons [data-scene-def='dach-pause']\").click()")
+    assert page.evaluate("[Z.broadcast.scene, studioNext, $('studioName').textContent]") == ["dach-overview", "dach-pause", "Pausescreen"]
+    page.evaluate("$('studioTake').click()")
+    assert page.evaluate("[Z.broadcast.scene, Z.dach.scene, studioNext]") == ["dach-pause", "dach-pause", "dach-overview"]
+    page.evaluate("ui.studio = false; uiSave(); Z.theme = 'regular'; everything(); send()")
     assert errors == []

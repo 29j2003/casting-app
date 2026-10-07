@@ -182,6 +182,8 @@ function send() {
   if (typeof stepsDraw === "function") setTimeout(stepsDraw, 0);
   channel.send({ cast: "state", z: small });
   const f = $("frame").contentWindow; if (f) f.postMessage({ cast: "state", z: Z }, location.origin);
+  const g = $("studioFrame") && $("studioFrame")._live && $("studioFrame").contentWindow;   // Studio-Modus: Vorschau
+  if (g) g.postMessage({ cast: "state", z: Z }, location.origin);
 }
 // alle Bilder erneut schicken (neu geladene Quellen, neue Verbindung)
 function allImagesSend() { if (Object.keys(currentImages).length) channel.send({ cast: "images", images: currentImages }); }

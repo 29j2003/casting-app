@@ -242,6 +242,13 @@ details.facts textarea { min-height: 70px; width: 100%; }
 .source-box h3 select { width: auto; flex: 0 0 190px; }
 .preview { flex: 1 1 auto; min-width: 280px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
 .stage-slot { flex: 1 1 0; min-height: 0; display: grid; place-items: center; overflow: hidden; }
+/* Studio-Modus: Vorschau (nächste Szene) · Übergang · Programm nebeneinander */
+.stage-slot.studio { grid-template-columns: auto auto auto; gap: 12px; justify-content: center; align-content: center; }
+.studio-label { font-size: 12px; letter-spacing: .08em; margin-bottom: 4px; color: var(--muted); }
+.studio-label b { color: var(--text); }
+.studio-stage { outline: 2px solid var(--ok); outline-offset: 1px; }
+.studio-take { white-space: nowrap; }
+#sceneButtons button.studio-next { outline: 2px solid var(--ok); outline-offset: -2px; }
 .stage { position: relative; width: 320px; height: 180px; overflow: hidden; border-radius: 6px; background: #000; border: 1px solid var(--line); }
 @media (max-width: 900px) { .stage-slot { flex: none; display: block; } .stage { width: 100% !important; height: auto !important; aspect-ratio: 16 / 9; } }
 .stage iframe { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; pointer-events: none; }

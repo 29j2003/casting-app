@@ -48,7 +48,8 @@ function dachScenesDraw(box) {
     DACH_SCENES.filter(x => x[0] === g).forEach(([, k, n]) => {
       const b = document.createElement("button"); b.textContent = n; b.dataset.sceneDef = k;
       if (k === cur) b.classList.add("active");
-      b.onclick = () => dachSwitch(k);
+      if (studioOn() && k === studioNext) b.classList.add("studio-next");
+      b.onclick = () => studioOn() ? studioPick(k) : dachSwitch(k);           // Studio-Modus: erst in die Vorschau
       sceneColumn.appendChild(b);
     });
     box.appendChild(sceneColumn);

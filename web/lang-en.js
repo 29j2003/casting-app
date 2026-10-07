@@ -1214,5 +1214,14 @@ window.CastLanguages.en = {
  "Serie (Siege in Folge) Team A": "Streak team A",
  "Serie (Siege in Folge) Team B": "Streak team B",
  "Letzte 5 (S/N, neuestes zuerst) Team A": "Last 5 team A",
- "Letzte 5 (S/N, neuestes zuerst) Team B": "Last 5 team B"
+ "Letzte 5 (S/N, neuestes zuerst) Team B": "Last 5 team B",
+ "DACH-CS-Zugang fehlt – in der Casting-App unter ⚙ App-Einstellungen → Verbindungen & Zugänge eintragen": "DACH CS access is missing – enter it in the Casting App under ⚙ App settings → Connections & access",
+ "Kamera-Links und Geräte können Passwörter enthalten. Zum Weitergeben an andere besser ohne sie sichern.": "Camera links and devices can contain passwords. Better save without them when sharing with others.",
+ "Mit Kamera-Links (eigene Sicherung)": "With camera links (own backup)",
+ "Ohne Kamera-Links": "Without camera links",
+ "Sitzung sichern": "Save session",
+ "Netzwerkpfade werden nicht unterstützt": "Network paths are not supported",
+ "Netzwerkpfade werden nicht unterstützt.": "Network paths are not supported.",
+ "Video konnte nicht umgewandelt werden: {}": "Video could not be converted: {}",
+ "Ordner: {}": "Folder: {}"
 };

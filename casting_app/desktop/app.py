@@ -28,8 +28,8 @@ from ..paths import DATA_DIR, IS_WINDOWS, WEB_DIR, create_folders
 from .. import password_vault, secret_store
 from ..secret_store import SecretStore, system_keyring_or_none
 from ..settings import AppSettings
-from ..server.app_server import BASE_URL, CastingServer
-from ..version import APP_NAME, VERSION
+from ..server.app_server import BASE_URL, PORT, CastingServer
+from ..version import APP_NAME, VERSION, compare_versions
 from ..system_open import open_with_system
 from .main_window import MainWindow
 from .tray import TrayIcon
@@ -37,7 +37,11 @@ from .tray import TrayIcon
 # Keep the preview smooth in the background and covered, and allow autoplay (also for the volume control)
 CHROMIUM_FLAGS = ["--autoplay-policy=no-user-gesture-required", "--disable-renderer-backgrounding",
                   "--disable-background-timer-throttling", "--disable-backgrounding-occluded-windows"]
-INSTANCE_NAME = f"casting-app-{os.environ.get('USERNAME') or os.environ.get('USER') or 'user'}"
+# Linux/macOS: a socket file in the private data folder (a name in /tmp could be taken by another user first);
+# Windows: a pipe name per user, only this user may connect (UserAccessOption)
+_INSTANCE_FILE = str(DATA_DIR / "instance.sock")
+INSTANCE_NAME = (f"casting-app-{os.environ.get('USERNAME') or 'user'}" if IS_WINDOWS or len(_INSTANCE_FILE) > 100
+                 else _INSTANCE_FILE)
 AUTO_QUIT_AFTER_MS = 30_000
 AUTO_QUIT_CHECK_MS = 5_000
 RELOAD_FALLBACK_MS = 4_000
@@ -91,7 +95,6 @@ class DesktopApp(QObject):
         server_requests.update_found.connect(self._announce_update)
         server_requests.language_changed.connect(self._change_language)
         self._server_requests = server_requests
-        self._update_url = ""
         self.tray.message_clicked.connect(self._open_update_settings)
         qt_app.commitDataRequest.connect(self._system_logs_off)
         qt_app.aboutToQuit.connect(self._shut_down)
@@ -114,7 +117,6 @@ class DesktopApp(QObject):
 
     def _announce_update(self, release: dict) -> None:
         """A newer version exists: tell it in the tray (installing: Setup → ⚙ App-Einstellungen → Update)."""
-        self._update_url = release.get("url", "")
         self.tray.tell(texts.text("update.title", app=APP_NAME, version=release["version"]), texts.text("update.text"))
 
     def _open_update_settings(self) -> None:
@@ -289,9 +291,10 @@ def _secret_backend(data_dir, settings, log: AppLog):
 
     CASTING_APP_VAULT_PASSWORD opens the vault without a dialog (unattended starts, tests).
     """
+    password = password_vault.take_environment_password()
     if system_keyring_or_none() is not None or not password_vault.is_available():
         return "system"
-    vault = password_vault.vault_from_environment(data_dir, log.write)
+    vault = password_vault.vault_from_environment(data_dir, log.write, password)
     if vault:
         return vault
     from .vault_dialog import open_or_offer_vault
@@ -310,24 +313,34 @@ def prepare_qt(no_gpu: bool = False) -> None:
 def start_desktop_app(qt_app: QApplication, log: AppLog) -> DesktopApp | None:
     """Start server, window and tray. None if another instance runs (it shows its window instead)."""
     qt_app.setQuitOnLastWindowClosed(False)
-    running = instance.running_version()
-    if running and instance.compare_versions(running, VERSION) < 0:
-        log.warn(f"Version {running} läuft noch – wird durch {VERSION} ersetzt")
-        instance.ask_running_app_to_quit()
-        running = None
-    single = SingleInstance()
-    if single.hand_over_to_running_app():
-        return None
-    single.listen()
-
-    folders = create_folders()
-    server_requests = ServerRequests()
-    server = None
+    folders = create_folders(log=log.write)
     settings = AppSettings(folders.data)
     texts.set_language(settings.get("app_language"))
+    store = None
+    running = instance.running_version()
+    single = SingleInstance()
+    # an open window of the same or a newer version (local socket in the private data folder): just show it
+    if (not running or compare_versions(running, VERSION) >= 0) and single.hand_over_to_running_app():
+        return None
+    if running:
+        # the key (same keyring as the running app): to stop an older version, to check that a same/newer one is genuine
+        store = SecretStore(folders.data, log.write, keyring_backend=_secret_backend(folders.data, settings, log))
+        key = store.get(secret_store.ACCESS_KEY) or ""
+        if compare_versions(running, VERSION) < 0:
+            log.warn(f"Version {running} läuft noch – wird durch {VERSION} ersetzt")
+            instance.ask_running_app_to_quit(access_key=key)
+            running = None
+        elif not instance.genuine_server(key):
+            log.error(f"Auf Port {PORT} antwortet ein Programm, das sich als Version {running} ausgibt, aber den Zugangsschlüssel nicht kennt")
+            raise OSError(f"Port {PORT}: kein Echtheitsnachweis der Casting-App (fremdes Programm?)")
+    single.listen()
+
+    server_requests = ServerRequests()
+    server = None
     settings.listeners.append(lambda changed: "app_language" in changed
                               and server_requests.language_changed.emit(changed["app_language"]))
-    store = SecretStore(folders.data, log.write, keyring_backend=_secret_backend(folders.data, settings, log))
+    if store is None:
+        store = SecretStore(folders.data, log.write, keyring_backend=_secret_backend(folders.data, settings, log))
     if running is None:
         server = CastingServer(folders, store, log, on_quit_requested=server_requests.quit_requested.emit,
                                open_folder=lambda folder: server_requests.open_folder_requested.emit(str(folder)),

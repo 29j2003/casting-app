@@ -33,6 +33,7 @@ TEXTS = {
     "close.quit": ("Ganz beenden", "Quit completely"),
     "close.hide": ("Nur Fenster schließen", "Close window only"),
     "close.cancel": ("Abbrechen", "Cancel"),
+    "save_as": ("Speichern unter", "Save as"),
     # start
     "server_failed": ("Der Server konnte nicht starten:\n{error}\n\nLäuft ein anderes Programm auf Port 8787?",
                       "The server could not start:\n{error}\n\nIs another program using port 8787?"),

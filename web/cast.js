@@ -27,6 +27,7 @@
   let Z = K.resolve(rawState, K.Images.mem);         // Zustand mit echten Bildern (zum Zeichnen)
   const $$ = s => [...document.querySelectorAll(s)];
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const teamKey = v => v === "a" || v === "b" ? v : "";       // Team-Schlüssel aus dem Zustand: nur "a"/"b" (Klassen, Attribute)
   const pull = path => path.split(".").reduce((o, k) => (o == null ? o : o[k]), Z);
 
   /* ---------- Theme ---------- */
@@ -58,11 +59,11 @@
     const stack = '"Rajdhani", "Bahnschrift", "Barlow Ersatz", "Arial Narrow", sans-serif';
     r.setProperty("--bold", T.bold === false ? "0px" : ".022em");
     if (T.fontFile) {
-      const name = "ThemeSchrift-" + T.fontFile.replace(/[^a-z0-9]/gi, "");
+      const name = "ThemeSchrift-" + String(T.fontFile).replace(/[^a-z0-9]/gi, "");
       r.setProperty("--font", `"${name}", ${stack}`);
       if (!loadedFonts[name]) {
         loadedFonts[name] = true;
-        const f = new FontFace(name, `url("${T.fontFile}")`, { weight: "100 900" });
+        const f = new FontFace(name, K.cssUrl(T.fontFile), { weight: "100 900" });
         f.load().then(ff => { document.fonts.add(ff); $$(".ticker").forEach(t => { t._cacheKey = null; }); ticker(); fit(); }).catch(() => {});
       }
     } else if (T.font) {
@@ -236,13 +237,13 @@
       const fresh = x.map && vetoMaps[i] !== x.map && vetoMaps.length ? " fresh" : "";
       const other = x.team === "a" ? "b" : "a";
       const side = x.map && x.action === "pick" && x.side
-        ? `<div class="veto-side"><span><span data-team-name="${other}"></span> · ${x.side.toUpperCase()}</span></div>` : "";
-      const team = x.team
-        ? `<div class="team-logo ${x.team}"></div><span data-team-name="${x.team}"></span>`
+        ? `<div class="veto-side"><span><span data-team-name="${other}"></span> · ${esc(String(x.side).toUpperCase())}</span></div>` : "";
+      const team = teamKey(x.team)
+        ? `<div class="team-logo ${teamKey(x.team)}"></div><span data-team-name="${teamKey(x.team)}"></span>`
         : `<span>${esc(Z.texts.decider)}</span>`;
       const text = x.map ? esc(x.map) : (i === upnext ? esc(Z.texts.amTurn) : "?");
       const res = x.map && x.action !== "ban" ? resultBadge(x.result) : "";
-      return `<div class="box veto-card ${x.action}${x.map ? "" : " open"}${i === upnext ? " upnext" : ""}${fresh}">
+      return `<div class="box veto-card ${esc(x.action)}${x.map ? "" : " open"}${i === upnext ? " upnext" : ""}${fresh}">
         <div class="box-head">${esc(label[x.action] || x.action)}</div>
         <div class="veto-image">${image ? `<img${whole} src="${esc(image)}" alt="">` : `<div class="initial">${x.map ? esc(x.map[0]) : ""}</div>`}${res}${side}<div class="veto-map">${text}</div></div>
         <div class="veto-team">${team}</div></div>`;
@@ -283,14 +284,14 @@
         const score = noScore ? "" : `<div class="series-score"><span class="${winner === "b" ? "lost" : ""}">${esc(e.a ?? 0)}</span><span class="dp">:</span><span class="${winner === "a" ? "lost" : ""}">${esc(e.b ?? 0)}</span></div>`;
         const foot = winner ? `<div class="team-logo ${winner}"></div><span data-team-name="${winner}"></span>`
                    : `<span>${esc(status === "running" ? Z.texts.running : Z.texts.pending)}</span>`;
-        return `<div class="box series-card ${status}"><div class="box-head">${esc(Z.texts.map)} ${i + 1}</div>
+        return `<div class="box series-card ${esc(status)}"><div class="box-head">${esc(Z.texts.map)} ${i + 1}</div>
           <div class="veto-image">${image ? `<img${pool.imageMode === "whole" ? ' class="whole"' : ""} src="${esc(image)}" alt="">` : `<div class="initial">${esc(x.map[0])}</div>`}${score}<div class="veto-map">${esc(x.map)}</div></div>
           <div class="veto-team">${foot}</div></div>`;
       }).join("");
     }
     if (mini) {
       mini.innerHTML = maps.filter(x => (x.result || {}).status && x.result.status !== "pending").map(x =>
-        `<div class="series-chip ${x.result.status}"><b>${esc(x.map)}</b><span>${x.result.a === "" || x.result.a == null ? esc(Z.texts.running)
+        `<div class="series-chip ${esc(x.result.status)}"><b>${esc(x.map)}</b><span>${x.result.a === "" || x.result.a == null ? esc(Z.texts.running)
           : `${esc(x.result.a)}<span class="dp">:</span>${esc(x.result.b ?? 0)}`}</span></div>`).join("");
     }
   }
@@ -401,7 +402,7 @@
         <div class="bracket-tz head"><span>#</span><span></span><span>${W("tableTeam")}</span><span>${W("tableGames")}</span><span>${W("tableWins")}</span><span>${W("tableLosses")}</span><span>${g.withRounds ? "RD" : "+/−"}</span><span>${W("tablePoints")}</span></div>` +
         g.table.map((r, i) => { const t = teamFrom(r.id) || {};
           return `<div class="bracket-tz${i < (+T.nextPlaces || 0) ? " proceed" : ""}${T.focused === r.id ? " focused" : ""}"><span>${i + 1}</span><div class="bracket-logo">${t.logo ? `<img src="${esc(t.logo)}" alt="">` : esc((t.short || t.name || "?").slice(0, 3))}</div>` +
-            `<span class="bracket-tname">${esc(t.name || "")}</span><span>${r.played}</span><span>${r.wins}</span><span>${r.losses}</span><span>${r.tiebreak > 0 ? "+" : ""}${r.tiebreak}</span><b>${r.pts}</b></div>`; }).join("") +
+            `<span class="bracket-tname">${esc(t.name || "")}</span><span>${esc(r.played)}</span><span>${esc(r.wins)}</span><span>${esc(r.losses)}</span><span>${r.tiebreak > 0 ? "+" : ""}${esc(r.tiebreak)}</span><b>${esc(r.pts)}</b></div>`; }).join("") +
         (T.gamesShow ? `<div class="bracket-tspiele">${g.matches.filter(m => !m.done).slice(0, 4).map(m => card(m, false)).join("")}</div>` : "") + `</div>`).join("")}</div>`;
     }
     else if (B.format === "gsl") h = `<div class="bracket-groups">${B.groups.map(g => `<div class="bracket-group"><div class="bracket-title">${esc(g.name)}</div>${g.matches.map(m => `<div class="bracket-gm"><span>${esc(m.title)}</span>${card(m, false)}</div>`).join("")}</div>`).join("")}</div>`;
@@ -511,7 +512,7 @@
       const { cur, next } = currentMap();
       if (!cur) return `<div class="gfx-mapinfo-bar"><b>${esc(Z.texts.mapVeto)}</b><span class="gfx-mapinfo-map">–</span></div>`;
       const who = cur.action === "decider" || !cur.team ? `<b>${esc(Z.texts.decider)}</b>`
-        : `<b>${esc(Z.texts.pick)}</b><div class="team-logo ${cur.team}"></div>`;
+        : `<b>${esc(Z.texts.pick)}</b><div class="team-logo ${teamKey(cur.team)}"></div>`;
       return `<div class="gfx-mapinfo-bar">${who}<span class="gfx-mapinfo-map">${esc(cur.map)}</span>${next ? `<span class="gfx-mapinfo-next">${esc(Z.texts.next)}: ${esc(next.map)}</span>` : ""}</div>`;
     }
     if (e.type === "scoreboard") {
@@ -794,14 +795,17 @@
         const target = linkPrepare(Q, k.dataset.source);
         f.onload = () => { f._vol = null; setTimeout(audioApply, 800); };
         if (!/^https?:\/\//i.test(target)) return;
-        f.allow = "autoplay; camera; microphone; fullscreen; display-capture";
+        try { if (new URL(target).origin === location.origin) return; } catch (e) { return; }   // nie eigene Seiten (Sandbox wäre wirkungslos)
+        // nur abspielen: Kamera, Mikrofon und Bildschirm braucht ein Link zum Ansehen (VDO.Ninja „view“) nicht
+        f.allow = "autoplay; fullscreen";
         // darf Skripte ausführen, aber die Overlay-Seite nicht umleiten oder Pop-ups öffnen
         f.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms allow-presentation");
         f.referrerPolicy = "no-referrer";
         f.src = target;
         box.appendChild(f);
       } else if (Q.type === "image") {
-        const i = document.createElement("img"); if (/^(data:image\/|https?:|medien\/)/i.test(Q.image)) i.src = Q.image; box.appendChild(i);
+        // in OBS kommen große Bilder als /api/image/<id> (siehe K.resolve)
+        const i = document.createElement("img"); if (/^(data:image\/|https?:|\/api\/image\/[a-z0-9]+$|media\/|medien\/)/i.test(Q.image)) i.src = Q.image; box.appendChild(i);
       } else if (Q.type === "device") deviceStart(box, Q);
     });
   }
@@ -1086,16 +1090,17 @@
       b.dataset.corner = middle < width * 0.42 ? "left" : middle > width * 0.58 ? "right" : "middle";
     });
   }
+  // jedes Teil für sich: ein Fehler in einem Teil (z. B. unerwartete Daten) hält weder die anderen noch den Szenenwechsel auf
+  const DRAW_PARTS = [diagnose, theme, graphics, veto, series, players, teamIntro, texts, teams, fit, timer, ticker, background, clips, sources, sponsors,
+    () => { if (!(Z.speaker || {}).on) $$(".cam.speaks").forEach(k => k.classList.remove("speaks")); },
+    () => { $$(".music").forEach(m => m.classList.toggle("off", (Z.music || {}).displayed === false)); if (musicData && $$(".music").some(b => !b._music)) musicShow(musicData); },
+    liveDraw, tournamentDraw, audioApply,
+    () => { document.body.classList.toggle("dach-frame-show", !!(Z.dach || {}).frameShow);
+            document.body.classList.toggle("clean", !!(Z.broadcast || {}).clean && currentSceneName() === "ingame"); }];
   function draw() {
-    diagnose(); theme(); graphics(); veto(); series(); players(); teamIntro(); texts(); teams(); fit(); timer(); ticker(); background(); clips(); sources(); sponsors();
-    if (!(Z.speaker || {}).on) $$(".cam.speaks").forEach(k => k.classList.remove("speaks"));
-    $$(".music").forEach(m => m.classList.toggle("off", Z.music.displayed === false));
-    if (musicData && $$(".music").some(b => !b._music)) musicShow(musicData);
-    liveDraw();
-    tournamentDraw();
-    audioApply();
-    document.body.classList.toggle("dach-frame-show", !!(Z.dach || {}).frameShow);
-    document.body.classList.toggle("clean", !!(Z.broadcast || {}).clean && currentSceneName() === "ingame");
+    for (const part of DRAW_PARTS) {
+      try { part(); } catch (err) { message(`Overlay: ${part.name || "Teil"} – ${err && err.message || err}`); }
+    }
     requestAnimationFrame(cornersSet);
     dispatchEvent(new CustomEvent("cast-drawn", { detail: Z }));
   }

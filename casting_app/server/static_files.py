@@ -11,7 +11,7 @@ CONTENT_TYPES = {
     ".ttf": "font/ttf", ".otf": "font/otf", ".woff": "font/woff", ".woff2": "font/woff2",
     ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif",
     ".svg": "image/svg+xml", ".mp4": "video/mp4", ".m4v": "video/mp4", ".webm": "video/webm",
-    ".mov": "video/quicktime", ".md": "text/plain; charset=utf-8",
+    ".mov": "video/quicktime",
 }
 CHUNK_SIZE = 256 * 1024
 RANGE_HEADER = re.compile(r"^bytes=(\d*)-(\d*)$")
@@ -51,7 +51,7 @@ def send_file(handler, path: Path, content_type: str, version: str, extra_header
             start = int(first or 0)
             if last != "":
                 end = min(int(last), size - 1)
-        if start >= size:
+        if start >= size or end < start:             # e.g. "bytes=500-100": not satisfiable
             return handler.send_plain(416, {"Content-Range": f"bytes */{size}"})
         status = 206
         headers["Content-Range"] = f"bytes {start}-{end}/{size}"

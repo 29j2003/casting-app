@@ -38,6 +38,7 @@ RELEASES_URL = "https://api.github.com/repos/29j2003/casting-app/releases/latest
 DOWNLOAD_PREFIX = "https://github.com/29j2003/casting-app/releases/download/"
 TIMEOUT_SECONDS = 10
 CHUNK = 1 << 20
+RESTART_FLAGS = ("--no-gpu", "--ohne-gpu", "--debug")     # passed on to the restarted app; anything else is dropped
 
 
 def install_kind() -> str:
@@ -86,7 +87,7 @@ def newer_release(fetch: Callable[[str], dict] = _get_json) -> dict | None:
         release = fetch(RELEASES_URL)
     except (OSError, ValueError):
         return None
-    if not isinstance(release, dict):
+    if not isinstance(release, dict) or not isinstance(release.get("assets") or [], list):
         return None
     version = str(release.get("tag_name") or "").lstrip("v")
     if not version or release.get("draft") or release.get("prerelease") or compare_versions(version, VERSION) <= 0:
@@ -95,6 +96,8 @@ def newer_release(fetch: Callable[[str], dict] = _get_json) -> dict | None:
     suffix = asset_suffix(install_kind())
     asset = None
     for item in release.get("assets") or []:
+        if not isinstance(item, dict):
+            continue
         name, url, digest = str(item.get("name") or ""), str(item.get("browser_download_url") or ""), str(item.get("digest") or "")
         if suffix and name.endswith(suffix) and url.startswith(DOWNLOAD_PREFIX) and digest.startswith("sha256:"):
             asset = {"name": name, "url": url, "size": int(item.get("size") or 0), "sha256": digest[7:].lower()}
@@ -154,13 +157,18 @@ class Updater:
 
     def check_in_background(self) -> None:
         """Ask GitHub (in a thread); the result ends up in `status`."""
-        if self.status["state"] in ("checking", "downloading", "installing"):
-            return
-        self._set(state="checking", error="")
+        with self._lock:                            # test and set together: two clicks start one check
+            if self.status["state"] in ("checking", "downloading", "installing"):
+                return
+            self.status.update(state="checking", error="")
         threading.Thread(target=self._check, name="update-check", daemon=True).start()
 
     def _check(self) -> None:
-        release = newer_release()
+        try:
+            release = newer_release()
+        except Exception as error:                  # unexpected answer: never leave the status on "checking"
+            self._set(state="error", error=str(error)[:200])
+            return
         self.release = release
         if release:
             self._set(state="available", version=release["version"])
@@ -175,9 +183,10 @@ class Updater:
     def install_in_background(self) -> bool:
         """Download, verify and install the found release; False if there is nothing to install."""
         release = self.release or {}
-        if not release.get("asset") or self._quit_app is None or self.status["state"] in ("downloading", "installing"):
-            return False
-        self._set(state="downloading", progress=0, error="")
+        with self._lock:
+            if not release.get("asset") or self._quit_app is None or self.status["state"] in ("downloading", "installing"):
+                return False
+            self.status.update(state="downloading", progress=0, error="")
         threading.Thread(target=self._install, args=(release,), name="update-install", daemon=True).start()
         return True
 
@@ -217,6 +226,11 @@ class Updater:
         return target
 
 
+def restart_arguments() -> list[str]:
+    """Start options of this run that the new version should get again (only known, harmless flags)."""
+    return [argument for argument in sys.argv[1:] if argument in RESTART_FLAGS]
+
+
 def start_replacement(kind: str, file: Path, pid: int | None = None) -> None:
     """Start the helper that waits for this app (or process `pid`) to quit, puts `file` in place and starts the new version.
     Everything that can fail early (copying, unpacking) happens here, so errors reach the caller while the app still runs;
@@ -232,7 +246,7 @@ def start_replacement(kind: str, file: Path, pid: int | None = None) -> None:
             "@echo off\r\nsetlocal EnableDelayedExpansion\r\n"
             f":wait\r\ntasklist /NH /FI \"PID eq {pid}\" | find \"{pid}\" >nul && (ping -n 2 127.0.0.1 >nul & goto wait)\r\n"
             "\"!CA_FILE!\" /S /D=!CA_DIR!\r\n"
-            "start \"\" \"!CA_EXE!\"\r\n"
+            f"start \"\" \"!CA_EXE!\" {' '.join(restart_arguments())}\r\n"
             "del \"%~f0\"\r\n", encoding="ascii")
         env = dict(os.environ, CA_FILE=str(file), CA_EXE=str(executable), CA_DIR=str(executable.parent))
         flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
@@ -247,7 +261,7 @@ def start_replacement(kind: str, file: Path, pid: int | None = None) -> None:
         fresh.chmod(0o755)
         file.unlink(missing_ok=True)
         q_fresh, q_current = shlex.quote(str(fresh)), shlex.quote(str(current))
-        command = wait + f"mv -f {q_fresh} {q_current} || rm -f {q_fresh}; exec {q_current}"
+        command = wait + f"mv -f {q_fresh} {q_current} || rm -f {q_fresh}; exec {q_current} {' '.join(restart_arguments())}"
     elif kind == "mac":
         bundle = app_bundle(Path(sys.executable).resolve())
         if bundle is None:
@@ -269,7 +283,7 @@ def start_replacement(kind: str, file: Path, pid: int | None = None) -> None:
             file.unlink(missing_ok=True)
         q_bundle, q_fresh, q_old = (shlex.quote(str(p)) for p in (bundle, fresh, bundle.with_name(bundle.name + ".old")))
         command = wait + (f"rm -rf {q_old}; mv {q_bundle} {q_old} && {{ mv {q_fresh} {q_bundle} || mv {q_old} {q_bundle}; }}; "
-                          f"rm -rf {q_old} {q_fresh}; open {q_bundle}")
+                          f"rm -rf {q_old} {q_fresh}; open {q_bundle}" + (" --args " + " ".join(restart_arguments()) if restart_arguments() else ""))
     else:
         raise ValueError("Für diese Installation gibt es kein automatisches Update")
     env = system_environment() if sys.platform.startswith("linux") else None   # the new AppImage brings its own libraries

@@ -108,7 +108,7 @@ $("teamLibDelete").onclick = async () => {
 teamLibDraw();
 
 /* ---------- Spieltag: Spiele des Tages nacheinander laden ---------- */
-function matchday() { Z.matchday = Object.assign({ list: [], current: "" }, Z.matchday || {}); Z.matchday.list = Z.matchday.list || []; return Z.matchday; }
+function matchday() { const D = ensure(Z, "matchday", { list: [], current: "" }); if (!Array.isArray(D.list)) D.list = []; return D; }
 const mdStatus = s => { $("mdStatus").textContent = s; };
 const mdId = () => "md" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 // offene Turnierspiele (beide Teams stehen fest, noch nicht fertig)
@@ -299,7 +299,7 @@ $("gsiNetworkOn").onchange = async () => {
   await fetch("/api/gsi-settings", { method: "POST", body: JSON.stringify({ network: on }) });
   setTimeout(gsiInfoFetch, 400);
 };
-$("gsiCfgLoad").onclick = () => { const a = document.createElement("a"); a.href = "/api/gsi-cfg"; a.download = "gamestate_integration_castoverlay.cfg"; document.body.appendChild(a); a.click(); a.remove(); };
+$("gsiCfgLoad").onclick = () => { const a = document.createElement("a"); a.href = K.withAccess("/api/gsi-cfg"); a.download = "gamestate_integration_castoverlay.cfg"; document.body.appendChild(a); a.click(); a.remove(); };
 $("gsiSetup").onclick = async () => {
   try {
     const d = await (await fetch("/api/gsi-setup", { method: "POST" })).json();

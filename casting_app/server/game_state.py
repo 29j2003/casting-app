@@ -49,6 +49,11 @@ def lan_addresses() -> list[str]:
     return sorted(addresses)
 
 
+def _text(value, limit: int) -> str:
+    """A short text from CS2 data (whatever type arrives – the data can come from any PC in the network)."""
+    return value[:limit] if isinstance(value, str) else ""
+
+
 def _number(value) -> int:
     """int of a GSI value; anything missing or invalid counts as 0."""
     try:
@@ -161,12 +166,12 @@ class GameStateReceiver:
             rounds_played = round_number + (0 if round_info.get("phase") in (None, "", "freezetime") else 1)
             players = [self._player_line(player_id, player, rounds_played) for player_id, player in all_players.items()]
             self.live = {
-                "time": int(time.time() * 1000), "source": source, "map": game_map.get("name") or "",
-                "phase": game_map.get("phase") or "", "round": round_number, "roundPhase": round_info.get("phase") or "",
-                "bomb": round_info.get("bomb") or "",
-                "ct": {"name": ct.get("name") or "", "score": _number(ct.get("score"))},
-                "t": {"name": t.get("name") or "", "score": _number(t.get("score"))},
-                "sideA": self.settings["sideA"], "observed": (state.get("player") or {}).get("steamid") or "",
+                "time": int(time.time() * 1000), "source": source, "map": _text(game_map.get("name"), 40),
+                "phase": _text(game_map.get("phase"), 20), "round": round_number, "roundPhase": _text(round_info.get("phase"), 20),
+                "bomb": _text(round_info.get("bomb"), 20),
+                "ct": {"name": _text(ct.get("name"), 40), "score": _number(ct.get("score"))},
+                "t": {"name": _text(t.get("name"), 40), "score": _number(t.get("score"))},
+                "sideA": self.settings["sideA"], "observed": _text((state.get("player") or {}).get("steamid"), 20),
                 "players": players,
             }
             if not self.source:
@@ -223,7 +228,7 @@ class GameStateReceiver:
         damage = stats.get("dmg", 0) + stats.get("round_dmg", 0)
         headshots = stats.get("hs", 0) + stats.get("round_hs", 0)
         kills = _number(match_stats.get("kills"))
-        return {"id": player_id, "name": str(player.get("name") or "")[:32], "side": player.get("team"),
+        return {"id": player_id, "name": str(player.get("name") or "")[:32], "side": _text(player.get("team"), 4),
                 "k": kills, "d": _number(match_stats.get("deaths")), "a": _number(match_stats.get("assists")),
                 "mvps": _number(match_stats.get("mvps")), "adr": round(damage / max(1, rounds_played)),
                 "hs": round(100 * headshots / kills) if kills else 0, "hp": _number(state.get("health")),

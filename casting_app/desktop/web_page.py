@@ -7,6 +7,7 @@
 """
 
 import json
+import time
 from pathlib import Path
 
 from PySide6.QtCore import QFile, QIODevice, QStandardPaths, QUrl
@@ -17,6 +18,7 @@ from PySide6.QtWebEngineCore import (QWebEngineDownloadRequest, QWebEnginePage, 
 from PySide6.QtWidgets import QFileDialog
 
 from ..server.app_server import ALLOWED_ORIGINS
+from .. import texts
 from ..system_open import open_with_system
 from . import media
 from .bridge import PageBridge
@@ -47,10 +49,20 @@ def create_profile(storage_dir: Path, parent=None) -> QWebEngineProfile:
     return profile
 
 
+def own_download(url: QUrl) -> bool:
+    """True for files from the app itself: its server (cfg file) or a blob made by one of its pages (exports)."""
+    text = url.toString()
+    return any(text.startswith(origin + "/") or text.startswith("blob:" + origin + "/") for origin in ALLOWED_ORIGINS)
+
+
 def _ask_where_to_save(download: QWebEngineDownloadRequest) -> None:
-    """Downloads (exports, cfg file) go where the user chooses in a save dialog."""
+    """Downloads (exports, cfg file) go where the user chooses in a save dialog – only the app's own files:
+    an embedded foreign page (DACH, clips, camera link) cannot push files onto the PC."""
+    if not own_download(download.url()):
+        download.cancel()
+        return
     folder = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation) or str(Path.home())
-    target, _ = QFileDialog.getSaveFileName(None, "Speichern unter", str(Path(folder) / download.suggestedFileName()))
+    target, _ = QFileDialog.getSaveFileName(None, texts.text("save_as"), str(Path(folder) / download.suggestedFileName()))
     if not target:
         download.cancel()
         return
@@ -118,23 +130,33 @@ class AppWebPage(QWebEnginePage):
             permission.deny()
 
     def acceptNavigationRequest(self, url: QUrl, navigation_type, is_main_frame: bool) -> bool:
-        """The window shows only the app's own pages; internet links go to the default browser."""
-        if not is_main_frame or is_own_page(url) or url.scheme() in ("about", "data", "blob"):
+        """The window shows only the app's own pages; internet links go to the default browser.
+
+        about:/data:/blob: in the main frame only while one of our pages is shown – an embedded foreign page
+        must not replace the window with a page of its own."""
+        if not is_main_frame or is_own_page(url):
             return True
+        if url.scheme() in ("about", "data", "blob"):
+            return url.scheme() == "about" or is_own_page(self.url())
         if url.scheme() in ("http", "https"):
             open_link(url)
         return False
 
     def createWindow(self, window_type):
-        """Links opened in a new window: hand them to the default browser."""
+        """Links opened in a new window: hand them to the default browser (at most one every 2 s – an embedded
+        page cannot flood the PC with browser windows)."""
         return _ExternalLinkPage(self.profile(), self)
 
 
 class _ExternalLinkPage(QWebEnginePage):
     """Throw-away page that passes its first navigation to the default browser."""
 
+    last_opened = 0.0
+
     def acceptNavigationRequest(self, url: QUrl, navigation_type, is_main_frame: bool) -> bool:
-        if url.scheme() in ("http", "https"):
+        now = time.monotonic()
+        if url.scheme() in ("http", "https") and now - _ExternalLinkPage.last_opened > 2:
+            _ExternalLinkPage.last_opened = now
             open_link(url)
         self.deleteLater()
         return False

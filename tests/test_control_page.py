@@ -482,7 +482,7 @@ def test_team_intro_slides_switch_and_take_values_from_the_tournament(server, br
     control.evaluate("""(() => { Z.teams.a.name = 'Alpha'; Z.teams.b.name = 'Bravo'; Z.teamIntro = K.clone(K.DEFAULT.teamIntro);
       tour().teams = [{ id: 't1', name: 'Alpha', players: [], stats: { winrate: '64', matches: '12', series: '3', last: ['1', '0'] } },
                       { id: 't2', name: 'Bravo', players: [], stats: { winrate: '40', matches: '10', series: '0', last: [] } }];
-      $('tiFromTour').click(); send(); })()""")
+      tiTake('a'); tiTake('b'); send(); })()""")
     assert control.evaluate("[Z.teamIntro.stats.a.seed, Z.teamIntro.stats.a.last, Z.teamIntro.stats.b.seed]") == ["1", "SN", "2"]
     overlay.goto(f"{BASE_URL}/teams.html")
     overlay.wait_for_timeout(1000)
@@ -495,6 +495,13 @@ def test_team_intro_slides_switch_and_take_values_from_the_tournament(server, br
     control.evaluate("Z.teamIntro.slides.b = false; tiAuto(8); Z.teamIntro.started = Date.now() - 16100; send()")   # step 2 of [a, compare] → a again (b is off)
     overlay.wait_for_timeout(900)
     assert overlay.evaluate(slide) == "a"
+    # 2.16: own display name only in this scene, rows of the comparison on/off, „direct comparison" only with values
+    control.evaluate("tiAuto(0); Z.teamIntro.names.a = 'NAVI'; Z.teamIntro.rows.matches = false; Z.teamIntro.h2h = { a: '2', b: '1' }; send(); tiShow('compare')")
+    overlay.wait_for_timeout(900)
+    assert overlay.inner_text("[data-slide=compare] .ti-name") .strip() == "NAVI"
+    labels = overlay.evaluate("[...document.querySelectorAll('[data-ti-tape] .lab')].map(e => e.textContent)")
+    assert "SPIELE" not in labels and labels[-1] == "DIREKTER VERGLEICH", labels
+    assert control.evaluate("document.querySelector('#tiTabA').textContent") == "NAVI"
     assert errors == []
 
 

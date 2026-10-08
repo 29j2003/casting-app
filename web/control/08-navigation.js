@@ -4,6 +4,8 @@
 
 /* ---------- Arbeitsbereiche: Vorlagen + eigene gespeicherte Anordnungen ---------- */
 const TEMPLATES = {
+  // Einsteiger (2.16, Start für neue Nutzer): nur Vorschau, Szenen und das Panel der Szene – alles andere wartet eingeklappt
+  "Einsteiger": { dock: { bottom: ["sceneList"], right: ["scene-tools", { area: "graphics", open: false }] }, b2: 430, hU: 300, previewClose: false, tabs: "live", large: false },
   // { area, open: false } = beim Start eingeklappt (ein Klick öffnet) – Live soll aufgeräumt beginnen
   "Operator": { dock: { bottom: ["sceneList", { area: "audio", open: false }], right: ["scene-tools", { area: "match", open: false }, "graphics", { area: "tournament-live", open: false }] },
     b2: 450, hU: 320, previewClose: false, tabs: "live", large: false },
@@ -63,15 +65,17 @@ function layoutEdit(on) {
 $("editDone").onclick = () => layoutEdit(false);
 
 // Umzug: das bisherige Layout wird einmal als eigener Arbeitsbereich übernommen
+// ganz neu (nichts gespeichert): mit „Einsteiger“ beginnen – wer schon ein Layout hat, behält es
+const firstStart = !ui.workspaces && !ui.konzept3 && !["bottom", "right"].some(o => ((ui.dock || {})[o] || []).length);
 if (!ui.workspaces) {
   ui.workspaces = [];
   const hadBefore = ["bottom", "right"].some(o => ((ui.dock || {})[o] || []).length);
   if (hadBefore) { ui.workspaces.push({ name: "Mein bisheriges Layout", data: arrangementNow() }); ui.workspace = "Mein bisheriges Layout"; }
-  else ui.workspace = "Operator";
+  else ui.workspace = firstStart ? "Einsteiger" : "Operator";
   uiSave();
 }
 document.body.classList.toggle("large", !!ui.large);
-if (!ui.konzept3) { ui.konzept3 = true; ui.compact214 = true; uiSave(); setTimeout(() => workspaceChoose("Operator"), 0); }
+if (!ui.konzept3) { ui.konzept3 = true; ui.compact214 = true; uiSave(); setTimeout(() => workspaceChoose(firstStart ? "Einsteiger" : "Operator"), 0); }
 // 2.14: Operator beginnt aufgeräumter (Ton, Match, Turnier live eingeklappt) – einmal anwenden, wer Operator nutzt
 else if (!ui.compact214) { ui.compact214 = true; uiSave(); if ((ui.workspace || "Operator") === "Operator") setTimeout(() => workspaceChoose("Operator"), 0); }
 // neue Karte „Zur Szene" (2.5): wer schon ein Layout mit rechtem Dock hat, bekommt sie dort oben dazu

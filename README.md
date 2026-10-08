@@ -356,7 +356,9 @@ führt zurück:
 * **Verbindungen & Zugänge** – OBS (Port, Passwort), **FACEIT-Schlüssel**, **DACH CS** (Nutzer-ID, Key), Musik (Spotify über Tuna).
   Schlüssel liegen im Schlüsselbund des Systems und werden nach dem Speichern nie wieder angezeigt – nur ersetzen oder löschen.
   (Unter Match → Import und Setup → Aussehen führt ein Verweis hierher.)
-* **Sprache** · **Oberfläche** (Dunkel, Hell, Wie das System; Größe automatisch oder von Hand; Lage von Reiter-Spalte, Seiten-Dock
+* **Sprache** · **Oberfläche** (Dunkel = Stil „Arena“: Blau-Violett, die laufende Szene glüht rot-orange; Hell = warmes Weiß
+  mit Orange; beide färben die Szenengruppen – Vor dem Spiel blau, Im Spiel grün, Stats orange, Pause lila, Nach dem Spiel rosa;
+  Wie das System; Größe automatisch oder von Hand; Lage von Reiter-Spalte, Seiten-Dock
   und Vorschau-Dock; „Anordnung zurücksetzen“, „‚Erste Schritte‘ wieder zeigen“) · **Update**
 * **Daten & Sicherung** – Sichern/Laden (.json), Videos-, Schriften- und Datenordner · **Über die App**
 

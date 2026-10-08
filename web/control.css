@@ -601,6 +601,7 @@ summary .handle .icon, summary .pin .icon { width: 14px; height: 14px; }
 .toggleSwitch input[type=checkbox] { appearance: none; -webkit-appearance: none; width: 2.4em; height: 1.35em; margin: 0; flex: none; position: relative; cursor: pointer;
   border-radius: 1em; background: #33353D; border: 1px solid #474A55; transition: background .12s, border-color .12s; }
 :root[data-design=light] .toggleSwitch input[type=checkbox] { background: #D5D7DE; border-color: #BFC2CB; }
+:root[data-design=light] .toggleSwitch input[type=checkbox]:checked { background: var(--ok); border-color: var(--ok); }
 .toggleSwitch input[type=checkbox]::after { content: ""; position: absolute; top: .12em; left: .14em; width: .95em; height: .95em; border-radius: 50%; background: #C9CBD3; transition: left .12s; }
 .toggleSwitch input[type=checkbox]:checked { background: var(--ok); border-color: var(--ok); }
 .toggleSwitch input[type=checkbox]:checked::after { left: 1.24em; background: #fff; }
@@ -784,3 +785,60 @@ body.pages-mode .group > .stepper { grid-column: 2; }
 .ti-cmp-row > b:first-child input { margin-left: auto; display: block; }
 .ti-cmp-row .toggleSwitch { justify-self: center; }
 @media (max-width: 900px) { .ti-values { grid-template-columns: repeat(2, 1fr); } }
+
+/* ===== Design 2.17: „Arena“ (dunkel) und „Hell“ (hell) =====
+   Dunkel: tiefes Blau-Violett, Akzent als Verlauf Violett → Pink, die laufende Szene glüht rot-orange.
+   Hell: warmes Weiß, Akzent Orange, weiche Karten. Beide: Szenengruppen mit eigener Farbe (--grp). */
+:root { --bg: #090A12; --f1: #12131F; --f2: #1A1C2C; --head: #141526; --line: #262946; --text: #F2F3FF; --muted: #9EA3C7;
+        --accent: #8B5CFF; --accent-soft: rgba(139, 92, 255, .18); --ok: #2FE39A; --warn: #FFB547; --red: #FF3D6E;
+        --hot: linear-gradient(135deg, #8B5CFF, #FF3D9A); --onair: linear-gradient(135deg, #FF3D6E, #FF7A3D); --onair-solid: #FF3D6E;
+        --card: linear-gradient(180deg, rgba(26, 28, 44, .94), rgba(18, 19, 31, .94)); --card-line: rgba(139, 92, 255, .22);
+        --btn: linear-gradient(180deg, #1F2135, #191A2B); --title-font: Rajdhani, Barlow, sans-serif; }
+:root[data-design=light] { --bg: #F3F1EC; --f1: #FFFFFF; --f2: #F6F4EF; --head: #FFFFFF; --line: #E4E0D6; --text: #1E1B16; --muted: #7A7468;
+        --accent: #FF5B2E; --accent-soft: rgba(255, 91, 46, .12); --ok: #1FA971; --warn: #D48A00; --red: #E5383B;
+        --hot: #FF5B2E; --onair: #FF5B2E; --onair-solid: #FF5B2E; --card: #FFFFFF; --card-line: transparent; --btn: #F6F4EF; --title-font: Barlow, sans-serif; }
+.scene-column:nth-child(1), .scene-column:nth-child(1) * { --grp: #4EA1FF; } .scene-column:nth-child(2), .scene-column:nth-child(2) * { --grp: #3DDC97; }
+.scene-column:nth-child(3), .scene-column:nth-child(3) * { --grp: #FFB547; } .scene-column:nth-child(4), .scene-column:nth-child(4) * { --grp: #B98CFF; }
+.scene-column:nth-child(5), .scene-column:nth-child(5) * { --grp: #FF7AA8; }
+:root[data-design=light] .scene-column:nth-child(3), :root[data-design=light] .scene-column:nth-child(3) * { --grp: #E89B1A; }
+
+/* Fläche und Karten */
+body { background: radial-gradient(1200px 600px at 75% -10%, rgba(139, 92, 255, .20), transparent 60%),
+                   radial-gradient(900px 500px at -10% 110%, rgba(255, 61, 110, .10), transparent 60%), var(--bg); }
+:root[data-design=light] body { background: var(--bg); }
+.topbar, .rail { background: rgba(10, 11, 20, .82); }
+:root[data-design=light] .topbar, :root[data-design=light] .rail { background: #FFFFFF; }
+.page details { border-radius: 16px; border: 1px solid var(--card-line); background: var(--card); box-shadow: 0 10px 30px rgba(0, 0, 0, .30); }
+:root[data-design=light] .page details { box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 24px rgba(60, 40, 10, .06); }
+.page details > summary { background: transparent; border-bottom: 1px solid var(--card-line); font-family: var(--title-font); font-size: 15px; letter-spacing: .12em; height: 44px; min-height: 44px; }
+:root[data-design=light] .page details > summary { border-bottom-color: var(--line); text-transform: none; letter-spacing: 0; }
+.page details:not([open]) > summary { border-bottom-color: transparent; }
+
+/* Knöpfe */
+.button { border-radius: 10px; }
+.button.main { background: var(--hot); border-color: transparent; box-shadow: 0 6px 18px rgba(255, 61, 154, .22); }
+:root[data-design=light] .button.main { box-shadow: 0 6px 16px rgba(255, 91, 46, .25); }
+:root[data-design=light] .button:not(.main) { background: #F1EEE7; border-color: transparent; }
+.rail button[aria-selected="true"] { background: linear-gradient(135deg, rgba(139, 92, 255, .35), rgba(255, 61, 154, .22)); }
+:root[data-design=light] .rail button[aria-selected="true"] { background: var(--accent-soft); }
+
+/* Szenen: Streifen in der Gruppenfarbe, die laufende Szene „on air“ */
+.scenes-buttons button { border-radius: 10px; border: 1px solid rgba(255, 255, 255, .06) !important; background: var(--btn) !important; box-shadow: inset 3px 0 0 var(--grp, var(--accent)); }
+.scenes-buttons.columns button { padding-left: 14px; }
+:root[data-design=light] .scenes-buttons button { border-color: var(--line) !important; box-shadow: inset 0 -3px 0 var(--grp, var(--accent)); color: var(--text); }
+.scenes-buttons button.active { background: var(--onair) !important; border-color: transparent !important; color: #fff !important;
+  box-shadow: 0 0 0 1px var(--onair-solid), 0 8px 24px rgba(255, 61, 110, .40) !important; }
+:root[data-design=light] .scenes-buttons button.active { box-shadow: 0 8px 20px rgba(255, 91, 46, .30) !important; }
+.scenes-buttons .scene-group { color: var(--grp, var(--muted)) !important; font-family: var(--title-font); font-size: 13px; }
+:root[data-design=light] .scenes-buttons .scene-group { text-transform: none; letter-spacing: 0; font-size: 12px; }
+
+/* Programm-Vorschau: Rahmen wie „auf Sendung“ */
+.stage { border-radius: 12px; border: 2px solid var(--onair-solid); box-shadow: 0 0 0 4px rgba(255, 61, 110, .14), 0 20px 50px rgba(0, 0, 0, .45); }
+:root[data-design=light] .stage { border: 0; box-shadow: 0 0 0 3px var(--accent), 0 16px 40px rgba(0, 0, 0, .15); }
+.live-tag { color: var(--onair-solid); }
+
+/* Hell: Eingabefelder und Kopfzeile */
+:root[data-design=light] input:not([type=checkbox]):not([type=range]):not([type=color]), :root[data-design=light] select, :root[data-design=light] textarea {
+  background: #FAF9F6; color: var(--text); border-color: var(--line); }
+:root[data-design=light] .tool, :root[data-design=light] .bracket-search, :root[data-design=light] .bracket-connected,
+:root[data-design=light] .workspace-button, :root[data-design=light] .bracket-program { background: #F6F4EF; color: var(--text); border-color: var(--line); }

@@ -1,7 +1,7 @@
 # Casting-App – Handbuch für Änderungen
 
 Dieses Handbuch erklärt, wie die App aufgebaut ist und wie man typische Änderungen macht, Schritt für Schritt.
-Für Nutzer der App gibt es [README.md](../README.md) (Anleitung). Alles für Entwickler steht hier – auch Tests, Bauen, Signieren und Release.
+Für Nutzer der App gibt es [README.md](../README.md) (Anleitung, Englisch). Alles für Entwickler steht hier – auch Tests, Bauen, Signieren und Release.
 Die Kurzfassung der Regeln für den KI-Assistenten Claude Code liegt in `.claude/CLAUDE.md`.
 
 **Regel für alle Änderungen:** Namen im Code sind englisch (Variablen, Funktionen, CSS-Klassen, IDs, Dateien,
@@ -537,5 +537,6 @@ kommen aus `tools/build.py` – wer sie ändert, muss `asset_suffix()` anpassen.
 * **Overlays ändern sich nicht durch die Desktop-App:** Desktop-Besonderheiten liegen in `casting_app/desktop/` oder
   hinter `window.castApp`.
 * **Geheimnisse** nie in Zustand, Log, Exporte, Dateien, URLs oder API-Antworten – und nie ins Repository.
-* **Doku:** genau zwei Dateien – `README.md` (Startseite und Anleitung für Nutzer) und `ENTWICKLUNG.md` (alles für
+* **Doku:** genau zwei Dateien – `README.md` (Startseite und Anleitung für Nutzer, auf Englisch, nur der aktuelle Stand ohne
+  Versionsgeschichte; Knopf-Namen wie in `web/lang-en.js`) und `ENTWICKLUNG.md` (alles für
   Entwickler). Dazu `.claude/CLAUDE.md` für Claude Code. Keine weiteren `.md`-Dateien.

@@ -330,6 +330,9 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
   `.dach-under` (z 0) füllt die Löcher beider Seiten schwarz, bis der Wechsel fertig ist. Die Blende geht über
   `.dach-dip` (Dunkelblau der DACH-Seiten, z 2 unter den Kameras): alte Seite → Blau → neue Seite. Neue Seite vermessen:
   Video/Screenshot der Seite, gelbe Linie suchen (1920 × 1080), Werte in `DACH_FRAME` eintragen.
+* **PySide6 unter 6.12** (`pyproject.toml`): Ab 6.12 steckt Qt WebEngine im eigenen Paket `PySide6_WebEngine` (nicht mehr
+  in Addons) – ohne es fehlt `PySide6.QtWebEngineWidgets`. Zum Umstieg: Paket ergänzen, `tools/build.py` und die
+  PyInstaller-Hooks auf allen drei Systemen bauen und testen, dann die Grenze anheben.
 * **Videoformate / H.264 im App-Fenster:** Qt WebEngine aus PySide6 kann kein H.264/AAC (VP8/VP9/AV1 ja); OBS (CEF) kann es.
   Im App-Fenster leitet `desktop/media.py` (`QWebEngineUrlRequestInterceptor`) Medienanfragen auf MP4-artige Dateien auf
   `/api/media?src=…&t=…` um; `server/media_converter.py` wandelt mit FFmpeg in WebM (VP8 + Opus), streamt schon während

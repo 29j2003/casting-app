@@ -57,8 +57,14 @@ async function sceneSwitch(k) {
     Z.broadcast.scene = k; Z.broadcast.num = (Z.broadcast.num || 0) + 1;
     if (before !== k) Z.background.override = null;                   // eine Änderung in der Live-Ecke gilt bis zum Szenenwechsel
     bgApply(k); scenesDraw(); send();
-    // Hintergrund-Video in OBS: nach Ingame erst am Ende der Blende aus, aus Ingame heraus sofort an
-    obsBackgroundVisible(k === "ingame" && before !== "ingame" ? (Z.broadcast.transition === "cut" ? 0 : (Z.broadcast.duration || 0) * (Z.broadcast.transition === "stinger" ? .5 : 1)) : 0);
+    // Hintergrund-Video in OBS: blendet mit der Szene (wie das Overlay: zu Ingame 55 %, aus Ingame 60 % der Dauer),
+    // beim Stinger schaltet es unter dem Stinger um, bei Schnitt sofort
+    const t = Z.broadcast.transition, d = Z.broadcast.duration || 0, toIngame = k === "ingame";
+    if (before !== k && (toIngame || before === "ingame")) {
+      if (t === "cut" || !d) obsBackgroundVisible(0, 0);
+      else if (t === "stinger") obsBackgroundVisible(d * .5, 0);
+      else obsBackgroundVisible(0, d * (toIngame ? .55 : .6));
+    } else obsBackgroundVisible(0, 0);
     return;
   }
   $("scene").value = k; preview();                                  // Vorschau folgt
@@ -75,12 +81,14 @@ const OVER_GAME = ["scoreboard", "team-a", "team-b", "h2h", "bracket", "series"]
 // Szenen, die ohne CS2-Livedaten nur „Warte auf CS2-Daten …“ zeigen – ihre Knöpfe sagen das vorher
 const LIVE_SCENES = ["scoreboard", "team-a", "team-b", "h2h"];
 function liveFresh() { return !!(liveLast && Date.now() - liveLast.time < 15000); }
+// Szene braucht Daten, die gerade fehlen (CS2-Szenen ohne Livedaten) – DACH-Seiten ohne Match: 12-dach.js
+function sceneNeedsData(k) { return LIVE_SCENES.includes(k) && !liveFresh(); }
 function overSubDraw() {
   const U = Z.broadcast.overGame || {}, on = overGameVisible() ? U.scene : "", d = Z.broadcast.overGameDuration ?? 15;
   const sub = document.createElement("div"); sub.className = "scene-sub";
   sub.innerHTML = `<b>ÜBER DEM SPIEL <span>${d > 0 ? `blendet nach ${d} s aus` : "bleibt stehen"}</span></b>` + OVER_GAME.map(k =>
-    `<button type="button" data-over="${k}" class="${k === on ? "on" : ""}${LIVE_SCENES.includes(k) && !liveFresh() ? " needs-data" : ""}" aria-pressed="${k === on}">${esc((OVERLAY_SCENES.find(([x]) => x === k) || [, k])[1])}</button>`).join("");
-  sub.querySelectorAll("[data-over]").forEach(b => b.onclick = () => { overGameToggle(b.dataset.over); if (typeof overDraw === "function") overDraw(); });
+    `<button type="button" data-over="${k}" class="${k === on ? "on" : ""}${LIVE_SCENES.includes(k) && !liveFresh() ? " needs-data" : ""}" aria-pressed="${k === on}"${LIVE_SCENES.includes(k) && !liveFresh() && k !== on ? ' aria-disabled="true"' : ""}>${esc((OVERLAY_SCENES.find(([x]) => x === k) || [, k])[1])}</button>`).join("");
+  sub.querySelectorAll("[data-over]").forEach(b => b.onclick = () => { if (b.getAttribute("aria-disabled")) return; overGameToggle(b.dataset.over); if (typeof overDraw === "function") overDraw(); });
   return sub;
 }
 function overGameVisible() { const U = Z.broadcast.overGame || {}; return !!U.scene && (!U.until || U.until > Date.now()); }
@@ -147,9 +155,10 @@ function scenesDraw() {
     b.className = (single ? Z.broadcast.scene === k : e.obs && e.obs === currentScene) ? "active" : "";
     b.disabled = !c.on || (!single && (!connected || !e.obs));
     b.title = e.obs ? "OBS-Szene: " + e.obs : "Keine OBS-Szene zugeordnet (Setup → Szenen einrichten)";
-    if (LIVE_SCENES.includes(k) && !liveFresh()) { b.classList.add("needs-data"); b.title = "Wartet auf CS2-Daten – im Overlay steht dann „Warte auf CS2-Daten …“. " + b.title; }
+    // ohne Daten nicht wählbar (sie zeigte sonst nur „Warte auf CS2-Daten …“) – läuft sie schon, bleibt sie bedienbar
+    if (sceneNeedsData(k) && Z.broadcast.scene !== k) { b.classList.add("needs-data"); b.setAttribute("aria-disabled", "true"); b.title = "Braucht CS2-Livedaten – erst CS2 verbinden (Setup → CS2-Livedaten)."; }
     if (studioOn() && k === studioNext) b.classList.add("studio-next");
-    b.onclick = () => studioOn() ? studioPick(k) : sceneSwitch(k);
+    b.onclick = () => b.getAttribute("aria-disabled") ? null : studioOn() ? studioPick(k) : sceneSwitch(k);
     (column && !sceneArrange ? column : box).appendChild(b);
     // läuft Ingame: direkt darunter „Über dem Spiel“ – Scoreboard, Team A … über dem Spielbild, ohne die Szene zu wechseln
     if (k === "ingame" && single && Z.broadcast.scene === "ingame") (column || box).appendChild(overSubDraw());

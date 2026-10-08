@@ -533,6 +533,7 @@ body.idle.dach-frame-show .dach-cams { z-index: 4; }
 .dach-under { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
 /* Zwischenblende im Dunkelblau der DACH-Seiten (aus deren Hintergrund gemessen) */
 .dach-dip { position: absolute; inset: 0; z-index: 2; pointer-events: none; background: #212436; opacity: 0; }
+.dach-floor { position: absolute; inset: 0; z-index: 0; pointer-events: none; background: #212436; }
 .dach-under div { position: absolute; background: #000; }
 .dach-note { position: absolute; left: 50%; bottom: 300px; transform: translateX(-50%); z-index: 5; max-width: 1100px; padding: 14px 22px; font: 600 26px Rajdhani, sans-serif; color: #101526; background: #FCC659; text-align: center; }
 .dach-cam { position: absolute; overflow: hidden; background: #000; }   /* leer = schwarz, nie der DACH-Hintergrund */

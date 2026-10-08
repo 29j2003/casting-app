@@ -40,8 +40,11 @@ The app installs new versions itself (⚙ → Update, see below).
      scene “Cast – Sendung” with one browser source (carrying the app's access key). Prefer to add the browser source
      yourself? **“Copy overlay address”** and paste it into OBS as a browser source (1920 × 1080).
    * Enter theme, teams and casters.
-   * **Game picture:** in OBS, put the game capture in the scene “Cast – Sendung” **below** the browser source. In the
-     **Ingame** scene the overlay is transparent; only sponsor and graphics are visible.
+   * **Game picture (Ingame):** Ingame is not a separate OBS scene. Add the game itself as a source in the scene
+     “Cast – Sendung”, **below** the browser source – e.g. *Game Capture* of CS2 (watching the match as GOTV/observer on
+     this PC), or the feed of an observer PC via capture card or NDI. In the **Ingame** scene the overlay turns
+     transparent, so the game shows through; only sponsor and graphics stay on top. In every other scene the overlay
+     covers the game.
 2. In the **Live** tab, switch scenes with a click, pick a transition, show graphics.
 
 ## The interface
@@ -159,8 +162,8 @@ keeps running. After the set time (button “Transition: …” → “Hide stat
 default 15, 0 = stays) it disappears by itself. The buttons of the same scenes further down the list always switch to the
 full scene. The same buttons are in the **scene panel** of Ingame.
 
-When **no CS2 data** is coming in, Scoreboard, Team A/B and Head-to-Head are grey and marked “CS2” – before you click.
-The scene can still be shown; the overlay then says “Waiting for CS2 data …”.
+When **no CS2 data** is coming in, Scoreboard, Team A/B and Head-to-Head are grey, marked “CS2” and locked – they would
+only show “Waiting for CS2 data …”. They unlock by themselves as soon as data arrives (Setup → CS2 live data).
 
 ### Cleanfeed
 
@@ -323,9 +326,13 @@ graphic “Map fact”.
 * **Who plays the videos?**
   * **OBS** (recommended): every format OBS supports, also H.265/AV1 and 4K, with hardware decoding, several videos with
     VLC. As soon as an overlay in OBS is connected, the app offers “Let OBS play it – set up” at the top: one click, confirm –
-    the media source “Cast – Hintergrund” then sits directly below the overlay (above the game capture). The app hides it
-    in “Cast – Sendung” only during Ingame and matches it to the running scene on every scene change and when connecting
-    to OBS.
+    the media source “Cast – Hintergrund” then sits directly below the overlay (above the game capture). Going to and
+    from Ingame it fades with the scene change (opacity filter “Cast – Blende” on the source; stinger: switched under the
+    stinger, cut: at once). It is hidden – and paused, which saves decoding – during Ingame and with DACH CS – official
+    (those pages have their own backgrounds), and continues where it stopped.
+  * **Preview in step with OBS:** a single looping video shows the same moment in the app's preview as in OBS – when OBS
+    plays it, the app asks OBS for the position every few seconds; when the overlay plays it, both start from the same
+    point.
   * **The overlay:** WebM (VP9) is safest. The browser source in OBS doesn't play videos reliably; the app checks every video.
 
 ### Scenes & OBS
@@ -363,11 +370,13 @@ area (Casting → Browserquellen) under **⚙ → Connections & access**. The ke
   **below** the page: the yellow line and name tag of DACH CS stay visible. An empty frame is black – never the
   background of a DACH page, not even during a change. “Adjust camera and content frames” shows the frames in the
   preview and lets you move them pixel by pixel; “Default” restores the measured sizes.
-* **Match entered at DACH CS** (switch above the DACH scenes): the app can't see whether a match is entered at DACH CS.
-  When the switch is off, the scenes that need a match (team lineup, map veto, positions, table, playoffs, last/next 5,
-  match day, MVP) are grey and marked “MATCH” – otherwise they only show “TBA”. Clicking still works.
+* **Match at DACH CS:** the app checks by itself whether a match is active in the DACH CS user area (every 30 s while
+  the style is on, “Check” checks right away; the line above the DACH scenes shows the result). Without an active match
+  the pages only show “Du hast kein aktives Match eingetragen …”, so the scenes that need one (team lineup, map veto,
+  positions, table, playoffs, last/next 5, match day, MVP) are grey, marked “MATCH” and locked until a match is active.
 * **Videos in the app window:** H.264 videos (MP4, e.g. the DACH content break) are converted for the app's own window
-  when first played (with the bundled FFmpeg) – afterwards they play with picture and sound. Nothing changes in OBS. On
+  when first played (with the bundled FFmpeg, at preview size: up to 720p, 30 fps – light to decode) – afterwards they
+  play with picture and sound. Nothing changes in OBS. On
   macOS Intel this only works with FFmpeg installed (`brew install ffmpeg`); otherwise the preview shows a notice.
 * The content of the graphics (teams, results, table …) comes from the DACH CS live dashboard. The app's graphics sit on top.
 * “DACH CS – own style” is the free design in the DACH look, without the official pages.
@@ -464,7 +473,8 @@ Cancel**. The power button top right opens the same choice.
   pages). DACH CS requires ID and key in the address of its pages – so they are in the address of the DACH frames in the
   overlay. Don't show the properties of the browser source or the OBS developer tools on stream.
 * **What leaves the PC:** FACEIT requests (match, tournament, team statistics – with your API key), the DACH CS pages
-  (with ID and key), cameras and clips you enter yourself, the Workshop number to Steam when you click “Get from the
+  (with ID and key; while that style is on, the app also loads one of them every 30 s to see whether a match is active –
+  only “yes/no” is kept), cameras and clips you enter yourself, the Workshop number to Steam when you click “Get from the
   Workshop” (name and preview picture come back), and the question to GitHub whether there is a newer version (only the
   list of versions; can be switched off under ⚙ → Update) – plus the download when updating. Updates only come from this
   project's releases and only with a matching checksum. Videos from the web that you play in the app window are fetched

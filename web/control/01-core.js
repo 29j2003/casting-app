@@ -214,7 +214,7 @@ channel = K.channel({
     if (s !== "connected") broadcastStatus(null);
     setTimeout(() => { try { scenesDraw(); } catch (err) {} }, 0);   // erst nach dem Laden der Seite
   },
-  onOpen() { sentImages.clear(); send(); sourcesCheck(); scenesLoad(); setTimeout(obsBackgroundSync, 1000); setTimeout(overlaysPill, 1500); setTimeout(accessCheck, 2000); },
+  onOpen() { sentImages.clear(); send(); sourcesCheck(); scenesLoad(); bgFilterReady = false; setTimeout(() => obsBackgroundVisible(0, 0), 1000); setTimeout(overlaysPill, 1500); setTimeout(accessCheck, 2000); },
   onAnswer(type, ok, hint, data) {
     if (type === "CallVendorRequest") broadcastStatus(ok, hint);
     if (type === "GetInputList") {

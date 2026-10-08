@@ -276,8 +276,10 @@
         if (fresh === dachActive) return;                      // zeigt diese Seite schon – kein Übergang auf sich selbst
         const S = (C().Z || Z).broadcast || {}, previous = dachActive, kind = previous ? (S.transition || "fade") : "cut", d = Math.max(0, +S.duration || 0);
         const before = previous ? dachUnderlay(C().Z || Z, previous, page) : null;   // Löcher beider Seiten bleiben schwarz
+        // Untergrund im DACH-Dunkelblau, solange beide Seiten deckend sind (die Ingame-Seite ist durchsichtig: dort Spielbild)
+        const floor = page !== "ingame" && !(previous && previous.getAttribute("src") === window.CastCore.dachUrl("ingame"));
         dachRunning = fresh;
-        await dachTransition(previous, fresh, kind, d, () => { dachFrameSet(C().Z || Z, page, 0); dachNote(C().Z || Z, page); }, before);
+        await dachTransition(previous, fresh, kind, d, () => { dachFrameSet(C().Z || Z, page, 0); dachNote(C().Z || Z, page); }, before, floor);
         if (before) before.remove();
         all.forEach(x => { if (x !== fresh) { x.classList.remove("on"); x.style.zIndex = ""; } });
         fresh.style.zIndex = 3; dachActive = fresh; dachRunning = null;
@@ -305,7 +307,7 @@
   // Übergänge wie bei den eigenen Szenen: Schnitt · Blende · Schieben · Wischen · Stinger
   // Die Kameras gehören zur neuen Seite: sie sitzen sofort in deren Löchern und erscheinen mit ihr (gleiche Animation).
   // Unter der alten Seite liegen solange schwarze Flächen in deren Löchern (before) – nie scheint etwas anderes durch.
-  async function dachTransition(previous, fresh, kind, d, middle, before) {
+  async function dachTransition(previous, fresh, kind, d, middle, before, floor) {
     fresh.style.zIndex = 3; if (previous) previous.style.zIndex = 1;      // Kameras (2) liegen dazwischen
     const opt = { duration: d, easing: "cubic-bezier(.4,0,.2,1)", fill: "both" };
     if (!previous || kind === "cut" || d === 0) { fresh.classList.add("on"); middle(); return; }
@@ -328,6 +330,9 @@
       runs.forEach(r => r.cancel()); dip.remove();
       return;
     }
+    // Schieben/Wischen: darunter das Dunkelblau der DACH-Seiten – sonst scheint in der Lücke das Hintergrund-Video
+    // (OBS) bzw. Schwarz (Vorschau) durch
+    const ground = floor ? dachLayer.insertBefore(Object.assign(document.createElement("div"), { className: "dach-floor" }), dachLayer.firstChild) : null;
     const k = kind === "wipe" ? [{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0 0 0)" }]
             : kind === "slide" ? [{ opacity: 0, transform: "translateX(6%)" }, { opacity: 1, transform: "none" }]
             : [{ opacity: 0 }, { opacity: 1 }];
@@ -340,6 +345,7 @@
     if (kind === "slide") runs.push(previous.animate(out, outOpt), ...(before ? [before.animate(out, outOpt)] : []));
     try { await runs[0].finished; } catch (e) {}
     runs.forEach(r => r.cancel());
+    if (ground) ground.remove();
   }
   function dachUnderlay(Z, previous, next) {
     const old = Object.keys(window.CastCore.DACH_FRAME).find(p => previous.getAttribute("src") === window.CastCore.dachUrl(p));

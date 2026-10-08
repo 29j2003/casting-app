@@ -882,6 +882,18 @@
   let videoList = null, videoWatchdog = null, videoGen = 0, videoLater = null;
   // ein Video ganz anhalten und entladen (gibt Speicher und Decoder frei)
   const videoUnload = v => { v.onerror = v.onended = v.oncanplay = null; v.pause(); v.removeAttribute("src"); v.load(); };
+  // Hintergrund im Gleichlauf: ein einzelnes Video (Schleife) steht in OBS und in der Vorschau an derselben Stelle.
+  // Beide rechnen sie aus dem Start der Playlist (play.since); spielt OBS selbst ab, schickt die Steuerseite dessen
+  // Position (bg-sync). Gesprungen wird nur bei spürbarer Abweichung.
+  function bgActiveVideo() { return document.querySelector(".backdrop video.on:not(.bg-clip)"); }
+  function bgSeek(v, seconds, tolerance) {
+    if (!v || !v.loop || !(v.duration > 1) || !isFinite(v.duration)) return;
+    const d = v.duration, t = ((seconds % d) + d) % d;
+    let off = v.currentTime - t; off = ((off + d / 2) % d + d) % d - d / 2;
+    if (Math.abs(off) > tolerance) v.currentTime = t;
+  }
+  function bgSince(v, tolerance) { const s = +(((Z.background || {}).play || {}).since) || 0; if (s) bgSeek(v, (Date.now() - s) / 1000, tolerance); }
+  if (PREVIEW) setInterval(() => { const H = Z.background || {}; if (H.source !== "obs" && !H.transparent) bgSince(bgActiveVideo(), .5); }, 4000);
   function background() {
     const backdrop = document.querySelector(".backdrop");
     if (!backdrop) return;
@@ -989,6 +1001,7 @@
         if (!valid()) return;                                    // inzwischen neu eingerichtet
         if (r.ok) {
           const incoming = upcoming, previous = active;
+          if (list.length === 1) bgSince(incoming, .3);                 // gleiche Stelle wie die anderen Overlays
           if (passage === "black" && previous.classList.contains("on")) {   // erst ausblenden, dann das neue einblenden
             previous.classList.remove("on"); setTimeout(() => { if (valid()) incoming.classList.add("on"); }, fade / 2);
           } else { incoming.classList.add("on"); previous.classList.remove("on"); }
@@ -1247,6 +1260,7 @@
     if (d && d.cast === "show") { document.body.classList.remove("waiting"); return; }
     if (d && d.cast === "state" && d.z) { Z = rawState = K.merge(K.clone(K.DEFAULT), d.z); receivedFrom = "Vorschau der Steuerseite"; receivedUm = Date.now(); draw(); }
     if (d && d.cast === "live") { liveData = d.live; liveDraw(); }
+    if (d && d.cast === "bg-sync" && +d.cursor >= 0) bgSeek(bgActiveVideo(), (+d.cursor + Date.now() - (+d.at || Date.now())) / 1000, .35);
     if (d && d.cast === "studio" && STUDIO && studioScene(d.scene)) { STUDIO = d.scene; draw(); }
     if (d && d.cast === "monitor") {
       monitor = { mode: d.mode || "off", vol: +d.vol || 0 }; audioctx(); audioApply(); previewAudio();   // nichts neu laden

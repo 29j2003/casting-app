@@ -96,8 +96,8 @@ const normal = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0
 function commands() {
   const l = [];
   const single = onSource();
-  OVER_GAME.forEach(k => { const n = (OVERLAY_SCENES.find(([x]) => x === k) || [, k])[1]; l.push({ kind: "ÜBER SPIEL", text: n + " über dem Spiel (Ingame)", execute: () => { if (Z.broadcast.scene !== "ingame") sceneSwitch("ingame"); overGameToggle(k); } }); });
-  scenesRow().filter(([k]) => !SCENE_GROUPS[k]).forEach(([k, n]) => l.push({ kind: "SZENE", text: (single ? "Wechseln zu: " : "Vorschau: ") + n, execute: () => single ? sceneSwitch(k) : ($("scene").value = k, preview()) }));
+  OVER_GAME.filter(k => !sceneNeedsData(k)).forEach(k => { const n = (OVERLAY_SCENES.find(([x]) => x === k) || [, k])[1]; l.push({ kind: "ÜBER SPIEL", text: n + " über dem Spiel (Ingame)", execute: () => { if (Z.broadcast.scene !== "ingame") sceneSwitch("ingame"); overGameToggle(k); } }); });
+  scenesRow().filter(([k]) => !SCENE_GROUPS[k] && !(single && sceneNeedsData(k))).forEach(([k, n]) => l.push({ kind: "SZENE", text: (single ? "Wechseln zu: " : "Vorschau: ") + n, execute: () => single ? sceneSwitch(k) : ($("scene").value = k, preview()) }));
   (Z.graphics || []).forEach(x => {
     const n = x.name || GFX_NAMES[x.type] || x.type;
     l.push({ kind: "EINBLENDUNG", text: (x.on ? "Ausblenden: " : "Zeigen: ") + n, execute: () => gfxShow(x, !x.on) });

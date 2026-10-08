@@ -36,8 +36,12 @@ CHUNK = 256 * 1024
 INPUT_LIMITS = ["-protocol_whitelist", "http,https,tls,tcp", "-rw_timeout", "15000000"]
 OUTPUT_LIMITS = ["-t", "3600", "-fs", str(2 * 1024 ** 3)]
 STALL_SECONDS = 60                    # a reader gives up when the file has not grown for this long
-FFMPEG_ARGS = ["-c:v", "libvpx", "-deadline", "realtime", "-cpu-used", "8", "-b:v", "4M", "-maxrate", "6M",
-               "-bufsize", "8M", "-g", "60", "-c:a", "libopus", "-b:a", "160k", "-f", "webm"]
+# The app window only shows a preview: at most 720 lines and 30 frames per second are plenty and much lighter to
+# decode than full HD (Qt WebEngine decodes in software – a 1080p60 video made the preview stutter on scene changes)
+FFMPEG_ARGS = ["-vf", "scale=-2:'min(720,ih)',setsar=1", "-r", "30",
+               "-c:v", "libvpx", "-deadline", "realtime", "-cpu-used", "8", "-b:v", "2500k", "-maxrate", "4M",
+               "-bufsize", "6M", "-g", "60", "-c:a", "libopus", "-b:a", "160k", "-f", "webm"]
+CACHE_VERSION = "720p30"              # part of the cache key: files made with other settings are made anew
 
 
 def media_token(access_key: str) -> str:
@@ -87,7 +91,7 @@ class MediaConverter:
         """Answer `request` with `source` as WebM (finished file, or streamed while it is converted)."""
         if not self.available:
             return request.send_json(404, {"error": "FFmpeg fehlt – Video läuft nur in OBS"})
-        key = hashlib.sha256(source.encode()).hexdigest()[:24]
+        key = hashlib.sha256(f"{CACHE_VERSION}|{source}".encode()).hexdigest()[:24]
         final = self._dir / f"{key}.webm"
         if final.is_file():
             final.touch()                                    # recently used: stays in the cache longest

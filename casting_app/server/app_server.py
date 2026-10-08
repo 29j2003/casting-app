@@ -32,7 +32,7 @@ from ..paths import IS_WINDOWS, WEB_DIR, AppFolders
 from ..settings import AppSettings
 from ..updater import Updater
 from ..version import VERSION
-from . import cs2_setup, faceit, workshop
+from . import cs2_setup, dach_match, faceit, workshop
 from .event_hub import EventClient, EventHub
 from .net import ExclusiveHTTPServer, content_length
 from .game_state import LAN_PORT, GameStateReceiver, lan_addresses
@@ -158,6 +158,7 @@ class CastingServer:
         self.settings = settings or AppSettings(folders.data)
         self.updater = Updater(folders.data, log.write, quit_app=on_quit_requested)   # Setup → ⚙ → Update
         self.game_state = GameStateReceiver(folders.data, self.events.broadcast, log.write)
+        self.dach_match = dach_match.MatchCheck()        # is a match active at DACH CS? (/api/dach-match)
         self._on_quit_requested = on_quit_requested
         self._open_folder = open_folder
         self._started_at = int(time.time() * 1000)
@@ -483,6 +484,7 @@ class CastingServer:
             "/api/cs2-search": (None, lambda request, query: request.send_json(200, {"finds": cs2_setup.search_cfg_folders()})),
             # secrets (set, delete, ask whether stored – never read)
             "/api/dach-access": (None, lambda request, query: self._api_dach_access(request)),
+            "/api/dach-match": ("GET", lambda request, query: self._api_dach_match(request)),
             "/api/faceit-key": (None, lambda request, query: self._api_faceit_key(request)),
             "/api/obs-password": (None, lambda request, query: self._api_obs_password(request)),
             "/api/obs-auth": ("POST", lambda request, query: self._api_obs_login(request)),
@@ -774,6 +776,11 @@ class CastingServer:
         secret = base64.b64encode(hashlib.sha256((password + salt).encode()).digest()).decode()
         answer = base64.b64encode(hashlib.sha256((secret + challenge).encode()).digest()).decode()
         request.send_json(200, {"authentication": answer})
+
+    def _api_dach_match(self, request) -> None:
+        """Whether a match is active at DACH CS: {"match": true | false | null (no access data / not reachable)}."""
+        found = self.dach_match.active(self.secrets.get(secret_store.DACH_USER_ID), self.secrets.get(secret_store.DACH_KEY))
+        return request.send_json(200, {"match": found})
 
     def _api_workshop(self, request, query: dict) -> None:
         """A custom map from the Steam Workshop: ?id=<link or number> → {id, title, image (data URL)}."""

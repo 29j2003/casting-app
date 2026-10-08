@@ -16,7 +16,9 @@ from playwright.sync_api import sync_playwright
 from casting_app import instance
 from casting_app.app_log import AppLog
 from casting_app.paths import WEB_DIR, create_folders
+from casting_app import secret_store
 from casting_app.secret_store import SecretStore
+from casting_app.server import dach_match
 from casting_app.server.app_server import BASE_URL, CastingServer
 
 # buttons that would end the test (quit the app, reload the page) or only open a file chooser
@@ -389,15 +391,20 @@ def test_ingame_button_opens_the_stats_over_the_game(server, browser):
     page.wait_for_timeout(300)
     assert page.evaluate("document.querySelectorAll('#sceneButtons .scene-sub').length") == 0
     assert page.evaluate("document.querySelector('#sceneButtons [data-scene-def=scoreboard]').classList.contains('needs-data')")
+    page.evaluate("document.querySelector('#sceneButtons [data-scene-def=scoreboard]').click()")     # without CS2 data: locked
+    assert page.evaluate("Z.broadcast.scene") == "intro"
     page.evaluate("sceneSwitch('ingame')")
     page.wait_for_timeout(300)
     assert page.evaluate("[...document.querySelectorAll('#sceneButtons .scene-sub [data-over]')].map(b => b.dataset.over)") == \
         ["scoreboard", "team-a", "team-b", "h2h", "bracket", "series"]
-    page.evaluate("document.querySelector('#sceneButtons .scene-sub [data-over=h2h]').click()")
-    assert page.evaluate("[Z.broadcast.scene, Z.broadcast.overGame.scene]") == ["ingame", "h2h"]
-    assert page.evaluate("document.querySelector('#sceneButtons .scene-sub [data-over=h2h]').classList.contains('on')")
-    page.evaluate("document.querySelector('#sceneButtons .scene-sub [data-over=h2h]').click()")
+    page.evaluate("document.querySelector('#sceneButtons .scene-sub [data-over=h2h]').click()")    # no CS2 data: locked
     assert page.evaluate("Z.broadcast.overGame") is None
+    page.evaluate("document.querySelector('#sceneButtons .scene-sub [data-over=bracket]').click()")
+    assert page.evaluate("[Z.broadcast.scene, Z.broadcast.overGame.scene]") == ["ingame", "bracket"]
+    assert page.evaluate("document.querySelector('#sceneButtons .scene-sub [data-over=bracket]').classList.contains('on')")
+    page.evaluate("document.querySelector('#sceneButtons .scene-sub [data-over=bracket]').click()")
+    assert page.evaluate("Z.broadcast.overGame") is None
+    page.evaluate("liveLast = { time: Date.now() }; scenesDraw()")                                  # CS2 data arrives
     page.evaluate("document.querySelector('#sceneButtons [data-scene-def=scoreboard]').click()")   # its own button switches
     assert page.evaluate("Z.broadcast.scene") == "scoreboard"
     assert errors == []
@@ -758,12 +765,38 @@ def test_one_group_of_the_table_from_the_scene_panel(server, browser):
     assert control.evaluate("[Z.broadcast.scene, Z.tournament.showGroup]") == ["bracket", "1"]
     overlay.wait_for_timeout(1500)
     assert overlay.evaluate("document.querySelectorAll('.layer:last-child .bracket-tab').length") == 1
-    control.evaluate("Z.theme = 'dachcs-official'; everything(); send(); scenesDraw()")
-    marked = "document.querySelector('#sceneButtons [data-scene-def=dach-table]').classList.contains('needs-match')"
-    assert control.evaluate(marked)
-    control.evaluate("document.querySelector('#sceneButtons .dach-match input').click()")
-    assert control.evaluate("Z.dach.match") is True and not control.evaluate(marked)
-    control.evaluate("Z.theme = 'regular'; Z.dach.match = false; everything(); send()")
+    # DACH CS – Offiziell: the server asks DACH CS itself whether a match is active (the page then only shows
+    # „Du hast kein aktives Match eingetragen …“) – without one, the scenes that need a match are locked
+    pages = {"text": "<html><body>Du hast kein aktives Match eingetragen. Bitte aktiviere ein Match im Userbereich</body></html>"}
+
+    class Answer:
+        def __init__(self, request):
+            assert request.full_url.startswith("https://user.dachcs.de/castingoverlay/lineup.php?")
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self, limit): return pages["text"].encode()
+
+    server.dach_match = dach_match.MatchCheck(opener=lambda request, timeout: Answer(request))
+    server.secrets.set(secret_store.DACH_USER_ID, "123")
+    server.secrets.set(secret_store.DACH_KEY, "abcde-12345")
+    try:
+        control.evaluate("Z.theme = 'dachcs-official'; Z.dach = Object.assign({}, Z.dach, { match: null }); everything(); send(); scenesDraw(); dachMatchCheck(true)")
+        control.wait_for_timeout(500)
+        locked = "document.querySelector('#sceneButtons [data-scene-def=dach-table]').getAttribute('aria-disabled')"
+        assert control.evaluate("Z.dach.match") is False and control.evaluate(locked) == "true"
+        control.evaluate("document.querySelector('#sceneButtons [data-scene-def=dach-table]').click()")
+        assert control.evaluate("Z.broadcast.scene") != "dach-table"                 # locked: no switch
+        pages["text"] = "<html><body><div class='team'>Team A</div></body></html>"
+        server.dach_match = dach_match.MatchCheck(opener=lambda request, timeout: Answer(request))
+        control.evaluate("dachMatchCheck(true)")
+        control.wait_for_timeout(500)
+        assert control.evaluate("Z.dach.match") is True and control.evaluate(locked) is None
+        assert "Match bei DACH CS aktiv" in control.evaluate("document.querySelector('#sceneButtons .dach-match').textContent")
+    finally:
+        server.secrets.delete(secret_store.DACH_USER_ID)
+        server.secrets.delete(secret_store.DACH_KEY)
+        server.dach_match = dach_match.MatchCheck()
+    control.evaluate("Z.theme = 'regular'; Z.dach = Object.assign({}, Z.dach, { match: null }); everything(); send()")
     assert errors == []
 
 
@@ -799,4 +832,101 @@ def test_areas_stack_below_the_preview(server, browser):
     page.evaluate("dockPanel(document.querySelector('[data-area=audio]'), 'left')")
     assert page.evaluate("ui.dock.bottom") == ["sceneList"] and not page.evaluate("document.querySelector('.dock-stack')")
     page.evaluate("layoutEdit(false); workspaceChoose('Operator')")
+    assert errors == []
+
+
+FAKE_OBS = """window.obsCalls = []; window.obsItemOn = true; window.obsFilter = false;
+channel.obs = { isOpen: true, request: () => true, send: () => true, onBrowsersources: () => true,
+  question: async (type, data) => {
+    obsCalls.push([type, data]);
+    if (type === 'GetSceneItemId') return { sceneItemId: 7 };
+    if (type === 'GetSceneItemEnabled') return { sceneItemEnabled: obsItemOn };
+    if (type === 'SetSceneItemEnabled') { obsItemOn = data.sceneItemEnabled; return {}; }
+    if (type === 'GetSourceFilter') { if (!obsFilter) throw new Error('No source filter was found'); return { filterSettings: {} }; }
+    if (type === 'CreateSourceFilter') { obsFilter = true; return {}; }
+    return {};
+  } };"""
+
+
+# only the requests of the background fade (other parts of the page talk to OBS at the same time)
+FADE_CALLS = """obsCalls.filter(c => /SceneItemEnabled$|SourceFilter/.test(c[0]))
+  .map(c => [c[0], c[1].filterSettings ? c[1].filterSettings.opacity : c[1].sceneItemEnabled])"""
+
+
+def test_obs_background_fades_into_and_out_of_ingame(server, browser):
+    """When OBS plays the background video, the switch to Ingame fades the source „Cast – Hintergrund“ out via
+    the opacity filter „Cast – Blende“ (then hides it); leaving Ingame shows it at 0 % and fades it in."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("Z.theme = 'regular'; Z.background.source = 'obs'; Z.broadcast.transition = 'fade'; "
+                  "Z.broadcast.duration = 600; everything(); send(); sceneSwitch('intro');")
+    page.wait_for_timeout(300)
+    page.evaluate(FAKE_OBS + "bgFilterReady = false; bgOpacity = 1; sceneSwitch('ingame');")
+    page.wait_for_timeout(1200)
+    calls = page.evaluate(FADE_CALLS)
+    kinds = [kind for kind, _ in calls]
+    assert "CreateSourceFilter" in kinds
+    opacities = [value for kind, value in calls if kind == "SetSourceFilterSettings"]
+    assert len(opacities) >= 5, opacities                         # in steps, not a cut
+    assert opacities[:-1] == sorted(opacities[:-1], reverse=True) and opacities[-2] == 0
+    hide = kinds.index("SetSceneItemEnabled")
+    assert calls[hide][1] is False and kinds[hide + 1:] == ["SetSourceFilterSettings"] and opacities[-1] == 1
+    # back out of Ingame: enabled at 0 %, then fading in to 100 %
+    page.evaluate("obsCalls.length = 0; sceneSwitch('cast-duo');")
+    page.wait_for_timeout(1200)
+    calls = page.evaluate(FADE_CALLS)
+    kinds = [kind for kind, _ in calls]
+    show = kinds.index("SetSceneItemEnabled")
+    assert calls[show][1] is True and calls[show - 1] == ["SetSourceFilterSettings", 0]
+    opacities = [value for kind, value in calls[show + 1:] if kind == "SetSourceFilterSettings"]
+    assert len(opacities) >= 5 and opacities == sorted(opacities) and opacities[-1] == 1
+    # a cut hides at once, without fading
+    page.evaluate("obsCalls.length = 0; Z.broadcast.transition = 'cut'; sceneSwitch('ingame');")
+    page.wait_for_timeout(500)
+    kinds = [kind for kind, _ in page.evaluate(FADE_CALLS)]
+    assert "SetSceneItemEnabled" in kinds and kinds.count("SetSourceFilterSettings") == 1
+    # hidden = paused (saves decoding); DACH CS – Offiziell has its own backgrounds: the video is hidden there too
+    media = "obsCalls.filter(c => c[0] === 'TriggerMediaInputAction').map(c => c[1].mediaAction.split('_').pop())"
+    assert page.evaluate(media) == ["PAUSE"]
+    page.evaluate("obsCalls.length = 0; sceneSwitch('intro');")
+    page.wait_for_timeout(300)
+    assert page.evaluate(media) == ["PLAY"] and page.evaluate("obsItemOn") is True
+    page.evaluate("obsCalls.length = 0; themeChoose('dachcs-official');")
+    page.wait_for_timeout(300)
+    assert page.evaluate(media) == ["PAUSE"] and page.evaluate("obsItemOn") is False
+    page.evaluate("themeChoose('regular');")
+    page.wait_for_timeout(300)
+    assert page.evaluate("obsItemOn") is True
+    page.evaluate("Z.background.source = 'overlay'; Z.broadcast.transition = 'fade'; send()")
+    assert errors == []
+
+
+def test_background_video_runs_in_step_with_obs(server, browser):
+    """The preview shows the same moment of a looping background video as the program: from the start of the
+    playlist (play.since) – and, when OBS plays the video, from the position OBS reports (bg-sync)."""
+    import subprocess
+    from casting_app.server.media_converter import find_ffmpeg
+    video = server.folders.videos / "sync-test.webm"
+    if not video.is_file():
+        subprocess.run([find_ffmpeg(), "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=25", "-t", "20",
+                        "-c:v", "libvpx-vp9", "-b:v", "200k", "-deadline", "realtime", str(video)], check=True)
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("""Z.theme = 'regular'; Z.background.source = 'overlay'; Z.broadcast.transition = 'cut';
+      Z.background.playlists = [{ id: 'ps', name: 'S', kind: 'loop', videos: ['media/videos/sync-test.webm'], order: 'seq',
+        transition: 'cut', fade: 0, scenes: ['intro', 'pause'] }];
+      everything(); sceneSwitch('intro'); Z.background.play.since = Date.now() - 7000; send();""")
+    position = "(() => { const v = $('frame').contentDocument.querySelector('.backdrop video.on'); return v ? v.currentTime : -1; })()"
+    page.wait_for_timeout(5500)                                    # started at 0, the next check moves it to ~7 s + 5 s
+    assert 10.5 < page.evaluate(position) < 14.5, page.evaluate(position)
+    # OBS plays the video: the control page passes on its position, the preview jumps there
+    page.evaluate("Z.background.source = 'obs'; send(); "
+                  "$('frame').contentWindow.postMessage({ cast: 'bg-sync', cursor: 3000, at: Date.now() }, location.origin)")
+    page.wait_for_timeout(400)
+    assert 2.8 < page.evaluate(position) < 4.5, page.evaluate(position)
+    page.evaluate("Z.background.source = 'overlay'; Z.background.playlists = []; bgApply('intro'); send()")
     assert errors == []

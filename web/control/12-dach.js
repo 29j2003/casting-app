@@ -45,11 +45,12 @@ $("dachDelete").onclick = async () => {
 function dachScenesDraw(box) {
   box.classList.remove("arrange"); box.classList.add("columns");
   const cur = Z.broadcast.scene, D = ensure(Z, "dach", {});
-  // ob bei DACH CS ein Match eingetragen ist, sieht die App nicht (das steht nur auf deren Seite) – hier von Hand
-  const row = document.createElement("label"); row.className = "dach-match switch-row";
-  row.innerHTML = `<input type="checkbox"${D.match ? " checked" : ""}> <span>Match bei DACH CS eingetragen</span>`;
-  row.title = "Aus: Szenen, die ein Match brauchen (Lineup, Tabelle, Letzte/Nächste 5 …), sind grau markiert – sie zeigen sonst nur „TBA“.";
-  row.querySelector("input").onchange = ev => { D.match = ev.target.checked; scenesDraw(); send(); };
+  // ob bei DACH CS ein Match aktiv ist, fragt der Server selbst nach (/api/dach-match) – ohne Match sind die Szenen gesperrt
+  const row = document.createElement("div"); row.className = "dach-match";
+  row.innerHTML = `<i class="dot ${D.match === true ? "ok" : D.match === false ? "wait" : ""}"></i><span>${
+    D.match === true ? "Match bei DACH CS aktiv" : D.match === false ? "Kein aktives Match bei DACH CS – im DACH-Userbereich ein Match aktivieren"
+    : "Match bei DACH CS: noch nicht geprüft"}</span><button type="button" class="link-button">Prüfen</button>`;
+  row.querySelector("button").onclick = () => dachMatchCheck(true);
   box.appendChild(row);
   Object.entries(DACH_GROUPS).forEach(([g, title]) => {
     const sceneColumn = document.createElement("div"); sceneColumn.className = "scene-column";
@@ -57,9 +58,9 @@ function dachScenesDraw(box) {
     DACH_SCENES.filter(x => x[0] === g).forEach(([, k, n]) => {
       const b = document.createElement("button"); b.textContent = n; b.dataset.sceneDef = k;
       if (k === cur) b.classList.add("active");
-      if (!D.match && DACH_NEEDS_MATCH.includes(k)) { b.classList.add("needs-data", "needs-match"); b.title = "Braucht ein bei DACH CS eingetragenes Match – sonst steht dort nur „TBA“."; }
+      if (D.match === false && DACH_NEEDS_MATCH.includes(k) && k !== cur) { b.classList.add("needs-data", "needs-match"); b.setAttribute("aria-disabled", "true"); b.title = "Braucht ein aktives Match bei DACH CS – sonst steht dort nur ein Hinweis. Im DACH-Userbereich ein Match aktivieren."; }
       if (studioOn() && k === studioNext) b.classList.add("studio-next");
-      b.onclick = () => studioOn() ? studioPick(k) : dachSwitch(k);           // Studio-Modus: erst in die Vorschau
+      b.onclick = () => b.getAttribute("aria-disabled") ? null : studioOn() ? studioPick(k) : dachSwitch(k);   // Studio-Modus: erst in die Vorschau
       sceneColumn.appendChild(b);
     });
     box.appendChild(sceneColumn);
@@ -67,6 +68,18 @@ function dachScenesDraw(box) {
   box.style.setProperty("--scene-columns", Object.keys(DACH_GROUPS).length);
 }
 dachInfoFetch();
+// Match bei DACH CS aktiv? Solange der Stil läuft alle 30 s (der Server fragt höchstens alle 20 s bei DACH CS nach)
+async function dachMatchCheck(now) {
+  if (!dachMode() || (!now && document.hidden)) return;
+  let found = null;
+  try { found = (await (await fetch("/api/dach-match", { cache: "no-store" })).json()).match; } catch (err) {}
+  const D = ensure(Z, "dach", {});
+  if (found === undefined) found = null;
+  if (D.match !== found) { D.match = found; scenesDraw(); send(); }
+  else if (now) scenesDraw();
+}
+setInterval(dachMatchCheck, 30000);
+setTimeout(dachMatchCheck, 2500);
 
 
 /* ---------- DACH CS – Offiziell als Stil (eine Quelle) ---------- */

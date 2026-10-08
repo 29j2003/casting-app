@@ -204,6 +204,7 @@ textarea { min-height: 80px; resize: vertical; }
 .scenes-buttons button:disabled { opacity: .45; cursor: not-allowed; }
 /* fehlen CS2-Daten, zeigt die Szene nur „Warte auf CS2-Daten …“ */
 .scenes-buttons button.needs-data { opacity: .55; }
+.scenes-buttons button[aria-disabled="true"] { cursor: not-allowed; }
 .scenes-buttons button.needs-data::after { content: "CS2"; position: absolute; right: 6px; top: 3px; font-size: 9px; font-weight: 800; letter-spacing: .06em; color: var(--wait); }
 /* Ingame läuft: „Über dem Spiel“ direkt unter dem Ingame-Knopf */
 .scene-sub { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; border: 1px solid var(--over); border-radius: 8px; background: color-mix(in srgb, var(--over) 10%, transparent); }
@@ -211,7 +212,10 @@ textarea { min-height: 80px; resize: vertical; }
 .scene-sub b span { font-weight: 500; letter-spacing: 0; }
 .scenes-buttons .scene-sub button { flex: 1 1 100%; height: 30px; padding: 0 10px; font-size: 12px; }
 .scenes-buttons button.needs-match::after { content: "MATCH"; }
-.scenes-buttons .dach-match { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); padding: 2px 0 6px; cursor: pointer; }
+.scenes-buttons .dach-match { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); padding: 2px 0 6px; }
+.scenes-buttons .dach-match .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--off, #555); }
+.scenes-buttons .dach-match .dot.ok { background: var(--ok); } .scenes-buttons .dach-match .dot.wait { background: var(--wait); }
+.scenes-buttons .dach-match .link-button { margin-left: auto; }
 .scenes-buttons .scene-sub button.needs-data::after { position: static; margin-left: 8px; }
 .scenes-buttons .scene-sub button.on { background: var(--over) !important; border-color: var(--over) !important; color: #fff !important; }
 .scenes-buttons kbd { position: absolute; right: 6px; top: 4px; font-size: 10px; opacity: .7; font-family: inherit; }
@@ -792,11 +796,11 @@ body.pages-mode .group > .stepper { grid-column: 2; }
 :root { --bg: #090A12; --f1: #12131F; --f2: #1A1C2C; --head: #141526; --line: #262946; --text: #F2F3FF; --muted: #9EA3C7;
         --accent: #8B5CFF; --accent-soft: rgba(139, 92, 255, .18); --ok: #2FE39A; --warn: #FFB547; --red: #FF3D6E;
         --hot: linear-gradient(135deg, #8B5CFF, #FF3D9A); --onair: linear-gradient(135deg, #FF3D6E, #FF7A3D); --onair-solid: #FF3D6E;
-        --card: linear-gradient(180deg, rgba(26, 28, 44, .94), rgba(18, 19, 31, .94)); --card-line: rgba(139, 92, 255, .22);
+        --card: linear-gradient(180deg, rgba(26, 28, 44, .94), rgba(18, 19, 31, .94)); --card-line: rgba(139, 92, 255, .22); --card-head: #191A2A;
         --btn: linear-gradient(180deg, #1F2135, #191A2B); --title-font: Rajdhani, Barlow, sans-serif; }
 :root[data-design=light] { --bg: #F3F1EC; --f1: #FFFFFF; --f2: #F6F4EF; --head: #FFFFFF; --line: #E4E0D6; --text: #1E1B16; --muted: #7A7468;
         --accent: #FF5B2E; --accent-soft: rgba(255, 91, 46, .12); --ok: #1FA971; --warn: #D48A00; --red: #E5383B;
-        --hot: #FF5B2E; --onair: #FF5B2E; --onair-solid: #FF5B2E; --card: #FFFFFF; --card-line: transparent; --btn: #F6F4EF; --title-font: Barlow, sans-serif; }
+        --hot: #FF5B2E; --onair: #FF5B2E; --onair-solid: #FF5B2E; --card: #FFFFFF; --card-head: #FFFFFF; --card-line: transparent; --btn: #F6F4EF; --title-font: Barlow, sans-serif; }
 .scene-column:nth-child(1), .scene-column:nth-child(1) * { --grp: #4EA1FF; } .scene-column:nth-child(2), .scene-column:nth-child(2) * { --grp: #3DDC97; }
 .scene-column:nth-child(3), .scene-column:nth-child(3) * { --grp: #FFB547; } .scene-column:nth-child(4), .scene-column:nth-child(4) * { --grp: #B98CFF; }
 .scene-column:nth-child(5), .scene-column:nth-child(5) * { --grp: #FF7AA8; }
@@ -810,9 +814,10 @@ body { background: radial-gradient(1200px 600px at 75% -10%, rgba(139, 92, 255, 
 :root[data-design=light] .topbar, :root[data-design=light] .rail { background: #FFFFFF; }
 .page details { border-radius: 16px; border: 1px solid var(--card-line); background: var(--card); }
 :root[data-design=light] .page details { box-shadow: 0 1px 2px rgba(0, 0, 0, .06); }
-.page details > summary { background: transparent; border-bottom: 1px solid var(--card-line); font-family: var(--title-font); font-size: 15px; letter-spacing: .12em; height: 44px; min-height: 44px; }
+/* Titelzeile deckend (Kartenfarbe) – sie bleibt beim Scrollen oben stehen, der Inhalt darf nicht durchscheinen */
+.page details > summary { background: var(--card-head); border-radius: 15px 15px 0 0; border-bottom: 1px solid var(--card-line); font-family: var(--title-font); font-size: 15px; letter-spacing: .12em; height: 44px; min-height: 44px; }
 :root[data-design=light] .page details > summary { border-bottom-color: var(--line); text-transform: none; letter-spacing: 0; }
-.page details:not([open]) > summary { border-bottom-color: transparent; }
+.page details:not([open]) > summary { border-bottom-color: transparent; border-radius: 15px; }
 
 /* Knöpfe */
 .button { border-radius: 10px; }

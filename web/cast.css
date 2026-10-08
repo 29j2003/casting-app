@@ -139,7 +139,8 @@ body > * { position: absolute; }
 .badge { min-width: 300px; box-shadow: 0 12px 30px rgba(0, 0, 0, .35); z-index: 2; }
 .badge .box-head { --kh: 54px; --kf: 38px; justify-content: flex-start; color: #fff; }
 .badge .box-field { height: 42px; flex: none; justify-content: flex-start; font-size: 26px; font-weight: 600; text-transform: none; letter-spacing: .01em; }
-.badge .role { position: absolute; left: 0; top: -30px; height: 30px; padding: 0 12px; display: flex; align-items: center;
+/* Text 3 px nach links: rechts oben ist die Ecke abgeschrägt, mittig gesetzt wirkte er nach rechts gerückt (Breite gleich) */
+.badge .role { position: absolute; left: 0; top: -30px; height: 30px; padding: 0 15px 0 9px; display: flex; align-items: center;
   background: var(--accent); color: var(--dark); font-weight: 800; font-size: 20px; letter-spacing: .08em; text-transform: uppercase; }
 .theme-regular .badge .role { background: var(--light); color: var(--text-dark); }
 

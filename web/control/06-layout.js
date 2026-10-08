@@ -525,9 +525,23 @@ document.querySelectorAll("[data-lock]").forEach(b => b.onclick = ev => {
 for (const place of ["bottom", "right"]) (ui.dock[place] || []).forEach(entry => dockEntryPlace(DOCKS[place], typeof entry === "string" ? entry : Object.assign({}, entry, { open: undefined })));
 if (!ui.zoom3) { if (!ui.zoom || ui.zoom === 1) ui.zoom = "auto"; ui.zoom3 = true; }   // 3.0: wer nie gezoomt hat, bekommt die automatische Größe
 dockRemember(); widths(); zoomSet(ui.zoom || "auto"); designSet(ui.design || "dark"); placementSet(); lockDraw();
-// Start: alles in den Reitern zu; angedockte Bereiche so, wie du sie zuletzt hattest
+// Start: alles in den Reitern zu; angedockte Bereiche so, wie du sie zuletzt hattest („Erste Schritte“ nur beim allerersten Start offen)
 ui.isOpen = ui.isOpen || {};
 areas.forEach(d => {
-  d.open = placeFrom(d) !== "left" && d.id !== "firstSteps" ? ui.isOpen[d.dataset.area] !== false : d.id === "firstSteps";
+  d.open = placeFrom(d) !== "left" && d.id !== "firstSteps" ? ui.isOpen[d.dataset.area] !== false : d.id === "firstSteps" && !ui.stepsSeen;
   d.addEventListener("toggle", () => { if (placeFrom(d) !== "left") { ui.isOpen[d.dataset.area] = d.open; uiSave(); } });
+});
+if (!ui.stepsSeen) { ui.stepsSeen = true; uiSave(); }
+// Erklärtexte (2.16): lange, feste Hinweise am Anfang eines Bereichs stehen hinter „?“ am Titel – ein Klick zeigt sie.
+// So bleiben die Bereiche ruhig; wer neu ist, findet die Erklärung trotzdem an derselben Stelle.
+areas.forEach(d => {
+  const long = [...d.querySelectorAll(":scope > .content > p.small:not([id])")].filter(p => p.textContent.trim().length > 70);
+  if (!long.length) return;
+  long.forEach(p => p.classList.add("explain"));
+  const b = document.createElement("button"); b.type = "button"; b.className = "explain-toggle"; b.textContent = "?";
+  b.title = "Erklärung zeigen"; b.setAttribute("aria-label", "Erklärung zeigen"); b.setAttribute("aria-pressed", "false");
+  b.addEventListener("pointerdown", ev => ev.stopPropagation());               // kein Ziehen am Titel
+  b.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); const on = !d.classList.contains("explain-open");
+    d.classList.toggle("explain-open", on); b.setAttribute("aria-pressed", on); if (on) d.open = true; };
+  const s = d.querySelector("summary"); s.insertBefore(b, s.querySelector(".pin"));
 });

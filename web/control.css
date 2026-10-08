@@ -527,8 +527,19 @@ body:not(.layout-edit) details[data-area=sceneList] .scene-head { display: none 
 .audio-more { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .audio-more .segment button { font-size: 12px; padding: 0 8px; }
 .clean-button.on { background: var(--red) !important; border-color: var(--red) !important; color: #fff !important; }
 /* Erste Schritte: schwebende Checkliste unten links statt eigener Spalte */
-#firstSteps { position: fixed; left: 88px; bottom: 16px; z-index: 110; width: 360px; max-height: 70vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.45); }
-#firstSteps:not([open]) { width: 220px; }
+/* Erste Schritte (2.16): klappt unter dem Knopf in der Kopfzeile auf, zu = unsichtbar (nichts schwebt mehr über dem Inhalt) */
+#firstSteps { position: fixed; right: 16px; top: 58px; z-index: 110; width: 360px; max-height: 70vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.45); }
+#firstSteps:not([open]) { display: none; }
+.steps-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--text); font-weight: 700; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.steps-pill b { color: var(--accent); }
+.steps-pill[hidden] { display: none; }
+/* Erklärtexte hinter „?“ am Bereichstitel */
+.explain { display: none; }
+details.explain-open .explain { display: block; }
+.explain-toggle { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--line); background: none; color: var(--muted); font-size: 11px; font-weight: 800;
+  line-height: 1; cursor: pointer; margin: 0 auto 0 4px; padding: 0; flex: none; text-transform: none; letter-spacing: 0; }
+.explain-toggle:hover, .explain-toggle[aria-pressed="true"] { color: var(--text); border-color: var(--accent); }
 /* Szenen: Gruppen brechen bei wenig Platz in neue Zeilen um, statt Text abzuschneiden */
 .scenes-buttons.columns { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important; }
 .dach-card[hidden] { display: none !important; }
@@ -733,8 +744,43 @@ body.pages-mode .group > .stepper { grid-column: 2; }
 .persons-more { display: grid; gap: 8px; }
 
 /* Teams-Vorstellung: Werte-Tabelle */
-.ti-stats { width: 100%; border-collapse: collapse; margin: 6px 0; }
-.ti-stats th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 4px 8px 4px 0; }
-.ti-stats thead th { color: var(--text); font-size: 13px; }
-.ti-stats td { padding: 3px 6px 3px 0; }
-.ti-stats input { width: 100%; }
+/* Teams-Vorstellung (2.16): Reiter wie die Folien, Werte in einer Reihe, eine Zeile Turnier, Vergleich mit Schaltern */
+.ti-bar { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.ti-tabs { display: flex; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; }
+.ti-tabs button { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 0; border-bottom: 3px solid transparent; background: none;
+  color: var(--muted); font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.ti-tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+.ti-tabs .sub-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--off, #555); flex: none; }
+.ti-tabs .sub-dot.ok { background: var(--ok); } .ti-tabs .sub-dot.wait { background: var(--wait); }
+.ti-auto { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.ti-auto select { width: auto; padding: 4px 8px; font-size: 12px; }
+.ti-team { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.ti-logo { width: 44px; height: 44px; border-radius: 6px; background: var(--accent) center / contain no-repeat; color: #111; display: grid; place-items: center; font-weight: 800; flex: none; }
+.ti-logo[style*="url"] { background-color: transparent; }
+.ti-team-name { flex: 1; min-width: 180px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.ti-team-name b { font-size: 17px; }
+.ti-team-name .ti-rename { flex-basis: 100%; max-width: 360px; }
+.link-button { border: 0; background: none; padding: 0; color: var(--muted); font-size: 12px; text-decoration: underline dotted; cursor: pointer; }
+.link-button:hover { color: var(--text); }
+.ti-values { display: grid; grid-template-columns: repeat(4, minmax(70px, 1fr)) minmax(220px, 2fr); gap: 12px; align-items: end; }
+.ti-values label, .ti-last { display: grid; gap: 4px; font-size: 11px; letter-spacing: .06em; color: var(--muted); text-transform: uppercase; }
+.ti-values input { font-size: 15px; font-weight: 700; text-align: center; }
+.ti-form-edit { display: flex; gap: 6px; }
+.ti-form-edit button { width: 38px; height: 36px; border-radius: 6px; border: 1px solid var(--line); background: var(--f1); color: var(--muted); font-weight: 800; cursor: pointer; }
+.ti-form-edit button.s { background: var(--ok); border-color: var(--ok); color: #111; }
+.ti-form-edit button.n { background: #5b2330; border-color: #5b2330; color: #fff; }
+.ti-tour { margin-top: 14px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; padding: 8px 12px; border-radius: 8px;
+  background: color-mix(in srgb, var(--ok) 7%, transparent); font-size: 13px; }
+.ti-tour.none { background: var(--f2); color: var(--muted); }
+.ti-tour b.diff { color: var(--wait); } .ti-tour .grow { flex: 1; }
+.ti-cmp-top { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+.ti-cmp { display: grid; gap: 4px; max-width: 760px; margin: 0 auto; }
+.ti-cmp-row { display: grid; grid-template-columns: 1fr 170px 1fr 54px; gap: 12px; align-items: center; min-height: 34px; font-size: 14px; }
+.ti-cmp-row > b:first-child { text-align: right; } .ti-cmp-row > span { text-align: center; font-size: 11px; letter-spacing: .1em; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+.ti-cmp-row.head > * { font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.ti-cmp-row.head > span:last-child { text-align: center; }
+.ti-cmp-row.off > b, .ti-cmp-row.off > span { opacity: .35; }
+.ti-cmp-row input[type=text] { width: 64px; text-align: center; font-weight: 700; }
+.ti-cmp-row > b:first-child input { margin-left: auto; display: block; }
+.ti-cmp-row .toggleSwitch { justify-self: center; }
+@media (max-width: 900px) { .ti-values { grid-template-columns: repeat(2, 1fr); } }

@@ -325,6 +325,10 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
   `{area, open}`), Tab-Gruppe (`{tabs: […], active}`) oder Stapel (`{stack: [Einträge]}`, nur unter der Vorschau: eine Spalte
   `.dock-stack`). `dockEntryPlace()` legt jeden Eintrag an (Start und Arbeitsbereiche), `dockRemember()` schreibt sie zurück;
   `stackCleanup()`/`groupCleanup()` lösen Stapel und Gruppen mit nur einem Teil auf.
+* **Erklärtexte** (`06-layout.js`): feste `p.small` ohne `id` direkt in `.content` eines Bereichs, länger als 70 Zeichen, bekommen
+  `.explain` und sind versteckt; das „?“ am Titel schaltet `details.explain-open`. Statusmeldungen brauchen deshalb eine `id`.
+* **Teams-Vorstellung** (`05-live.js`, `tiDraw`): Reiter `ui.tiTab`; Daten in `Z.teamIntro` – `names` (Anzeigename nur für
+  `.ti-name`-Spans der Szene, `cast.js → teams()`), `rows` (Zeilen im Vergleich), `h2h` (direkter Vergleich).
 * **Steuerseite schreibt nur Änderungen:** Zeitgeber (Timer alle 250 ms, Match-Leiste, Log) nutzen `setText`, `setImage`,
   `setHtml` (`01-core.js`) – das DOM wird nur angefasst, wenn sich der Wert wirklich ändert (spart Layout und Bildaufbau).
 * **DACH CS – Offiziell** (`web/broadcast.js`, `dachShow`): drei iframes im Wechsel. Ebenen: vorige Seite (z 1) ·

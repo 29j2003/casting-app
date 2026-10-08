@@ -22,6 +22,7 @@
   </div>
   <span class="small bracket-saved" id="saved" title="Alles wird automatisch gespeichert"></span>
   <div class="bracket-flex"></div>
+  <button class="steps-pill" id="stepsPill" hidden aria-haspopup="dialog" title="Erste Schritte – was für die erste Sendung noch fehlt">Erste Schritte <b id="stepsCount"></b></button>
   <button class="bracket-connected" id="bracketConnected" aria-haspopup="dialog" title="Verbindungen anzeigen"><span id="bracketPoints"></span><span id="bracketConnText">–</span></button>
   <div class="statusbar status-pop" id="statusPop" hidden>
     <button class="pill" id="obsStatus" title="Verbindung zu OBS – Klick öffnet die Einstellungen"><i></i><span>OBS: verbinde …</span></button>
@@ -326,23 +327,58 @@
       <summary>Teams-Vorstellung</summary>
       <div class="content">
         <p class="small">Szene „Teams-Vorstellung“ mit drei Folien nacheinander: Team A, Team B (je Logo, Spieler, Werte) und der Vergleich. Spieler kommen aus „Spieler“, Logos und Namen aus dem Match. Leere Werte zeigt das Overlay als „–“.</p>
-        <div class="line" style="align-items:end">
-          <label class="toggleSwitch"><input type="checkbox" data-field="teamIntro.slides.a" data-kind="bool" class="ti-slide-on"> Folie Team A</label>
-          <label class="toggleSwitch"><input type="checkbox" data-field="teamIntro.slides.b" data-kind="bool" class="ti-slide-on"> Folie Team B</label>
-          <label class="toggleSwitch"><input type="checkbox" data-field="teamIntro.slides.compare" data-kind="bool" class="ti-slide-on"> Folie Vergleich</label>
-          <label>Weiterschalten<select id="tiAuto"><option value="0">von Hand</option><option value="8">automatisch alle 8 s</option><option value="12">automatisch alle 12 s</option><option value="20">automatisch alle 20 s</option><option value="30">automatisch alle 30 s</option></select></label>
+        <div class="ti-bar">
+          <div class="ti-tabs" role="tablist">
+            <button type="button" role="tab" data-ti-tab="a"><i class="sub-dot"></i><span id="tiTabA">Team A</span></button>
+            <button type="button" role="tab" data-ti-tab="b"><i class="sub-dot"></i><span id="tiTabB">Team B</span></button>
+            <button type="button" role="tab" data-ti-tab="compare"><i class="sub-dot"></i>Vergleich</button>
+          </div>
+          <label class="ti-auto">Folien weiter<select id="tiAuto"><option value="0">von Hand</option><option value="8">alle 8 s</option><option value="12">alle 12 s</option><option value="20">alle 20 s</option><option value="30">alle 30 s</option></select></label>
         </div>
-        <table class="ti-stats">
-          <thead><tr><th></th><th id="tiNameA">Team A</th><th id="tiNameB">Team B</th></tr></thead>
-          <tbody>
-            <tr><th>Setzplatz</th><td><input type="text" data-field="teamIntro.stats.a.seed" placeholder="z. B. 1" aria-label="Setzplatz Team A"></td><td><input type="text" data-field="teamIntro.stats.b.seed" placeholder="z. B. 1" aria-label="Setzplatz Team B"></td></tr>
-            <tr><th>Siegquote in %</th><td><input type="text" data-field="teamIntro.stats.a.winrate" placeholder="z. B. 64" aria-label="Siegquote in % Team A"></td><td><input type="text" data-field="teamIntro.stats.b.winrate" placeholder="z. B. 64" aria-label="Siegquote in % Team B"></td></tr>
-            <tr><th>Spiele</th><td><input type="text" data-field="teamIntro.stats.a.matches" placeholder="z. B. 128" aria-label="Spiele Team A"></td><td><input type="text" data-field="teamIntro.stats.b.matches" placeholder="z. B. 128" aria-label="Spiele Team B"></td></tr>
-            <tr><th>Serie (Siege in Folge)</th><td><input type="text" data-field="teamIntro.stats.a.streak" placeholder="z. B. 3" aria-label="Serie (Siege in Folge) Team A"></td><td><input type="text" data-field="teamIntro.stats.b.streak" placeholder="z. B. 3" aria-label="Serie (Siege in Folge) Team B"></td></tr>
-            <tr><th>Letzte 5 (S/N, neuestes zuerst)</th><td><input type="text" data-field="teamIntro.stats.a.last" placeholder="z. B. SSNSS" aria-label="Letzte 5 (S/N, neuestes zuerst) Team A"></td><td><input type="text" data-field="teamIntro.stats.b.last" placeholder="z. B. SSNSS" aria-label="Letzte 5 (S/N, neuestes zuerst) Team B"></td></tr>
-          </tbody>
-        </table>
-        <div class="line"><button class="button" id="tiFromTour">Aus dem Turnier übernehmen</button><span class="small" id="tiStatus"></span></div>
+        <div class="ti-page" data-ti-page="a" role="tabpanel">
+          <div class="ti-team">
+            <div class="ti-logo" id="tiLogoA"></div>
+            <div class="ti-team-name"><b id="tiNameA">Team A</b> <button type="button" class="link-button" data-ti-rename="a">Anzeigename ändern</button>
+              <input type="text" class="ti-rename" data-field="teamIntro.names.a" placeholder="leer = Name aus dem Match" aria-label="Anzeigename Team A" hidden></div>
+            <label class="toggleSwitch"><input type="checkbox" data-field="teamIntro.slides.a" data-kind="bool" class="ti-slide-on"> Folie zeigen</label>
+          </div>
+          <div class="ti-values">
+            <label>Setzplatz<input type="text" data-field="teamIntro.stats.a.seed" placeholder="–" aria-label="Setzplatz Team A"></label>
+            <label>Siegquote %<input type="text" data-field="teamIntro.stats.a.winrate" placeholder="–" aria-label="Siegquote in % Team A"></label>
+            <label>Spiele<input type="text" data-field="teamIntro.stats.a.matches" placeholder="–" aria-label="Spiele Team A"></label>
+            <label>Serie<input type="text" data-field="teamIntro.stats.a.streak" placeholder="–" aria-label="Serie (Siege in Folge) Team A"></label>
+            <div class="ti-last"><span>Letzte 5</span><div class="ti-form-edit" data-ti-form="a" title="Klick: Sieg → Niederlage → leer · neuestes links"></div></div>
+          </div>
+          <div class="ti-tour" data-ti-tour="a" hidden></div>
+        </div>
+        <div class="ti-page" data-ti-page="b" role="tabpanel">
+          <div class="ti-team">
+            <div class="ti-logo" id="tiLogoB"></div>
+            <div class="ti-team-name"><b id="tiNameB">Team B</b> <button type="button" class="link-button" data-ti-rename="b">Anzeigename ändern</button>
+              <input type="text" class="ti-rename" data-field="teamIntro.names.b" placeholder="leer = Name aus dem Match" aria-label="Anzeigename Team B" hidden></div>
+            <label class="toggleSwitch"><input type="checkbox" data-field="teamIntro.slides.b" data-kind="bool" class="ti-slide-on"> Folie zeigen</label>
+          </div>
+          <div class="ti-values">
+            <label>Setzplatz<input type="text" data-field="teamIntro.stats.b.seed" placeholder="–" aria-label="Setzplatz Team B"></label>
+            <label>Siegquote %<input type="text" data-field="teamIntro.stats.b.winrate" placeholder="–" aria-label="Siegquote in % Team B"></label>
+            <label>Spiele<input type="text" data-field="teamIntro.stats.b.matches" placeholder="–" aria-label="Spiele Team B"></label>
+            <label>Serie<input type="text" data-field="teamIntro.stats.b.streak" placeholder="–" aria-label="Serie (Siege in Folge) Team B"></label>
+            <div class="ti-last"><span>Letzte 5</span><div class="ti-form-edit" data-ti-form="b" title="Klick: Sieg → Niederlage → leer · neuestes links"></div></div>
+          </div>
+          <div class="ti-tour" data-ti-tour="b" hidden></div>
+        </div>
+        <div class="ti-page" data-ti-page="compare" role="tabpanel">
+          <div class="ti-cmp-top"><label class="toggleSwitch"><input type="checkbox" data-field="teamIntro.slides.compare" data-kind="bool" class="ti-slide-on"> Folie zeigen</label></div>
+          <div class="ti-cmp" id="tiCompare">
+            <div class="ti-cmp-row head"><b id="tiCmpA">Team A</b><span></span><b id="tiCmpB">Team B</b><span>Zeile</span></div>
+            <div class="ti-cmp-row" data-row="seed"><b data-ti-cmp="a.seed"></b><span>Setzplatz</span><b data-ti-cmp="b.seed"></b><label class="toggleSwitch"><input type="checkbox" data-field="teamIntro.rows.seed" data-kind="bool" aria-label="Zeile Setzplatz"></label></div>
+            <div class="ti-cmp-row" data-row="winrate"><b data-ti-cmp="a.winrate"></b><span>Siegquote</span><b data-ti-cmp="b.winrate"></b><label class="toggleSwitch"><input type="checkbox" data-field="teamIntro.rows.winrate" data-kind="bool" aria-label="Zeile Siegquote"></label></div>
+            <div class="ti-cmp-row" data-row="matches"><b data-ti-cmp="a.matches"></b><span>Spiele</span><b data-ti-cmp="b.matches"></b><label class="toggleSwitch"><input type="checkbox" data-field="teamIntro.rows.matches" data-kind="bool" aria-label="Zeile Spiele"></label></div>
+            <div class="ti-cmp-row" data-row="streak"><b data-ti-cmp="a.streak"></b><span>Serie</span><b data-ti-cmp="b.streak"></b><label class="toggleSwitch"><input type="checkbox" data-field="teamIntro.rows.streak" data-kind="bool" aria-label="Zeile Serie"></label></div>
+            <div class="ti-cmp-row" data-row="last"><b data-ti-cmp="a.last"></b><span>Letzte 5</span><b data-ti-cmp="b.last"></b><label class="toggleSwitch"><input type="checkbox" data-field="teamIntro.rows.last" data-kind="bool" aria-label="Zeile Letzte 5"></label></div>
+            <div class="ti-cmp-row" data-row="h2h"><b><input type="text" data-field="teamIntro.h2h.a" placeholder="0" aria-label="Direkter Vergleich: Siege Team A"></b><span>Direkter Vergleich</span><b><input type="text" data-field="teamIntro.h2h.b" placeholder="0" aria-label="Direkter Vergleich: Siege Team B"></b><label class="toggleSwitch"><input type="checkbox" data-field="teamIntro.rows.h2h" data-kind="bool" aria-label="Zeile Direkter Vergleich"></label></div>
+          </div>
+        </div>
       </div>
     </details>
 

@@ -51,7 +51,8 @@ Sicherungen (`.json`) und Theme-Dateien aus 2.1 lassen sich weiter laden.
 ### Beim ersten Start
 
 1. **Casting-App** starten.
-2. Es öffnet sich das Fenster **Casting-App**. Die Karte **„Erste Schritte"** führt durch alles Weitere:
+2. Es öffnet sich das Fenster **Casting-App** – beim ersten Start im aufgeräumten Arbeitsbereich *Einsteiger* (Vorschau,
+   Szenen, Panel der Szene). Oben rechts steht **„Erste Schritte 0/5“**: ein Klick klappt die Liste auf, sie führt durch alles Weitere:
    * **OBS verbinden:** OBS → Werkzeuge → WebSocket-Server-Einstellungen → „WebSocket-Server aktivieren".
      Port und Passwort („Verbindungsinformationen anzeigen") in der App unter **⚙ App-Einstellungen → Verbindungen & Zugänge** eintragen.
    * **Szenen einrichten:** Setup → **Szenen & OBS** → **„Szene ‚Cast – Sendung‘ in OBS anlegen"**. In OBS gibt es dann die Szene „Cast – Sendung"
@@ -292,9 +293,13 @@ Nach oben/unten und Löschen (mit Rückgängig). Arten:
   (Zuschauer nur mit Namen, als kleines Schild in der Kachel); Kameras: „Weitere Kameras“ (VDO.Ninja, Gerät, Bild oder leer).
 * **Teams-Vorstellung** (Szene, Match → Teams & Spieler → „Teams-Vorstellung“): drei Folien nacheinander –
   **Team A** und **Team B** (Logo mit Setzplatz, fünf Spielerkarten, Siegquote, Spiele, Serie, letzte 5) und der **Vergleich**
-  (beide Logos, die Werte Zeile für Zeile). Folien einzeln an/aus; **weiterschalten von Hand** (Knöpfe im Live-Panel „Folien“)
-  oder **automatisch alle 8–30 s**. Die Werte trägst du ein oder holst sie mit **„Aus dem Turnier übernehmen“** (Setzplatz =
-  Reihenfolge im Turnier, Statistik von FACEIT über „Team-Statistiken von FACEIT laden“). Leere Werte zeigt das Overlay als „–“.
+  (beide Logos, die Werte Zeile für Zeile). Der Bereich hat drei Reiter wie die Folien – **Team A · Team B · Vergleich**
+  (Punkt: grün = Werte da, gelb = fehlen, grau = Folie aus). Je Team: „Folie zeigen“, die Werte in einer Reihe, „Letzte 5“
+  per Klick (Sieg → Niederlage → leer) und **„Anzeigename ändern“** – ein eigener Name nur für diese Szene (CS2 und der
+  Spielstand behalten den Namen aus dem Match). Steht das Team im Turnier, zeigt eine Zeile darunter dessen Werte;
+  abweichende sind gelb, **„Übernehmen“** holt sie (Setzplatz = Reihenfolge im Turnier, Statistik von FACEIT).
+  Im Reiter **Vergleich** schaltest du jede Zeile an/aus; **„Direkter Vergleich“** (Siege gegeneinander) erscheint nur mit Werten.
+  **Folien weiter** (oben rechts im Bereich): von Hand (Knöpfe im Live-Panel „Folien“) oder alle 8–30 s. Leere Werte zeigt das Overlay als „–“.
 * **Unterseiten mit Status:** In Match, Turnier und Setup steht links neben jeder Unterseite ein Punkt mit einer Zeile – Grün = fertig,
   Gelb = fehlt noch (z. B. „Caster-Namen fehlen“, „1 Logo fehlt“), Lila = angepasst, Grau = Vorgabe.
   In Match und Turnier führen **„Weiter: …“** und **„← …“** unter jeder Unterseite Schritt für Schritt durch die Vorbereitung.
@@ -311,7 +316,9 @@ In der Szene **Ingame** weichen alle Positionen dem Spiel-HUD aus (Minimap, Scor
 
 ### Die Oberfläche (wie in OBS)
 
-* **Oben** wählst du den Arbeitsbereich (Operator, Caster – große Knöpfe, Laptop / neben OBS, Vorbereitung oder eigene).
+* **Oben** wählst du den Arbeitsbereich (Einsteiger, Operator, Caster – große Knöpfe, Laptop / neben OBS, Vorbereitung oder eigene).
+  *Einsteiger* (Start beim ersten Mal) zeigt nur Vorschau, Szenen und das Panel der Szene; alles andere liegt eingeklappt bereit.
+* **„?“ am Bereichstitel** blendet die Erklärung des Bereichs ein – so bleiben die Bereiche ruhig, die Hilfe ist trotzdem da.
   *Operator* startet aufgeräumt: offen sind Szenen, Szenen-Werkzeuge und Einblendungen; Ton, Match-Leiste und Turnier sind
   eingeklappt (Klick auf den Titel öffnet sie, der Zustand bleibt gespeichert).
 * **Strg K** öffnet „Suchen & Befehle“: Szene wechseln, Einblendung zeigen, Bereich öffnen oder andocken – alles per Tastatur.

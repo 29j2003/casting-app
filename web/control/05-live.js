@@ -714,7 +714,7 @@ function overDraw() {
 setInterval(() => { if (Z.broadcast.overGame) overDraw(); }, 1000);       // abgelaufen → Knopf wieder aus
 /* ---------- Teams-Vorstellung: Folien wählen, automatisch weiter, Werte aus dem Turnier ---------- */
 // als Funktion (nicht const): panelValues kann schon beim Laden laufen, bevor diese Zeile erreicht ist
-function tiSlides() { return [["a", Z.teams.a.name || "Team A"], ["b", Z.teams.b.name || "Team B"], ["compare", "Vergleich"]]; }
+function tiSlides() { return [["a", tiName("a")], ["b", tiName("b")], ["compare", "Vergleich"]]; }
 // fehlende Werte im vorhandenen Objekt ergänzen (nie ersetzen – sonst ändern Aufrufer eine Kopie, die nicht im Zustand hängt)
 function teamIntroState() {
   const d = K.DEFAULT.teamIntro, I = Z.teamIntro = Z.teamIntro || K.clone(d);
@@ -743,7 +743,7 @@ function slidesDraw() {
   }
   $("pSlidesAuto").checked = I.auto > 0;
   $("tiAuto").value = String(I.auto || 0);
-  $("tiNameA").textContent = Z.teams.a.name || "Team A"; $("tiNameB").textContent = Z.teams.b.name || "Team B";
+  tiDraw();
 }
 // Folie zeigen; läuft „automatisch“, geht es ab dieser Folie weiter
 function tiShow(k) {
@@ -762,22 +762,72 @@ $("pSlidesAuto").onchange = () => tiAuto($("pSlidesAuto").checked ? (ui.tiAuto |
 $("tiAuto").onchange = () => tiAuto(+$("tiAuto").value || 0);
 document.querySelectorAll(".ti-slide-on").forEach(c => c.addEventListener("change", () => setTimeout(slidesDraw, 0)));
 setInterval(() => { if ((Z.teamIntro || {}).auto > 0) slidesDraw(); }, 1000);     // laufende Folie im Panel mitzeigen
-// Werte aus dem Turnier: gleiches Team (Name oder Kürzel), Setzplatz = Reihenfolge der Teams, Statistik von FACEIT
-$("tiFromTour").onclick = () => {
-  const T = tour(), I = teamIntroState(), norm = s => String(s || "").trim().toLowerCase();
-  const found = [];
+/* ---------- Teams-Vorstellung (Match): Reiter Team A · Team B · Vergleich (2.16) ---------- */
+// (Funktionen statt const: slidesDraw → tiDraw läuft schon beim Laden, bevor diese Zeilen erreicht sind)
+function tiFields() { return [["seed", "Setzplatz"], ["winrate", "Siegquote"], ["matches", "Spiele"], ["streak", "Serie"], ["last", "Letzte 5"]]; }
+function tiName(k) { return String(((teamIntroState().names) || {})[k] || "").trim() || Z.teams[k].name || (k === "a" ? "Team A" : "Team B"); }
+// Werte desselben Teams im Turnier (Name oder Kürzel passt): Setzplatz = Reihenfolge der Teams, Statistik von FACEIT
+function tiTourValues(k) {
+  const T = tour(), norm = s => String(s || "").trim().toLowerCase();
+  const name = norm(Z.teams[k].name), short = norm(Z.teams[k].short);
+  const i = (T.teams || []).findIndex(t => norm(t.name) === name || (short && norm(t.short) === short));
+  if (i < 0) return null;
+  const t = T.teams[i], st = t.stats || {};
+  return { name: t.name, seed: String(i + 1), winrate: st.winrate ? String(st.winrate) : "", matches: st.matches ? String(st.matches) : "",
+           streak: st.series !== undefined && st.series !== "" ? String(st.series) : "", last: (st.last || []).slice(0, 5).map(x => x === "1" ? "S" : "N").join("") };
+}
+// Turnierwerte übernehmen – leere Turnierwerte lassen deine Eingabe stehen
+function tiTake(k) {
+  const v = tiTourValues(k); if (!v) return false;
+  const S = teamIntroState().stats[k];
+  tiFields().forEach(([f]) => { if (v[f]) S[f] = v[f]; });
+  fieldsFill(); send(); tiDraw();
+  return true;
+}
+function tiDraw() {
+  if (!$("tiCompare")) return;
+  const I = teamIntroState(), tab = ["a", "b", "compare"].includes(ui.tiTab) ? ui.tiTab : "a";
+  document.querySelectorAll("[data-ti-tab]").forEach(b => b.setAttribute("aria-selected", b.dataset.tiTab === tab));
+  document.querySelectorAll("[data-ti-page]").forEach(p => { p.hidden = p.dataset.tiPage !== tab; });
   ["a", "b"].forEach(k => {
-    const name = norm(Z.teams[k].name), short = norm(Z.teams[k].short);
-    const i = T.teams.findIndex(t => norm(t.name) === name || (short && norm(t.short) === short));
-    if (i < 0) return;
-    const t = T.teams[i], st = t.stats || {};
-    Object.assign(I.stats[k], { seed: String(i + 1), winrate: st.winrate ? String(st.winrate) : I.stats[k].winrate, matches: st.matches ? String(st.matches) : I.stats[k].matches,
-      streak: st.series !== undefined && st.series !== "" ? String(st.series) : I.stats[k].streak, last: (st.last || []).length ? st.last.slice(0, 5).map(x => x === "1" ? "S" : "N").join("") : I.stats[k].last });
-    found.push(t.name);
+    const K2 = k.toUpperCase(), t = Z.teams[k], filled = tiFields().some(([f]) => String(I.stats[k][f] || "").trim());
+    setText($("tiTab" + K2), tiName(k)); setText($("tiName" + K2), tiName(k)); setText($("tiCmp" + K2), tiName(k));
+    const logo = $("tiLogo" + K2); setImage(logo, t.logo || ""); const words = tiName(k).split(/\s+/).filter(Boolean);
+    setText(logo, t.logo ? "" : (t.short || (words.length > 1 ? words.map(w => w[0]).join("") : words[0] || "")).toUpperCase().slice(0, 3));
+    const dot = document.querySelector(`[data-ti-tab="${k}"] .sub-dot`); dot.className = "sub-dot " + (I.slides[k] === false ? "" : filled ? "ok" : "wait");
+    const rename = document.querySelector(`[data-ti-page="${k}"] .ti-rename`); if (I.names[k]) rename.hidden = false;
+    // Letzte 5: fünf Felder, Klick = Sieg → Niederlage → leer (neuestes links)
+    const form = [...String(I.stats[k].last || "").toUpperCase().replace(/W/g, "S").replace(/L/g, "N")].concat(["", "", "", "", ""]).slice(0, 5);
+    const box = document.querySelector(`[data-ti-form="${k}"]`), html = form.map((c, i) =>
+      `<button type="button" data-i="${i}" class="${c === "S" ? "s" : c === "N" ? "n" : ""}" aria-label="Spiel ${i + 1}: ${c === "S" ? "Sieg" : c === "N" ? "Niederlage" : "leer"}">${c === "S" ? "S" : c === "N" ? "N" : "–"}</button>`).join("");
+    if (box._h !== html) {
+      box._h = html; box.innerHTML = html;
+      box.querySelectorAll("button").forEach(b => b.onclick = () => {
+        const next = { "": "S", "-": "S", S: "N", N: "-" }, f = form.map(c => c || "-"); f[+b.dataset.i] = next[f[+b.dataset.i]];
+        I.stats[k].last = f.join("").replace(/-+$/, ""); fieldsFill(); send(); tiDraw();
+      });
+    }
+    // Turnier: eine Zeile mit den Werten von dort – abweichende gelb, „Übernehmen“ nur wenn etwas abweicht
+    const line = document.querySelector(`[data-ti-tour="${k}"]`), v = (tour().teams || []).length ? tiTourValues(k) : null;
+    let tourHtml = "";
+    if ((tour().teams || []).length && !v) tourHtml = `<span class="state">Nicht im Turnier</span><span class="small">Name oder Kürzel passt zu keinem Team dort.</span>`;
+    else if (v) {
+      const diff = tiFields().filter(([f]) => v[f] && v[f] !== String(I.stats[k][f] || ""));
+      tourHtml = `<span class="state ok">Turnier</span>` + tiFields().filter(([f]) => v[f]).map(([f, n]) => `<span>${esc(n)} <b class="${diff.some(([g]) => g === f) ? "diff" : ""}">${esc(v[f])}${f === "winrate" ? " %" : ""}</b></span>`).join("") +
+        `<span class="grow"></span>` + (diff.length ? `<button type="button" class="button" data-ti-take="${k}">Übernehmen</button>` : `<span class="small">✓ übernommen</span>`);
+    }
+    line.classList.toggle("none", !v);
+    if (line._h !== tourHtml) { line._h = tourHtml; line.innerHTML = tourHtml; line.hidden = !tourHtml; const b = line.querySelector("[data-ti-take]"); if (b) b.onclick = () => tiTake(k); }
   });
-  fieldsFill(); send();
-  $("tiStatus").textContent = found.length ? `✓ Übernommen: ${found.join(" · ")}` : "Keins der beiden Teams steht im Turnier (Name oder Kürzel muss passen).";
-};
+  document.querySelector('[data-ti-tab="compare"] .sub-dot').className = "sub-dot " + (I.slides.compare === false ? "" : "ok");
+  const show = (k, f) => { const x = String(I.stats[k][f] || "").trim(); return !x ? "–" : f === "winrate" ? x.replace(/\s*%$/, "") + " %" : f === "seed" && !x.startsWith("#") ? "#" + x : x; };
+  document.querySelectorAll("[data-ti-cmp]").forEach(e => { const [k, f] = e.dataset.tiCmp.split("."); setText(e, show(k, f)); });
+  document.querySelectorAll(".ti-cmp-row[data-row]").forEach(r => r.classList.toggle("off", (I.rows || {})[r.dataset.row] === false));
+}
+document.querySelectorAll("[data-ti-tab]").forEach(b => b.onclick = () => { ui.tiTab = b.dataset.tiTab; uiSave(); tiDraw(); });
+document.querySelectorAll("[data-ti-rename]").forEach(b => b.onclick = () => { const i = b.parentElement.querySelector(".ti-rename"); i.hidden = false; i.focus(); });
+document.querySelectorAll('[data-area="team-intro"] [data-field]').forEach(e => e.addEventListener(e.type === "checkbox" ? "change" : "input", () => setTimeout(tiDraw, 0)));
+setTimeout(tiDraw, 0);
 $("pPlusA").onclick = () => mbarPoint("a", 1); $("pMinusA").onclick = () => mbarPoint("a", -1);
 $("pPlusB").onclick = () => mbarPoint("b", 1); $("pMinusB").onclick = () => mbarPoint("b", -1);
 $("pStart").onclick = () => $("mbarStart").click();

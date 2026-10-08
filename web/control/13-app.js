@@ -41,7 +41,9 @@ function stepsDraw() {
   const box = $("stepsList"); if (!box) return;
   const off = localStorage.getItem("cast-steps-off") === "1";
   const finished = STEPS.map(s => { try { return s[2](); } catch (e) { return false; } });
-  $("firstSteps").hidden = off || finished.every(Boolean);
+  const done = off || finished.every(Boolean);
+  $("firstSteps").hidden = done; $("stepsPill").hidden = done;
+  setText($("stepsCount"), `${finished.filter(Boolean).length}/${STEPS.length}`);
   box.innerHTML = "";
   STEPS.forEach(([text, target], i) => {
     const z = document.createElement("div"); z.className = "step" + (finished[i] ? " done" : "");
@@ -51,6 +53,9 @@ function stepsDraw() {
   });
 }
 $("stepsOff").onclick = () => { localStorage.setItem("cast-steps-off", "1"); stepsDraw(); };
+// 2.16: „Erste Schritte“ wohnt in der Kopfzeile (Knopf mit „2/5“) und klappt darunter auf – beim allerersten Start offen
+$("stepsPill").onclick = () => { $("firstSteps").open = !$("firstSteps").open; };
+document.addEventListener("pointerdown", ev => { const f = $("firstSteps"); if (f.open && !f.contains(ev.target) && ev.target !== $("stepsPill") && !$("stepsPill").contains(ev.target)) f.open = false; });
 
 /* ---------- Videos ---------- */
 function videoRating(info) {

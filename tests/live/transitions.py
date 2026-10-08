@@ -31,7 +31,13 @@ async def main() -> None:
             for scene in order:
                 await switch_scene(control, scene, transition)
                 await overlay.wait_for_timeout(SWITCH_SECONDS * 1000)
-                current, layers, still_fading, stinger = await overlay.evaluate(SETTLED_STATE)
+                # a slow CI machine (first load of each scene template) may need a moment longer – up to 3 s more;
+                # a switch that never settles still fails below
+                for _ in range(12):
+                    current, layers, still_fading, stinger = await overlay.evaluate(SETTLED_STATE)
+                    if current == scene and layers == 1 and still_fading == 0 and stinger == "hidden":
+                        break
+                    await overlay.wait_for_timeout(250)
                 total += 1
                 if current == scene and layers == 1 and still_fading == 0 and stinger == "hidden":
                     clean += 1

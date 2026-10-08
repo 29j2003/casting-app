@@ -58,17 +58,17 @@ def test_title_and_picture_come_back_and_only_the_number_is_sent(monkeypatch):
     assert sent[0].data == b"itemcount=1&publishedfileids%5B0%5D=3070284539"
 
 
-def test_pictures_from_other_hosts_are_refused(monkeypatch):
+def test_pictures_from_other_hosts_are_refused_but_the_map_still_counts(monkeypatch):
+    """A picture from elsewhere (or no picture at all) is dropped – title and number still come back (2.15)."""
     steam(monkeypatch, {"result": 1, "title": "x", "preview_url": "https://evil.example.com/a.jpg"})
-    with pytest.raises(workshop.WorkshopError):
-        workshop.lookup("3070284539")
+    assert workshop.lookup("3070284539") == {"id": "3070284539", "title": "x", "image": ""}
     steam(monkeypatch, {"result": 1, "title": "x", "preview_url": "https://images.steamusercontent.com/a"},
           final_url="https://evil.example.com/a.jpg")                      # redirected away from Steam
-    with pytest.raises(workshop.WorkshopError):
-        workshop.lookup("3070284539")
+    assert workshop.lookup("3070284539")["image"] == ""
     steam(monkeypatch, {"result": 1, "title": "x", "preview_url": "https://images.steamusercontent.com/a"}, image_type="text/html")
+    assert workshop.lookup("3070284539")["image"] == ""
     with pytest.raises(workshop.WorkshopError):
-        workshop.lookup("3070284539")
+        workshop.preview("https://evil.example.com/a.jpg")
 
 
 def test_an_unknown_item_is_reported(monkeypatch):

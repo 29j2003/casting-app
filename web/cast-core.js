@@ -18,7 +18,7 @@ window.CastCore = (function () {
   "use strict";
 
   const KEY = "cast-state-v1";
-  const VERSION = "2.14.0";                     // muss zur App passen – sonst lädt sich die Seite neu
+  const VERSION = "2.15.0";                     // muss zur App passen – sonst lädt sich die Seite neu
   // Läuft die Seite über den Server der App (http://localhost:8787)?
   const SERVER = /^https?:$/.test(location.protocol) && location.port === "8787" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
@@ -720,15 +720,16 @@ window.CastCore = (function () {
   };
   // Wo Kameras (c1, c2, guest) und Inhalt (content) sitzen. Die Rahmen liegen UNTER der DACH-Seite und füllen deren
   // Loch samt gelber Linie – Linie und Namensschild der Seite liegen darüber. Singlecam, Duocam, Interaktion und
-  // eigene Contentpause aus den echten Seiten gemessen (2.3.1); Interviews sind noch Startwerte zum Anpassen.
+  // eigene Contentpause aus den echten Seiten gemessen (2.3.1); Interviews aus Screenshots (2.15): Interview Single hat
+  // die Löcher von Duocam, Interview Duo die von Interaktion Duo (Gast im großen Feld).
   const DACH_FRAME = {
     singlecast: { c1: { x: 510, y: 41, w: 902, h: 677 } },
     duocast: { c1: { x: 39, y: 40, w: 902, h: 682 }, c2: { x: 980, y: 40, w: 903, h: 682 } },
     singleinteraction: { c1: { x: 39, y: 40, w: 522, h: 321 }, content: { x: 600, y: 40, w: 1282, h: 722 } },
     duointeraction: { c1: { x: 39, y: 40, w: 522, h: 321 }, c2: { x: 39, y: 441, w: 522, h: 321 }, content: { x: 600, y: 40, w: 1282, h: 722 } },
     pause_own_content: { content: { x: 334, y: 33, w: 1253, h: 705 } },
-    solo_interview: { c1: { x: 100, y: 120, w: 840, h: 630 }, guest: { x: 980, y: 120, w: 840, h: 630 } },
-    duointerview: { c1: { x: 60, y: 140, w: 580, h: 435 }, c2: { x: 670, y: 140, w: 580, h: 435 }, guest: { x: 1280, y: 140, w: 580, h: 435 } }
+    solo_interview: { c1: { x: 39, y: 40, w: 902, h: 682 }, guest: { x: 980, y: 40, w: 903, h: 682 } },
+    duointerview: { c1: { x: 39, y: 40, w: 522, h: 321 }, c2: { x: 39, y: 441, w: 522, h: 321 }, guest: { x: 600, y: 40, w: 1282, h: 722 } }
   };
   function dachFrame(Z, page) {
     const own = ((Z || {}).dachFrame || {})[page] || {};

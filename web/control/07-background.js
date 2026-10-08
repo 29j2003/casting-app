@@ -74,13 +74,21 @@ async function obsBackground(idle) {
   } catch (err) { st.textContent = "OBS: " + err.message; }
 }
 $("bgSetup").onclick = () => obsBackground(false);
-// in der Ingame-Szene (eine Browserquelle) muss das Hintergrund-Video in OBS unsichtbar sein
-async function obsBackgroundVisible(on, delay) {
+// in der Ingame-Szene (eine Browserquelle) muss das Hintergrund-Video in OBS unsichtbar sein, in jeder anderen sichtbar.
+// Der Zustand richtet sich immer nach der Szene, die beim Ausführen läuft – ein schneller Wechsel zurück (während das
+// Ausblenden noch auf das Ende der Blende wartet) lässt das Video so nie versteckt zurück (bis 2.14).
+let bgVisibleTimer = null;
+function obsBackgroundVisible(delay) {
+  clearTimeout(bgVisibleTimer);
+  bgVisibleTimer = setTimeout(obsBackgroundSync, delay || 0);
+}
+async function obsBackgroundSync() {
   if ((Z.background || {}).source !== "obs" || !onSource() || !channel.obs.isOpen) return;
-  if (delay) await new Promise(ok => setTimeout(ok, delay));
+  const on = Z.broadcast.scene !== "ingame";
   try {
     const { sceneItemId } = await channel.obs.question("GetSceneItemId", { sceneName: "Cast – Sendung", sourceName: BG_NAME });
-    await channel.obs.question("SetSceneItemEnabled", { sceneName: "Cast – Sendung", sceneItemId, sceneItemEnabled: on });
+    const { sceneItemEnabled } = await channel.obs.question("GetSceneItemEnabled", { sceneName: "Cast – Sendung", sceneItemId });
+    if (sceneItemEnabled !== on) await channel.obs.question("SetSceneItemEnabled", { sceneName: "Cast – Sendung", sceneItemId, sceneItemEnabled: on });
   } catch (err) {}
 }
 

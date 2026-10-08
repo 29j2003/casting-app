@@ -229,13 +229,13 @@ def ti_team(k, d):
     return (f'<div class="ti-slide" data-slide="{k}">\n'
             f'<div class="box lineup-team ti-logo enter" style="left:57px;top:212px;width:440px;height:600px;--d:{d}s">'
             f'<div class="box-head" data-ti="{k}.head"></div><div class="team-logo {k}"></div>'
-            f'<div class="box-field"><span data-team-name="{k}" data-matching></span></div></div>\n'
+            f'<div class="box-field"><span class="ti-name" data-team-name="{k}" data-matching></span></div></div>\n'
             f'<div class="lineup ti-players enter" data-ti-players="{k}" style="left:530px;top:212px;width:1333px;height:400px;--d:{d + .1}s"></div>\n'
             + vals + '</div>\n')
 
 
-TI_HEAD = ('<span data-only="a"><span data-team-name="a" data-matching></span></span>'
-           '<span data-only="b"><span data-team-name="b" data-matching></span></span>'
+TI_HEAD = ('<span data-only="a"><span class="ti-name" data-team-name="a" data-matching></span></span>'
+           '<span data-only="b"><span class="ti-name" data-team-name="b" data-matching></span></span>'
            f'<span data-only="compare">{VS_FIELD}</span>')
 scene('teams.html', 'Teams-Vorstellung',
       head_box(482, 47, 1381, .2, 'teamIntro', TI_HEAD) +
@@ -243,7 +243,7 @@ scene('teams.html', 'Teams-Vorstellung',
       '<div class="ti-slide" data-slide="compare">\n' +
       ''.join(f'<div class="box lineup-team ti-logo enter" style="left:{x}px;top:212px;width:420px;height:600px;--d:.3s">'
               f'<div class="box-head" data-ti="{k}.head"></div><div class="team-logo {k}"></div>'
-              f'<div class="box-field"><span data-team-name="{k}" data-matching></span></div></div>\n' for k, x in (('a', 57), ('b', 1443))) +
+              f'<div class="box-field"><span class="ti-name" data-team-name="{k}" data-matching></span></div></div>\n' for k, x in (('a', 57), ('b', 1443))) +
       '<div class="box ti-compare enter" style="left:500px;top:212px;width:920px;height:600px;--d:.4s">'
       '<div class="box-head" data-ti-word="compare"></div><div class="box-field ti-tape" data-ti-tape></div></div>\n'
       '</div>\n</div>\n' + bottom_cast(.7), max_brand=400)

@@ -203,7 +203,9 @@
       });
       // Text nur bei neuem Namen setzen – fit() entscheidet, ob Name oder Kürzel dasteht
       $$(`[data-team-name="${k}"]`).forEach(e => {
-        const full = t.name || "", short = t.short || "";
+        // Teams-Vorstellung: eigener Anzeigename (nur dort – CS2, Spielstand & Co. behalten den Namen aus dem Match)
+        const shown = e.classList.contains("ti-name") && String((((Z.teamIntro || {}).names) || {})[k] || "").trim();
+        const full = shown || t.name || "", short = shown ? "" : t.short || "";
         if (e.dataset.full === full && e.dataset.short === short) return;
         e.dataset.full = full; e.dataset.short = short; e.textContent = full;
       });
@@ -609,7 +611,7 @@
     if (!boxes.length) return;
     const I = Z.teamIntro || {}, S = I.stats || {}, W = key => esc(K.word(Z, key)), slide = teamIntroSlide();
     boxes.forEach(b => { const root = b.parentElement; if (root.dataset.tislide !== slide) root.dataset.tislide = slide; });
-    const keyName = JSON.stringify([I.stats, Z.players, Z.overlayLanguage]);
+    const keyName = JSON.stringify([I.stats, I.rows, I.h2h, Z.players, Z.overlayLanguage]);
     const fresh = boxes.filter(b => newNeeded(b, keyName));
     if (!fresh.length) return;
     const value = (k, f) => {
@@ -634,9 +636,16 @@
           return `<div class="box players-card"><div class="players-image">${image}${level}</div><div class="box-head">${esc(p.name)}</div><div class="box-field">${esc(p.real || "")}</div></div>`;
         }).join("");
       });
+      // Vergleich: nur die eingeschalteten Zeilen (I.rows, fehlt = an); „Direkter Vergleich“ nur mit Bilanz (I.h2h)
+      const rows = I.rows || {}, h2h = I.h2h || {};
       b.querySelectorAll("[data-ti-tape]").forEach(e => {
-        e.innerHTML = [["seed", "seed"], ["winRate", "winrate"], ["matches", "matches"], ["streak", "streak"], ["lastFive", "last"]]
-          .map(([w, f]) => `<div>${f === "seed" ? value("a", f).replace(/^(?!–|#)/, "#") : value("a", f)}</div><div class="lab">${W(w)}</div><div>${f === "seed" ? value("b", f).replace(/^(?!–|#)/, "#") : value("b", f)}</div>`).join("");
+        const list = [["seed", "seed"], ["winRate", "winrate"], ["matches", "matches"], ["streak", "streak"], ["lastFive", "last"]]
+          .filter(([, f]) => rows[f] !== false)
+          .map(([w, f]) => `<div>${f === "seed" ? value("a", f).replace(/^(?!–|#)/, "#") : value("a", f)}</div><div class="lab">${W(w)}</div><div>${f === "seed" ? value("b", f).replace(/^(?!–|#)/, "#") : value("b", f)}</div>`);
+        const ha = String(h2h.a ?? "").trim(), hb = String(h2h.b ?? "").trim();
+        if (rows.h2h !== false && (ha || hb)) list.push(`<div>${esc(ha || "0")}</div><div class="lab">${W("headToHead")}</div><div>${esc(hb || "0")}</div>`);
+        e.innerHTML = list.join("");
+        e.style.setProperty("--ti-rows", Math.max(1, list.length));
       });
     });
   }

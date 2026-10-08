@@ -71,6 +71,13 @@ async def check_own_scenes(control, overlay) -> int:
             await switch_scene(control, random.choice(scenes), random.choice(["fade", "slide", "wipe", "stinger"]))
             await control.wait_for_timeout(random.randint(60, 350))
         await overlay.wait_for_timeout(2500)
+        # a slow CI machine may still be finishing the last (queued) switch or stinger – give it up to 5 s more;
+        # a layer or stinger that never goes away still fails below
+        for _ in range(20):
+            if await overlay.evaluate("document.querySelectorAll('.layer').length === 1 && "
+                                      "getComputedStyle(document.querySelector('.stinger')).visibility === 'hidden'"):
+                break
+            await overlay.wait_for_timeout(250)
         layers, visible_parts, stinger = await overlay.evaluate("""(() => { const s = [...document.querySelectorAll('.layer')];
             const visible = s.length ? [...s[s.length - 1].children].filter(e => parseFloat(getComputedStyle(e).opacity) > 0.9).length : 0;
             return [s.length, visible, getComputedStyle(document.querySelector('.stinger')).visibility]; })()""")

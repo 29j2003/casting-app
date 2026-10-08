@@ -1243,5 +1243,7 @@ window.CastLanguages.en = {
  "Gruppe": "Group",
  "im Overlay – dieselbe Szene, nur diese Gruppe": "in the overlay – same scene, only this group",
  "Gruppen gibt es nur bei Tabelle oder GSL (Turnier → Format).": "Groups only exist with table or GSL (Tournament → format).",
- "✓ „{}“ steht unter „Weitere Maps“ – zum Aktivieren dort einschalten.": "✓ “{}” is under “More maps” – switch it on there to activate it."
+ "✓ „{}“ steht unter „Weitere Maps“ – zum Aktivieren dort einschalten.": "✓ “{}” is under “More maps” – switch it on there to activate it.",
+ "Darüber: „{}“": "Above: “{}”",
+ "Darunter: „{}“": "Below: “{}”"
 };

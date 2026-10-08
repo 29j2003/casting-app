@@ -758,3 +758,38 @@ def test_one_group_of_the_table_from_the_scene_panel(server, browser):
     assert control.evaluate("Z.dach.match") is True and not control.evaluate(marked)
     control.evaluate("Z.theme = 'regular'; Z.dach.match = false; everything(); send()")
     assert errors == []
+
+
+def test_areas_stack_below_the_preview(server, browser):
+    """2.15: under the preview an area can go above or below another one (drag onto its upper/lower quarter in
+    „Layout bearbeiten“) – the stack is kept after a reload and comes apart again when one leaves."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("zoomSet(1); tabs('live'); arrangementApply({ dock: { bottom: ['sceneList', 'audio'], right: [] }, hU: 420 }); layoutEdit(true)")
+    page.wait_for_timeout(300)
+
+    def drag(source, target, fy):
+        s = page.locator(source).bounding_box()
+        page.mouse.move(s["x"] + 40, s["y"] + s["height"] / 2)
+        page.mouse.down()
+        page.mouse.move(s["x"] + 60, s["y"] + s["height"] / 2 + 20, steps=4)
+        t = page.locator(target).bounding_box()                    # (measured while dragging – the others make room)
+        page.mouse.move(t["x"] + t["width"] / 2, t["y"] + t["height"] * fy, steps=8)
+        hint = page.evaluate("document.querySelector('.tab-target').hidden ? '' : document.querySelector('.tab-target').textContent")
+        page.mouse.up()
+        page.wait_for_timeout(200)
+        return hint
+
+    hint = drag("[data-area=audio] > summary", "[data-area=sceneList]", 0.9)
+    assert hint.startswith("Darunter"), (hint, errors)
+    assert page.evaluate("ui.dock.bottom") == [{"stack": ["sceneList", "audio"]}]
+    assert page.evaluate("document.querySelector('#dockBottom > .dock-stack > [data-area=audio]') !== null")
+    page.reload()
+    page.wait_for_timeout(1200)
+    assert page.evaluate("[...document.querySelectorAll('#dockBottom > .dock-stack > details')].map(d => d.dataset.area)") == ["sceneList", "audio"]
+    page.evaluate("dockPanel(document.querySelector('[data-area=audio]'), 'left')")
+    assert page.evaluate("ui.dock.bottom") == ["sceneList"] and not page.evaluate("document.querySelector('.dock-stack')")
+    page.evaluate("layoutEdit(false); workspaceChoose('Operator')")
+    assert errors == []

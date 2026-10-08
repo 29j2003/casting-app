@@ -230,8 +230,46 @@ $("allOpen").onclick = () => allAreas(true);
 const slug = t => t.toLowerCase().replace(/[^a-z0-9äöüß]+/g, "-").replace(/^-|-$/g, "");
 const areas = [...document.querySelectorAll(".group > details")];
 const placeFrom = d => { const k = d.closest("#dockBottom, #dockRight"); return !k ? "left" : k.id === "dockBottom" ? "bottom" : "right"; };
-const cardsIn = dock => [...dock.children].filter(x => x.tagName === "DETAILS" || x.classList.contains("tabgroup"));
+const cardsIn = dock => [...dock.children].filter(x => x.tagName === "DETAILS" || x.classList.contains("tabgroup") || x.classList.contains("dock-stack"));
 const groupFrom = d => d.parentElement && d.parentElement.classList.contains("tabgroup") ? d.parentElement : null;
+// Stapel (2.15): im Dock unter der Vorschau liegen Bereiche auch übereinander – ein Stapel ist eine Spalte mit
+// Bereichen oder Tab-Gruppen, jedes Teil scrollt für sich. Gespeichert als { stack: [Eintrag, …] } in ui.dock.bottom.
+const stackFrom = el => el && el.parentElement && el.parentElement.classList.contains("dock-stack") ? el.parentElement : null;
+const stackOf = d => stackFrom(d) || stackFrom(groupFrom(d));
+function stackCleanup(st) {
+  if (!st || !st.isConnected) return;
+  const parts = [...st.children];
+  if (parts.length <= 1) { if (parts[0]) st.replaceWith(parts[0]); else st.remove(); }
+}
+function stackWith(d, card, below) {
+  if (card === d) return;
+  const previousGroup = groupFrom(d), previousStack = stackOf(d);
+  let st = stackFrom(card);
+  if (!st) { st = document.createElement("div"); st.className = "dock-stack"; card.parentElement.insertBefore(st, card); st.appendChild(card); }
+  d.classList.remove("tab-active");
+  st.insertBefore(d, below ? card.nextSibling : card); d.open = true;
+  groupCleanup(previousGroup); if (previousStack !== st) stackCleanup(previousStack);
+  dockRemember();
+}
+// ein gespeicherter Eintrag (Bereich, Tab-Gruppe oder Stapel) in ein Dock oder einen Stapel legen
+function dockEntryPlace(container, entry, before) {
+  before = before === undefined ? container.querySelector(":scope > .dock-target") : before;
+  if (typeof entry === "string" || (entry && entry.area)) {
+    const d = areaAfter(entry.area || entry); if (!d) return;
+    container.insertBefore(d, before); if (entry.open !== undefined) d.open = entry.open !== false;
+    return;
+  }
+  if (entry && Array.isArray(entry.stack)) {
+    const st = document.createElement("div"); st.className = "dock-stack"; container.insertBefore(st, before);
+    entry.stack.forEach(x => dockEntryPlace(st, x, null));
+    stackCleanup(st); return;
+  }
+  const cards = ((entry || {}).tabs || []).map(areaAfter).filter(Boolean);
+  if (cards.length < 2) { cards.forEach(d => container.insertBefore(d, before)); return; }
+  const g = document.createElement("div"); g.className = "tabgroup"; g.dataset.active = entry.active || "";
+  g.innerHTML = `<div class="tab-bar" role="tablist"></div>`; container.insertBefore(g, before);
+  cards.forEach(d => g.appendChild(d)); tabsDraw(g);
+}
 // Tab-Leiste einer Gruppe neu aufbauen; die Tabs lassen sich anklicken und wieder herausziehen
 function tabsDraw(g) {
   const cards = [...g.querySelectorAll(":scope > details")];
@@ -261,11 +299,11 @@ function groupNew(dock, before, active) {
 }
 function asTab(d, target) {
   if (target === d || target === groupFrom(d)) return;
-  const previousGroup = groupFrom(d);
+  const previousGroup = groupFrom(d), previousStack = stackOf(d);
   let g = target.classList.contains("tabgroup") ? target : null;
   if (!g) { g = groupNew(target.parentElement, target, d.dataset.area); g.appendChild(target); target.open = true; }
   g.appendChild(d); g.dataset.active = d.dataset.area; d.open = true;
-  tabsDraw(g); groupCleanup(previousGroup); dockRemember();
+  tabsDraw(g); groupCleanup(previousGroup); if (previousStack !== stackOf(d)) stackCleanup(previousStack); dockRemember();
 }
 // eigene Reihenfolge der Bereiche je Reiter (Ziehen in der linken Spalte)
 function rowRemember(g) {
@@ -275,30 +313,31 @@ function rowRemember(g) {
   ui.line = ui.line || {}; ui.line[g.dataset.group] = cards.map(x => x.dataset.area); uiSave();
 }
 function afterHome(d) {
-  const previousGroup = groupFrom(d);
+  const previousGroup = groupFrom(d), previousStack = stackOf(d);
   const g = document.querySelector(`.group[data-group="${d.dataset.home}"]`);
   const after = [...g.children].find(x => x.tagName === "DETAILS" && +x.dataset.num > +d.dataset.num);
   d.classList.remove("tab-active");
   g.insertBefore(d, after || null);
-  groupCleanup(previousGroup);
+  groupCleanup(previousGroup); stackCleanup(previousStack);
 }
 function dockPanel(d, place, before) {
-  const previousGroup = groupFrom(d);
+  const previousGroup = groupFrom(d), previousStack = stackOf(d);
   if (place === "left") afterHome(d);
   else {
     const dock = DOCKS[place];
     d.classList.remove("tab-active");
     dock.insertBefore(d, before && before.parentElement === dock && before !== d ? before : dock.querySelector(".dock-target"));
-    groupCleanup(previousGroup);
+    groupCleanup(previousGroup); stackCleanup(previousStack);
   }
   if (place !== "left") d.open = true;
   dockRemember();
 }
 function dockRemember() {
   for (const [place, dock] of Object.entries(DOCKS)) {
-    ui.dock[place] = cardsIn(dock).map(k => k.classList.contains("tabgroup")
+    const entry = k => k.classList.contains("tabgroup")
       ? { tabs: [...k.querySelectorAll(":scope > details")].map(d => d.dataset.area), active: k.dataset.active }
-      : k.dataset.area);
+      : k.classList.contains("dock-stack") ? { stack: [...k.children].map(entry) } : k.dataset.area;
+    ui.dock[place] = cardsIn(dock).map(entry);
     dock.classList.toggle("empty", !ui.dock[place].length);
   }
   uiSave();
@@ -381,10 +420,20 @@ function dragMove(m) {
   dragState.target = place ? { place } : null;
   stroke.hidden = true; compass.hidden = true; tabTarget.hidden = true;
   // über einer angedockten Karte: Kompass – Mitte = als Tab, Rand = davor/danach
-  const card = dock && below.closest("#dockBottom > details, #dockRight > details, .tabgroup");
+  const card = dock && below.closest("#dockBottom > details, #dockRight > details, .tabgroup, .dock-stack > details");
   if (card && card !== dragState.d && card !== groupFrom(dragState.d)) {
     const r = card.getBoundingClientRect(), fx = (m.clientX - r.left) / r.width, fy = (m.clientY - r.top) / Math.min(r.height, 240);
-    const across = place === "bottom";
+    const across = place === "bottom", fyAll = (m.clientY - r.top) / r.height;
+    // unter der Vorschau: oberes/unteres Viertel = darüber/darunter stapeln (Linie zeigt, wo)
+    if (across && Math.abs(fx - 0.5) < 0.4 && (fyAll < 0.25 || fyAll > 0.75)) {
+      const below2 = fyAll > 0.75;
+      dragState.target = { place, stack: card, below: below2 };
+      Object.assign(stroke.style, { left: r.left + "px", top: (below2 ? r.bottom - 3 : r.top - 1) + "px", width: r.width + "px", height: "4px" });
+      stroke.hidden = false;
+      tabTarget.hidden = false; Object.assign(tabTarget.style, { left: r.left + "px", top: (below2 ? r.top + r.height / 2 : r.top) + "px", width: r.width + "px", height: r.height / 2 + "px" });
+      tabTarget.firstChild.textContent = (below2 ? "Darunter: " : "Darüber: ") + "„" + card.querySelector("summary").textContent.replace(/[⠿⧉]/g, "").trim() + "“";
+      return;
+    }
     if (Math.abs(fx - 0.5) < 0.22 && Math.abs(fy - 0.5) < 0.3) {
       dragState.target = { place, tab: card };
       compassShow(r, 4);
@@ -433,7 +482,8 @@ function dragEnd() {
   ghost.hidden = true; stroke.hidden = true; compass.hidden = true; tabTarget.hidden = true; Object.values(zones).forEach(z => z.classList.remove("on"));
   document.body.classList.remove("is-dragging"); d.classList.remove("becomes-dragged"); Object.values(DOCKS).forEach(dk => dk.classList.remove("over-zone"));
   if (active && target && target.tab) asTab(d, target.tab);
-  else if (active && target && target.group) { const previousGroup = groupFrom(d); d.classList.remove("tab-active"); target.group.insertBefore(d, target.before || null); groupCleanup(previousGroup); rowRemember(target.group); dockRemember(); }
+  else if (active && target && target.stack) stackWith(d, target.stack, target.below);
+  else if (active && target && target.group) { const previousGroup = groupFrom(d), previousStack = stackOf(d); d.classList.remove("tab-active"); target.group.insertBefore(d, target.before || null); groupCleanup(previousGroup); stackCleanup(previousStack); rowRemember(target.group); dockRemember(); }
   else if (active && target) dockPanel(d, target.place, target.before);
   else dockRemember();
 }
@@ -472,13 +522,7 @@ document.querySelectorAll("[data-lock]").forEach(b => b.onclick = ev => {
   ev.stopPropagation();
   ui.locked = Object.assign({}, ui.locked, { [b.dataset.lock]: !locked(b.dataset.lock) }); uiSave(); lockDraw();
 });
-for (const place of ["bottom", "right"]) (ui.dock[place] || []).forEach(entry => {
-  if (typeof entry === "string") { const d = areaAfter(entry); if (d) DOCKS[place].insertBefore(d, DOCKS[place].querySelector(".dock-target")); return; }
-  const cards = (entry.tabs || []).map(areaAfter).filter(Boolean);
-  if (cards.length < 2) { cards.forEach(d => DOCKS[place].insertBefore(d, DOCKS[place].querySelector(".dock-target"))); return; }
-  const g = groupNew(DOCKS[place], null, entry.active);
-  cards.forEach(d => g.appendChild(d)); tabsDraw(g);
-});
+for (const place of ["bottom", "right"]) (ui.dock[place] || []).forEach(entry => dockEntryPlace(DOCKS[place], typeof entry === "string" ? entry : Object.assign({}, entry, { open: undefined })));
 if (!ui.zoom3) { if (!ui.zoom || ui.zoom === 1) ui.zoom = "auto"; ui.zoom3 = true; }   // 3.0: wer nie gezoomt hat, bekommt die automatische Größe
 dockRemember(); widths(); zoomSet(ui.zoom || "auto"); designSet(ui.design || "dark"); placementSet(); lockDraw();
 // Start: alles in den Reitern zu; angedockte Bereiche so, wie du sie zuletzt hattest

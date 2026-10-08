@@ -314,7 +314,10 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
   `.pending` (`cast.css`: `.pending, .pending * { visibility: hidden !important }` – auch Kinder mit eigenem `visibility`
   bleiben verborgen; `tests/live/flicker.py` meldet das als „content of hidden parts shows“). Sieht ein Überblend-Paar nach
   dem Zeichnen gleich aus (Klassen als Menge ohne `pending`, `data-*`), wird es zu *bleibt*. `restyle()` setzt am Ende den
-  Stil der Zielszene, behält aber `--brand-scale`.
+  Stil der Zielszene, behält aber `--brand-scale`. Gleiten geht von der **echten** Lage (`where()`, berechneter Stil) zur
+  echten Ziel-Lage – CSS-Regeln mit `!important` (Leiste rückt ohne Sponsor auf, `cast.css`) gelten mit; solange ein Teil
+  gleitet, trägt es `.gliding`, und diese Regeln haben `:not(.gliding)`, sonst könnte die Animation sie nicht übersteuern.
+  Neue Regeln dieser Art brauchen ebenfalls `:not(.gliding)`; `tests/live/flicker.py` meldet Hin-und-her-Sprünge.
 * **Logo kleiner statt Raster verschieben:** Ein Szenen-Logo mit `data-max` (Breite in px, z. B. „4 Personen“ über
   `max_brand` in `tools/generate_scenes.py`) wird über `--brand-scale` verkleinert (`cast.js`, Theme); erst wenn es dabei
   unter 55 % fiele, steht nur das Icon. Die CSS-Regel `.brand { scale: var(--brand-scale, 1) }` gleitet beim Wechsel mit.
@@ -324,8 +327,12 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
   `.dach-cams` (z 2) · aktuelle Seite (z 3). Die DACH-Seiten haben durchsichtige Löcher für Kameras; die Rahmen aus
   `DACH_FRAME` (`web/cast-core.js`, gemessen inkl. gelber Linie) liegen darunter, Linie und Namensschild der Seite darüber.
   Beim Wechsel sitzen die Kameras sofort in den neuen Rahmen und laufen mit derselben Animation wie die neue Seite;
-  `.dach-under` (z 0) füllt die Löcher beider Seiten schwarz, bis der Wechsel fertig ist. Neue Seite vermessen:
+  `.dach-under` (z 0) füllt die Löcher beider Seiten schwarz, bis der Wechsel fertig ist. Die Blende geht über
+  `.dach-dip` (Dunkelblau der DACH-Seiten, z 2 unter den Kameras): alte Seite → Blau → neue Seite. Neue Seite vermessen:
   Video/Screenshot der Seite, gelbe Linie suchen (1920 × 1080), Werte in `DACH_FRAME` eintragen.
+* **PySide6 unter 6.12** (`pyproject.toml`): Ab 6.12 steckt Qt WebEngine im eigenen Paket `PySide6_WebEngine` (nicht mehr
+  in Addons) – ohne es fehlt `PySide6.QtWebEngineWidgets`. Zum Umstieg: Paket ergänzen, `tools/build.py` und die
+  PyInstaller-Hooks auf allen drei Systemen bauen und testen, dann die Grenze anheben.
 * **Videoformate / H.264 im App-Fenster:** Qt WebEngine aus PySide6 kann kein H.264/AAC (VP8/VP9/AV1 ja); OBS (CEF) kann es.
   Im App-Fenster leitet `desktop/media.py` (`QWebEngineUrlRequestInterceptor`) Medienanfragen auf MP4-artige Dateien auf
   `/api/media?src=…&t=…` um; `server/media_converter.py` wandelt mit FFmpeg in WebM (VP8 + Opus), streamt schon während

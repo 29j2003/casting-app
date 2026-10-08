@@ -57,8 +57,8 @@ async function sceneSwitch(k) {
     Z.broadcast.scene = k; Z.broadcast.num = (Z.broadcast.num || 0) + 1;
     if (before !== k) Z.background.override = null;                   // eine Änderung in der Live-Ecke gilt bis zum Szenenwechsel
     bgApply(k); scenesDraw(); send();
-    if (k === "ingame" && before !== "ingame") obsBackgroundVisible(false, Z.broadcast.transition === "cut" ? 0 : (Z.broadcast.duration || 0) * (Z.broadcast.transition === "stinger" ? .5 : 1));
-    if (k !== "ingame" && before === "ingame") obsBackgroundVisible(true, 0);
+    // Hintergrund-Video in OBS: nach Ingame erst am Ende der Blende aus, aus Ingame heraus sofort an
+    obsBackgroundVisible(k === "ingame" && before !== "ingame" ? (Z.broadcast.transition === "cut" ? 0 : (Z.broadcast.duration || 0) * (Z.broadcast.transition === "stinger" ? .5 : 1)) : 0);
     return;
   }
   $("scene").value = k; preview();                                  // Vorschau folgt

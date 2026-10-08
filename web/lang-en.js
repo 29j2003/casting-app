@@ -1236,5 +1236,12 @@ window.CastLanguages.en = {
  "ÜBER DEM SPIEL": "OVER THE GAME",
  "bleibt stehen": "stays",
  "Wartet auf CS2-Daten – im Overlay steht dann „Warte auf CS2-Daten …“. {}": "Waiting for CS2 data – the overlay then shows “Waiting for CS2 data …”. {}",
- "Wartet auf CS2-Daten – im Overlay steht dann „Warte auf CS2-Daten …“.": "Waiting for CS2 data – the overlay then shows “Waiting for CS2 data …”."
+ "Wartet auf CS2-Daten – im Overlay steht dann „Warte auf CS2-Daten …“.": "Waiting for CS2 data – the overlay then shows “Waiting for CS2 data …”.",
+ "Match bei DACH CS eingetragen": "Match entered at DACH CS",
+ "Aus: Szenen, die ein Match brauchen (Lineup, Tabelle, Letzte/Nächste 5 …), sind grau markiert – sie zeigen sonst nur „TBA“.": "Off: scenes that need a match (lineup, table, last/next 5 …) are greyed out – otherwise they only show “TBA”.",
+ "Braucht ein bei DACH CS eingetragenes Match – sonst steht dort nur „TBA“.": "Needs a match entered at DACH CS – otherwise it only shows “TBA”.",
+ "Gruppe": "Group",
+ "im Overlay – dieselbe Szene, nur diese Gruppe": "in the overlay – same scene, only this group",
+ "Gruppen gibt es nur bei Tabelle oder GSL (Turnier → Format).": "Groups only exist with table or GSL (Tournament → format).",
+ "✓ „{}“ steht unter „Weitere Maps“ – zum Aktivieren dort einschalten.": "✓ “{}” is under “More maps” – switch it on there to activate it."
 };

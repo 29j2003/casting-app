@@ -4,12 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "casting-app"
-version = "2.14.0"                     # keep equal to casting_app/version.py and web/cast-core.js
+version = "2.15.0"                     # keep equal to casting_app/version.py and web/cast-core.js
 description = "Steuerung und Overlays für CS2-Casts in OBS"
 requires-python = ">=3.11"
 dependencies = [
-    "PySide6-Essentials>=6.8,<7",     # Qt widgets + Qt WebEngine (window, tray, per-page audio mute)
-    "PySide6-Addons>=6.8,<7",
+    # Qt widgets + Qt WebEngine (window, tray, per-page audio mute). Below 6.12: from 6.12 on, Qt WebEngine is its own
+    # package (PySide6_WebEngine) – moving there needs a tested build first.
+    "PySide6-Essentials>=6.8,<6.12",
+    "PySide6-Addons>=6.8,<6.12",
     "keyring>=25",                    # system keyring for the FACEIT key, DACH CS access and OBS password
     "cryptography>=42; sys_platform == 'linux'",   # password vault for Linux systems without a keyring
     # FFmpeg (GPL, separate program): plays H.264 videos in the app window – see LICENSES/FFmpeg.txt.

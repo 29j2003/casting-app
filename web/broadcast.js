@@ -40,6 +40,14 @@
     return s;
   }
   // Lage aus dem style-Attribut lesen
+  // tatsächliche Lage auf dem Bild – Regeln mit !important (z. B. „ohne Sponsor rückt die Leiste auf“) eingeschlossen
+  function where(e) {
+    const cs = getComputedStyle(e), o = {};
+    ["left", "top", "width", "height"].forEach(k => { o[k] = cs[k]; });
+    return o;
+  }
+  // bis das Gleiten beginnt, an der echten Lage festhalten (in der neuen Schicht gelten sonst kurz andere Regeln)
+  function pin(e, at) { e.classList.add("gliding"); Object.assign(e.style, at); }
   function placement(styleText) {
     const t = document.createElement("div"); t.setAttribute("style", styleText || "");
     const o = {};
@@ -120,8 +128,8 @@
         // dasselbe Element weiterverwenden: gleitet an die neue Stelle, Inhalt (Lauftext, Stream) läuft weiter
         const info = n.querySelector(".cam-info"), ai = a.querySelector(".cam-info");
         if (info && ai) ai.innerHTML = info.innerHTML;
-        proceed.push({ el: a, from: placement(a.getAttribute("style")), post: placement(n.getAttribute("style")), target: n.getAttribute("style") });
-        n.replaceWith(a);
+        proceed.push({ el: a, from: where(a), target: n.getAttribute("style") });
+        n.replaceWith(a); pin(a, proceed[proceed.length - 1].from);
       } else cross.push([a, n]);
     });
     fresh.querySelectorAll(".enter").forEach(e => e.classList.remove("enter"));
@@ -143,16 +151,16 @@
       const scale = n.style.getPropertyValue("--brand-scale");   // Logo-Größe der neuen Szene: gleitet per CSS-Übergang
       if (scale) a.style.setProperty("--brand-scale", scale); else a.style.removeProperty("--brand-scale");
       n.classList.remove("pending");                   // (nur zum Füllen versteckt – die Lage übernimmt a)
-      proceed.push({ el: a, from: placement(a.getAttribute("style")), post: placement(n.getAttribute("style")), target: n.getAttribute("style") });
+      proceed.push({ el: a, from: where(a), target: n.getAttribute("style") });
       newParts.splice(newParts.indexOf(n), 1);
-      n.replaceWith(a); cross.splice(i, 1);
+      n.replaceWith(a); pin(a, proceed[proceed.length - 1].from); cross.splice(i, 1);
     }
     const go = [...previous.children].filter(e => !cross.some(p => p[0] === e));
     window.__lastSwitch = { proceed: proceed.map(w => w.el.dataset.part), cross: cross.map(p => p[1].dataset.part), come: come.map(e => e.dataset.part || e.className), go: go.map(e => e.dataset.part || e.className) };
     const show = () => newParts.forEach(e => e.classList.remove("pending"));
 
     const done = () => {
-      proceed.forEach(w => { w.el.getAnimations().forEach(x => { if (!(x instanceof CSSAnimation) && !(x instanceof CSSTransition)) x.cancel(); }); restyle(w); delete w.el.dataset.corner; });
+      proceed.forEach(w => { w.el.getAnimations().forEach(x => { if (!(x instanceof CSSAnimation) && !(x instanceof CSSTransition)) x.cancel(); }); restyle(w); w.el.classList.remove("gliding"); delete w.el.dataset.corner; });
       [...fresh.children].forEach(e => e.getAnimations().forEach(x => { if (!(x instanceof CSSAnimation)) x.cancel(); }));
       show(); previous.remove(); currentLayer = fresh; overGame(C().Z);
       if (C().corners) C().corners();                         // Ecken passend zur neuen Lage
@@ -171,12 +179,15 @@
     // weiche Übergänge: nur was sich ändert, bewegt sich
     const jobs = [];
     const out = OUT[kind] || OUT.fade, enter = IN[kind] || IN.fade;
-    // 1) weiterverwendete Teile gleiten an ihre neue Position
+    // 1) weiterverwendete Teile gleiten von ihrer echten Lage an ihre echte neue Lage. Bis 2.14 galten die Werte der
+    //    Vorlage – rückte die Leiste ohne Sponsor auf (CSS mit !important), sprang sie kurz an die Vorlagen-Stelle.
+    //    .gliding schaltet solche Regeln für die Dauer des Gleitens ab, damit die Animation die Lage bestimmt.
     proceed.forEach(w => {
-      const keys = Object.keys(w.post).filter(k => k in w.from && w.from[k] !== w.post[k]);
-      if (!keys.length) return;
-      const a = {}, b = {}; keys.forEach(k => { a[k] = w.from[k]; b[k] = w.post[k]; });
-      jobs.push(anim(w.el, [a, b], duration));
+      restyle(w); w.el.classList.remove("gliding");
+      const post = where(w.el);
+      if (["left", "top", "width", "height"].every(k => w.from[k] === post[k])) return;
+      w.el.classList.add("gliding");
+      jobs.push(anim(w.el, [w.from, post], duration));
     });
     // 2) Teile mit anderem Inhalt: an der Stelle überblenden (und dabei mitgleiten)
     cross.forEach(([a, n]) => {
@@ -302,11 +313,25 @@
       await stingerIn(d); fresh.classList.add("on"); previous.classList.remove("on"); middle(); await stingerOut(d); return;
     }
     fresh.classList.add("on"); middle();
+    const cams = dachLayer.querySelector(".dach-cams");
+    if (kind === "fade") {
+      // Blende über den DACH-Hintergrund: die alte Seite geht in dessen Dunkelblau, dann kommt die neue Seite. Zwei
+      // halb durchsichtige Seiten übereinander (Kamera-Löcher, Logos doppelt) sehen sonst unruhig aus (2.15).
+      const dip = document.createElement("div"); dip.className = "dach-dip";
+      dachLayer.insertBefore(dip, cams);                                  // über der alten Seite, unter Kameras und neuer Seite
+      const half = Object.assign({}, opt, { duration: d / 2 });
+      const hidden = [fresh.animate([{ opacity: 0 }, { opacity: 0 }], half), cams.animate([{ opacity: 0 }, { opacity: 0 }], half)];
+      try { await dip.animate([{ opacity: 0 }, { opacity: 1 }], half).finished; } catch (e) {}
+      const runs = [fresh.animate([{ opacity: 0 }, { opacity: 1 }], half), cams.animate([{ opacity: 0 }, { opacity: 1 }], half)];
+      hidden.forEach(r => r.cancel());
+      try { await runs[0].finished; } catch (e) {}
+      runs.forEach(r => r.cancel()); dip.remove();
+      return;
+    }
     const k = kind === "wipe" ? [{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0 0 0)" }]
             : kind === "slide" ? [{ opacity: 0, transform: "translateX(6%)" }, { opacity: 1, transform: "none" }]
             : [{ opacity: 0 }, { opacity: 1 }];
     const out = [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(-6%)" }];
-    const cams = dachLayer.querySelector(".dach-cams");
     // Schieben: die alte Seite geht in der ersten Hälfte, die neue kommt leicht versetzt (wie bei den eigenen Szenen) –
     // sonst stehen beide lange halb durchsichtig übereinander
     const inOpt = kind === "slide" ? Object.assign({}, opt, { duration: d * .65, delay: d * .35 }) : opt;

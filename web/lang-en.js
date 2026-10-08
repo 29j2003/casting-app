@@ -1235,11 +1235,6 @@ window.CastLanguages.en = {
  "bleibt stehen, bis du es ausschaltest": "stays until you switch it off",
  "ÜBER DEM SPIEL": "OVER THE GAME",
  "bleibt stehen": "stays",
- "Wartet auf CS2-Daten – im Overlay steht dann „Warte auf CS2-Daten …“. {}": "Waiting for CS2 data – the overlay then shows “Waiting for CS2 data …”. {}",
- "Wartet auf CS2-Daten – im Overlay steht dann „Warte auf CS2-Daten …“.": "Waiting for CS2 data – the overlay then shows “Waiting for CS2 data …”.",
- "Match bei DACH CS eingetragen": "Match entered at DACH CS",
- "Aus: Szenen, die ein Match brauchen (Lineup, Tabelle, Letzte/Nächste 5 …), sind grau markiert – sie zeigen sonst nur „TBA“.": "Off: scenes that need a match (lineup, table, last/next 5 …) are greyed out – otherwise they only show “TBA”.",
- "Braucht ein bei DACH CS eingetragenes Match – sonst steht dort nur „TBA“.": "Needs a match entered at DACH CS – otherwise it only shows “TBA”.",
  "Gruppe": "Group",
  "im Overlay – dieselbe Szene, nur diese Gruppe": "in the overlay – same scene, only this group",
  "Gruppen gibt es nur bei Tabelle oder GSL (Turnier → Format).": "Groups only exist with table or GSL (Tournament → format).",
@@ -1271,5 +1266,11 @@ window.CastLanguages.en = {
  "Spiel {}: leer": "Game {}: empty",
  "Zeile {}": "Row {}",
  "Direkter Vergleich: Siege Team A": "Head to head: wins team A",
- "Direkter Vergleich: Siege Team B": "Head to head: wins team B"
+ "Direkter Vergleich: Siege Team B": "Head to head: wins team B",
+ "Braucht CS2-Livedaten – erst CS2 verbinden (Setup → CS2-Livedaten).": "Needs CS2 live data – connect CS2 first (Setup → CS2 live data).",
+ "Match bei DACH CS aktiv": "Match active at DACH CS",
+ "Kein aktives Match bei DACH CS – im DACH-Userbereich ein Match aktivieren": "No active match at DACH CS – activate a match in the DACH user area",
+ "Match bei DACH CS: noch nicht geprüft": "Match at DACH CS: not checked yet",
+ "Prüfen": "Check",
+ "Braucht ein aktives Match bei DACH CS – sonst steht dort nur ein Hinweis. Im DACH-Userbereich ein Match aktivieren.": "Needs an active match at DACH CS – otherwise it only shows a notice. Activate a match in the DACH user area."
 };

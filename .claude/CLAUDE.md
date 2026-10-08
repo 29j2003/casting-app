@@ -11,7 +11,7 @@ Aufbau und Rezepte für Änderungen: `docs/ENTWICKLUNG.md` (bei neuen Bausteinen
 ## Aufbau
 - `casting_app/__main__.py` – Start: Desktop-App oder `--no-window`/`--ohne-fenster` (nur Server), `--no-gpu`/`--ohne-gpu`.
 - `casting_app/server/` – HTTP-Server (Port 8787, nur localhost): `app_server.py` (Anfrage-Prüfung, alle `/api`-Routen,
-  Zustand, Bilder, DACH-Weiterleitung `/dach/<page>`), `event_hub.py` (SSE `/api/events`), `static_files.py`,
+  Zustand, Bilder, DACH-Weiterleitung `/dach/<page>`), `dach_match.py` (ist bei DACH CS ein Match aktiv?), `event_hub.py` (SSE `/api/events`), `static_files.py`,
   `game_state.py` + `cs2_setup.py` (CS2-GSI lokal + Port 8788 mit Token), `faceit.py`, `workshop.py` (Steam Workshop: Name + Bild eigener Maps), `video_info.py`,
   `media_converter.py` (H.264 → WebM mit FFmpeg für das App-Fenster, `/api/media`).
   Alte Adressen aus 2.1 (`steuerung.html`, `spieler.html` …, `/medien/…`, `/api/ereignisse`, `/api/beenden`) bleiben als

@@ -17,15 +17,7 @@ function arrangementNow() {
 }
 function arrangementApply(A) {
   areas.forEach(d => { if (placeFrom(d) !== "left") afterHome(d); });
-  for (const place of ["bottom", "right"]) ((A.dock || {})[place] || []).forEach(entry => {
-    if (typeof entry === "string" || entry.area) {
-      const d = areaAfter(entry.area || entry); if (d) { DOCKS[place].insertBefore(d, DOCKS[place].querySelector(".dock-target")); d.open = entry.open !== false; }
-      return;
-    }
-    const cards = (entry.tabs || []).map(areaAfter).filter(Boolean);
-    if (cards.length < 2) { cards.forEach(d => DOCKS[place].insertBefore(d, DOCKS[place].querySelector(".dock-target"))); return; }
-    const g = groupNew(DOCKS[place], null, entry.active); cards.forEach(d => g.appendChild(d)); tabsDraw(g);
-  });
+  for (const place of ["bottom", "right"]) ((A.dock || {})[place] || []).forEach(entry => dockEntryPlace(DOCKS[place], typeof entry === "string" ? { area: entry, open: true } : entry));
   ["b1", "b2", "hU"].forEach(k => { ui[k] = A[k] ?? null; if (ui[k] == null) pageEl.style.removeProperty("--" + k); });
   ui.previewClose = !!A.previewClose; ui.placement = A.placement || null; ui.locked = Object.assign({}, A.locked);
   document.body.classList.toggle("large", !!A.large); ui.large = !!A.large;

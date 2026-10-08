@@ -321,6 +321,10 @@ In der Szene **Ingame** weichen alle Positionen dem Spiel-HUD aus (Minimap, Scor
   am Titel (Griff mit Punkten) greifen und ziehen – die möglichen Ablageflächen leuchten auf, eine Linie zeigt, wo der Bereich landet.
   Zurück in den Reiter: auf die linke Spalte ziehen. Alternativ das Andock-Symbol am Bereich → Ort wählen.
 * Über einer angedockten Karte erscheint ein **Kompass**: Rand = davor/danach einsortieren, **Mitte = als Tab** stapeln.
+* **Übereinander unter der Vorschau:** Einen Bereich auf das **obere oder untere Viertel** eines Bereichs unter der Vorschau
+  ziehen – die Hälfte leuchtet auf, „Darüber: …“ / „Darunter: …“ zeigt das Ziel. So liegen z. B. Ton und Match in einer
+  Spalte übereinander; jeder scrollt für sich, ein zugeklappter nimmt nur seine Titelzeile. Wird einer herausgezogen,
+  löst sich der Stapel von selbst auf.
   Tabs anklicken zum Wechseln, an der Tab-Leiste wieder herausziehen.
 * **Umsortieren:** Bereiche im Reiter einfach nach oben/unten ziehen – die Reihenfolge bleibt gespeichert.
 * **Szenen anordnen:** in „Layout bearbeiten“ im Bereich „Szenen“ auf **Anordnen** – Knöpfe an die gewünschte Stelle ziehen, Haken = Szene wird angezeigt.

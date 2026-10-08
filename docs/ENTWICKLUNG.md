@@ -321,6 +321,10 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
 * **Logo kleiner statt Raster verschieben:** Ein Szenen-Logo mit `data-max` (Breite in px, z. B. „4 Personen“ über
   `max_brand` in `tools/generate_scenes.py`) wird über `--brand-scale` verkleinert (`cast.js`, Theme); erst wenn es dabei
   unter 55 % fiele, steht nur das Icon. Die CSS-Regel `.brand { scale: var(--brand-scale, 1) }` gleitet beim Wechsel mit.
+* **Docks** (`web/control/06-layout.js`): `ui.dock.bottom/right` ist eine Liste von Einträgen – Bereich (`"audio"` oder
+  `{area, open}`), Tab-Gruppe (`{tabs: […], active}`) oder Stapel (`{stack: [Einträge]}`, nur unter der Vorschau: eine Spalte
+  `.dock-stack`). `dockEntryPlace()` legt jeden Eintrag an (Start und Arbeitsbereiche), `dockRemember()` schreibt sie zurück;
+  `stackCleanup()`/`groupCleanup()` lösen Stapel und Gruppen mit nur einem Teil auf.
 * **Steuerseite schreibt nur Änderungen:** Zeitgeber (Timer alle 250 ms, Match-Leiste, Log) nutzen `setText`, `setImage`,
   `setHtml` (`01-core.js`) – das DOM wird nur angefasst, wenn sich der Wert wirklich ändert (spart Layout und Bildaufbau).
 * **DACH CS – Offiziell** (`web/broadcast.js`, `dachShow`): drei iframes im Wechsel. Ebenen: vorige Seite (z 1) ·

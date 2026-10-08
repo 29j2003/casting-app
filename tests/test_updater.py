@@ -196,8 +196,8 @@ def test_windows_helper_runs_the_installer_after_the_app_quit(tmp_path, monkeypa
     time.sleep(0.5)
     assert not marker.exists()                                               # waits while the app still runs
     old_app.wait()
-    for _ in range(100):
-        if marker.exists():
+    for _ in range(100):                     # cmd creates the file first and writes into it a moment later
+        if marker.exists() and marker.read_text(encoding="utf-8", errors="replace").strip():
             break
         time.sleep(0.1)
     assert marker.read_text(encoding="utf-8", errors="replace").strip() == "/S"

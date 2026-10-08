@@ -1,498 +1,488 @@
 # Casting-App
 
-Steuerung und Overlays für CS2-Casts in OBS – eine Desktop-App für Windows, Linux und macOS, eine Browserquelle.
-Szenen mit Übergängen, Einblendungen, Themes (u. a. DACH CS – Offiziell), FACEIT-Import, CS2-Livedaten (GSI),
-Turnierbaum/Tabellen, Ton-Steuerung über OBS. Oberfläche und Overlays auf Deutsch oder Englisch.
+Control and overlays for CS2 casts in OBS – one desktop app for Windows, Linux and macOS, one browser source.
+Scenes with transitions, graphics, themes (including DACH CS – official), FACEIT import, CS2 live data (GSI),
+brackets/tables and audio control via OBS. Interface and overlays in English or German.
 
-**Herunterladen:** [neueste Version](https://github.com/29j2003/casting-app/releases/latest) –
-Windows `…-Setup.exe`, Linux `…-linux-x86_64.AppImage`, macOS `…-mac-arm64.dmg` (Apple Silicon) bzw. `…-mac-x64.dmg` (Intel).
-Die Browserquelle in OBS legt die App selbst an: Setup → Szenen & OBS → „In OBS anlegen“.
+**Download:** [latest version](https://github.com/29j2003/casting-app/releases/latest) –
+Windows `…-Setup.exe`, Linux `…-linux-x86_64.AppImage`, macOS `…-mac-arm64.dmg` (Apple Silicon) or `…-mac-x64.dmg` (Intel).
 
-## Über das Projekt
+## About the project
 
-Ein Experiment: Ich wollte ausprobieren, wie weit man mit Claude kommt. Die App ist komplett mit Claude entstanden –
-ich programmiere selbst nicht. Ich caste auch nicht selbst, sondern helfe bei der Produktion von Casts; dafür ist die
-App gedacht. Nutzen, ändern, weitergeben: alles erlaubt, ohne Nachfrage.
+An experiment to see how far you can get with Claude. The app was built entirely with Claude – I don't code myself.
+I'm not a caster either; I help with the production of casts, and that's what the app is made for.
+Use it, change it, pass it on: everything is allowed, no need to ask.
 
-*English:* An experiment to see how far you can get with Claude. Built entirely with Claude – I don't code. I'm not a
-caster myself, I help with the production of casts. Use it however you like.
+License: [The Unlicense](LICENSE). Bundled FFmpeg: GPL, see [LICENSES/FFmpeg.txt](LICENSES/FFmpeg.txt).
 
-Lizenz: [The Unlicense](LICENSE). Mitgeliefertes FFmpeg: GPL, siehe [LICENSES/FFmpeg.txt](LICENSES/FFmpeg.txt).
+## Getting started
 
-## Anleitung
+### Install
 
-### Installieren (ab 2.0)
+* **Windows:** run `Casting-App-<version>-Setup.exe` (installs for your account, no admin rights, with start menu and
+  desktop shortcut) – or, without installing, unzip `Casting-App-<version>-windows-portable.zip` and start
+  `Casting-App.exe` in it (e.g. from a USB stick). On first start Windows may say “Windows protected your PC”:
+  **More info → Run anyway** (the file is not signed).
+* **Linux:** make `Casting-App-<version>-linux-x86_64.AppImage` executable (`chmod +x …`) and start it.
+* **macOS:** open the `.dmg` (Apple Silicon: `…-mac-arm64.dmg`, Intel: `…-mac-x64.dmg`) and drag the app into
+  “Applications”. The app is not notarized by Apple: on first start **right-click → Open → Open**.
 
-* **Windows:** `Casting-App-2.x.x-Setup.exe` ausführen (Installation für dein Konto, ohne Adminrechte, mit Startmenü- und
-  Desktop-Verknüpfung) – oder ohne Installation `Casting-App-2.x.x-windows-portable.zip` entpacken und darin
-  `Casting-App.exe` starten (z. B. vom USB-Stick). Windows fragt beim ersten Mal evtl. „Windows hat den PC geschützt":
-  **Weitere Informationen → Trotzdem ausführen** (die Datei ist nicht signiert).
-* **Linux:** `Casting-App-2.x.x-linux-x86_64.AppImage` ausführbar machen (`chmod +x …`) und starten.
-* **macOS:** `.dmg` öffnen (Apple Silicon: `…-mac-arm64.dmg`, Intel: `…-mac-x64.dmg`) und die App in „Programme“ ziehen.
-  Die App ist nicht von Apple beglaubigt: beim ersten Start **Rechtsklick → Öffnen → Öffnen**.
+The app installs new versions itself (⚙ → Update, see below).
 
-### Umstieg von Version 1.x
+### First start
 
-Einfach die neue Version starten – eine noch laufende alte Version wird dabei automatisch beendet.
-* Zustand, Bilder, Sitzungen, Videos und Schriften bleiben, wo sie sind, und werden weiter benutzt.
-* **FACEIT-Key und DACH-CS-Zugang** übernimmt die App beim ersten Start einmalig in den Schlüsselbund des Systems
-  (Windows: Anmeldeinformationsverwaltung) und löscht die alten Dateien.
-* **Einstellungen der Oberfläche** (Arbeitsbereiche, Docks, OBS-Verbindung) übernimmt sie einmalig aus dem alten Edge-Fenster.
-  Fehlt danach etwas: OBS-Verbindung unter ⚙ neu eintragen, Arbeitsbereich neu wählen.
-* Die alte `Casting-App.exe` wird nicht mehr gebraucht. Edge oder Chrome braucht die App nicht mehr.
+1. Start **Casting-App**. The window opens in the tidy workspace *Beginner* (preview, scenes, scene panel). The language
+   is set under ⚙ → **Sprache · Language**. Top right shows **“First steps 0/5”** – one click opens the list, which guides
+   you through the rest:
+   * **Connect OBS:** OBS → Tools → WebSocket Server Settings → “Enable WebSocket server”. Enter port and password
+     (“Show Connect Info”) in the app under **⚙ → Connections & access**.
+   * **Create the scene:** Setup → **Scenes & OBS** → **“Create the scene ‘Cast – Sendung’ in OBS”**. OBS then has the
+     scene “Cast – Sendung” with one browser source (carrying the app's access key). Prefer to add the browser source
+     yourself? **“Copy overlay address”** and paste it into OBS as a browser source (1920 × 1080).
+   * Enter theme, teams and casters.
+   * **Game picture:** in OBS, put the game capture in the scene “Cast – Sendung” **below** the browser source. In the
+     **Ingame** scene the overlay is transparent; only sponsor and graphics are visible.
+2. In the **Live** tab, switch scenes with a click, pick a transition, show graphics.
 
-### Umstieg von Version 2.1 auf 2.2
+## The interface
 
-Ab 2.2 heißen Dateien und gespeicherte Daten intern englisch (z. B. `control.html` statt `steuerung.html`). Beim ersten
-Start übernimmt die App alles einmalig: Zustand, Sitzungen, Bilder, Themes, Arbeitsbereiche und Docks. Browserquellen in
-OBS mit den alten Adressen (z. B. `…/spieler.html`) funktionieren weiter, `overlay.html` bleibt ohnehin gleich.
-Sicherungen (`.json`) und Theme-Dateien aus 2.1 lassen sich weiter laden.
+### Tabs
 
-### Beim ersten Start
+* **Live** – only what you need on air: program preview, scenes, **scene panel**, **Match** (score, map, series, timer),
+  **Tournament live** (group, highlight a team, “show table”), graphics and audio.
+* **Match** – the current game. Sub-pages: Matchday & import · Teams & players · Map veto & series · Casters & cameras ·
+  Timer & texts (and “All”).
+* **Tournament** – bracket, table and FACEIT sync.
+* **Setup** – sub-pages: Appearance · Sponsors · Map pool · Background · Scenes & OBS · Scene panels · CS2 live data.
+* **Log** – status, folders, protocol.
 
-1. **Casting-App** starten.
-2. Es öffnet sich das Fenster **Casting-App** – beim ersten Start im aufgeräumten Arbeitsbereich *Einsteiger* (Vorschau,
-   Szenen, Panel der Szene). Oben rechts steht **„Erste Schritte 0/5“**: ein Klick klappt die Liste auf, sie führt durch alles Weitere:
-   * **OBS verbinden:** OBS → Werkzeuge → WebSocket-Server-Einstellungen → „WebSocket-Server aktivieren".
-     Port und Passwort („Verbindungsinformationen anzeigen") in der App unter **⚙ App-Einstellungen → Verbindungen & Zugänge** eintragen.
-   * **Szenen einrichten:** Setup → **Szenen & OBS** → **„Szene ‚Cast – Sendung‘ in OBS anlegen"**. In OBS gibt es dann die Szene „Cast – Sendung"
-     mit einer Browserquelle (mit dem Zugangsschlüssel der App). Wer die Browserquelle lieber selbst anlegt:
-     **„Overlay-Adresse kopieren"** und in OBS als Browserquelle (1920 × 1080) einfügen.
-   * Theme, Teams und Caster eintragen.
-   * **Spielbild:** In OBS die Spielaufnahme in der Szene „Cast – Sendung" **unter** die Browserquelle legen.
-     In der Szene **Ingame** ist das Overlay durchsichtig, nur Sponsor und Einblendungen sind zu sehen.
-3. Im Reiter **Live** Szenen per Klick wechseln, Übergang wählen, Einblendungen zeigen.
+**Ctrl 1–4** jumps to Live, Match, Tournament and Setup. **Ctrl K** opens “Search & commands”: switch scene, show a
+graphic, open or dock an area – all by keyboard.
 
-### Aufbau
+**Sub-pages with status:** in Match, Tournament and Setup each sub-page has a dot and one line – green = done,
+yellow = something missing (e.g. “caster names missing”, “1 logo missing”), accent colour = customised, grey = default.
+In Match and Tournament, **“Next: …”** and **“← …”** below each sub-page guide you through the preparation step by step.
 
-* **Live** – nur, was du in der Sendung brauchst: Programm-Vorschau, Szenen, **Panel der Szene** (was die laufende Szene
-  braucht – bei „Map-Veto“ das Veto zum Klicken, bei Ingame Spielstand und Serie), **Match** (Punkte, Map, Serie, Timer), **Turnier live** (Gruppe, Team hervorheben, „Tabelle zeigen“), Einblendungen und Ton.
-* **Match** – Unterseiten: Spieltag & Import · Teams & Spieler · Map-Veto & Serie · Caster & Kameras · Timer & Texte (und „Alle“).
-* **Turnier** – eigener Bereich für Baum, Tabelle und FACEIT-Abgleich.
-* **Setup** – Unterseiten: Aussehen · Sponsoren · Map-Pool · Hintergrund · Szenen & OBS · Szenen-Panels · CS2-Livedaten.
-* **Arbeitsbereiche** (oben links): Vorlagen *Operator*, *Caster – große Knöpfe*, *Laptop / neben OBS*, *Vorbereitung*
-  und eigene („Aktuelle Anordnung speichern als …“). Ein Arbeitsbereich merkt sich Docks, Größen, Lage, Schlösser und Knopfgröße.
-  Dein bisheriges Layout wurde als „Mein bisheriges Layout“ übernommen.
-* **Layout bearbeiten** (Symbol oben rechts neben ⚙, im Menü Arbeitsbereiche oder Strg K): oben erscheint die Leiste
-  „LAYOUT BEARBEITEN“ mit „Als Arbeitsbereich speichern“ und „Fertig“. Nur dann lassen sich Bereiche ziehen, andocken und in der Größe ändern –
-  im Normalbetrieb verschiebt sich nichts aus Versehen. Leere Reiter-Spalten blenden sich aus.
+### At a glance
 
-### Panel der Szene (Live)
+* **Buttons** (raised, light up on hover) = clickable · **switches** = on/off · **dot + text** = display only.
+* Colours: **red** = LIVE (scene on program) · **green** = OK/on · **yellow** = running/waiting · **grey** = off ·
+  **accent colour** (purple in dark, orange in light) = your next step.
+* **“?” next to an area title** shows the explanation of that area – areas stay calm, help is still there.
+* **Size:** follows the window automatically (1920 px = 100 %, 2560 px = 130 %). “Auto” top right or ⚙ → Interface;
+  − / + sets it by hand.
+* Top right: connection status (“… of 3 connected”: OBS, overlays, music), **Search & commands**, collapse/expand all,
+  Edit layout, **⚙** app settings, **power** (close window or quit completely).
 
-Das Panel zeigt, was die Szene im Programm gerade braucht – es wechselt mit jeder Szene und klappt dabei von selbst auf:
+### Workspaces
 
-| Szene | Felder (Vorgabe) |
+Top left you choose the workspace: *Beginner*, *Operator*, *Caster – big buttons*, *Laptop / next to OBS*, *Preparation*
+or your own (“Save current arrangement as …”). A workspace remembers docks, sizes, positions, locks and button size.
+* *Beginner* (used on first start) shows only preview, scenes and the scene panel; everything else is ready, collapsed.
+* *Operator*: scenes, scene tools and graphics are open; audio, match bar and tournament are collapsed (click the title to
+  open them; the state is remembered).
+
+### Edit layout
+
+Icon top right next to ⚙, in the workspace menu or Ctrl K: a bar “EDIT LAYOUT” appears at the top with “Save as
+workspace” and “Done”. Only then can areas be dragged, docked and resized – in normal use nothing moves by accident.
+
+* **Left** the tabs, **centre** the preview. Areas can be docked **below the preview** or **to its right**: grab the title
+  (handle with dots) and drag – possible drop zones light up, a line shows where the area will land. Back into a tab:
+  drag it onto the left column. Alternatively use the dock icon on the area → choose a place.
+* Over a docked card a **compass** appears: edge = sort in before/after, **centre = as a tab**. Click tabs to switch,
+  drag them out of the tab bar again.
+* **Stacked below the preview:** drag an area onto the **top or bottom quarter** of an area below the preview – that half
+  lights up and “Above: …” / “Below: …” shows the target. This way e.g. Audio and Match sit on top of each other in one
+  column; each scrolls on its own, a collapsed one only takes its title row. Drag one out and the stack dissolves itself.
+* **Reorder:** drag areas up/down inside a tab – the order is remembered. Empty tab columns hide themselves.
+* **Arrange scenes:** in the “Scenes” area click **Arrange** – drag buttons to where you want them, tick = scene is shown.
+* **Docks always show everything:** if space runs out, each card scrolls on its own. Double-click the divider above the
+  preview dock to fit its height to the content. Drag **dividers** to change width or height; the button top left on the
+  preview collapses and expands it.
+* **Lock** in the middle of the divider between tab column, preview dock and side dock: when locked nothing changes
+  there – nothing dragged in or out, no resizing, workspaces leave that area alone.
+* **Free positions** (⚙ → Interface or Ctrl K): tab column left/right, side dock left/right of the preview, preview dock
+  below or above the preview.
+
+## On air (Live)
+
+### Scenes
+
+By default there are five groups, each with its own colour: **Before the match** (Intro, Cast Solo, Cast Duo, Cast trio,
+4 people, Line-ups, Team intro, Map-Veto) · **In the match** (Ingame) · **Stats & tournament** (Scoreboard, Team A/B,
+Head-to-Head, Bracket, Series) · **Pause** (Pause, Sponsors, Clips, Viewers + casters) · **After the match** (Interviews, End).
+More scenes (e.g. *Trio – large host*, *Viewer cams*) are switched on under Setup → Scenes & OBS.
+
+**Scene changes:** whatever appears in both scenes (logo, ticker, match-up, sponsor, cameras …) **stays or glides to its
+new place**. Only what changes fades out or in – depending on the transition (fade, slide, wipe, cut, stinger; button
+“Transition: …” on the program card). Cameras keep running without reloading.
+
+In the **Ingame** scene all positions avoid the game HUD (minimap, scoreboard, killfeed, player cards).
+
+### Scene panel
+
+The panel shows what the scene on program needs right now – it changes with every scene and opens by itself:
+
+| Scene | Fields (default) |
 |---|---|
-| Intro, Pause | Timer, Texte im Overlay (Titel, Lauftext), Sponsoren |
-| Cast Solo/Duo | Timer, Texte im Overlay, Notiz |
-| Map-Veto | Map-Veto, Serie |
-| Ingame | Spielstand, Serie, Notiz |
-| Scoreboard, Team A/B, Head-to-Head | Spielstand, Serie |
-| Interview, Ende | Serie, Texte im Overlay (Ende: Sponsoren) |
+| Intro, Pause | Timer, texts in the overlay (title, ticker), sponsors |
+| Cast Solo/Duo | Timer, texts in the overlay, note |
+| Map-Veto | Map veto, series |
+| Ingame | Score, series, note |
+| Scoreboard, Team A/B, Head-to-Head | Score, series |
+| Bracket | Group (All · Group A · Group B …), note |
+| Interview, End | Series, texts in the overlay (End: sponsors) |
 
-* **Felder** (oben im Panel): je Feld ein Schalter – gilt für die Szene im Programm und bleibt gemerkt. „Auf Vorgabe zurück“ stellt sie wieder her.
-  Dort auch der Schalter **„Panel öffnet sich beim Szenenwechsel“**.
-* Alle Felder bedienen dieselben Daten wie Match und Setup – wer hier einen Punkt gibt oder den Titel ändert, sieht es dort sofort.
-* **Notiz:** nur für dich, je Szene – sie erscheint nie im Stream und wandert nicht in Sicherungen.
+* **Fields** (top of the panel): one switch per field – applies to the scene on program and is remembered. “Back to
+  default” restores them. There is also the switch **“Panel opens when the scene changes”**.
+* All fields use the same data as Match and Setup – award a point or change the title here and it shows there at once.
+* **Note:** just for you, per scene – never on stream and never in backups.
+* **Map veto:** while the Map-Veto scene runs, the panel shows who's next, the free maps as buttons, all steps at a
+  glance and the side for picks. Under Match you edit the same veto – both always show the same state.
+* **Series:** once a team has won a map (13 rounds, in overtime 16, 19 …), **“✓ Finish map?”** appears – one click
+  marks the map as finished.
 
-### Bedienung auf einen Blick
+### Studio mode
 
-* **Tasten** (erhaben, leuchten lila beim Drüberfahren) = klickbar · **Schalter** = an/aus · **Punkt + Text** = nur Anzeige.
-* Farben: **Rot** = LIVE (Szene im Programm) · **Grün** = OK/an · **Gelb** = läuft/wartet · **Grau** = aus · **Lila** = dein nächster Schritt.
-* **Größe:** passt sich von selbst dem Fenster an (1920 px = 100 %, 2560 px = 130 %). „Auto“ oben rechts bzw. ⚙ → Oberfläche;
-  mit − / + stellst du sie von Hand ein.
+Like in OBS: button **Studio mode** at the top of the program card. On the left the **preview** appears, on the right the
+**program** stays. Clicking a scene only puts it into the preview (green border); **“Transition”** in the middle takes it
+live – with the chosen transition. Afterwards the previous program scene sits in the preview. Click “Studio mode” again
+to go back to direct switching. Only available with one browser source (overlay.html); with separate OBS scenes use the
+studio mode of OBS.
 
-### Teams, Kürzel und Serie
+### Stats over the game
 
-* **Kürzel** (Match → Teams & Spieler, neben dem Namen): Müsste ein langer Teamname im Overlay stark verkleinert werden
-  (unter 70 %), zeigt das Overlay stattdessen das Kürzel. Ohne Kürzel wird der Name nur verkleinert.
-* **Serie** (Live → Match): Hat ein Team eine Map gewonnen (13 Runden, in der Verlängerung 16, 19 …), erscheint in der
-  Zeile **„✓ Map beenden?“** – ein Klick trägt die Map als „Fertig“ ein.
+While **Ingame** runs, a field **“Over the game”** opens below the Ingame button: Scoreboard, Team A/B, Head-to-Head,
+Bracket and Series. One click shows the view over the game picture (slightly dimmed), a second click hides it – Ingame
+keeps running. After the set time (button “Transition: …” → “Hide stats over the game (during ingame) after … seconds”,
+default 15, 0 = stays) it disappears by itself. The buttons of the same scenes further down the list always switch to the
+full scene. The same buttons are in the **scene panel** of Ingame.
 
-### Sitzungen & Sicherung (Match → Spieltag & Import)
-
-Speichere ein Match als Sitzung („Speichern“, „Speichern unter …“) und lade es später mit „Laden“. „Sichern (.json)“ und
-„Laden (.json)“ bringen alles auf einen anderen PC. „Alles zurücksetzen“ fragt vorher nach.
-
-### Map-Veto (Live → Panel der Szene · Match → Map-Veto & Serie)
-
-**Während der Sendung:** Läuft die Szene **Map-Veto**, zeigt Live → **Panel der Szene** das Veto: wer dran ist, die freien Maps
-als Knöpfe, alle Schritte auf einen Blick und bei Picks die Seite. In anderen Szenen holst du es über **Felder** dazu. Unter Match bearbeitest du dasselbe Veto – beide Stellen zeigen immer den gleichen Stand.
-
-**Vorbereitung (Match):** Quelle „Manuell“ oder „FACEIT“, Format/Preset wählen, „Neu starten“. „↶ Rückgängig“ nimmt den letzten Schritt zurück.
-Eigene Abläufe mit „+ Schritt“ bauen und „Als Preset speichern“. Gewonnene Maps zählen auf Wunsch automatisch als Punktestand.
-
-### Kameras & Quellen (Match → Caster & Kameras)
-
-Pro Kamera-Rahmen: VDO.Ninja-Link, ein Gerät (Webcam/Capture-Karte, „Geräte suchen“), ein Bild – oder leer, wenn du in OBS
-eine eigene Quelle darüberlegst. Die Sprecher-Anzeige lässt das Namensschild leuchten, wenn jemand spricht (Schwelle einstellbar).
-
-### Timer & Lauftexte (Match → Timer & Texte)
-
-Timer mit Minuten setzen oder „bis Uhrzeit“ laufen lassen; Start/Pause und ±1 min gehen auch in Live → Match.
-Lauftext: eine Meldung pro Zeile, Tempo einstellbar; dazu ein großer Titel.
-
-### DACH CS – Offiziell (fünfter Stil)
-
-Setup → Aussehen → Stil **„DACH CS – Offiziell“** wählen, **Nutzer-ID** und **Key** aus dem DACH-CS-Nutzerbereich
-(Casting → Browserquellen) unter **⚙ App-Einstellungen → Verbindungen & Zugänge** eintragen. Der Key wird verschlüsselt gespeichert und nie wieder angezeigt.
-
-* Alles läuft in **einer** Browserquelle („Cast – Overlay“): Live → Szenen zeigt die 25 DACH-Seiten (Overview, Single-/Duocam,
-  Lineup, Mapveto, Ingame, Tabelle, Playoffs, Matches, MVP, Pausen, Interaktion, Interviews, Endscreen). Die neue Seite wird
-  vorgeladen und dann mit dem gewählten Übergang gewechselt (Schnitt, Blende, Schieben, Wischen, Stinger – wie bei den eigenen
-  Szenen). Die **Blende** geht über das Dunkelblau der DACH-Seiten: erst blendet die alte Seite ab, dann die neue auf – nie
-  zwei Seiten halb übereinander. Die Kameras erscheinen mit der neuen Seite gleich in deren Rahmen, das Bild läuft weiter. Ohne Scrollbalken,
-  exakt 1920 × 1080.
-* **Kameras und Inhalt** (Caster, Gast, Clip) setzt die App automatisch in die Rahmen der jeweiligen Seite (Singlecam,
-  Duocam, Interaktion Single/Duo, eigene Contentpause, Interview Single/Duo – aus den echten DACH-Seiten vermessen). Sie liegen **unter** der
-  Seite: gelbe Linie und Namensschild von DACH CS bleiben sichtbar. Ein leerer Rahmen ist schwarz – nie der Hintergrund
-  einer DACH-Seite, auch nicht beim Wechsel. „Kamera- und Inhalts-Rahmen anpassen“ zeigt die Rahmen in der Vorschau und
-  lässt sie pixelgenau verschieben.
-  Wer früher Rahmen von Hand verschoben hat: „Standard“ übernimmt die neuen Maße.
-* **Match bei DACH CS eingetragen** (Schalter über den DACH-Szenen): Ob bei DACH CS ein Match eingetragen ist, sieht die App
-  nicht. Ist der Schalter aus, sind die Szenen, die ein Match brauchen (Teamlineup, Mapveto, Positions, Tabelle, Playoffs,
-  Letzte/Nächste 5, Spieltag, MVP), grau und mit „MATCH“ markiert – sie zeigen sonst nur „TBA“. Klicken geht trotzdem.
-* **Videos im App-Fenster:** Videos im Format H.264 (MP4, z. B. die DACH-Contentpause) wandelt die App für ihr eigenes
-  Fenster beim ersten Abspielen um (mit dem mitgelieferten FFmpeg) – danach laufen sie mit Bild und Ton. In OBS ändert
-  sich nichts. Auf macOS Intel klappt das nur mit installiertem FFmpeg (`brew install ffmpeg`), sonst zeigt die Vorschau
-  einen Hinweis.
-* Die Inhalte der Grafiken (Teams, Ergebnisse, Tabelle …) kommen aus dem DACH-CS-Live-Dashboard. Einblendungen der App liegen darüber.
-* „DACH CS – eigener Stil“ bleibt als freies Design erhalten.
-
-### Ton (Live → Ton) – geregelt direkt in OBS
-
-Wie im OBS-Mixer: **alle Quellen mit Ton in OBS** (auch Mikrofon, Desktop-Audio, Spiel), die der App zuerst. Die App regelt
-sie live über OBS – **Lautstärke** (bis 300 %), **Stumm**, **Verzögerung** (Synchronisation, −950 bis 20 000 ms, unter „Mehr“ – drei Punkte) und
-das **Abhören**
-
-als Auswahl wie in OBS:
-
-* *Abhören aus* – nur im Stream/der Aufnahme, nicht auf deinem Kopfhörer
-* *Nur abhören (Ausgabe stumm)* – nur auf deinem Kopfhörer, nicht im Stream
-* *Abhören und Ausgabe* – im Stream und auf deinem Kopfhörer
-
-**Lautstärke je Szene merken** (Schalter oben im Bereich Ton): Stellst du in einer Szene eine Lautstärke ein, gilt sie nur
-für diese Szene – z. B. die Contentpause lauter als der Rest. Beim Szenenwechsel stellt die App die gespeicherten Werte
-in OBS ein; Quellen ohne eigenen Wert in einer Szene behalten ihre normale Lautstärke. „Szene auf Standard“ löscht die
-Werte der aktuellen Szene. Ohne OBS-Verbindung zeigt der Bereich nur den Knopf „Mit OBS verbinden …“.
-
-Eigene Zeilen der App: „Cast – Overlay“ (alles, was im Overlay klingt: Clips, DACH-Seiten, Videos), „Cast – Hintergrund“ (wenn OBS das Video
-abspielt) und je Caster/Gast eine eigene Quelle: bei VDO.Ninja-Gästen „Als eigene OBS-Tonquelle“ anklicken – dann ist ihr Ton
-einzeln regelbar und läuft nicht mehr doppelt im Overlay. Änderungen direkt in OBS erscheinen hier ebenfalls.
-
-**Ton im App-Fenster** (oben im Bereich Ton, Standard: aus): schaltet alles stumm oder hörbar, was im App-Fenster klingt –
-Videos, Kameras, Clips (YouTube, Twitch), VDO.Ninja und DACH-Seiten – mit eigener Lautstärke. Der Stream bleibt davon unberührt.
-Umschalten lädt nichts neu: Videos, Kameras und DACH-Seiten laufen weiter, nur der Ton geht an oder aus.
-* **Aus** schaltet das ganze Fenster stumm – zuverlässig, auch für alle eingebetteten fremden Seiten.
-* **Lautstärke** gilt für alle Video- und Audio-Elemente und für Web Audio in allen Seiten des Fensters (auch VDO.Ninja,
-  Clips und DACH CS). Die Player der Seiten zeigen dabei weiter ihre eigene Lautstärke an; die App regelt nur, was am Ende
-  hörbar ist. Grenzen: Ton, den eine fremde Seite auf ganz ungewöhnlichem Weg erzeugt (z. B. in einem verborgenen
-  Shadow-DOM ohne Abspielen per Skript), ist evtl. nur über **Aus** zu regeln.
-
-### Fenster schließen
-
-Klick aufs **X**: das Fenster bleibt erst einmal offen und die App fragt sofort
-**Ganz beenden · Nur Fenster schließen · Abbrechen**. Dieselbe Auswahl öffnet der Ein/Aus-Knopf oben rechts.
-* **Nur Fenster schließen:** das Fenster verschwindet, die Overlays in OBS laufen weiter. Im Infobereich der Taskleiste
-  (macOS: Menüleiste) bleibt das **29-Symbol** mit dem Menü **Öffnen · Overlays in OBS neu laden · Ganz beenden**.
-  Ein Klick aufs Symbol (macOS: öffnet das Menü) oder ein erneuter Start der App holt das Fenster zurück.
-* **Overlays in OBS neu laden** lädt die Browserquellen über OBS neu (wie der Knopf in der App); ohne OBS-Verbindung lädt
-  die App die verbundenen Overlays selbst neu.
-* Ist das Fenster geschlossen und auch kein Overlay mehr verbunden (OBS zu), beendet sich die App nach 30 s von selbst.
+When **no CS2 data** is coming in, Scoreboard, Team A/B and Head-to-Head are grey and marked “CS2” – before you click.
+The scene can still be shown; the overlay then says “Waiting for CS2 data …”.
 
 ### Cleanfeed
 
-In **Ingame** erscheint oben in der Programm-Karte **Cleanfeed**: blendet alle Grafiken der App aus, im Programm bleibt nur das Spielbild
-(beim Szenenwechsel automatisch wieder aus). Für einen dauerhaften zweiten Ausgang: Setup → Szenen & OBS → **„Cleanfeed-Szene in OBS
-anlegen“** – „Cast – Cleanfeed“ mit denselben Quellen wie die Ingame-Szene, aber ohne Grafiken (ausgeben z. B. über die virtuelle Kamera
-mit Ausgabe „Szene“, NDI oder Source Record).
+In **Ingame**, **Cleanfeed** appears at the top of the program card: hides all graphics of the app, only the game picture
+stays on program (switched off automatically on the next scene change). For a permanent second output: Setup → Scenes &
+OBS → **“Create cleanfeed scene in OBS”** – “Cast – Cleanfeed” with the same sources as the Ingame scene but without
+graphics (output it e.g. via the virtual camera with output “Scene”, NDI or Source Record).
 
-### Stats über dem Spiel
+### Graphics
 
-Läuft **Ingame**, klappt unter dem Ingame-Knopf ein Feld **„Über dem Spiel“** auf: Scoreboard, Team A/B, Head-to-Head,
-Turnierbaum und Serie. Ein Klick zeigt die Ansicht über dem Spielbild (leicht abgedunkelt), ein zweiter blendet sie aus – Ingame
-läuft weiter. Nach der eingestellten Zeit (Knopf „Übergang: …“ in der Programm-Karte → „Stats über dem Spiel (während Ingame)
-ausblenden nach … Sekunden“, Standard 15, 0 = bleibt stehen) verschwindet sie von selbst. Die Knöpfe derselben Szenen weiter unten
-in der Liste wechseln immer in die ganze Szene. Dieselben Knöpfe stehen in Live im **Panel der Szene** von Ingame.
+The Graphics area lists your **favourites (star)** with a switch; “All …” shows all, “+ New” creates one. **More** (three
+dots) on a graphic opens its settings: **name in the list**, **position**, **duration** (switches off afterwards),
+**repeat every … min.** (e.g. a sponsor notice every 10 min for 15 s) and **only in these scenes**; plus duplicate,
+move up/down and delete (with undo). Types:
+* **Casters:** all casters at once, stacked or side by side, optionally with a guest.
+* **Lower third:** name + subline.
+* **Notice:** e.g. “Back in a moment”.
+* **Score:** logos + score.
+* **Map info:** Pick · Map · Next, automatically from veto & series.
+* **Map fact:** facts about the current map (entered in the map pool, one per line); they rotate automatically.
+* **Scoreboard (live)** and **Player (live)** from the CS2 live data.
 
-Kommen gerade **keine CS2-Daten**, sind Scoreboard, Team A/B und Head-to-Head grau und mit „CS2“ markiert – schon bevor du
-klickst. Die Szene lässt sich trotzdem zeigen; im Overlay steht dann „Warte auf CS2-Daten …“.
+### Audio (controlled directly in OBS)
 
-### Studio-Modus
+Like the OBS mixer: **all sources with audio in OBS** (also microphone, desktop audio, game), the app's own first. The app
+controls them live via OBS – **volume** (up to 300 %), **mute**, **sync offset** (−950 to 20 000 ms, under “More” – three
+dots) and **monitoring**, as a choice like in OBS:
 
-Wie in OBS: Knopf **Studio-Modus** oben in der Programm-Karte. Links erscheint die **Vorschau**, rechts bleibt das **Programm**.
-Ein Klick auf eine Szene legt sie nur in die Vorschau (grün umrandet); **„Übergang“** in der Mitte schaltet sie live – mit dem
-gewählten Übergang. Danach liegt die vorige Programm-Szene in der Vorschau. Noch ein Klick auf „Studio-Modus“ schaltet zurück auf
-direktes Umschalten. Gibt es nur mit einer Browserquelle (overlay.html); mit einzelnen OBS-Szenen nutzt du den Studio-Modus von OBS.
+* *Monitor Off* – only in the stream/recording, not in your headphones
+* *Monitor Only (mute output)* – only in your headphones, not in the stream
+* *Monitor and Output* – in the stream and in your headphones
 
-### Reiter
+**Remember volume per scene** (switch at the top of the Audio area): a volume you set in a scene applies to that scene
+only – e.g. the content break louder than the rest. On scene changes the app sets the stored values in OBS; sources
+without their own value in a scene keep their normal volume. “Scene back to standard” clears the values of the current
+scene. Without an OBS connection the area only shows the button “Connect to OBS …”.
 
-* **Live** – während der Sendung: Szenen, Panel der Szene (z. B. Map-Veto, Spielstand), Match, Turnier live, Einblendungen, Ton.
-* **Match** – das aktuelle Spiel: Sitzungen, FACEIT, Map-Veto, Teams, Spieler, Timer, Lauftexte, Caster, Kameras.
-* **Turnier** – Baum, Tabelle, FACEIT-Turnier.
-* **Setup** – Themes, Überschriften, Sponsoren, Map-Pool, Hintergrund, OBS-Szenen, CS2-Daten.
-* **Log** – Status, Ordner, Protokoll.
+The app's own rows: “Cast – Overlay” (everything that sounds in the overlay: clips, DACH pages, videos), “Cast –
+Hintergrund” (when OBS plays the background video) and one source per caster/guest: for VDO.Ninja guests click “As its
+own OBS audio source” – their audio can then be controlled individually and no longer plays twice in the overlay.
+Changes made directly in OBS show up here as well.
 
-### Turnierbaum (Reiter Turnier, Szene „Turnierbaum“)
+**Audio in the app window** (top of the Audio area, default: off): mutes or unmutes everything that sounds in the app
+window – videos, cameras, clips (YouTube, Twitch), VDO.Ninja and DACH pages – with its own volume. The stream is not
+affected. Switching reloads nothing: videos, cameras and DACH pages keep running, only the sound goes on or off.
+* **Off** mutes the whole window – reliably, also for all embedded third-party pages.
+* **Volume** applies to all video and audio elements and to Web Audio in all pages of the window (also VDO.Ninja, clips
+  and DACH CS). The pages' players keep showing their own volume; the app only controls what you finally hear. Sound a
+  third-party page creates in a very unusual way (e.g. in a hidden shadow DOM without playing via script) may only be
+  controllable with **Off**.
 
-* **„Turnier übernehmen“** (FACEIT-Link): holt Teams mit Logos, Spielern und Statistiken und übernimmt den **genauen Aufbau** –
-  Gruppen mit Tabelle (jeder gegen jeden), **Swiss** (mit Bilanz 2–1 usw.; die Paarungen kommen von FACEIT, ausgelost
-  wird nichts) oder den Baum genau so, wie FACEIT ihn führt. „Ergebnisse aktualisieren“ holt neue Spielstände.
-* **Korrekturen bleiben:** Ein von Hand geändertes FACEIT-Ergebnis ist **korrigiert** (gelbes Schild am Spiel) und wird beim
-  Aktualisieren nicht überschrieben. „korrigiert ↺“ nimmt wieder den Wert von FACEIT. Unter den Spielen steht die Quelle
-  („FACEIT · 2 korrigiert“ oder „selbst eingetragen“).
-* Die Turnier-Seite hat vier Unterseiten mit Status: **Aufbau** (Name, Format, Punkteregel) · **Teams & FACEIT** · **Spiele** · **Im Overlay**.
-* **Punkteregel je Turnier** (Gruppen mit Tabelle): Vorlagen wie „Sieg 3 · Niederlage mit Map-Gewinn 1 · Niederlage 0“ oder eigene Werte
-  für Sieg 2:0, Sieg 2:1, Niederlage 1:2, Niederlage 0:2 und Unentschieden. Bei Punktgleichheit zählt der direkte Vergleich, dann die
-  Rundendifferenz (RD, holt die App von FACEIT), dann die Siege. **„Gruppe im Overlay“** zeigt alle Gruppen oder nur eine –
-  die Tabellen passen sich der Fläche an (eine Gruppe groß, mehrere nebeneinander). Schneller in Live: Läuft der **Turnierbaum**,
-  stehen im Panel der Szene Knöpfe **Alle · Gruppe A · Gruppe B …** – die Szene bleibt, nur die Gruppe wechselt (auch bei GSL).
-* Formate von Hand: **Gruppen mit Tabelle** (Gruppenzahl, Plätze die weiterkommen, offene Spiele unter der Tabelle), **Single Elimination**, **Double Elimination** (oben/unten + Grand Final), **Swiss** (Siege/Niederlagen einstellbar,
-  „Nächste Runde auslosen“ – nur bei Turnieren ohne FACEIT) und **Gruppen (GSL)** – bis 32 Teams. Reihenfolge der Teams = Setzliste, Freilose werden automatisch vergeben.
-* Teams mit Kürzel, Logo, Spielern und optionaler FACEIT-Team-ID. FACEIT-Turnier (Link oder ID) →
-  **„Turnier übernehmen“**, **„Ergebnisse aktualisieren“** und **„Team-Statistiken von FACEIT laden“** (Siegquote, Spiele,
-  Serie, letzte Ergebnisse) – oder alles von Hand.
-* **Klick auf ein Team** im Baum hebt es im Overlay hervor und zeigt sein Profil.
-* Sichtbarkeit: alles, **Runde für Runde aufdecken** (bis Runde X), **erst ab Runde X**, Ergebnisse ausblenden (nur, wer weiterkommt).
+## Preparing a match (Match tab)
 
-### Themes (Setup → Aussehen → Themes)
+### Matchday, sessions & FACEIT (Matchday & import)
 
-Neue Themes anlegen, **duplizieren**, **löschen** (mit Rückgängig), **exportieren** und **importieren**.
-Ein Export ist eine Datei mit allen Farben, Logos, Bildern und Sponsoren – zum Teilen mit anderen Castern oder als Sicherung.
-Mitgelieferte Themes lassen sich nicht löschen, nur zurücksetzen („Theme anpassen“ → „Dieses Theme auf Standard zurücksetzen“). „Regulär“ ist jetzt Nachtviolett mit neutralem Logo-Feld
-für dein Org- oder Streamer-Logo (Theme anpassen → Logo-Feld).
+* **Match day:** all games of the day in order, with time. Games come from the tournament (one by one or “All open
+  games”), from the team library or from the current match. **“Load”** or **“Load next game”** sets teams, short names,
+  logos and players and clears score, veto and series. If the game comes from a tournament you run yourself, its result
+  is entered in the tournament automatically when you move on.
+* **Sessions:** save a match (“Save”, “Save as …”) and bring it back later with “Load”. “Back up (.json)” and
+  “Load (.json)” move everything to another PC. “Reset everything” asks first.
+* **FACEIT:** save an API key (server side, from developers.faceit.com) under ⚙ → Connections & access → FACEIT; then
+  paste the matchroom link here and click “Fetch data” (optionally “refresh every 15 s”).
 
-### Einblendungen
+### Teams & players
 
-Im Bereich Einblendungen stehen deine **Favoriten (Stern)** mit Schalter; „Alle …“ zeigt alle, „+ Neu“ legt eine neue an.
-**Mehr** (drei Punkte) an einer Einblendung öffnet ihre Einstellungen: **Name in der Liste**, **Position**, **Dauer** (danach automatisch aus),
-**Wiederholen alle … Min.** (z. B. Sponsor-Hinweis alle 10 min für 15 s) und **Nur in diesen Szenen**; dazu Duplizieren,
-Nach oben/unten und Löschen (mit Rückgängig). Arten:
-* **Caster:** alle Caster auf einmal, untereinander oder nebeneinander, auf Wunsch mit Gast.
-* **Bauchbinde:** Name + Zusatz.
-* **Hinweis:** z. B. „Gleich geht's weiter".
-* **Punktestand:** Logos + Stand.
-* **Map-Info:** Pick · Map · Next, automatisch aus Veto & Serie.
-* **Map-Fakt:** Fakten zur aktuellen Map. Du trägst sie im Map-Pool ein (ein Fakt pro Zeile). Sie wechseln automatisch.
-* **Map-Pool** (Setup): Kacheln mit Bild – oben die Maps im Pool (ziehen = Reihenfolge im Veto), darunter die übrigen.
-  Oben steht, ob der Pool Active Duty entspricht, unten, für welche Formate er reicht. **Eigene Map:** Workshop-Link einfügen →
-  „Aus dem Workshop holen“ übernimmt Name und Vorschaubild von Steam; sonst „Von Hand: Name + Bild“. Neue Maps landen
-  unter **„Weitere Maps“** – der aktive Pool ändert sich erst, wenn du eine Map dort einschaltest.
-* **Sponsoren:** auf Wunsch ein **Restzeit-Balken** unter dem Logo – er zeigt, wann der nächste Sponsor kommt.
-* **Box-Stil** (Setup → Aussehen → Theme anpassen): **Hell** (weiße Kästen, wie bisher), **Dunkel** (dunkle Kästen) oder
-  **Mischung** (dunkel, nur der Titel bleibt hell). Logo-Felder (Sponsoren, Marke) bleiben immer hell, damit auch dunkle Logos zu sehen sind.
-  Der **Sponsor** sitzt in Intro, Pause, Ende und den Cast-Szenen als vierter Kasten in der unteren Leiste – gleich hoch, die Leiste mittig.
-  Unter Setup → Sponsoren → **Platz des Sponsor-Kastens** lässt er sich stattdessen **oben rechts** zeigen; ist kein Sponsor
-  zu sehen (aus oder keiner eingetragen), rückt die Leiste ohne Lücke zur Mitte.
-  Ohne Logo steht der Sponsor-Name groß im Kasten; lange Namen werden kleiner und brechen bei Bedarf auf zwei Zeilen um.
-* **Mehr Personen und Zuschauer-Cams** (Szenen im Stil der Cast-Szenen, mit Sponsor in der Leiste):
-  **Cast Trio** (drei Caster nebeneinander) · **Trio – Moderator groß** (Caster 1 groß, zwei kleiner rechts) ·
-  **4 Personen** (Caster 1/2 und Person 3/4 im 2 × 2-Raster; das Logo wird dafür kleiner statt das Raster zu verschieben) · **Zuschauer + Caster** (vier Zuschauer-Kacheln, rechts die Caster) ·
-  **Zuschauer-Cams** (Wand mit sechs Kacheln und Kopfzeile). „Trio – Moderator groß“ und „Zuschauer-Cams“ sind Varianten und
-  erscheinen erst, wenn du sie unter Setup → Szenen & OBS einschaltest. Namen: Match → Caster & Kameras → „Weitere Personen“
-  (Zuschauer nur mit Namen, als kleines Schild in der Kachel); Kameras: „Weitere Kameras“ (VDO.Ninja, Gerät, Bild oder leer).
-* **Teams-Vorstellung** (Szene, Match → Teams & Spieler → „Teams-Vorstellung“): drei Folien nacheinander –
-  **Team A** und **Team B** (Logo mit Setzplatz, fünf Spielerkarten, Siegquote, Spiele, Serie, letzte 5) und der **Vergleich**
-  (beide Logos, die Werte Zeile für Zeile). Der Bereich hat drei Reiter wie die Folien – **Team A · Team B · Vergleich**
-  (Punkt: grün = Werte da, gelb = fehlen, grau = Folie aus). Je Team: „Folie zeigen“, die Werte in einer Reihe, „Letzte 5“
-  per Klick (Sieg → Niederlage → leer) und **„Anzeigename ändern“** – ein eigener Name nur für diese Szene (CS2 und der
-  Spielstand behalten den Namen aus dem Match). Steht das Team im Turnier, zeigt eine Zeile darunter dessen Werte;
-  abweichende sind gelb, **„Übernehmen“** holt sie (Setzplatz = Reihenfolge im Turnier, Statistik von FACEIT).
-  Im Reiter **Vergleich** schaltest du jede Zeile an/aus; **„Direkter Vergleich“** (Siege gegeneinander) erscheint nur mit Werten.
-  **Folien weiter** (oben rechts im Bereich): von Hand (Knöpfe im Live-Panel „Folien“) oder alle 8–30 s. Leere Werte zeigt das Overlay als „–“.
-* **Unterseiten mit Status:** In Match, Turnier und Setup steht links neben jeder Unterseite ein Punkt mit einer Zeile – Grün = fertig,
-  Gelb = fehlt noch (z. B. „Caster-Namen fehlen“, „1 Logo fehlt“), Lila = angepasst, Grau = Vorgabe.
-  In Match und Turnier führen **„Weiter: …“** und **„← …“** unter jeder Unterseite Schritt für Schritt durch die Vorbereitung.
-* **Spieltag** (Match → Spieltag & Import): alle Spiele des Tages in Reihenfolge, mit Uhrzeit. Spiele kommen aus dem Turnier
-  (einzeln oder „Alle offenen Spiele“), aus der Team-Bibliothek oder vom aktuellen Match. **„Laden“** bzw. **„Nächstes Spiel laden“**
-  setzt Teams, Kürzel, Logos und Spieler und leert Spielstand, Veto und Serie. Stammt das Spiel aus einem selbst geführten Turnier,
-  steht sein Ergebnis beim Wechsel automatisch im Turnier.
-* **Timer bei 0:00** (Match → Timer & Texte): eigener Text statt „00:00“ (z. B. „GLEICH GEHT'S LOS“) und auf Wunsch ein
-  automatischer Wechsel in eine Szene – einmal, genau beim Ablaufen.
-* **Team-Bibliothek** (Match → Teams & Spieler): „Team A/B speichern“ legt Name, Kürzel, Logo, Farben und Spieler auf diesem PC ab;
-  „→ Team A/B“ lädt ein gespeichertes Team (der Punktestand bleibt).
+* **Short name** (next to the name): if a long team name would have to shrink a lot in the overlay (below 70 %), the
+  overlay shows the short name instead. Without a short name the name is only scaled down.
+* **Team library:** “Save team A/B” stores name, short name, logo, colours and players on this PC; “→ Team A/B” loads a
+  saved team (the score stays).
+* **Team intro** (its own scene): three slides in a row – **Team A** and **Team B** (logo with seed, five player cards,
+  win rate, matches, streak, last 5) and the **comparison** (both logos, the values row by row). The area has three tabs
+  like the slides – **Team A · Team B · Comparison** (dot: green = values present, yellow = missing, grey = slide off). Per
+  team: “Show slide”, the values in one row, “Last 5” by click (win → loss → empty) and **“Change display name”** – a
+  name only for this scene (CS2 and the score keep the name from the match). If the team is in the tournament, a row
+  below shows its values there; different ones are yellow, **“Take over”** copies them (seed = order in the tournament,
+  statistics from FACEIT). In the **Comparison** tab every row has its own switch; **“Head to head”** (wins against each
+  other) only appears with values. **Next slide** (top right of the area): by hand (buttons in the Live panel “Slides”)
+  or every 8–30 s. Empty values show as “–” in the overlay.
 
-In der Szene **Ingame** weichen alle Positionen dem Spiel-HUD aus (Minimap, Scoreboard, Killfeed, Spielerkarten).
+### Map veto & series
 
-### Die Oberfläche (wie in OBS)
+Source “Manual” or “FACEIT”, choose format/preset, “Restart”. “↶ Undo” takes back the last step. Build your own
+sequences with “+ Step” and “Save as preset”. Won maps can count towards the score automatically. On air you run the
+veto in the scene panel (see above).
 
-* **Oben** wählst du den Arbeitsbereich (Einsteiger, Operator, Caster – große Knöpfe, Laptop / neben OBS, Vorbereitung oder eigene).
-  *Einsteiger* (Start beim ersten Mal) zeigt nur Vorschau, Szenen und das Panel der Szene; alles andere liegt eingeklappt bereit.
-* **„?“ am Bereichstitel** blendet die Erklärung des Bereichs ein – so bleiben die Bereiche ruhig, die Hilfe ist trotzdem da.
-  *Operator* startet aufgeräumt: offen sind Szenen, Szenen-Werkzeuge und Einblendungen; Ton, Match-Leiste und Turnier sind
-  eingeklappt (Klick auf den Titel öffnet sie, der Zustand bleibt gespeichert).
-* **Strg K** öffnet „Suchen & Befehle“: Szene wechseln, Einblendung zeigen, Bereich öffnen oder andocken – alles per Tastatur.
-  **Strg 1–4** springt zu Live, Match, Turnier und Setup.
+### Casters & cameras
 
-* **Links** die Reiter, **in der Mitte** die Vorschau. Nur im Modus **Layout bearbeiten** lassen sich Bereiche **unter die Vorschau** oder **rechts daneben** andocken:
-  am Titel (Griff mit Punkten) greifen und ziehen – die möglichen Ablageflächen leuchten auf, eine Linie zeigt, wo der Bereich landet.
-  Zurück in den Reiter: auf die linke Spalte ziehen. Alternativ das Andock-Symbol am Bereich → Ort wählen.
-* Über einer angedockten Karte erscheint ein **Kompass**: Rand = davor/danach einsortieren, **Mitte = als Tab** stapeln.
-* **Übereinander unter der Vorschau:** Einen Bereich auf das **obere oder untere Viertel** eines Bereichs unter der Vorschau
-  ziehen – die Hälfte leuchtet auf, „Darüber: …“ / „Darunter: …“ zeigt das Ziel. So liegen z. B. Ton und Match in einer
-  Spalte übereinander; jeder scrollt für sich, ein zugeklappter nimmt nur seine Titelzeile. Wird einer herausgezogen,
-  löst sich der Stapel von selbst auf.
-  Tabs anklicken zum Wechseln, an der Tab-Leiste wieder herausziehen.
-* **Umsortieren:** Bereiche im Reiter einfach nach oben/unten ziehen – die Reihenfolge bleibt gespeichert.
-* **Szenen anordnen:** in „Layout bearbeiten“ im Bereich „Szenen“ auf **Anordnen** – Knöpfe an die gewünschte Stelle ziehen, Haken = Szene wird angezeigt.
-  Standard sind fünf Gruppen: **Vor dem Spiel** (Intro, Cast Solo, Cast Duo, Cast Trio, 4 Personen, Line-ups, Teams-Vorstellung, Map-Veto) · **Im Spiel** (Ingame) ·
-  **Stats & Turnier** (Scoreboard, Team A/B, Head-to-Head, Turnierbaum, Serie) · **Pause** (Pause, Sponsoren, Clips, Zuschauer + Caster) ·
-  **Nach dem Spiel** (Interviews, Ende).
-* **Docks zeigen immer alles:** reicht der Platz nicht, scrollt jede Karte für sich. Doppelklick auf die Trennlinie über dem
-  Vorschau-Dock passt die Höhe an den Inhalt an.
-* **Schloss** mittig auf der Trennlinie von Reiter-Spalte, Vorschau-Dock und Seiten-Dock: gesperrt ändert sich dort nichts mehr –
-  nichts hinein- oder herausziehen, keine Größenänderung, Arbeitsbereiche lassen den Bereich in Ruhe.
-* **Lage frei wählbar** (⚙ → Oberfläche oder Strg K): Reiter-Spalte links/rechts, Seiten-Dock links/rechts der Vorschau,
-  Vorschau-Dock unter oder über der Vorschau.
-* **Trennlinien** ziehen, um Breite bzw. Höhe zu ändern. Der Knopf oben links an der Vorschau klappt sie ein und wieder auf.
-* Oben: Verbindungsanzeige („… von 3 verbunden“: OBS, Overlays, Musik), **Suchen & Befehle**, **Alle einklappen / aufklappen**, **− / Auto / +** alles kleiner/größer (Auto = passt sich dem Fenster an), Layout bearbeiten, **⚙** App-Einstellungen, **Ein/Aus** Schließen oder ganz beenden.
+Per camera frame: a VDO.Ninja link, a device (webcam/capture card, “Find devices”), a picture – or empty if you place
+your own source over it in OBS. The speaker indicator lights up the name tag when someone talks (threshold adjustable).
+**More people** (names for Cast trio, 4 people and the viewer scenes; viewers with name only, as a small tag in the
+tile) and **More cameras** (VDO.Ninja, device, picture or empty).
 
-### App-Einstellungen (⚙)
+### Timer & texts
 
-Ein Panel, das von rechts über die Steuerseite fährt – für alles, was nur die App auf diesem PC betrifft. Oben die Bereiche als
-Knöpfe (mit Status-Punkt, ein Klick springt hin), darunter alle Bereiche untereinander; **Schließen**, Esc oder ein Klick daneben
-führt zurück:
+* Set the timer in minutes or run it “until time of day”; start/pause and ±1 min also work in Live → Match.
+* **Timer at 0:00:** your own text instead of “00:00” (e.g. “STARTING SOON”) and, optionally, an automatic switch to a
+  scene – once, exactly when it runs out.
+* Ticker: one message per line, speed adjustable; plus a big title.
 
-* **Verbindungen & Zugänge** – OBS (Port, Passwort), **FACEIT-Schlüssel**, **DACH CS** (Nutzer-ID, Key), Musik (Spotify über Tuna).
-  Schlüssel liegen im Schlüsselbund des Systems und werden nach dem Speichern nie wieder angezeigt – nur ersetzen oder löschen.
-  (Unter Match → Import und Setup → Aussehen führt ein Verweis hierher.)
-* **Sprache** · **Oberfläche** (Dunkel = Stil „Arena“: Blau-Violett, die laufende Szene glüht rot-orange; Hell = warmes Weiß
-  mit Orange; beide färben die Szenengruppen – Vor dem Spiel blau, Im Spiel grün, Stats orange, Pause lila, Nach dem Spiel rosa;
-  Wie das System; Größe automatisch oder von Hand; Lage von Reiter-Spalte, Seiten-Dock
-  und Vorschau-Dock; „Anordnung zurücksetzen“, „‚Erste Schritte‘ wieder zeigen“) · **Update**
-* **Daten & Sicherung** – Sichern/Laden (.json), Videos-, Schriften- und Datenordner · **Über die App**
+## Tournament (Tournament tab, scene “Bracket”)
 
-Beenden geht über den Ein/Aus-Knopf oben rechts. Alles rund um CS bleibt in den Reitern.
+Four sub-pages with status: **Setup** (name, format, points rule) · **Teams & FACEIT** · **Games** · **In the overlay**.
 
-**Browserquellen umstellen:** Unter ⚙ → Verbindungen & Zugänge (OBS) zeigt die App, welche ihrer Browserquellen noch keinen
-Zugangsschlüssel haben. „Browserquellen umstellen“ stellt sie um – jede lädt dabei einmal kurz neu, also nicht während
-der Sendung.
+* **“Import tournament”** (FACEIT link or ID): fetches teams with logos, players and statistics and takes over the
+  **exact structure** – groups with table (round robin), **Swiss** (with records like 2–1; pairings come from FACEIT,
+  nothing is drawn) or the bracket exactly as FACEIT has it. “Update results” fetches new scores, “Load team statistics
+  from FACEIT” win rate, matches, streak and last results.
+* **Corrections stay:** a FACEIT result changed by hand is **corrected** (yellow label on the game) and is not
+  overwritten when updating. “corrected ↺” goes back to the FACEIT value. Below the games the source is shown
+  (“FACEIT · 2 corrected” or “entered by hand”).
+* **Formats by hand:** **groups with table** (number of groups, places that advance, open games below the table),
+  **single elimination**, **double elimination** (upper/lower + grand final), **Swiss** (wins/losses adjustable, “Draw
+  the next round” – only without FACEIT) and **groups (GSL)** – up to 32 teams. Team order = seeding, byes are assigned
+  automatically. Teams with short name, logo, players and optional FACEIT team ID.
+* **Points rule per tournament** (groups with table): presets like “Win 3 · loss with a map won 1 · loss 0” or your own
+  values for win 2:0, win 2:1, loss 1:2, loss 0:2 and draw. On equal points the head-to-head counts first, then the round
+  difference (RD, fetched from FACEIT), then the wins.
+* **Group in the overlay:** all groups or just one – the tables fit the space (one group large, several side by side).
+  Faster in Live: while the bracket runs, the scene panel has buttons **All · Group A · Group B …** – the scene stays,
+  only the group changes (also for GSL).
+* **Click a team** in the bracket to highlight it in the overlay and show its profile.
+* **Visibility:** everything, **reveal round by round** (up to round X), **only from round X**, hide results (only who advances).
 
-### Update (ab 2.3)
+## Setting up (Setup tab)
 
-Unter ⚙ → **Update**: „Nach Updates suchen“ fragt GitHub, ob es eine neuere Version gibt. Gibt es eine, aktualisiert
-**„Jetzt aktualisieren“** die App mit einem Klick: Sie lädt die passende Datei, vergleicht sie mit der Prüfsumme von
-GitHub, beendet sich, setzt die neue Version ein und startet neu. Einstellungen, Bilder und Zugänge bleiben.
+### Appearance & themes
 
-| Installiert als | Update |
+* **Themes:** Regular (night purple with a neutral logo field for your org or streamer logo), DACH CS – own style,
+  **DACH CS – official** (see below), ESEA, Uniliga. Create, **duplicate**, **delete** (with undo), **export** and
+  **import** themes – an export is one file with all colours, logos, pictures and sponsors, for sharing or as a backup.
+  Built-in themes can't be deleted, only reset (“Customise theme” → “Reset this theme to default”).
+* **Box style** (Customise theme): **Light** (white boxes), **Dark** (dark boxes) or **Mixed** (dark, only the title
+  stays light). Logo fields (sponsors, brand) always stay light so dark logos remain visible.
+
+### Sponsors
+
+* The **sponsor** sits in Intro, Pause, End and the cast scenes as a fourth box in the bottom bar – same height, bar
+  centred. Under **Place of the sponsor box** it can be shown **top right** instead; if no sponsor is visible (off or
+  none entered), the bar closes up to the centre without a gap.
+* Without a logo the sponsor name appears large in the box; long names get smaller and wrap onto two lines if needed.
+* Optionally a **countdown bar** under the logo – it shows when the next sponsor comes.
+
+### Map pool
+
+Tiles with pictures – at the top the maps in the pool (drag = order in the veto), below the others. At the top it says
+whether the pool matches Active Duty, at the bottom which formats it is enough for. **Own map:** paste a Workshop link →
+“Get from the Workshop” takes name and preview picture from Steam; otherwise “By hand: name + picture”. New maps land
+under **“More maps”** – the active pool only changes when you switch a map on there. Per map you can enter facts for the
+graphic “Map fact”.
+
+### Background
+
+* **Playlists:** a playlist is one of three kinds: **One video · endless loop**, **Several videos** (in order or
+  shuffled; transition cut, fade or through black, duration in seconds) or **Clips** (once through, with sound, then back
+  to the background). Each scene plays the playlist that has the scene ticked; Ingame never. Tick videos from the library
+  (videos folder), order with ↑ ↓.
+* **In Live**, below the program preview, the corner **BACKGROUND**: another playlist for the running scene (until the
+  next scene change), “Keep for this scene”, and **“Show clip”** / “Stop clip”.
+* **Who plays the videos?**
+  * **OBS** (recommended): every format OBS supports, also H.265/AV1 and 4K, with hardware decoding, several videos with
+    VLC. As soon as an overlay in OBS is connected, the app offers “Let OBS play it – set up” at the top: one click, confirm –
+    the media source “Cast – Hintergrund” then sits directly below the overlay (above the game capture). The app hides it
+    in “Cast – Sendung” only during Ingame and matches it to the running scene on every scene change and when connecting
+    to OBS.
+  * **The overlay:** WebM (VP9) is safest. The browser source in OBS doesn't play videos reliably; the app checks every video.
+
+### Scenes & OBS
+
+“Create the scene ‘Cast – Sendung’ in OBS”, “Copy overlay address”, the cleanfeed scene and which scenes appear in Live
+(e.g. the variants *Trio – large host* and *Viewer cams*). The people scenes share the style of the cast scenes, with the
+sponsor in the bar: **Cast trio** (three casters side by side) · **Trio – large host** (caster 1 large, two smaller on
+the right) · **4 people** (2 × 2 grid) · **Viewers + casters** (four viewer tiles, casters on the right) · **Viewer cams**
+(wall with six tiles and a header). Under **Scene panels** you choose which fields the scene panel shows per scene.
+
+### CS2 live data
+
+Setup → CS2 live data guides you through the setup step by step – for CS2 on this PC (“Set up automatically”, “Search
+all drives”, type the path directly – with suggestions – or “Browse folders …” with a search field) or on an observer PC
+in the network (port 8788, a file with address and key to download). Open the match as a spectator (GOTV/observer) and
+CS2 delivers all 10 players.
+* Scenes **Scoreboard**, **Team A**, **Team B**, **Head-to-Head** · graphics **Scoreboard (live)**, **Player (live)**.
+* At half time the app swaps the sides itself; ADR and HS % are calculated from the round data.
+* **“Play test data”** plays a short sample match – only in the app's preview, never on stream – so you can check the
+  scoreboard and team scenes without a running game.
+
+## DACH CS – official
+
+Setup → Appearance → choose the style **“DACH CS – official”** and enter **user ID** and **key** from the DACH CS user
+area (Casting → Browserquellen) under **⚙ → Connections & access**. The key is stored encrypted and never shown again.
+
+* Everything runs in **one** browser source: Live → Scenes shows the 25 DACH pages (overview, single/duo cam, lineup,
+  map veto, ingame, table, playoffs, matches, MVP, breaks, interaction, interviews, end screen). The next page is
+  preloaded and then switched with the chosen transition (cut, fade, slide, wipe, stinger). The **fade** goes through the
+  dark blue of the DACH pages: first the old page fades out, then the new one in – never two pages half on top of each
+  other. The cameras appear in the new page's frames together with the page, the picture keeps running. No scrollbars,
+  exactly 1920 × 1080.
+* **Cameras and content** (caster, guest, clip) are placed automatically in the frames of each page (single cam, duo cam,
+  interaction single/duo, own content break, interview single/duo – measured from the real DACH pages). They sit
+  **below** the page: the yellow line and name tag of DACH CS stay visible. An empty frame is black – never the
+  background of a DACH page, not even during a change. “Adjust camera and content frames” shows the frames in the
+  preview and lets you move them pixel by pixel; “Default” restores the measured sizes.
+* **Match entered at DACH CS** (switch above the DACH scenes): the app can't see whether a match is entered at DACH CS.
+  When the switch is off, the scenes that need a match (team lineup, map veto, positions, table, playoffs, last/next 5,
+  match day, MVP) are grey and marked “MATCH” – otherwise they only show “TBA”. Clicking still works.
+* **Videos in the app window:** H.264 videos (MP4, e.g. the DACH content break) are converted for the app's own window
+  when first played (with the bundled FFmpeg) – afterwards they play with picture and sound. Nothing changes in OBS. On
+  macOS Intel this only works with FFmpeg installed (`brew install ffmpeg`); otherwise the preview shows a notice.
+* The content of the graphics (teams, results, table …) comes from the DACH CS live dashboard. The app's graphics sit on top.
+* “DACH CS – own style” is the free design in the DACH look, without the official pages.
+
+## App settings (⚙)
+
+A panel that slides in from the right over the control page – for everything that only concerns the app on this PC. At
+the top the sections as buttons (with status dot, one click jumps there), below all sections in a row; **Close**, Esc or
+a click next to it takes you back.
+
+* **Connections & access** – OBS (port, password), **FACEIT key**, **DACH CS** (user ID, key), music (Spotify via Tuna),
+  “Open control page in browser”. Keys are kept in the system keychain and never shown again after saving – only
+  replaced or deleted.
+* **Sprache · Language** – two independent settings (e.g. the app in English, the overlays in German):
+  * **App language** (Deutsch / English): control page, dialogs and tray menu. The control page reloads briefly.
+  * **Overlay language** (Deutsch / English): the fixed texts on stream – headings like “BREAK”/“PAUSE”, “FINAL
+    SCORE”/“ENDSTAND”, tournament rounds, statistics headers. Texts you changed yourself stay as they are; only texts
+    still on their default switch language. The overlays in OBS change immediately.
+* **Interface** – **Dark** (“Arena”: blue-violet, the running scene glows red-orange), **Light** (warm white with
+  orange) or like the system; both colour the scene groups (Before the match blue, In the match green, Stats orange,
+  Pause purple, After the match pink). Size automatic or by hand; position of tab column, side dock and preview dock;
+  “Reset arrangement”, “Show ‘First steps’ again”.
+* **Update** – see below.
+* **Data & backup** – back up/load (.json), videos, fonts and data folders · **About the app**.
+
+### Update
+
+“Check for updates” asks GitHub whether there is a newer version. If there is, **“Update now”** updates the app with one
+click: it downloads the matching file, checks it against GitHub's checksum, quits, puts the new version in place and
+restarts. Settings, pictures and access data stay.
+
+| Installed as | Update |
 |---|---|
-| Windows mit `…-Setup.exe` | automatisch (der Installer läuft unsichtbar) |
-| Linux AppImage | automatisch (die AppImage-Datei wird ersetzt) |
-| macOS (`.dmg`/`.zip`) | automatisch (die App im Programme-Ordner wird ersetzt) |
-| Windows portable, aus dem Quellcode | „Download-Seite öffnen“ – von Hand ersetzen |
+| Windows with `…-Setup.exe` | automatic (the installer runs invisibly) |
+| Linux AppImage | automatic (the AppImage file is replaced) |
+| macOS (`.dmg`/`.zip`) | automatic (the app in Applications is replaced) |
+| Windows portable, from source | “Open download page” – replace by hand |
 
-* **Bei jedem Start nach Updates suchen** (Standard: an) – findet die App eine neue Version, sagt sie es im Tray;
-  ein Klick darauf öffnet den Bereich Update.
-* Beim ersten Start nach einem Update steht dort „aktualisiert von v…“.
-* Nicht während einer laufenden Sendung aktualisieren: Die Overlays in OBS sind dabei kurz weg.
+* **Check for updates at every start** (default: on) – when the app finds a new version it says so in the tray; a click
+  opens the Update section.
+* On the first start after an update it shows “updated from v…”.
+* Don't update during a live show: the overlays in OBS are briefly gone.
 
-### Sprache · Language (ab 2.2)
+## Good to know
 
-Unter ⚙ → **Sprache · Language** gibt es zwei Einstellungen, die unabhängig voneinander sind – z. B. die App auf
-Englisch und die Overlays auf Deutsch:
-* **Sprache der App** (Deutsch / English): Steuerseite, Dialoge und Tray-Menü. Die Steuerseite lädt danach kurz neu.
-* **Sprache der Overlays** (Deutsch / English): die festen Texte im Stream – Überschriften wie „PAUSE“/„BREAK“,
-  „ENDSTAND“/„FINAL SCORE“, Turnierrunden, Statistik-Köpfe. Texte, die du selbst geändert hast, bleiben, wie sie sind;
-  nur Texte, die noch auf dem Standard stehen, wechseln die Sprache. Die Overlays in OBS ändern sich sofort mit.
+### Closing the window
 
-### Szenenwechsel
+Click the **X**: the window stays open for the moment and the app asks right away **Quit completely · Close window only ·
+Cancel**. The power button top right opens the same choice.
+* **Close window only:** the window disappears, the overlays in OBS keep running. The **29 icon** stays in the system tray
+  (macOS: menu bar) with the menu **Open · Reload overlays in OBS · Quit completely**. Clicking the icon (macOS: opens
+  the menu) or starting the app again brings the window back.
+* **Reload overlays in OBS** reloads the browser sources via OBS (like the button in the app); without an OBS connection
+  the app reloads the connected overlays itself.
+* When the window is closed and no overlay is connected any more (OBS closed), the app quits by itself after 30 s.
 
-Was in beiden Szenen vorkommt (Logo, Lauftext, Match-Up, Sponsor, Kameras …), **bleibt stehen oder gleitet an seinen neuen Platz**.
-Nur was sich ändert, blendet aus bzw. ein – je nach gewähltem Übergang (Blende, Schieben, Wischen, Schnitt, Stinger).
-Kameras laufen dabei ohne Neuladen weiter.
+### Folders, start options, problems
 
-### Gut zu wissen
+* **Only one app:** start the app a second time and the existing window simply comes to the front. A **newer version**
+  replaces a running older one automatically (the overlays reconnect by themselves).
+* **Videos** (background) and **your own fonts** live in *Documents → Casting-App*. The app opens the folders with a button.
+* **Settings, pictures and log** live in *%APPDATA%\Casting-App* (Linux/macOS: *~/.casting-app*).
+* **Problems?** The **Log** tab shows what is happening, which overlays are connected (also those in OBS) and messages
+  from the overlays, e.g. when a video doesn't play.
+* **Preview stutters or the window stays black** (old graphics driver)? Start the app with `--no-gpu`.
+* **Without a window:** `Casting-App --no-window` only starts the server for the overlays (no window, no tray icon).
 
-* **Nur eine App:** Startest du die App ein zweites Mal, kommt einfach das vorhandene Fenster nach vorn.
-  Eine **neuere Version** löst eine laufende ältere automatisch ab (die Overlays verbinden sich danach von selbst neu).
-* **Ohne Fenster:** `Casting-App --no-window` (oder `--ohne-fenster`) startet nur den Server für die Overlays (kein Fenster, kein Symbol).
-* **Videos** (Hintergrund) und **eigene Schriften** liegen in *Dokumente → Casting-App*. Die App öffnet die Ordner per Knopf.
-* **Wer spielt die Videos ab?** (Setup → Hintergrund)
-  * **OBS** (empfohlen): alle Formate, die OBS kann, auch H.265 und 4K, mit Hardware-Dekodierung. Die App legt die Medienquelle
-    „Cast – Hintergrund" direkt unter das Overlay (über die Spielaufnahme) und blendet sie in der Ingame-Szene automatisch aus.
-  * **Das Overlay**: am sichersten WebM (VP9). MP4 (H.264) spielt OBS ab, die Vorschau im App-Fenster aber nicht. Die App prüft jedes Video.
-* **Einstellungen, Bilder und Log** liegen in *%APPDATA%\Casting-App* (Linux/macOS: *~/.casting-app*). Der Reiter **Log** zeigt, was gerade passiert,
-  welche Overlays verbunden sind (auch die in OBS) und öffnet alle Ordner.
-* **FACEIT:** ⚙ App-Einstellungen → Verbindungen & Zugänge → FACEIT: API-Key (Server side, von developers.faceit.com) → „Schlüssel speichern“; dann unter Match → Spieltag & Import den
-  Matchroom-Link einfügen, „Daten holen" (optional „alle 15 s aktualisieren“).
-* **CS2-Livedaten:** Setup → CS2-Livedaten führt Schritt für Schritt durch die Einrichtung – für CS2 auf diesem PC
-  („Automatisch einrichten“, „Auf allen Laufwerken suchen“, Pfad direkt eintippen – mit Vorschlägen – oder „Ordner durchsuchen …“
-  mit Suchfeld) oder auf einem Observer-PC im Netzwerk (Port 8788, Datei mit
-  Adresse und Schlüssel zum Herunterladen). Das Match als Zuschauer öffnen (GOTV/Observer), dann liefert CS2 alle 10 Spieler.
-  Neue Szenen: **Scoreboard**, **Team A**, **Team B**, **Head-to-Head** · neue Einblendungen: **Scoreboard (live)**, **Spieler (live)**.
-  Zur Halbzeit tauscht die App die Seiten selbst; ADR und HS % rechnet sie aus den Rundendaten mit.
-  **„Testdaten abspielen“** spielt ein kurzes Beispiel-Match – nur in der Vorschau der App, nie im Stream –, so lassen sich
-  Scoreboard und Team-Szenen ohne laufendes Spiel prüfen.
-* **Hintergrund: Playlisten** (Setup → Hintergrund). Eine Playlist ist eine von drei Arten: **Ein Video · Dauerschleife**,
-  **Mehrere Videos** (nacheinander oder zufällig; Übergang Schnitt, Blende oder über Schwarz, Dauer in Sekunden) oder **Clips**
-  (einmal durch, mit Ton, danach wieder der Hintergrund). Je Szene läuft die Playlist, bei der die Szene angehakt ist; Ingame nie.
-  Videos aus der Bibliothek (Videos-Ordner) anhaken, Reihenfolge mit ↑ ↓. Bis 2.6 angehakte Videos werden zur Playlist „Standard“.
-  **In Live** sitzt unter der Programm-Vorschau die Ecke **HINTERGRUND**: andere Playlist für die laufende Szene (gilt bis zum
-  nächsten Szenenwechsel), „Für die Szene merken“, und **„Clip zeigen“** / „Clip stoppen“.
-* **Hintergrund-Video: am besten spielt OBS es ab.** Die Browserquelle in OBS gibt Videos nicht zuverlässig wieder
-  (in der App-Vorschau läuft es trotzdem). Sobald ein Overlay in OBS verbunden ist, bietet die App oben „OBS spielt ab – einrichten" an:
-  ein Klick, kurz bestätigen – dann spielt OBS das Video als Medienquelle unter dem Overlay (auch H.265/AV1, mehrere Videos mit VLC).
-  Die App blendet diese Quelle in „Cast – Sendung“ nur bei Ingame aus und richtet sie bei jedem Szenenwechsel und beim
-  Verbinden mit OBS wieder nach der laufenden Szene (bis 2.14 konnte sie nach schnellem Umschalten versteckt bleiben).
-* **Probleme?** Der Reiter **Log** zeigt auch Meldungen aus den Overlays in OBS, z. B. wenn ein Video nicht abspielt.
-* „In OBS anlegen" bzw. „Szene ‚Cast – Sendung‘ in OBS anlegen" stellt auch **vorhandene** Browserquellen aus älteren Versionen auf die App um.
-* **Ruckelt die Vorschau oder bleibt das Fenster schwarz** (alter Grafiktreiber)? Die App mit `--no-gpu` (oder `--ohne-gpu`) starten.
-* Einstellungen der Vorversion („Cast-Overlay") übernimmt die App beim ersten Start automatisch.
+### Confirmations
 
-### Sicherheitsabfragen
+* **Everything that changes OBS** (creating scenes, setting up the background source) first shows a list of exactly what
+  will happen – only “Run in OBS” changes anything. Nothing is deleted in OBS – only “Create cleanfeed scene in OBS”
+  replaces an existing scene “Cast – Cleanfeed”.
+* **Restart / clear veto, load session, take over FACEIT data, reset everything, quit the app** ask first if something
+  you entered would be lost.
+* **Removing** (graphic, map, sponsor, player, veto step) can be **undone** for a few seconds.
 
-* **Alles, was OBS verändert** (Szenen anlegen, Hintergrund-Quelle einrichten), zeigt vorher eine Liste, was genau passiert –
-  erst „In OBS ausführen" ändert etwas. Gelöscht wird in OBS nichts – nur „Cleanfeed-Szene in OBS anlegen“ ersetzt
-  eine vorhandene Szene „Cast – Cleanfeed“.
-* **Veto neu starten / leeren, Sitzung laden, FACEIT-Daten übernehmen, alles zurücksetzen, App beenden** fragen nach,
-  wenn dabei Eingetragenes verloren ginge.
-* **Entfernen** (Einblendung, Map, Sponsor, Spieler, Veto-Schritt) lässt sich ein paar Sekunden lang **rückgängig** machen.
+### Security & privacy
 
-### Signatur
+* The app only accepts requests from **this PC**. Other devices on the network are rejected. Only its own pages may
+  access it, no websites from the internet.
+* **Access key:** on first start the app creates a secret key (in the keychain). Only pages with this key – the app
+  window and the browser sources the app creates in OBS – may change anything, open the DACH CS pages or log in to OBS.
+  Other programs on the PC can't get in. Camera links (which may contain passwords) only go to sources with the key.
+  To use the control page in a normal browser: ⚙ → Connections & access → “Open control page in browser” (the link
+  works once and for 2 minutes – it's worthless in the browser history afterwards).
+* **Keys and passwords** (FACEIT key, user ID and key for DACH CS, OBS password) live only in the system keychain –
+  Windows: Credential Manager (bound to your Windows account) · macOS: Keychain · Linux: Secret Service or KWallet.
+  Nothing of it is in the app's data folder. If there is no keychain (some Linux systems), the app asks at start whether
+  to store the keys protected by **your own password** instead (file `secrets.vault`, unreadable without the password;
+  the password is asked for at every start). Without a password they only last until the app quits. Without a window
+  (`--no-window`) the environment variable `CASTING_APP_VAULT_PASSWORD` opens the vault.
+* Keys are never shown again after saving – not in the app, not in backups, sessions, exports or the log – and no
+  interface hands them out. The app only uses them internally (FACEIT requests, OBS login, forwarding to the DACH CS
+  pages). DACH CS requires ID and key in the address of its pages – so they are in the address of the DACH frames in the
+  overlay. Don't show the properties of the browser source or the OBS developer tools on stream.
+* **What leaves the PC:** FACEIT requests (match, tournament, team statistics – with your API key), the DACH CS pages
+  (with ID and key), cameras and clips you enter yourself, the Workshop number to Steam when you click “Get from the
+  Workshop” (name and preview picture come back), and the question to GitHub whether there is a newer version (only the
+  list of versions; can be switched off under ⚙ → Update) – plus the download when updating. Updates only come from this
+  project's releases and only with a matching checksum. Videos from the web that you play in the app window are fetched
+  by FFmpeg for conversion (only http/https, no other devices on your own network).
+* Only the app's own pages run in the app window; links to the outside open in the default browser. Only the app's own
+  pages may use camera and microphone.
+* The network receiver for CS2 (port 8788) is off until you switch it on, and then only accepts CS2 game states with your key.
+* The app only serves its own files plus videos and fonts from your folders.
+* **Damaged files don't stop the app:** if a file in the data folder is damaged (e.g. after a power cut), the app puts it
+  aside as `….damaged`, starts with default values and writes it to the log.
 
-Die Windows-Dateien sind nicht signiert, deshalb warnt Windows beim ersten Start. Eine vertrauenswürdige Signatur braucht ein
-Code-Signing-Zertifikat, das auf deinen Namen ausgestellt ist (z. B. Microsoft Trusted Signing oder ein OV/EV-Zertifikat einer
-Zertifizierungsstelle). Mit so einem Zertifikat signiert der Bau (`tools/build.py`) Installer und App selbst, siehe [Entwickler-Doku](docs/ENTWICKLUNG.md).
-Die macOS-App ist nur ad-hoc signiert (ohne Apple-Konto); die Beglaubigung durch Apple (Notarisierung) ist vorbereitet, aber aus.
+### Signing
 
-### Sicherheit
-
-* Die App nimmt nur Anfragen von **diesem PC** an. Andere Geräte im Netz werden abgelehnt.
-* Nur die eigenen Seiten dürfen zugreifen, keine Webseiten aus dem Internet.
-* **Zugangsschlüssel (ab 2.3):** Die App erzeugt beim ersten Start einen geheimen Schlüssel (im Schlüsselbund). Nur
-  Seiten mit diesem Schlüssel – das App-Fenster und die Browserquellen, die die App in OBS anlegt – dürfen etwas ändern,
-  die DACH-CS-Seiten öffnen oder sich bei OBS anmelden. Andere Programme auf dem PC kommen nicht heran.
-  Browserquellen aus älteren Versionen findet die App beim Verbinden mit OBS und fragt, ob sie sie umstellen soll
-  (jede lädt dabei einmal kurz neu – nicht während des Streams bestätigen). Bis dahin zeigen sie alles außer den
-  DACH-CS-Seiten und den Kameras (Kamera-Links können Passwörter enthalten und gehen nur an Quellen mit Schlüssel).
-  Die Steuerseite im normalen Browser: ⚙ App-Einstellungen → Verbindungen & Zugänge → „Steuerseite im Browser öffnen“
-  (der Link gilt einmal und 2 Minuten – im Browser-Verlauf ist er danach wertlos).
-* **Kaputte Dateien halten die App nicht auf:** Ist z. B. nach einem Stromausfall eine Datei im Datenordner beschädigt,
-  legt die App sie als `….damaged` beiseite, startet mit Standardwerten und schreibt es ins Log.
-* **Vom PC geht nur nach außen:** FACEIT-Abfragen (Match, Turnier, Team-Statistiken – mit deinem API-Key), die
-  DACH-CS-Seiten (mit ID und Key), Kameras und Clips, die du selbst einträgst, beim Klick auf „Aus dem Workshop holen“
-  die Workshop-Nummer an Steam (Name und Vorschaubild zurück), und die Frage an GitHub, ob es eine
-  neuere Version gibt (nur die Versionsliste; abschaltbar unter ⚙ → Update) – beim Klick auf „Installieren“ auch der Download.
-  Updates kommen nur aus den Releases dieses Projekts und nur mit passender Prüfsumme. Videos aus dem Netz, die du im
-  App-Fenster abspielst, holt FFmpeg zum Umwandeln selbst ab (nur http/https, keine anderen Geräte im eigenen Netz;
-  deine Videos aus dem Videos-Ordner laufen wie gewohnt).
-* Das **OBS-Passwort** liegt ebenfalls im Schlüsselbund. Die Anmeldung bei OBS rechnet die App selbst aus, das Passwort
-  steht nicht im Browser-Speicher der Steuerseite (ein altes wird beim ersten Start umgezogen).
-* Der **FACEIT-Schlüssel** sowie **Nutzer-ID und Key für DACH CS** liegen nur im Schlüsselbund des Systems – Windows:
-  Anmeldeinformationsverwaltung (an dein Windows-Konto gebunden) · macOS: Schlüsselbund · Linux: Secret Service bzw. KWallet.
-  Im Datenordner der App liegt nichts davon. Gibt es keinen Schlüsselbund (manche Linux-Systeme), fragt die App beim Start,
-  ob sie die Schlüssel (auch das OBS-Passwort) stattdessen mit einem **eigenen Passwort** geschützt speichern soll (Datei `secrets.vault`,
-  ohne das Passwort nicht lesbar; das Passwort wird bei jedem Start abgefragt). Ohne Passwort gelten sie nur bis zum
-  Beenden der App. Ohne Fenster (`--no-window`) öffnet die Umgebungsvariable `CASTING_APP_VAULT_PASSWORD` den Tresor. Sie werden nach dem Speichern nie wieder angezeigt –
-  nicht in der App, nicht in Sicherungen, Sitzungen, Exporten oder im Log – und keine Schnittstelle gibt sie heraus.
-  Die App setzt sie nur intern ein (FACEIT-Abfragen, Weiterleitung zu den DACH-CS-Browserquellen). DACH CS verlangt
-  ID und Key in der Adresse seiner Seiten – sie stehen deshalb in der Adresse der DACH-Rahmen in OBS. Zeige die
-  Eigenschaften dieser Rahmen oder die OBS-Entwicklerwerkzeuge nicht im Stream.
-* Im App-Fenster laufen nur die eigenen Seiten; Links nach draußen öffnet der Standardbrowser. Kamera und Mikrofon dürfen nur
-  die eigenen Seiten benutzen.
-* Der Netzwerk-Empfang für CS2 (Port 8788) ist aus, bis du ihn einschaltest, und nimmt dann nur CS2-Spielstände mit deinem Schlüssel an.
-* Die App liefert nur ihre eigenen Dateien sowie Videos und Schriften aus deinen Ordnern aus.
+The Windows files are not signed, so Windows warns on first start. A trusted signature needs a code signing certificate
+issued in your name (e.g. Microsoft Trusted Signing or an OV/EV certificate from a certificate authority); with it the
+build signs installer and app itself, see the [developer docs](docs/ENTWICKLUNG.md) (German). The macOS app is only
+ad-hoc signed (no Apple account); notarization by Apple is prepared but switched off.
 
 ---
 
-Für Entwickler: [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) (Aufbau, Tests, Bauen, Release).
+For developers: [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) (German – structure, tests, building, releases).

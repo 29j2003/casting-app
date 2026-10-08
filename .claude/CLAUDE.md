@@ -6,7 +6,7 @@ Nutzer: Julius (Twitch 29_THE_P4TCH3R), macht Production für Casts (DACH CS Mas
 Aufbau und Rezepte für Änderungen: `docs/ENTWICKLUNG.md` (bei neuen Bausteinen dort mitpflegen).
 **Alle Namen im Code englisch** (Python und `web/`: Variablen, Funktionen, CSS-Klassen, IDs, API-Pfade, JSON-Felder, Dateien).
 **Python-Code: englische Kommentare, sauber dokumentiert (Docstrings je Modul/Klasse).**
-**Oberfläche, Texte für Nutzer und Doku auf Deutsch; Kommentare in `web/` dürfen deutsch bleiben.**
+**Oberfläche und Texte für Nutzer auf Deutsch (Englisch über `web/lang-en.js`); `docs/ENTWICKLUNG.md` auf Deutsch, `README.md` auf Englisch; Kommentare in `web/` dürfen deutsch bleiben.**
 
 ## Aufbau
 - `casting_app/__main__.py` – Start: Desktop-App oder `--no-window`/`--ohne-fenster` (nur Server), `--no-gpu`/`--ohne-gpu`.
@@ -57,7 +57,9 @@ Aufbau und Rezepte für Änderungen: `docs/ENTWICKLUNG.md` (bei neuen Bausteinen
 - Stream-Overlays dürfen keine Bedien-Hinweise zeigen – Hinweise nur in der Vorschau (`body.idle`).
 - Nach Änderungen an Übergängen: `tests/live/transitions.py` und `tests/live/flicker.py` müssen sauber bleiben.
 - Nach Änderungen an `casting_app/`: `python -m pytest` (unter Linux mit `xvfb-run -a`) muss sauber bleiben.
-- **Doku:** nur zwei Dateien – `README.md` (Startseite + Anleitung für Nutzer) und `docs/ENTWICKLUNG.md` (Entwickler; später ins Wiki). Keine weiteren `.md`-Dateien anlegen.
+- **Doku:** nur zwei Dateien – `README.md` (Startseite + Anleitung für Nutzer, **Englisch**, Knopf-Namen wie in `web/lang-en.js`) und
+  `docs/ENTWICKLUNG.md` (Entwickler, Deutsch; später ins Wiki). Keine weiteren `.md`-Dateien anlegen. Die README beschreibt nur den
+  aktuellen Stand – keine Versionsgeschichte, kein „ab 2.x“/„bis 2.x“, keine Umstiegs-Anleitungen.
 - **Zwei Sprachen** (App und Overlays, unabhängig): neuer sichtbarer Text in der Steuerseite → Übersetzung in
   `web/lang-en.js`; feste Overlay-Texte → `OVERLAY_TEXTS`/`OVERLAY_WORDS` in `web/cast-core.js` (beide Sprachen);
   Texte aus Python → `casting_app/texts.py`. Werte, die der Code vergleicht, nie aus sichtbarem Text ableiten.

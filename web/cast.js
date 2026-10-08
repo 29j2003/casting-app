@@ -414,7 +414,7 @@
             `<span class="bracket-tname">${esc(t.name || "")}</span><span>${esc(r.played)}</span><span>${esc(r.wins)}</span><span>${esc(r.losses)}</span><span>${r.tiebreak > 0 ? "+" : ""}${esc(r.tiebreak)}</span><b>${esc(r.pts)}</b></div>`; }).join("") +
         (T.gamesShow ? `<div class="bracket-tspiele">${g.matches.filter(m => !m.done).slice(0, 4).map(m => card(m, false)).join("")}</div>` : "") + `</div>`).join("")}</div>`;
     }
-    else if (B.format === "gsl") h = `<div class="bracket-groups">${B.groups.map(g => `<div class="bracket-group"><div class="bracket-title">${esc(g.name)}</div>${g.matches.map(m => `<div class="bracket-gm"><span>${esc(m.title)}</span>${card(m, false)}</div>`).join("")}</div>`).join("")}</div>`;
+    else if (B.format === "gsl") h = `<div class="bracket-groups">${B.groups.filter((g, i) => T.showGroup === undefined || T.showGroup === "" || i === +T.showGroup).map(g => `<div class="bracket-group"><div class="bracket-title">${esc(g.name)}</div>${g.matches.map(m => `<div class="bracket-gm"><span>${esc(m.title)}</span>${card(m, false)}</div>`).join("")}</div>`).join("")}</div>`;
     else if (B.format === "swiss") h = `<div class="bracket-row">${columns(B.rounds, 1)}</div>` + (B.table.length ? `<div class="bracket-swiss">${B.table.map(b => `<div class="bracket-sw ${b.status}">${row(b.id, `${b.wins}–${b.losses}`, b.status === "proceed", false)}</div>`).join("")}</div>` : "");
     else {
       h = `<div class="bracket-row">${columns(B.rounds, 1)}${B.finale && B.bottom.length === 0 ? "" : ""}</div>`;

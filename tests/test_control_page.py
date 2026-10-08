@@ -705,3 +705,56 @@ def test_studio_mode_picks_first_and_takes_with_transition(server, browser):
     assert page.evaluate("[Z.broadcast.scene, Z.dach.scene, studioNext]") == ["dach-pause", "dach-pause", "dach-overview"]
     page.evaluate("ui.studio = false; uiSave(); Z.theme = 'regular'; everything(); send()")
     assert errors == []
+
+
+def test_a_workshop_map_lands_under_more_maps(server, browser):
+    """2.15: a map from the Steam Workshop (Steam faked here) arrives with its picture under „Weitere Maps“ – the
+    active pool stays as it is. Up to 2.14 the picture (a data: URL) could not be read on the page and nothing came."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    png = ("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+    page.route("**/api/workshop?**", lambda route: route.fulfill(
+        status=200, content_type="application/json", body='{"id": "3070284539", "title": "de_thera", "image": "%s"}' % png))
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    active = page.evaluate("Z.mapPool.filter(m => m.active !== false).map(m => m.name)")
+    page.evaluate("tabs('match')")
+    page.evaluate("$('poolWorkshop').value = 'https://steamcommunity.com/sharedfiles/filedetails/?id=3070284539'")
+    page.evaluate("$('poolWorkshopGo').click()")
+    for _ in range(40):
+        if page.evaluate("Z.mapPool.some(m => m.name === 'de_thera')"):
+            break
+        page.wait_for_timeout(100)
+    added = page.evaluate("Z.mapPool.find(m => m.name === 'de_thera')")
+    assert added and added["active"] is False and added["image"], page.inner_text("#poolWorkshopStatus")
+    assert page.evaluate("Z.mapPool.filter(m => m.active !== false).map(m => m.name)") == active
+    page.evaluate("$('poolPlus').click()")
+    assert page.evaluate("Z.mapPool[Z.mapPool.length - 1].active") is False
+    assert errors == []
+
+
+def test_one_group_of_the_table_from_the_scene_panel(server, browser):
+    """2.15: with groups (table), the panel of the Bracket scene offers All · Group A · Group B – the scene stays and the
+    overlay shows only that group. DACH CS – Official: scenes that need a match say so until „match entered“ is on."""
+    control, overlay = browser.new_page(viewport={"width": 1600, "height": 1000}), browser.new_page(viewport={"width": 1920, "height": 1080})
+    errors = watch(control) + watch(overlay)
+    control.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    overlay.goto(f"{BASE_URL}/overlay.html?access={server.access_key}")
+    control.wait_for_timeout(1200)
+    control.evaluate("""Z.theme = 'regular'; everything(); tabs('live'); Z.broadcast.active = true; sceneCfg().on = true;
+      Z.tournament = { format: 'table', groupsCount: 2, teams: [1, 2, 3, 4, 5, 6, 7, 8].map(i => ({ id: 't' + i, name: 'Team ' + i })) };
+      send(); sceneSwitch('bracket')""")
+    control.wait_for_timeout(500)
+    buttons = control.evaluate("[...document.querySelectorAll('#pGroup [data-group]')].map(b => b.textContent)")
+    assert len(buttons) == 3 and buttons[0] == "Alle", buttons
+    control.evaluate("document.querySelectorAll('#pGroup [data-group]')[2].click()")
+    assert control.evaluate("[Z.broadcast.scene, Z.tournament.showGroup]") == ["bracket", "1"]
+    overlay.wait_for_timeout(1500)
+    assert overlay.evaluate("document.querySelectorAll('.layer:last-child .bracket-tab').length") == 1
+    control.evaluate("Z.theme = 'dachcs-official'; everything(); send(); scenesDraw()")
+    marked = "document.querySelector('#sceneButtons [data-scene-def=dach-table]').classList.contains('needs-match')"
+    assert control.evaluate(marked)
+    control.evaluate("document.querySelector('#sceneButtons .dach-match input').click()")
+    assert control.evaluate("Z.dach.match") is True and not control.evaluate(marked)
+    control.evaluate("Z.theme = 'regular'; Z.dach.match = false; everything(); send()")
+    assert errors == []

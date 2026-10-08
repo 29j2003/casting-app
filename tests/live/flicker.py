@@ -9,6 +9,8 @@ frame while the switch runs. Rules:
   * sponsor and music must not flash up
   * no frame between start and end may be completely empty
   * the logo (brand) is never cross-faded: two half transparent copies of the same logo look like a flicker
+  * a part that stays glides straight to its new place – it never jumps somewhere else first (2.14: the bottom bar
+    jumped to the template position when the bar had closed the sponsor gap)
 """
 
 import asyncio
@@ -19,7 +21,8 @@ from common import control_and_overlay, finish, switch_scene
 PAIRS = [("intro", "cast-duo"), ("cast-duo", "cast-duo-interview"), ("cast-duo-interview", "cast-solo-clips"),
          ("cast-solo-clips", "cast-duo-clips"), ("cast-duo-clips", "cast-solo"), ("cast-solo", "intro"), ("intro", "pause"),
          ("pause", "end"), ("end", "map-veto"), ("map-veto", "players"), ("players", "ingame"), ("ingame", "cast-duo"),
-         ("cast-duo", "teams"), ("teams", "intro"), ("cast-quad", "teams")]
+         ("cast-duo", "teams"), ("teams", "intro"), ("cast-quad", "teams"), ("cast-quad", "players"),
+         ("players", "cast-quad"), ("intro", "cast-quad"), ("cast-quad", "intro")]
 FRAMES = 200
 
 # runs in the overlay: records {part id: visibility 0…1} for FRAMES animation frames into window.__samples
@@ -32,6 +35,7 @@ const visibility = e => { let o = 1; for (let x = e; x && x !== document.body; x
   document.querySelectorAll('.layer > [data-part]').forEach(e => {
     if (!window.__ids.has(e)) window.__ids.set(e, ++window.__nextId + ':' + e.dataset.part);
     frame[window.__ids.get(e)] = visibility(e);
+    const r = e.getBoundingClientRect(); frame['pos:' + window.__ids.get(e)] = [Math.round(r.left), Math.round(r.top)];
     // a child with its own "visibility: visible" shows even inside a hidden part (e.g. the slides of the team intro)
     if (getComputedStyle(e).visibility === 'hidden' && [...e.querySelectorAll('*')].some(x => getComputedStyle(x).visibility === 'visible' && x.getClientRects().length))
       frame['leak:' + e.dataset.part] = 1;
@@ -44,9 +48,18 @@ def problems_in(samples: list[dict]) -> list[str]:
     """Check the recorded frames against the rules in the module docstring."""
     problems = []
     leaks = sorted({k[5:] for frame in samples for k in frame if k.startswith("leak:")})
+    for key in {k for frame in samples for k in frame if k.startswith("pos:")}:
+        track = [frame[key] for frame in samples if key in frame]
+        if len(track) < len(samples):
+            continue                                   # only parts that stay the whole time
+        for axis in (0, 1):
+            steps = [b[axis] - a[axis] for a, b in zip(track, track[1:]) if abs(b[axis] - a[axis]) > 2]
+            if any(x > 0 for x in steps) and any(x < 0 for x in steps):
+                problems.append(f"{key.split(':')[2]} jumps back and forth ({'xy'[axis]}: {steps[:6]})")
+                break
     if leaks:
         problems.append(f"content of hidden parts shows: {leaks}")
-    for part_id in {k for frame in samples for k in frame if not k.startswith("leak:")}:
+    for part_id in {k for frame in samples for k in frame if not k.startswith(("leak:", "pos:"))}:
         values = [frame.get(part_id) for frame in samples]
         present = [v for v in values if v is not None]
         part = part_id.split(":")[1]
@@ -61,7 +74,7 @@ def problems_in(samples: list[dict]) -> list[str]:
             problems.append(f"{part} (leaves) flashes up")
         if not at_start and at_end and any(b < a - 0.1 and a > 0.3 for a, b in zip(present, present[1:])):
             problems.append(f"{part} (arrives) flickers")
-    visible = [sum(1 for k, v in frame.items() if v > 0.5 and not k.startswith("leak:")) for frame in samples]
+    visible = [sum(1 for k, v in frame.items() if not k.startswith(("leak:", "pos:")) and v > 0.5) for frame in samples]
     empty = [i for i in range(1, len(visible) - 1) if visible[i] == 0 and max(visible[:i]) > 0 and max(visible[i:]) > 0]
     if empty:
         problems.append(f"{len(empty)} empty frames")

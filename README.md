@@ -139,14 +139,18 @@ Setup → Aussehen → Stil **„DACH CS – Offiziell“** wählen, **Nutzer-ID
 * Alles läuft in **einer** Browserquelle („Cast – Overlay“): Live → Szenen zeigt die 25 DACH-Seiten (Overview, Single-/Duocam,
   Lineup, Mapveto, Ingame, Tabelle, Playoffs, Matches, MVP, Pausen, Interaktion, Interviews, Endscreen). Die neue Seite wird
   vorgeladen und dann mit dem gewählten Übergang gewechselt (Schnitt, Blende, Schieben, Wischen, Stinger – wie bei den eigenen
-  Szenen); die Kameras erscheinen mit der neuen Seite gleich in deren Rahmen, das Bild läuft weiter. Ohne Scrollbalken,
+  Szenen). Die **Blende** geht über das Dunkelblau der DACH-Seiten: erst blendet die alte Seite ab, dann die neue auf – nie
+  zwei Seiten halb übereinander. Die Kameras erscheinen mit der neuen Seite gleich in deren Rahmen, das Bild läuft weiter. Ohne Scrollbalken,
   exakt 1920 × 1080.
 * **Kameras und Inhalt** (Caster, Gast, Clip) setzt die App automatisch in die Rahmen der jeweiligen Seite (Singlecam,
-  Duocam, Interaktion Single/Duo, eigene Contentpause – aus den echten DACH-Seiten vermessen). Sie liegen **unter** der
+  Duocam, Interaktion Single/Duo, eigene Contentpause, Interview Single/Duo – aus den echten DACH-Seiten vermessen). Sie liegen **unter** der
   Seite: gelbe Linie und Namensschild von DACH CS bleiben sichtbar. Ein leerer Rahmen ist schwarz – nie der Hintergrund
   einer DACH-Seite, auch nicht beim Wechsel. „Kamera- und Inhalts-Rahmen anpassen“ zeigt die Rahmen in der Vorschau und
-  lässt sie pixelgenau verschieben (die Interview-Seiten sind noch nicht vermessen – dort bei Bedarf anpassen).
+  lässt sie pixelgenau verschieben.
   Wer früher Rahmen von Hand verschoben hat: „Standard“ übernimmt die neuen Maße.
+* **Match bei DACH CS eingetragen** (Schalter über den DACH-Szenen): Ob bei DACH CS ein Match eingetragen ist, sieht die App
+  nicht. Ist der Schalter aus, sind die Szenen, die ein Match brauchen (Teamlineup, Mapveto, Positions, Tabelle, Playoffs,
+  Letzte/Nächste 5, Spieltag, MVP), grau und mit „MATCH“ markiert – sie zeigen sonst nur „TBA“. Klicken geht trotzdem.
 * **Videos im App-Fenster:** Videos im Format H.264 (MP4, z. B. die DACH-Contentpause) wandelt die App für ihr eigenes
   Fenster beim ersten Abspielen um (mit dem mitgelieferten FFmpeg) – danach laufen sie mit Bild und Ton. In OBS ändert
   sich nichts. Auf macOS Intel klappt das nur mit installiertem FFmpeg (`brew install ffmpeg`), sonst zeigt die Vorschau
@@ -240,7 +244,8 @@ direktes Umschalten. Gibt es nur mit einer Browserquelle (overlay.html); mit ein
 * **Punkteregel je Turnier** (Gruppen mit Tabelle): Vorlagen wie „Sieg 3 · Niederlage mit Map-Gewinn 1 · Niederlage 0“ oder eigene Werte
   für Sieg 2:0, Sieg 2:1, Niederlage 1:2, Niederlage 0:2 und Unentschieden. Bei Punktgleichheit zählt der direkte Vergleich, dann die
   Rundendifferenz (RD, holt die App von FACEIT), dann die Siege. **„Gruppe im Overlay“** zeigt alle Gruppen oder nur eine –
-  die Tabellen passen sich der Fläche an (eine Gruppe groß, mehrere nebeneinander).
+  die Tabellen passen sich der Fläche an (eine Gruppe groß, mehrere nebeneinander). Schneller in Live: Läuft der **Turnierbaum**,
+  stehen im Panel der Szene Knöpfe **Alle · Gruppe A · Gruppe B …** – die Szene bleibt, nur die Gruppe wechselt (auch bei GSL).
 * Formate von Hand: **Gruppen mit Tabelle** (Gruppenzahl, Plätze die weiterkommen, offene Spiele unter der Tabelle), **Single Elimination**, **Double Elimination** (oben/unten + Grand Final), **Swiss** (Siege/Niederlagen einstellbar,
   „Nächste Runde auslosen“ – nur bei Turnieren ohne FACEIT) und **Gruppen (GSL)** – bis 32 Teams. Reihenfolge der Teams = Setzliste, Freilose werden automatisch vergeben.
 * Teams mit Kürzel, Logo, Spielern und optionaler FACEIT-Team-ID. FACEIT-Turnier (Link oder ID) →
@@ -270,7 +275,8 @@ Nach oben/unten und Löschen (mit Rückgängig). Arten:
 * **Map-Fakt:** Fakten zur aktuellen Map. Du trägst sie im Map-Pool ein (ein Fakt pro Zeile). Sie wechseln automatisch.
 * **Map-Pool** (Setup): Kacheln mit Bild – oben die Maps im Pool (ziehen = Reihenfolge im Veto), darunter die übrigen.
   Oben steht, ob der Pool Active Duty entspricht, unten, für welche Formate er reicht. **Eigene Map:** Workshop-Link einfügen →
-  „Aus dem Workshop holen“ übernimmt Name und Vorschaubild von Steam; sonst „Von Hand: Name + Bild“.
+  „Aus dem Workshop holen“ übernimmt Name und Vorschaubild von Steam; sonst „Von Hand: Name + Bild“. Neue Maps landen
+  unter **„Weitere Maps“** – der aktive Pool ändert sich erst, wenn du eine Map dort einschaltest.
 * **Sponsoren:** auf Wunsch ein **Restzeit-Balken** unter dem Logo – er zeigt, wann der nächste Sponsor kommt.
 * **Box-Stil** (Setup → Aussehen → Theme anpassen): **Hell** (weiße Kästen, wie bisher), **Dunkel** (dunkle Kästen) oder
   **Mischung** (dunkel, nur der Titel bleibt hell). Logo-Felder (Sponsoren, Marke) bleiben immer hell, damit auch dunkle Logos zu sehen sind.
@@ -413,6 +419,8 @@ Kameras laufen dabei ohne Neuladen weiter.
 * **Hintergrund-Video: am besten spielt OBS es ab.** Die Browserquelle in OBS gibt Videos nicht zuverlässig wieder
   (in der App-Vorschau läuft es trotzdem). Sobald ein Overlay in OBS verbunden ist, bietet die App oben „OBS spielt ab – einrichten" an:
   ein Klick, kurz bestätigen – dann spielt OBS das Video als Medienquelle unter dem Overlay (auch H.265/AV1, mehrere Videos mit VLC).
+  Die App blendet diese Quelle in „Cast – Sendung“ nur bei Ingame aus und richtet sie bei jedem Szenenwechsel und beim
+  Verbinden mit OBS wieder nach der laufenden Szene (bis 2.14 konnte sie nach schnellem Umschalten versteckt bleiben).
 * **Probleme?** Der Reiter **Log** zeigt auch Meldungen aus den Overlays in OBS, z. B. wenn ein Video nicht abspielt.
 * „In OBS anlegen" bzw. „Szene ‚Cast – Sendung‘ in OBS anlegen" stellt auch **vorhandene** Browserquellen aus älteren Versionen auf die App um.
 * **Ruckelt die Vorschau oder bleibt das Fenster schwarz** (alter Grafiktreiber)? Die App mit `--no-gpu` (oder `--ohne-gpu`) starten.

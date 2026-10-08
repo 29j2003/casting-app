@@ -325,6 +325,9 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
   `{area, open}`), Tab-Gruppe (`{tabs: […], active}`) oder Stapel (`{stack: [Einträge]}`, nur unter der Vorschau: eine Spalte
   `.dock-stack`). `dockEntryPlace()` legt jeden Eintrag an (Start und Arbeitsbereiche), `dockRemember()` schreibt sie zurück;
   `stackCleanup()`/`groupCleanup()` lösen Stapel und Gruppen mit nur einem Teil auf.
+* **Design der Steuerseite** (Ende von `control.css`, „Design 2.17“): Dunkel = „Arena“, Hell = „Hell“. Farben nur über die
+  Variablen in `:root` / `:root[data-design=light]` (`--hot` Hauptknopf, `--onair` laufende Szene, `--card` Karten, `--grp`
+  Gruppenfarbe je Szenenspalte). Neue Teile nutzen diese Variablen statt fester Farben, dann passen sie in beiden Stilen.
 * **Erklärtexte** (`06-layout.js`): feste `p.small` ohne `id` direkt in `.content` eines Bereichs, länger als 70 Zeichen, bekommen
   `.explain` und sind versteckt; das „?“ am Titel schaltet `details.explain-open`. Statusmeldungen brauchen deshalb eine `id`.
 * **Teams-Vorstellung** (`05-live.js`, `tiDraw`): Reiter `ui.tiTab`; Daten in `Z.teamIntro` – `names` (Anzeigename nur für

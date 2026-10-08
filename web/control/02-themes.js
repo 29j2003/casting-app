@@ -35,7 +35,8 @@ function themeChoose(k) {
   const wasDach = Z.theme === "dachcs-official"; Z.theme = k;
   if (k === "dachcs-official" && !wasDach) Z.broadcast.scene = "dach-overview";
   if (k !== "dachcs-official" && wasDach) Z.broadcast.scene = "intro";
-  if (typeof dachCardShow === "function") { dachCardShow(); dframeDraw(); } localStorage.setItem("cast-theme-chosen", "1"); themesDraw(); themeAdjust(); sponsorsDraw(); scenesDraw(); send(); }
+  if (typeof dachCardShow === "function") { dachCardShow(); dframeDraw(); } localStorage.setItem("cast-theme-chosen", "1"); themesDraw(); themeAdjust(); sponsorsDraw(); scenesDraw(); send();
+  if (wasDach !== (k === "dachcs-official")) setTimeout(() => obsBackgroundVisible(0, 0)); }   // DACH-Seiten: Hintergrund-Video in OBS aus
 $("themeNew").onclick = () => {
   const k = themeCreate(themeFull("regular"), "Neues Theme");
   themeChoose(k); $("themeStatus").textContent = "✓ Neues Theme angelegt – unter „Theme anpassen“ einrichten.";

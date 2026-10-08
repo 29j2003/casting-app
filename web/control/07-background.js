@@ -44,7 +44,7 @@ async function obsBackground(idle) {
         wrongKind ? { text: `Vorhandene Quelle „${BG_NAME}“ wird durch eine ${list ? "VLC-Wiedergabeliste" : "Medienquelle"} ersetzt`, warn: true }
           : present ? { text: `Vorhandene Quelle „${BG_NAME}“ bekommt die ausgewählten Videos`, warn: true } : `${list ? "VLC-Wiedergabeliste" : "Medienquelle"} „${BG_NAME}“ anlegen (${files.length} Video${files.length > 1 ? "s" : ""}, in Schleife)`,
         `In ${scenesPlan.length ? scenesPlan.map(s => "„" + s + "“").join(", ") : "keine Szene (erst Szenen einrichten)"} direkt unter das Overlay legen, bildfüllend`,
-        onSource() ? "In der Szene „Ingame“ wird sie automatisch ausgeblendet" : "In der Ingame-Szene wird sie nicht eingefügt"
+        onSource() ? `In der Szene „Ingame“ wird sie automatisch weich ausgeblendet (Filter „${BG_FADE}“)` : "In der Ingame-Szene wird sie nicht eingefügt"
       ], button: "In OBS ausführen"
     });
     if (!ok) { st.textContent = "Abgebrochen – in OBS wurde nichts geändert."; return "cancelled"; }
@@ -75,22 +75,88 @@ async function obsBackground(idle) {
 }
 $("bgSetup").onclick = () => obsBackground(false);
 // in der Ingame-Szene (eine Browserquelle) muss das Hintergrund-Video in OBS unsichtbar sein, in jeder anderen sichtbar.
-// Der Zustand richtet sich immer nach der Szene, die beim Ausführen läuft – ein schneller Wechsel zurück (während das
-// Ausblenden noch auf das Ende der Blende wartet) lässt das Video so nie versteckt zurück (bis 2.14).
-let bgVisibleTimer = null;
-function obsBackgroundVisible(delay) {
+// Der Zustand richtet sich immer nach der Szene, die beim Ausführen läuft – ein schneller Wechsel zurück lässt das Video
+// so nie versteckt zurück. Weich: der Deckkraft-Filter „Cast – Blende“ (Farbkorrektur) an der Quelle blendet in der
+// Dauer des Übergangs aus bzw. ein; erst danach wird die Quelle versteckt (Filter wieder auf 100 %). Ohne Filter
+// (z. B. ältere OBS-Version) wird hart umgeschaltet.
+const BG_FADE = "Cast – Blende";
+let bgVisibleTimer = null, bgFadeRun = 0, bgOpacity = 1, bgFilterReady = false;
+// delay: ms bis zum Umschalten (Stinger: unter dem Stinger), fade: Dauer der Blende in ms (0 = sofort)
+function obsBackgroundVisible(delay, fade) {
   clearTimeout(bgVisibleTimer);
-  bgVisibleTimer = setTimeout(obsBackgroundSync, delay || 0);
+  bgFadeRun++;                                            // eine laufende Blende hört auf – die neue setzt dort an
+  bgVisibleTimer = setTimeout(() => obsBackgroundSync(fade || 0), delay || 0);
 }
-async function obsBackgroundSync() {
-  if ((Z.background || {}).source !== "obs" || !onSource() || !channel.obs.isOpen) return;
-  const on = Z.broadcast.scene !== "ingame";
+async function bgFadeFilter() {
+  if (bgFilterReady) return true;
   try {
-    const { sceneItemId } = await channel.obs.question("GetSceneItemId", { sceneName: "Cast – Sendung", sourceName: BG_NAME });
-    const { sceneItemEnabled } = await channel.obs.question("GetSceneItemEnabled", { sceneName: "Cast – Sendung", sceneItemId });
-    if (sceneItemEnabled !== on) await channel.obs.question("SetSceneItemEnabled", { sceneName: "Cast – Sendung", sceneItemId, sceneItemEnabled: on });
+    const f = await channel.obs.question("GetSourceFilter", { sourceName: BG_NAME, filterName: BG_FADE });
+    bgOpacity = Number((f.filterSettings || {}).opacity ?? 1);
+  } catch (err) {
+    try {
+      await channel.obs.question("CreateSourceFilter", { sourceName: BG_NAME, filterName: BG_FADE, filterKind: "color_filter_v2", filterSettings: { opacity: 1 } });
+      bgOpacity = 1;
+    } catch (err2) { return false; }
+  }
+  return (bgFilterReady = true);
+}
+async function bgOpacitySet(v) {
+  bgOpacity = v;
+  await channel.obs.question("SetSourceFilterSettings", { sourceName: BG_NAME, filterName: BG_FADE, filterSettings: { opacity: Math.round(v * 1000) / 1000 }, overlay: true });
+}
+// Deckkraft in Schritten (~30 pro Sekunde, weicher Verlauf) zum Ziel – bricht ab, sobald ein neuer Wechsel kommt
+async function bgOpacityTo(target, ms, run) {
+  const from = bgOpacity, t0 = performance.now(), span = ms * Math.abs(target - from);
+  while (run === bgFadeRun) {
+    const p = span > 0 ? Math.min(1, (performance.now() - t0) / span) : 1;
+    await bgOpacitySet(from + (target - from) * (p < .5 ? 2 * p * p : 1 - (-2 * p + 2) ** 2 / 2));
+    if (p >= 1) return true;
+    await new Promise(ok => setTimeout(ok, 33));
+  }
+  return false;
+}
+async function bgMedia(action) {
+  try { await channel.obs.question("TriggerMediaInputAction", { inputName: BG_NAME, mediaAction: "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_" + action }); } catch (err) {}
+}
+async function obsBackgroundSync(fade) {
+  if ((Z.background || {}).source !== "obs" || !onSource() || !channel.obs.isOpen) return;
+  // aus: in Ingame (Spielbild) und bei DACH CS – Offiziell (die DACH-Seiten haben einen eigenen Hintergrund)
+  const run = bgFadeRun, on = Z.broadcast.scene !== "ingame" && !/^dach-/.test(Z.broadcast.scene || ""), scene = "Cast – Sendung";
+  try {
+    const { sceneItemId } = await channel.obs.question("GetSceneItemId", { sceneName: scene, sourceName: BG_NAME });
+    const { sceneItemEnabled } = await channel.obs.question("GetSceneItemEnabled", { sceneName: scene, sceneItemId });
+    const soft = await bgFadeFilter();
+    if (run !== bgFadeRun) return;
+    if (!on && !sceneItemEnabled) return;                                       // schon versteckt
+    if (on && sceneItemEnabled && (!soft || bgOpacity >= 1)) return;              // schon ganz zu sehen
+    if (on) {
+      if (!sceneItemEnabled) {
+        if (soft && fade) await bgOpacitySet(0);
+        await bgMedia("PLAY");                                                   // läuft weiter, wo es angehalten wurde
+        await channel.obs.question("SetSceneItemEnabled", { sceneName: scene, sceneItemId, sceneItemEnabled: true });
+      }
+      if (soft) await bgOpacityTo(1, fade, run);
+      return;
+    }
+    if (soft && fade && !(await bgOpacityTo(0, fade, run))) return;            // abgebrochen: der neue Wechsel übernimmt
+    await channel.obs.question("SetSceneItemEnabled", { sceneName: scene, sceneItemId, sceneItemEnabled: false });
+    if (soft) await bgOpacitySet(1);                                            // versteckt wieder auf 100 % – nie unsichtbar „an“
+    await bgMedia("PAUSE");                                                     // versteckt: anhalten, spart Leistung
   } catch (err) {}
 }
+
+// Spielt OBS das Video ab, zeigt die Vorschau im App-Fenster dieselbe Stelle: alle 4 s fragt die Steuerseite OBS nach
+// der Position und gibt sie an die Vorschau weiter (nur bei einem einzelnen Video in Schleife – wie es OBS abspielt)
+setInterval(async () => {
+  const H = Z.background || {};
+  if (H.source !== "obs" || !onSource() || !channel.obs.isOpen || document.hidden || (H.videos || []).length !== 1) return;
+  try {
+    const m = await channel.obs.question("GetMediaInputStatus", { inputName: BG_NAME });
+    if (m.mediaState !== "OBS_MEDIA_STATE_PLAYING" || !(m.mediaCursor >= 0)) return;
+    const note = { cast: "bg-sync", cursor: m.mediaCursor, at: Date.now() };
+    [$("frame"), $("studioFrame")].forEach(f => { try { if (f && f.contentWindow) f.contentWindow.postMessage(note, location.origin); } catch (err) {} });
+  } catch (err) {}
+}, 4000);
 
 /* ---------- Playlisten ----------
    Z.background.playlists = [{ id, name, kind: "loop"|"list"|"clips", videos: [Pfade], order: "seq"|"shuffle",
@@ -120,7 +186,9 @@ function bgApply(k) {
   const H = Z.background, p = bgForScene(k ?? sceneNow());
   const before = JSON.stringify(H.videos || []);
   H.videos = p ? (p.kind === "loop" ? p.videos.slice(0, 1) : p.videos.slice()) : [];
-  H.play = p ? { order: p.order || "seq", transition: p.transition || "fade", fade: p.fade ?? 1200 } : {};
+  // since: Start der Playlist – OBS-Browserquelle und Vorschau rechnen daraus dieselbe Stelle im Video (Gleichlauf)
+  const since = JSON.stringify(H.videos) === before && (H.play || {}).since ? H.play.since : Date.now();
+  H.play = p ? { order: p.order || "seq", transition: p.transition || "fade", fade: p.fade ?? 1200, since } : {};
   H.active = p ? p.id : "";
   if (JSON.stringify(H.videos) !== before) setTimeout(() => obsBackground(true), 0);
   bgCornerDraw();

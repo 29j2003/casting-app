@@ -56,6 +56,7 @@ JSON-Felder). Texte, die Nutzer sehen, sind deutsch und bekommen eine englische 
 | `casting_app/server/app_server.py` | jede Anfrage: Sicherheitsprüfung, alle `/api`-Routen, Dateien |
 | `casting_app/desktop/` | Fenster, Tray, Brücke `window.castApp`, Ton im App-Fenster, H.264-Umleitung (`media.py`) |
 | `casting_app/server/media_converter.py` | H.264 → WebM mit FFmpeg für das App-Fenster (`/api/media`) |
+| `casting_app/server/dach_match.py` | DACH CS: ist ein Match aktiv? (`/api/dach-match`) |
 | `web/control.html` | Steuerseite: Aufbau (Reiter, Karten, Dialoge) |
 | `web/control.css` | Steuerseite: Aussehen (Farben als Variablen in `:root`) |
 | `web/control/01-core.js` … `13-app.js` | Steuerseite: Logik nach Themen (Lageplan in `01-core.js`); der Server liefert sie verbunden als `/control.js` |
@@ -194,6 +195,15 @@ jedem Senden, was laufen soll, nach `Z.background.videos` (Liste) und `Z.backgro
 das Overlay (`cast.js`: `background()`) kennt keine Playlisten. Clips: `Z.background.clip = { id: Zeitpunkt, videos, audio }`,
 jede Seite spielt einen Abruf einmal (`clips()`). Alte Zustände: `bgPlaylists()` macht aus `videos` die Playlist „Standard“.
 Spielt OBS ab (`source: "obs"`), bekommt die Quelle „Cast – Hintergrund“ die Videos (`obsBackground(true)`).
+* **Sichtbarkeit in OBS** (`obsBackgroundVisible(delay, fade)` → `obsBackgroundSync`): aus bei Ingame und bei DACH CS –
+  Offiziell, sonst an. Weich über den Farbkorrektur-Filter „Cast – Blende“ (`color_filter_v2`, `opacity`; legt die App
+  bei Bedarf an): `bgOpacityTo()` schickt ~30 Schritte pro Sekunde per `SetSourceFilterSettings`, erst danach
+  `SetSceneItemEnabled` (versteckt: Filter wieder 100 %, Medium per `TriggerMediaInputAction` angehalten). Ein neuer
+  Wechsel (`bgFadeRun`) bricht eine laufende Blende ab und setzt an der aktuellen Deckkraft an. Ohne Filter: hart.
+* **Gleichlauf:** `Z.background.play.since` = Start der Playlist (bleibt, solange die Videos gleich sind). Ein einzelnes
+  Video in Schleife springt beim Start auf `(jetzt − since) % Dauer` (`bgSince` in `cast.js`), die Vorschau prüft alle
+  4 s nach. Spielt OBS ab, fragt die Steuerseite alle 4 s `GetMediaInputStatus` und schickt `{cast: "bg-sync", cursor, at}`
+  an ihre Vorschau-iframes (`bgSeek`, Sprung erst ab 0,35 s Abweichung).
 
 ### Steam Workshop (`casting_app/server/workshop.py`)
 
@@ -339,14 +349,20 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
   `DACH_FRAME` (`web/cast-core.js`, gemessen inkl. gelber Linie) liegen darunter, Linie und Namensschild der Seite darüber.
   Beim Wechsel sitzen die Kameras sofort in den neuen Rahmen und laufen mit derselben Animation wie die neue Seite;
   `.dach-under` (z 0) füllt die Löcher beider Seiten schwarz, bis der Wechsel fertig ist. Die Blende geht über
-  `.dach-dip` (Dunkelblau der DACH-Seiten, z 2 unter den Kameras): alte Seite → Blau → neue Seite. Neue Seite vermessen:
+  `.dach-dip` (Dunkelblau der DACH-Seiten, z 2 unter den Kameras): alte Seite → Blau → neue Seite. Schieben/Wischen
+  legen `.dach-floor` (dasselbe Blau, z 0) darunter, außer die Ingame-Seite (durchsichtig) ist beteiligt.
+  **Match aktiv?** `server/dach_match.py` lädt `lineup.php` selbst (ID und Key bleiben im Server) und sucht „kein aktives
+  Match“; `/api/dach-match` → `{match: true|false|null}` (20 s zwischengespeichert). Die Steuerseite fragt alle 30 s
+  (`dachMatchCheck`) und sperrt bei `false` die Szenen aus `DACH_NEEDS_MATCH` (`aria-disabled`). Neue Seite vermessen:
   Video/Screenshot der Seite, gelbe Linie suchen (1920 × 1080), Werte in `DACH_FRAME` eintragen.
 * **PySide6 unter 6.12** (`pyproject.toml`): Ab 6.12 steckt Qt WebEngine im eigenen Paket `PySide6_WebEngine` (nicht mehr
   in Addons) – ohne es fehlt `PySide6.QtWebEngineWidgets`. Zum Umstieg: Paket ergänzen, `tools/build.py` und die
   PyInstaller-Hooks auf allen drei Systemen bauen und testen, dann die Grenze anheben.
 * **Videoformate / H.264 im App-Fenster:** Qt WebEngine aus PySide6 kann kein H.264/AAC (VP8/VP9/AV1 ja); OBS (CEF) kann es.
   Im App-Fenster leitet `desktop/media.py` (`QWebEngineUrlRequestInterceptor`) Medienanfragen auf MP4-artige Dateien auf
-  `/api/media?src=…&t=…` um; `server/media_converter.py` wandelt mit FFmpeg in WebM (VP8 + Opus), streamt schon während
+  `/api/media?src=…&t=…` um; `server/media_converter.py` wandelt mit FFmpeg in WebM (VP8 + Opus, höchstens 720p und
+  30 fps – das Fenster zeigt nur die Vorschau, Software-Dekodieren von 1080p60 ließ sie beim Szenenwechsel ruckeln;
+  `CACHE_VERSION` gehört zum Cache-Schlüssel), streamt schon während
   der Umwandlung und legt das Ergebnis in `media-cache/` (höchstens 3 GB, Range-fähig). `t` ist `media_token()` aus dem
   Zugangsschlüssel – fremde Programme können den Server nicht als Download-Werkzeug nutzen. `desktop/scripts/codecs.js`
   sorgt dafür, dass Seiten MP4 überhaupt anfragen (`canPlayType`, `<source type>`). FFmpeg kommt aus `imageio-ffmpeg`

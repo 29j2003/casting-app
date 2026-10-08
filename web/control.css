@@ -808,8 +808,8 @@ body { background: radial-gradient(1200px 600px at 75% -10%, rgba(139, 92, 255, 
 :root[data-design=light] body { background: var(--bg); }
 .topbar, .rail { background: rgba(10, 11, 20, .82); }
 :root[data-design=light] .topbar, :root[data-design=light] .rail { background: #FFFFFF; }
-.page details { border-radius: 16px; border: 1px solid var(--card-line); background: var(--card); box-shadow: 0 10px 30px rgba(0, 0, 0, .30); }
-:root[data-design=light] .page details { box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 24px rgba(60, 40, 10, .06); }
+.page details { border-radius: 16px; border: 1px solid var(--card-line); background: var(--card); }
+:root[data-design=light] .page details { box-shadow: 0 1px 2px rgba(0, 0, 0, .06); }
 .page details > summary { background: transparent; border-bottom: 1px solid var(--card-line); font-family: var(--title-font); font-size: 15px; letter-spacing: .12em; height: 44px; min-height: 44px; }
 :root[data-design=light] .page details > summary { border-bottom-color: var(--line); text-transform: none; letter-spacing: 0; }
 .page details:not([open]) > summary { border-bottom-color: transparent; }
@@ -827,14 +827,14 @@ body { background: radial-gradient(1200px 600px at 75% -10%, rgba(139, 92, 255, 
 .scenes-buttons.columns button { padding-left: 14px; }
 :root[data-design=light] .scenes-buttons button { border-color: var(--line) !important; box-shadow: inset 0 -3px 0 var(--grp, var(--accent)); color: var(--text); }
 .scenes-buttons button.active { background: var(--onair) !important; border-color: transparent !important; color: #fff !important;
-  box-shadow: 0 0 0 1px var(--onair-solid), 0 8px 24px rgba(255, 61, 110, .40) !important; }
-:root[data-design=light] .scenes-buttons button.active { box-shadow: 0 8px 20px rgba(255, 91, 46, .30) !important; }
+  box-shadow: 0 0 0 1px var(--onair-solid), 0 4px 12px rgba(255, 61, 110, .40) !important; }
+:root[data-design=light] .scenes-buttons button.active { box-shadow: 0 4px 10px rgba(255, 91, 46, .30) !important; }
 .scenes-buttons .scene-group { color: var(--grp, var(--muted)) !important; font-family: var(--title-font); font-size: 13px; }
 :root[data-design=light] .scenes-buttons .scene-group { text-transform: none; letter-spacing: 0; font-size: 12px; }
 
 /* Programm-Vorschau: Rahmen wie „auf Sendung“ */
-.stage { border-radius: 12px; border: 2px solid var(--onair-solid); box-shadow: 0 0 0 4px rgba(255, 61, 110, .14), 0 20px 50px rgba(0, 0, 0, .45); }
-:root[data-design=light] .stage { border: 0; box-shadow: 0 0 0 3px var(--accent), 0 16px 40px rgba(0, 0, 0, .15); }
+.stage { border-radius: 12px; border: 2px solid var(--onair-solid); box-shadow: 0 0 0 4px rgba(255, 61, 110, .14); }
+:root[data-design=light] .stage { border: 0; box-shadow: 0 0 0 3px var(--accent); }
 .live-tag { color: var(--onair-solid); }
 
 /* Hell: Eingabefelder und Kopfzeile */

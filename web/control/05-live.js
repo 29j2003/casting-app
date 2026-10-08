@@ -636,14 +636,14 @@ document.querySelectorAll("[data-gfx-new]").forEach(b => b.onclick = () => {
    gemerkt in ui.panels (diese Oberfläche, nicht Teil der Sendung). Die Felder bedienen dieselben Daten wie
    Match und Setup (Z.veto, Z.teams, Z.timer, Z.texts) – jede Änderung zeichnet beide Stellen neu. */
 const PANEL_FIELDS = [["veto", "Map-Veto"], ["over", "Über dem Spiel"], ["score", "Spielstand"], ["timer", "Timer"], ["series", "Serie"],
-  ["texts", "Texte im Overlay"], ["sponsor", "Sponsoren"], ["slides", "Folien"], ["note", "Notiz"]];
+  ["texts", "Texte im Overlay"], ["sponsor", "Sponsoren"], ["slides", "Folien"], ["group", "Gruppe"], ["note", "Notiz"]];
 const PANEL_DEFAULTS = {
   "intro": ["timer", "texts", "sponsor"], "cast-duo": ["timer", "texts", "note"], "cast-solo": ["timer", "texts", "note"],
   "cast-duo-clips": ["note"], "cast-solo-clips": ["note"], "cast-duo-interview": ["series", "texts", "note"], "cast-solo-interview": ["series", "texts", "note"],
   "cast-trio": ["timer", "texts", "note"], "cast-trio-host": ["timer", "texts", "note"], "cast-quad": ["series", "texts", "note"], "viewers": ["texts", "note"], "viewers-cast": ["texts", "note"], "teams": ["slides", "note"],
   "map-veto": ["veto", "series"], "players": ["series", "note"], "series": ["series", "score"], "sponsors": ["sponsor"],
   "ingame": ["over", "score", "series", "note"], "pause": ["timer", "texts", "sponsor"], "end": ["series", "texts", "sponsor"],
-  "scoreboard": ["score", "series"], "team-a": ["score", "series"], "team-b": ["score", "series"], "h2h": ["score", "series"], "bracket": ["note"]
+  "scoreboard": ["score", "series"], "team-a": ["score", "series"], "team-b": ["score", "series"], "h2h": ["score", "series"], "bracket": ["group", "note"]
 };
 let sceneToolsShown = "";
 const panelList = k => (ui.panels && ui.panels[k]) || PANEL_DEFAULTS[k] || [];
@@ -681,7 +681,21 @@ function panelValues() {
     names.forEach((n, i) => { const b = document.createElement("button"); b.className = "button"; b.innerHTML = icon("play") + esc(n); b.onclick = () => sponsorShowgfx(i); $("pSponsors").appendChild(b); });
   }
   $("pSponsorsEmpty").hidden = !!names.length;
-  slidesDraw(); overDraw();
+  slidesDraw(); overDraw(); groupDraw();
+}
+/* ---------- Gruppe (Turnierbaum): nur eine Gruppe zeigen – Tabelle oder GSL, in derselben Szene ---------- */
+function groupDraw() {
+  if (!$("pGroup")) return;
+  const T = Z.tournament || {}, B = K.tournamentBuild(T, CastI18n.language), groups = B.groups || [], cur = String(T.showGroup ?? "");
+  const html = !groups.length ? `<p class="small">Gruppen gibt es nur bei Tabelle oder GSL (Turnier → Format).</p>`
+    : [["", "Alle"], ...groups.map((g, i) => [String(i), g.name])].map(([v, n]) =>
+      `<button class="button${v === cur ? " main" : ""}" data-group="${v}" aria-pressed="${v === cur}">${esc(n)}</button>`).join("");
+  if ($("pGroup")._h === html) return;
+  $("pGroup")._h = html; $("pGroup").innerHTML = html;
+  $("pGroup").querySelectorAll("[data-group]").forEach(b => b.onclick = () => {
+    tour().showGroup = b.dataset.group; send(); groupDraw(); mbarDraw();
+    if ($("tourShowGroup")) $("tourShowGroup").value = b.dataset.group;
+  });
 }
 /* ---------- Über dem Spiel (Ingame): Scoreboard, Team A/B, Head-to-Head … über dem Spielbild, ohne Szenenwechsel ---------- */
 function overDraw() {

@@ -15,6 +15,9 @@ const DACH_SCENES = [
   ["pause", "dach-inter1", "Interaktion Single", "singleinteraction"], ["pause", "dach-inter2", "Interaktion Duo", "duointeraction"],
   ["post", "dach-interview1", "Interview Single", "solo_interview"], ["post", "dach-interview2", "Interview Duo", "duointerview"], ["post", "dach-end", "Endscreen", "endscreen"]
 ];
+// Seiten, die nur mit einem bei DACH CS eingetragenen Match etwas zeigen (sonst „TBA“/leer) – die Knöpfe sagen das vorher
+const DACH_NEEDS_MATCH = ["dach-lineup", "dach-mapveto", "dach-positions", "dach-table", "dach-playoffs", "dach-last", "dach-current", "dach-next",
+  "dach-last-a", "dach-last-b", "dach-next-a", "dach-next-b", "dach-mvp"];
 const DACH_GROUPS = { pregame: "Vor dem Spiel", during: "Im Spiel", stats: "Stats & Liga", pause: "Pause", post: "Nach dem Spiel" };
 let dachMode = () => Z.theme === "dachcs-official";
 // Nutzer-ID und Key verlassen die App nie wieder – die Seite erfährt nur, OB sie gespeichert sind
@@ -41,13 +44,20 @@ $("dachDelete").onclick = async () => {
 
 function dachScenesDraw(box) {
   box.classList.remove("arrange"); box.classList.add("columns");
-  const cur = Z.broadcast.scene;
+  const cur = Z.broadcast.scene, D = ensure(Z, "dach", {});
+  // ob bei DACH CS ein Match eingetragen ist, sieht die App nicht (das steht nur auf deren Seite) – hier von Hand
+  const row = document.createElement("label"); row.className = "dach-match switch-row";
+  row.innerHTML = `<input type="checkbox"${D.match ? " checked" : ""}> <span>Match bei DACH CS eingetragen</span>`;
+  row.title = "Aus: Szenen, die ein Match brauchen (Lineup, Tabelle, Letzte/Nächste 5 …), sind grau markiert – sie zeigen sonst nur „TBA“.";
+  row.querySelector("input").onchange = ev => { D.match = ev.target.checked; scenesDraw(); send(); };
+  box.appendChild(row);
   Object.entries(DACH_GROUPS).forEach(([g, title]) => {
     const sceneColumn = document.createElement("div"); sceneColumn.className = "scene-column";
     sceneColumn.innerHTML = `<div class="scene-group">${esc(title)}</div>`;
     DACH_SCENES.filter(x => x[0] === g).forEach(([, k, n]) => {
       const b = document.createElement("button"); b.textContent = n; b.dataset.sceneDef = k;
       if (k === cur) b.classList.add("active");
+      if (!D.match && DACH_NEEDS_MATCH.includes(k)) { b.classList.add("needs-data", "needs-match"); b.title = "Braucht ein bei DACH CS eingetragenes Match – sonst steht dort nur „TBA“."; }
       if (studioOn() && k === studioNext) b.classList.add("studio-next");
       b.onclick = () => studioOn() ? studioPick(k) : dachSwitch(k);           // Studio-Modus: erst in die Vorschau
       sceneColumn.appendChild(b);
@@ -62,7 +72,7 @@ dachInfoFetch();
 /* ---------- DACH CS – Offiziell als Stil (eine Quelle) ---------- */
 const DACH_STYLE = "dachcs-official";
 dachMode = () => Z.theme === DACH_STYLE;
-function dachSwitch(k) { if (!K.DACH_PAGES[k]) return; Z.broadcast.scene = k; Z.dach = Object.assign({}, Z.dach, { scene: k }); scenesDraw(); send(); };
+function dachSwitch(k) { if (!K.DACH_PAGES[k]) return; Z.broadcast.scene = k; Z.dach = Object.assign({}, Z.dach, { scene: k }); scenesDraw(); send(); obsBackgroundVisible(0); };
 function dachCardShow() { const card = document.querySelector(".dach-card"); if (card) card.hidden = !dachMode(); }
 const DFRAME_NAMES = { c1: "Caster 1", c2: "Caster 2", guest: "Gast", content: "Inhalt" };
 function dframeDraw() {

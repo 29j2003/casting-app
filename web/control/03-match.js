@@ -232,11 +232,17 @@ function poolDraw() {
   }).join("");
   more.hidden = !more.children.length; more.previousElementSibling.hidden = more.hidden;
 }
-$("poolPlus").onclick = () => { Z.mapPool.push({ name: "Neue Map", image: "", active: true }); poolDraw(); vetoDraw(); send(); };
+// neue Maps landen unter „Weitere Maps“ – der aktive Pool ändert sich nur, wenn du selbst umschaltest (2.15)
+$("poolPlus").onclick = () => { Z.mapPool.push({ name: "Neue Map", image: "", active: false }); poolDraw(); vetoDraw(); send(); };
 $("poolDefault").onclick = async () => {
   if (!await confirmDialog({ title: "Map-Pool zurücksetzen?", text: "Aktiver CS2-Pool + ältere Maps mit Bildern. Eigene Maps, Bilder und Map-Fakten gehen verloren.", button: "Zurücksetzen" })) return;
   Z.mapPool = K.clone(K.DEFAULT.mapPool); poolDraw(); vetoDraw(); send();
 };
+function dataUrlBlob(url) {
+  const [head, data] = String(url).split(","), type = (head.match(/^data:([^;,]+)/) || [, ""])[1];
+  const bytes = Uint8Array.from(atob(data || ""), c => c.charCodeAt(0));
+  return new Blob([bytes], { type });
+}
 // eigene Map aus dem Steam Workshop: Name und Vorschaubild über die App holen (nur die Nummer geht zu Steam)
 $("poolWorkshopGo").onclick = async () => {
   const value = $("poolWorkshop").value.trim(); if (!value) { $("poolWorkshop").focus(); return; }
@@ -244,10 +250,11 @@ $("poolWorkshopGo").onclick = async () => {
   try {
     const r = await fetch("/api/workshop?id=" + encodeURIComponent(value), { cache: "no-store" }), j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || "Steam antwortet nicht");
-    const entry = { name: j.title, image: "", active: true, workshop: j.id };
-    if (j.image) { const blob = await (await fetch(j.image)).blob(); Object.assign(entry, await imageForArea(blob, TARGET.map)); }
+    const entry = { name: j.title, image: "", active: false, workshop: j.id };
+    // Bild kommt als data:-URL – direkt umwandeln (fetch() darf data: hier nicht laden, CSP connect-src; bis 2.14 brach das ab)
+    if (j.image) try { Object.assign(entry, await imageForArea(dataUrlBlob(j.image), TARGET.map)); } catch (err) {}
     Z.mapPool.push(entry); $("poolWorkshop").value = "";
-    $("poolWorkshopStatus").textContent = `✓ „${j.title}“ ist im Pool.`;
+    $("poolWorkshopStatus").textContent = `✓ „${j.title}“ steht unter „Weitere Maps“ – zum Aktivieren dort einschalten.`;
     poolDraw(); vetoDraw(); send();
   } catch (err) { $("poolWorkshopStatus").textContent = err.message; }
   $("poolWorkshopGo").disabled = false;

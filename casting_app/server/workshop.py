@@ -16,7 +16,8 @@ DETAILS_URL = "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFile
 WORKSHOP_ID = re.compile(r"^\d{4,20}$")
 # Steam serves workshop previews from these hosts; anything else is refused
 IMAGE_HOSTS = re.compile(r"(^|\.)(steamusercontent\.com|steamuserimages-a\.akamaihd\.net|steamstatic\.com|akamaihd\.net)$")
-IMAGE_TYPES = {"image/jpeg": "image/jpeg", "image/jpg": "image/jpeg", "image/png": "image/png", "image/webp": "image/webp"}
+IMAGE_TYPES = {"image/jpeg": "image/jpeg", "image/jpg": "image/jpeg", "image/png": "image/png", "image/webp": "image/webp",
+               "image/gif": "image/gif"}
 MAX_DETAILS_SIZE = 1_000_000
 MAX_IMAGE_SIZE = 6_000_000
 TIMEOUT_SECONDS = 15
@@ -82,4 +83,8 @@ def lookup(text: str) -> dict:
     if not item_id:
         raise WorkshopError("Das ist kein Workshop-Link – er endet auf „?id=“ und einer Zahl.")
     title, url = details(item_id)
-    return {"id": item_id, "title": title, "image": preview(url)}
+    try:
+        image = preview(url)
+    except (WorkshopError, OSError):
+        image = ""                              # the map still counts – a picture can be added by hand
+    return {"id": item_id, "title": title, "image": image}

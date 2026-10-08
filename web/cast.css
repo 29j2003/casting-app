@@ -531,6 +531,8 @@ body.dach-official .backdrop { display: none !important; }
 .dach-cams { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 body.idle.dach-frame-show .dach-cams { z-index: 4; }
 .dach-under { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+/* Zwischenblende im Dunkelblau der DACH-Seiten (aus deren Hintergrund gemessen) */
+.dach-dip { position: absolute; inset: 0; z-index: 2; pointer-events: none; background: #212436; opacity: 0; }
 .dach-under div { position: absolute; background: #000; }
 .dach-note { position: absolute; left: 50%; bottom: 300px; transform: translateX(-50%); z-index: 5; max-width: 1100px; padding: 14px 22px; font: 600 26px Rajdhani, sans-serif; color: #101526; background: #FCC659; text-align: center; }
 .dach-cam { position: absolute; overflow: hidden; background: #000; }   /* leer = schwarz, nie der DACH-Hintergrund */
@@ -571,16 +573,16 @@ body[data-boxstyle=mixed] [data-part=title] > .box-field, body[data-boxstyle=mix
 
 /* Sponsor-Platz „Oben rechts" (Sponsoren → Platz): Sponsor wie vor 3.0 oben rechts, die Leiste rückt zurück auf ihre alten Plätze */
 /* Cast-Szenen: nur Szenen mit Sponsor in der Leiste (sonst z. B. Clips: eigener Aufbau, nichts verschieben) */
-:is(body:is([data-sponsorspot=top], [data-sponsorshown="0"]):is([data-scene=intro], [data-scene=pause]), body:is([data-sponsorspot=top], [data-sponsorshown="0"]) :is([data-scene=intro], [data-scene=pause])) > [data-part=timer] { left: 315px !important; }
-:is(body:is([data-sponsorspot=top], [data-sponsorshown="0"]):is([data-scene=intro], [data-scene=pause], [data-scene=end]), body:is([data-sponsorspot=top], [data-sponsorshown="0"]) :is([data-scene=intro], [data-scene=pause], [data-scene=end])) > [data-part=title] { left: 564px !important; }
-:is(body:is([data-sponsorspot=top], [data-sponsorshown="0"]):is([data-scene=intro], [data-scene=pause]), body:is([data-sponsorspot=top], [data-sponsorshown="0"]) :is([data-scene=intro], [data-scene=pause])) > [data-part=matchup] { left: 1377px !important; }
-:is(body[data-sponsorspot=top]:is([data-scene=intro], [data-scene=pause], [data-scene=end]), body[data-sponsorspot=top] :is([data-scene=intro], [data-scene=pause], [data-scene=end])) > .sponsor.in-bar { left: auto !important; right: 57px; top: 190px !important; width: 520px !important; height: 116px !important; }
-:is(body:is([data-sponsorspot=top], [data-sponsorshown="0"]):not([data-scene=intro], [data-scene=pause], [data-scene=end]):has(> .sponsor.in-bar), body:is([data-sponsorspot=top], [data-sponsorshown="0"]) .layer:not([data-scene=intro], [data-scene=pause], [data-scene=end]):has(> .sponsor.in-bar)) > [data-part=title] { left: 254px !important; width: 1100px !important; }
-:is(body:is([data-sponsorspot=top], [data-sponsorshown="0"]):not([data-scene=intro], [data-scene=pause], [data-scene=end]):has(> .sponsor.in-bar), body:is([data-sponsorspot=top], [data-sponsorshown="0"]) .layer:not([data-scene=intro], [data-scene=pause], [data-scene=end]):has(> .sponsor.in-bar)) > [data-part=matchup] { left: 1386px !important; width: 280px !important; }
-:is(body[data-sponsorspot=top]:not([data-scene=intro], [data-scene=pause], [data-scene=end]):has(> .sponsor.in-bar), body[data-sponsorspot=top] .layer:not([data-scene=intro], [data-scene=pause], [data-scene=end]):has(> .sponsor.in-bar)) > .sponsor.in-bar { left: auto !important; right: 57px; top: 47px !important; width: 440px !important; height: 125px !important; }
+:is(body:is([data-sponsorspot=top], [data-sponsorshown="0"]):is([data-scene=intro], [data-scene=pause]), body:is([data-sponsorspot=top], [data-sponsorshown="0"]) :is([data-scene=intro], [data-scene=pause])) > [data-part=timer]:not(.gliding) { left: 315px !important; }
+:is(body:is([data-sponsorspot=top], [data-sponsorshown="0"]):is([data-scene=intro], [data-scene=pause], [data-scene=end]), body:is([data-sponsorspot=top], [data-sponsorshown="0"]) :is([data-scene=intro], [data-scene=pause], [data-scene=end])) > [data-part=title]:not(.gliding) { left: 564px !important; }
+:is(body:is([data-sponsorspot=top], [data-sponsorshown="0"]):is([data-scene=intro], [data-scene=pause]), body:is([data-sponsorspot=top], [data-sponsorshown="0"]) :is([data-scene=intro], [data-scene=pause])) > [data-part=matchup]:not(.gliding) { left: 1377px !important; }
+:is(body[data-sponsorspot=top]:is([data-scene=intro], [data-scene=pause], [data-scene=end]), body[data-sponsorspot=top] :is([data-scene=intro], [data-scene=pause], [data-scene=end])) > .sponsor.in-bar:not(.gliding) { left: auto !important; right: 57px; top: 190px !important; width: 520px !important; height: 116px !important; }
+:is(body:is([data-sponsorspot=top], [data-sponsorshown="0"]):not([data-scene=intro], [data-scene=pause], [data-scene=end]):has(> .sponsor.in-bar), body:is([data-sponsorspot=top], [data-sponsorshown="0"]) .layer:not([data-scene=intro], [data-scene=pause], [data-scene=end]):has(> .sponsor.in-bar)) > [data-part=title]:not(.gliding) { left: 254px !important; width: 1100px !important; }
+:is(body:is([data-sponsorspot=top], [data-sponsorshown="0"]):not([data-scene=intro], [data-scene=pause], [data-scene=end]):has(> .sponsor.in-bar), body:is([data-sponsorspot=top], [data-sponsorshown="0"]) .layer:not([data-scene=intro], [data-scene=pause], [data-scene=end]):has(> .sponsor.in-bar)) > [data-part=matchup]:not(.gliding) { left: 1386px !important; width: 280px !important; }
+:is(body[data-sponsorspot=top]:not([data-scene=intro], [data-scene=pause], [data-scene=end]):has(> .sponsor.in-bar), body[data-sponsorspot=top] .layer:not([data-scene=intro], [data-scene=pause], [data-scene=end]):has(> .sponsor.in-bar)) > .sponsor.in-bar:not(.gliding) { left: auto !important; right: 57px; top: 47px !important; width: 440px !important; height: 125px !important; }
 body[data-sponsorspot=top] .sponsor.in-bar .box-head { --kh: 40px; --kf: 22px; letter-spacing: .12em; }
 body[data-sponsorspot=top] .sponsor.in-bar .sponsor-field .sponsor-name { font-size: 50px; }
-body[data-sponsorspot=top] .music:not(.on) ~ .sponsor.in-bar { top: 47px !important; }
+body[data-sponsorspot=top] .music:not(.on) ~ .sponsor.in-bar:not(.gliding) { top: 47px !important; }
 
 /* Kleines Namensschild in der Kachel (Zuschauer-Cams): nur der Name, unten links im Bild */
 .cam[data-tag="small"] > .badge { top: auto; bottom: 12px; left: 12px; min-width: 0; transform: scale(.62); transform-origin: left bottom; }

@@ -310,6 +310,11 @@ kbd { font: 600 11px Barlow, sans-serif; padding: 2px 6px; border-radius: 4px; b
 /* Tab-Gruppen in den Docks */
 .tabgroup { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; background: var(--f1); overflow: hidden; min-height: 0; }
 .dock-bottom > .tabgroup { flex: 1 1 0; min-width: 280px; overflow-y: auto; }
+/* Stapel unter der Vorschau: Bereiche übereinander, jeder scrollt für sich; zugeklappte nehmen nur ihre Titelzeile */
+.dock-bottom > .dock-stack { flex: 1 1 0; min-width: 280px; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.dock-stack > details, .dock-stack > .tabgroup { flex: 1 1 0; min-height: 0; overflow-y: auto; }
+.dock-stack > details:not([open]) { flex: none; }
+.page .dock-stack > details > summary, .page .dock-stack > .tabgroup > .tab-bar { position: sticky; top: 0; z-index: 2; }
 .tab-bar { display: flex; align-items: flex-end; gap: 2px; padding: 0 8px; min-height: 40px; background: var(--bg); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; overflow-x: auto; }
 .tab-bar button { height: 32px; padding: 0 12px; border: 0; border-radius: 7px 7px 0 0; background: transparent; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; cursor: grab; white-space: nowrap; }
 .tab-bar button[aria-selected="true"] { background: var(--f1); color: var(--text); box-shadow: inset 0 2px 0 var(--accent); }

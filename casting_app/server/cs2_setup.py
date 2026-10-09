@@ -115,7 +115,8 @@ def search_cfg_folders() -> list[str]:
 def network_path(raw_path: str) -> bool:
     """True for network paths (\\\\server\\share, //server/share): Windows would contact that server and send
     the user's login hash – the folder browser and the cfg file only ever need local drives."""
-    return raw_path.strip().startswith(("\\\\", "//"))
+    start = raw_path.strip()[:2].replace("/", "\\")       # also mixed: \\/server, /\\server
+    return start == "\\\\"
 
 
 def list_subfolders(raw_path: str) -> dict:

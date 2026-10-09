@@ -171,6 +171,14 @@ let bgChosen = "";
 function bgPlaylists() {
   const H = Z.background;
   if (!Array.isArray(H.playlists)) H.playlists = [];
+  // Einträge aus einer geladenen Datei prüfen: nur Objekte, Videos und Szenen als Texte
+  H.playlists = H.playlists.filter(p => p && typeof p === "object" && !Array.isArray(p));
+  H.playlists.forEach(p => {
+    const texts = l => Array.isArray(l) ? l.filter(x => typeof x === "string") : [];
+    if (!Array.isArray(p.videos) || p.videos.some(x => typeof x !== "string")) p.videos = texts(p.videos);
+    if (p.scenes !== undefined && (!Array.isArray(p.scenes) || p.scenes.some(x => typeof x !== "string"))) p.scenes = texts(p.scenes);
+    if (typeof p.id !== "string") p.id = "p" + Math.random().toString(36).slice(2, 9);
+  });
   if (!H.playlists.length) {                              // bis 2.6: eine Auswahl angehakter Videos → Playlist „Standard"
     const v = (H.videos || []).filter(Boolean);
     H.playlists.push({ id: "p" + Date.now().toString(36), name: "Standard", kind: v.length > 1 ? "list" : "loop", videos: v, order: "seq",

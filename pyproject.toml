@@ -13,7 +13,7 @@ dependencies = [
     "PySide6-Essentials>=6.8,<6.12",
     "PySide6-Addons>=6.8,<6.12",
     "keyring>=25",                    # system keyring for the FACEIT key, DACH CS access and OBS password
-    "cryptography>=42; sys_platform == 'linux'",   # password vault for Linux systems without a keyring
+    "cryptography>=44.0.1; sys_platform == 'linux'",   # password vault for Linux systems without a keyring
     # FFmpeg (GPL, separate program): plays H.264 videos in the app window – see LICENSES/FFmpeg.txt.
     # Not on macOS Intel: imageio-ffmpeg's build there is "nonfree" and must not be redistributed.
     "imageio-ffmpeg>=0.6; sys_platform != 'darwin' or platform_machine == 'arm64'",

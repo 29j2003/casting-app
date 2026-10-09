@@ -1315,5 +1315,10 @@ window.CastLanguages.en = {
  "Anzeige & Texte": "Display & texts",
  "Videos für die Szene „Werbung“ – in Live „Alle“ oder einzeln abspielen": "Videos for the scene “Ads” – play “All” or one by one in Live",
  "ID und Key: DACH-CS-Nutzerbereich → Casting → Browserquellen.": "ID and key: DACH CS user area → Casting → Browser sources.",
- "Bild wählen · {}": "Choose image · {}"
+ "Bild wählen · {}": "Choose image · {}",
+ "Inhalte aus dem Internet übernehmen?": "Take over content from the internet?",
+ "Die Datei lädt Inhalte von: {}. Nur übernehmen, wenn die Datei von dir oder jemandem stammt, dem du vertraust.": "The file loads content from: {}. Only take it over if the file comes from you or someone you trust.",
+ "Ohne diese Adressen": "Without these addresses",
+ "ungültige FACEIT-ID": "invalid FACEIT ID",
+ "Datei konnte nicht geladen werden.": "The file could not be loaded."
 };

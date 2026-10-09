@@ -87,6 +87,14 @@ def test_legacy_file_stays_until_the_keyring_takes_it(tmp_path):
     assert store.get(FACEIT_KEY) == key and not (tmp_path / "faceit.schluessel").exists()
 
 
+def test_without_keyring_an_old_file_is_used_once_and_deleted(tmp_path):
+    """No keyring and no vault: the 1.x value works in this session, but the weak file does not stay on disk."""
+    (tmp_path / "faceit.schluessel").write_text(base64.b64encode(b"abcdefgh-1234-5678").decode())
+    store = SecretStore(tmp_path, keyring_backend=None, legacy_decrypt=lambda c: base64.b64decode(c).decode())
+    assert store.get(FACEIT_KEY) == "abcdefgh-1234-5678" and not store.persistent
+    assert not (tmp_path / "faceit.schluessel").exists()
+
+
 def test_without_keyring_secrets_live_for_the_session_only(tmp_path):
     messages = []
     store = SecretStore(tmp_path, lambda text, level="info": messages.append((level, text)), keyring_backend=None)

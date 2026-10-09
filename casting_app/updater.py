@@ -38,7 +38,7 @@ RELEASES_URL = "https://api.github.com/repos/29j2003/casting-app/releases/latest
 DOWNLOAD_PREFIX = "https://github.com/29j2003/casting-app/releases/download/"
 TIMEOUT_SECONDS = 10
 CHUNK = 1 << 20
-RESTART_FLAGS = ("--no-gpu", "--ohne-gpu", "--debug")     # passed on to the restarted app; anything else is dropped
+RESTART_FLAGS = ("--no-gpu", "--ohne-gpu")     # passed on to the restarted app; anything else (also --debug) is dropped
 
 
 def install_kind() -> str:

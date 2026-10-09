@@ -260,12 +260,39 @@ $("import").onclick = () => $("importFile").click();
 $("importFile").onchange = () => {
   const f = $("importFile").files[0]; if (!f) return;
   if (f.size > 8 * 1024 * 1024) return alert("Die Datei ist zu groß für eine Sitzung.");
-  f.text().then(t => {
+  f.text().then(async t => {
     const data = CastLegacy.migrateImport(JSON.parse(t));
-    if (data && typeof data === "object") delete data.revision;       // die Stand-Nummer bestimmt diese App, nie die Datei
+    if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("keine Sitzung");
+    delete data.revision;                                             // die Stand-Nummer bestimmt diese App, nie die Datei
+    // Farben und Schriften der Themes prüfen (wie beim Theme-Import)
+    [data.ownThemes, data.themeData].forEach(group => { if (group && typeof group === "object") Object.values(group).forEach(themeValuesClean); });
+    // Adressen im Internet (Kamera-Links, Bilder): Overlays in OBS und die Vorschau laden sie – erst nachfragen
+    const hosts = importExternalHosts(data);
+    if (hosts.length) {
+      const w = await selection({ title: "Inhalte aus dem Internet übernehmen?",
+        text: "Die Datei lädt Inhalte von: " + hosts.slice(0, 6).join(", ") + (hosts.length > 6 ? " …" : "") + ". Nur übernehmen, wenn die Datei von dir oder jemandem stammt, dem du vertraust.",
+        buttons: [["keep", "Übernehmen", "main"], ["drop", "Ohne diese Adressen", ""], ["", "Abbrechen", ""]] });
+      if (!w) return;
+      if (w === "drop") importExternalHosts(data, true);
+    }
     Z = K.merge(K.clone(K.DEFAULT), data); everything(); send();
   }).catch(() => alert("Datei konnte nicht gelesen werden."));
 };
+// alle Internet-Adressen (http(s)://, //…) in einer geladenen Datei: Liste der Server; drop = Adressen leeren
+function importExternalHosts(data, drop) {
+  const hosts = new Set();
+  const walk = (o, depth) => {
+    if (!o || typeof o !== "object" || depth > 40) return;
+    for (const [k, v] of Object.entries(o)) {
+      if (typeof v === "string" && /^\s*(https?:)?\/\//i.test(v)) {
+        try { hosts.add(new URL(v.trim(), "https://x").hostname); } catch (err) { hosts.add("?"); }
+        if (drop) o[k] = "";
+      } else walk(v, depth + 1);
+    }
+  };
+  walk(data, 0);
+  return [...hosts];
+}
 $("reset").onclick = async () => { if (await confirmDialog({ title: "Alles zurücksetzen?", text: "Teams, Texte, Veto, Spieler, Sponsoren, Themes und Einstellungen gehen auf Standard. Tipp: vorher „Sichern (.json)“.", button: "Alles zurücksetzen" })) { Z = K.clone(K.DEFAULT); everything(); send(); } };
 
 /* ---------- Vorschau ---------- */

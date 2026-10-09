@@ -34,10 +34,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       # Windows wird mit SignPath signiert, sobald das Secret eingetragen ist (siehe docs/ENTWICKLUNG.md, „Bauen und signieren“)
-      SIGNPATH: ${{ secrets.SIGNPATH_API_TOKEN != '' && matrix.name == 'windows' }}
+      # nur für main und Release-Tags – ein beliebiger Branch bekommt keine Signatur
+      SIGNPATH: ${{ secrets.SIGNPATH_API_TOKEN != '' && matrix.name == 'windows' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with: { python-version: "${{ env.PYTHON_VERSION }}", cache: pip }
       - run: pip install -e ".[build]"
       - name: NSIS (Windows-Installer)
@@ -60,11 +62,11 @@ jobs:
         run: python tools/build.py app
       - id: unsigned-app
         if: env.SIGNPATH == 'true'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with: { name: unsigned-app, path: dist/Casting-App }
       - name: Casting-App.exe signieren
         if: env.SIGNPATH == 'true'
-        uses: signpath/github-action-submit-signing-request@v3
+        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
@@ -79,11 +81,11 @@ jobs:
         run: python tools/build.py package
       - id: unsigned-installer
         if: env.SIGNPATH == 'true'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with: { name: unsigned-installer, path: dist/*-Setup.exe }
       - name: Installer signieren
         if: env.SIGNPATH == 'true'
-        uses: signpath/github-action-submit-signing-request@v3
+        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
@@ -120,7 +122,7 @@ jobs:
           $alive = $false
           try { Invoke-RestMethod http://127.0.0.1:8787/api/ping -Headers @{Host = "localhost:8787"} -TimeoutSec 2 | Out-Null; $alive = $true } catch {}
           if ($alive) { throw "App läuft nach dem Deinstallieren noch" }
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: casting-app-${{ matrix.name }}
           if-no-files-found: error
@@ -134,8 +136,8 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-        with: { fetch-depth: 0 }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { fetch-depth: 0, persist-credentials: false }
       - name: Keine privaten E-Mail-Adressen in Commits oder Dateien
         run: python3 tools/check_privacy.py
       - name: Syntax von Python und JavaScript
@@ -151,8 +153,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with: { python-version: "${{ env.PYTHON_VERSION }}", cache: pip }
       - run: sudo apt-get update && sudo apt-get install -y xvfb libegl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0 libxcb-randr0 libxcb-image0 libxcb-render-util0 libnss3 libxcomposite1 libxdamage1 libxrandr2 libxtst6
       - run: pip install -e ".[test]" && python -m playwright install --with-deps chromium
@@ -164,7 +167,7 @@ jobs:
       - name: Overlay-Tests gegen die laufende Desktop-App
         run: |
           # ohne Schlüsselbund würde der Tresor-Dialog den Start anhalten
-          CASTING_APP_VAULT_PASSWORD=nur-fuer-tests QTWEBENGINE_REMOTE_DEBUGGING=9222 xvfb-run -a -s "-screen 0 1920x1080x24" python -m casting_app > app.log 2>&1 &
+          CASTING_APP_VAULT_PASSWORD=nur-fuer-tests xvfb-run -a -s "-screen 0 1920x1080x24" python -m casting_app --debug > app.log 2>&1 &
           for i in $(seq 1 60); do curl -sf http://localhost:8787/api/ping && break; sleep 1; done
           curl -sf http://localhost:8787/api/ping > /dev/null || { echo "App antwortet nicht"; exit 1; }
           python tests/live/transitions.py
@@ -179,8 +182,9 @@ jobs:
   test-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with: { python-version: "${{ env.PYTHON_VERSION }}", cache: pip }
       - run: pip install -e ".[test]" && python -m playwright install chromium
       # Schlüsselbund (echte Anmeldeinformationsverwaltung + echtes DPAPI), Server, OBS-Passwort und Desktop-App unter Windows
@@ -192,18 +196,24 @@ jobs:
     runs-on: ubuntu-latest
     permissions: { contents: write }
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
       - name: Tag bestimmen (muss zur Version passen)
         id: tag
+        env: { GH_TOKEN: "${{ github.token }}" }
         run: |
           tag="v$(python3 -c 'import casting_app.version as v; print(v.VERSION)')"
           if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "$tag" ]; then
             echo "Tag ${GITHUB_REF_NAME} passt nicht zur Version ($tag)"; exit 1
           fi
+          # ein veröffentlichtes Release wird nie überschrieben (die Dateien passten sonst nicht mehr zum Quelltext)
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "Release $tag gibt es schon – erst die Version erhöhen"; exit 1
+          fi
           echo "name=$tag" >> "$GITHUB_OUTPUT"
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with: { path: dist, pattern: "casting-app-*", merge-multiple: true }
-      - uses: softprops/action-gh-release@v3
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           tag_name: ${{ steps.tag.outputs.name }}
           target_commitish: ${{ github.sha }}

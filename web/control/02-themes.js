@@ -111,6 +111,25 @@ $("themeFile").onchange = async () => {
   } catch (err) { $("themeStatus").textContent = "Import fehlgeschlagen: " + err.message; }
 };
 
+/* ---------- Werte aus Dateien prüfen (Theme- und Sitzungs-Import) ----------
+   Farben landen als CSS in Overlays und Steuerseite: nur #hex – sonst könnte ein Wert weitere CSS-Angaben
+   (z. B. ein Bild von einem fremden Server) mitbringen. Schrift-Datei nur aus fonts/. */
+const THEME_COLOR_KEYS = ["dark", "light", "textDark", "accent", "iconDisk", "headText"];
+const isHexColor = v => typeof v === "string" && /^#[0-9a-f]{3,8}$/i.test(v);
+function themeValuesClean(d) {
+  if (!d || typeof d !== "object") return;
+  THEME_COLOR_KEYS.forEach(k => { if (k in d && d[k] !== "" && !isHexColor(d[k])) delete d[k]; });
+  if (d.fontFile && !/^fonts\/[^"\\/]+\.(ttf|otf|woff2?)$/i.test(String(d.fontFile))) delete d.fontFile;
+  if (d.templates !== undefined) {
+    const clean = {};
+    if (d.templates && typeof d.templates === "object") Object.entries(d.templates).slice(0, 20).forEach(([n, colors]) => {
+      const c = {}; THEME_COLOR_KEYS.forEach(k => { if (isHexColor((colors || {})[k])) c[k] = colors[k]; });
+      if (Object.keys(c).length) clean[String(n).slice(0, 40)] = c;
+    });
+    d.templates = clean;
+  }
+}
+
 /* ---------- Theme anpassen ---------- */
 function td() { Z.themeData = Z.themeData || {}; return Z.themeData[Z.theme] = Z.themeData[Z.theme] || {}; }
 function tw(p) { const d = (Z.themeData || {})[Z.theme] || {}; return p in d ? d[p] : (T[Z.theme] || {})[p]; }
@@ -166,8 +185,9 @@ function themeAdjust() {
     v.innerHTML = `<span class="small">Farbvorlagen</span><div class="line"></div>`;
     Object.entries(templates).forEach(([n, colors]) => {
       const b = document.createElement("button"); b.className = "button"; b.type = "button";
-      b.innerHTML = `<span style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:6px;background:${esc(colors.dark)};box-shadow:inset 0 -4px 0 ${esc(colors.accent)}"></span>${esc(n)}`;
-      b.onclick = () => { Object.assign(td(), colors); themeAdjust(); fresh(); };
+      const c = {}; THEME_COLOR_KEYS.forEach(k => { if (isHexColor((colors || {})[k])) c[k] = colors[k]; });   // nur Farben übernehmen
+      b.innerHTML = `<span style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:6px;background:${c.dark || "#888"};box-shadow:inset 0 -4px 0 ${c.accent || "#888"}"></span>${esc(n)}`;
+      b.onclick = () => { Object.assign(td(), c); themeAdjust(); fresh(); };
       v.querySelector(".line").appendChild(b);
     });
     box.appendChild(v);

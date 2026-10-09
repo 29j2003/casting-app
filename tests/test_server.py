@@ -71,6 +71,12 @@ def test_files_only_from_own_folders(server):
     assert request("GET", "/overlay.html")[0] == 200
     assert request("GET", "/..%2f..%2fetc%2fpasswd.html")[0] == 404
     assert request("GET", "/.git/config.md")[0] == 404
+    # "//" would become a network path on Windows (\\server\share – the login hash goes to that server)
+    assert request("GET", "/media/videos///attacker/share/x.mp4")[0] == 404
+    assert request("GET", "/fonts///attacker/share/x.ttf")[0] == 404
+    # line breaks in the path never reach a header (old /medien/ addresses are redirected)
+    status, headers, _ = request("GET", "/medien/a%0d%0aSet-Cookie:%20x=1.mp4")
+    assert status == 400 and "Set-Cookie" not in headers
     status, headers, body = request("GET", "/media/maps/de_dust2.jpg", headers={"Range": "bytes=0-99"})
     assert status == 206 and len(body) == 100 and headers["Content-Range"].startswith("bytes 0-99/")
 
@@ -311,10 +317,24 @@ def test_ping_proves_the_access_key(server):
     ("https://example.com/v.mp4", True), ("https://93.184.216.34/v.mp4", True),
     ("http://127.0.0.1:8787/api/state", False), ("http://localhost/x", False), ("http://192.168.0.1/", False),
     ("http://10.0.0.5/", False), ("http://[::1]/", False), ("http://169.254.169.254/", False), ("http://nas.local/", False),
+    # names and number forms that lead to this PC or the LAN anyway
+    ("http://2130706433/", False), ("http://127.1/", False), ("http://0x7f000001/", False), ("http://0/", False),
+    ("http://localhost./x", False), ("http://localtest.me/x", False), ("http://192.168.1.1.nip.io/", False),
+    ("http://mixed.example/", False), ("http://unknown.invalid/", False),
 ])
 def test_media_converter_only_fetches_from_the_internet(address, public):
+    import socket
     from casting_app.server.app_server import public_host
-    assert public_host(address) is public
+    names = {"example.com": {"93.184.216.34"}, "localtest.me": {"127.0.0.1"}, "192.168.1.1.nip.io": {"192.168.1.1"},
+             "mixed.example": {"93.184.216.34", "10.0.0.1"}}
+
+    def resolve(host):                        # no DNS in the tests: names from the table, numbers as the system reads them
+        if host in names:
+            return names[host]
+        if host.endswith(".invalid"):
+            raise socket.gaierror("unknown")
+        return {info[4][0] for info in socket.getaddrinfo(host, None)}
+    assert public_host(address, resolve) is public
 
 
 @pytest.mark.parametrize("address, own", [
@@ -327,3 +347,44 @@ def test_own_videos_are_converted_for_the_app_window(address, own):
     """Background playlists and clips from the videos folder still play in the app window (H.264 → WebM)."""
     from casting_app.server.app_server import own_video
     assert own_video(address) is own
+
+
+def test_a_state_python_cannot_read_is_refused(server):
+    """A session nested deeper than Python's json reads (imported file) must not reach state.json – the next start
+    would fail on it."""
+    before = server._state_text
+    deep = '{"revision": 99999999999999, "x": ' + "[" * 5000 + "]" * 5000 + "}"
+    assert request("POST", "/api/state", deep.encode())[0] == 400
+    assert server._state_text == before
+
+
+def test_event_page_names_cannot_forge_log_lines(server):
+    """page=… of an event connection ends up in the log: a line break there must not start a fake line."""
+    connection = http.client.HTTPConnection("127.0.0.1", 8787, timeout=5)
+    connection.request("GET", "/api/events?page=x%0A%5Bfehler%5D%20gef%C3%A4lscht&v=1", headers={"Host": "localhost:8787"})
+    answer = connection.getresponse()
+    answer.read(10)
+    connection.close()
+    time.sleep(0.3)
+    texts = [str(entry.get("text", "")) for entry in server.log.latest()]
+    assert any("gefälscht" in text for text in texts)                # logged – but on its own line
+    assert not any("\n" in text or "\r" in text for text in texts)
+
+
+def test_the_access_key_only_goes_to_a_server_that_proves_it_knows_it(monkeypatch):
+    """Replacing an "older version" on port 8787: a program that only claims to be one gets no key."""
+    sent = []
+
+    class Opener:
+        def open(self, request, timeout=0):
+            sent.append(dict(request.header_items()))
+            raise OSError("closed")
+    monkeypatch.setattr(instance, "_no_proxy", lambda: Opener())
+    monkeypatch.setattr(instance, "running_version", lambda: None)
+    monkeypatch.setattr(instance, "genuine_server", lambda key: False)
+    instance.ask_running_app_to_quit(wait_seconds=0.1, access_key="geheimer-schluessel")
+    assert sent and all("geheimer-schluessel" not in str(headers) for headers in sent)
+    monkeypatch.setattr(instance, "genuine_server", lambda key: True)
+    sent.clear()
+    instance.ask_running_app_to_quit(wait_seconds=0.1, access_key="geheimer-schluessel")
+    assert any("geheimer-schluessel" in str(headers) for headers in sent)

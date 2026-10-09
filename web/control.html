@@ -701,6 +701,7 @@
               <div><span class="small">Reihenfolge</span><div class="segment" id="bgOrder"><button data-v="seq">Nacheinander</button><button data-v="shuffle">Zufällig</button></div></div>
             </div>
             <label class="toggleSwitch" id="bgAudioLine"><input type="checkbox" id="bgAudio"> Ton der Videos abspielen</label>
+            <p class="small" id="bgAudioHint">Standard für die Szenen dieser Playlist – in Live unter der Vorschau je Szene umschaltbar („Ton an/aus“).</p>
             <div id="bgScenesLine"><span class="small">Läuft von selbst in (Ingame nie – dort liegt das Spielbild)</span><div class="bg-scenes" id="bgScenes"></div></div>
           </div>
         </div>
@@ -874,7 +875,8 @@
     <div class="studio-program"><div class="studio-label" id="programLabel" hidden><b>PROGRAMM</b></div><div class="stage" id="stage"><iframe id="frame" allow="autoplay" title="Vorschau"></iframe></div></div>
   </div>
   <div class="bg-corner" id="bgCorner"><span class="small">HINTERGRUND</span><select id="bgCornerList" aria-label="Hintergrund dieser Szene"></select>
-    <button class="button" id="bgCornerKeep" title="Diese Playlist ab jetzt immer für diese Szene">Für die Szene merken</button><span style="flex:1"></span>
+    <button class="button" id="bgCornerKeep" title="Diese Playlist ab jetzt immer für diese Szene">Für die Szene merken</button>
+    <button class="button bg-corner-audio" id="bgCornerAudio" aria-pressed="false" hidden>Ton aus</button><span style="flex:1"></span>
     <select id="bgClipList" aria-label="Clip-Playlist"></select><button class="button" id="bgClipPlay" data-icon="play">Clip zeigen</button><button class="button" id="bgClipStop" hidden>Clip stoppen</button></div>
   <p class="small" id="previewText"></p>
 </div>

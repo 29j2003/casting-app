@@ -321,6 +321,9 @@ button per ad – a click switches to the Ads scene and plays them one after ano
 marks them (can be switched off). When they are done the last frame stays: switch yourself, or the app goes back to the
 scene you came from after the set seconds (default 10, 0 = stays); **“Stay”** keeps it, **“Back now”** goes at once,
 **“Stop”** ends the ads and goes back.
+With **DACH CS – official** the scene **Ads** is in the Pause column of the DACH scenes, and the panel of the DACH pauses
+(Pausescreen, Contentpause, own content break) offers the ads too: they play full screen over the DACH page and afterwards
+go back to it.
 
 ### Map pool
 
@@ -339,8 +342,11 @@ graphic “Map fact”.
 * **Videos per theme:** in the library, “Theme” on a video assigns it to the current theme. Once a theme has assigned
   videos, only those are offered there (playlists, ads, source “Video”) – “Assign” shows all again to change it. A theme
   without assigned videos offers all of them.
+* **Sound per scene:** “Play the videos' sound” on a playlist is the default for its scenes. In Live, **“Sound on/off”**
+  in the corner BACKGROUND changes it for the running scene only (remembered for that scene). When OBS plays the videos,
+  the app mutes or unmutes “Cast – Hintergrund” in OBS on each scene change. Clips always follow their own playlist.
 * **In Live**, below the program preview, the corner **BACKGROUND**: another playlist for the running scene (until the
-  next scene change), “Keep for this scene”, and **“Show clip”** / “Stop clip”.
+  next scene change), “Keep for this scene”, **“Sound on/off”** and **“Show clip”** / “Stop clip”.
 * **Who plays the videos?**
   * **OBS** (recommended): every format OBS supports, also H.265/AV1 and 4K, with hardware decoding, several videos with
     VLC. As soon as an overlay in OBS is connected, the app offers “Let OBS play it – set up” at the top: one click, confirm –

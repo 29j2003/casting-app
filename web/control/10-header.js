@@ -34,7 +34,7 @@ $("switchDuration").onchange = () => { Z.broadcast.overGameDuration = Math.max(0
 $("transButton").onclick = ev => { ev.stopPropagation(); beside($("transButton"), $("transPop"), true); $("transPop").hidden = !$("transPop").hidden; };
 function headDraw() {
   let n = (OVERLAY_SCENES.find(([k]) => k === (onSource() ? Z.broadcast.scene : $("scene").value)) || [, ""])[1];
-  if (typeof dachMode === "function" && dachMode()) n = ((DACH_SCENES.find(x => x[1] === (Z.dach || {}).scene) || [])[2]) || "DACH CS";
+  if (typeof dachMode === "function" && dachMode()) n = ((DACH_SCENES.find(x => x[1] === (Z.broadcast.scene === "ads" ? "ads" : (Z.dach || {}).scene)) || [])[2]) || "DACH CS";
   $("bracketScene").textContent = n || "–"; $("vsScene").textContent = n || "";
   $("bracketTheme").textContent = "Theme " + (Object.assign({}, T[Z.theme], (Z.themeData || {})[Z.theme]).name || Z.theme);
   const trans = (TRANSITIONS.find(([k]) => k === (Z.broadcast.transition || "fade")) || [, "Blende"])[1];

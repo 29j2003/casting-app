@@ -1299,5 +1299,13 @@ window.CastLanguages.en = {
  "Theme „{}“: {} Video(s) zur Auswahl (Playlisten, Werbung, Quelle „Video“)": "Theme “{}”: {} video(s) to choose from (playlists, ads, source “Video”)",
  "Theme „{}“: alle Videos zur Auswahl – „Theme“ an einem Video beschränkt die Auswahl auf die markierten": "Theme “{}”: all videos to choose from – “Theme” on a video limits the choice to the marked ones",
  "Zuordnen": "Assign",
- "Theme": "Theme"
+ "Theme": "Theme",
+ "Ton an": "Sound on",
+ "Ton aus": "Sound off",
+ "Hintergrund mit Ton": "Background with sound",
+ "Hintergrund ohne Ton": "Background without sound",
+ "gilt nur in dieser Szene": "only in this scene",
+ "Standard der Playlist": "playlist default",
+ "Klicken zum Umschalten (für diese Szene).": "Click to switch (for this scene).",
+ "Standard für die Szenen dieser Playlist – in Live unter der Vorschau je Szene umschaltbar („Ton an/aus“).": "Default for the scenes of this playlist – switch it per scene in Live below the preview (“Sound on/off”)."
 };

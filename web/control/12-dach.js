@@ -13,6 +13,7 @@ const DACH_SCENES = [
   ["stats", "dach-next-a", "Nächste 5 · Team A", "next_matches_f1"], ["stats", "dach-next-b", "Nächste 5 · Team B", "next_matches_f2"], ["stats", "dach-mvp", "MVP", "mvp"],
   ["pause", "dach-pause", "Pausescreen", "pause"], ["pause", "dach-content", "Contentpause", "pause_content"], ["pause", "dach-owncontent", "Eigene Contentpause", "pause_own_content"],
   ["pause", "dach-inter1", "Interaktion Single", "singleinteraction"], ["pause", "dach-inter2", "Interaktion Duo", "duointeraction"],
+  ["pause", "ads", "Werbung", null],                                   // keine DACH-Seite: die Werbung der App liegt über der DACH-Seite
   ["post", "dach-interview1", "Interview Single", "solo_interview"], ["post", "dach-interview2", "Interview Duo", "duointerview"], ["post", "dach-end", "Endscreen", "endscreen"]
 ];
 // Seiten, die nur mit einem bei DACH CS eingetragenen Match etwas zeigen (sonst „TBA“/leer) – die Knöpfe sagen das vorher
@@ -85,7 +86,11 @@ setTimeout(dachMatchCheck, 2500);
 /* ---------- DACH CS – Offiziell als Stil (eine Quelle) ---------- */
 const DACH_STYLE = "dachcs-official";
 dachMode = () => Z.theme === DACH_STYLE;
-function dachSwitch(k) { if (!K.DACH_PAGES[k]) return; Z.broadcast.scene = k; Z.dach = Object.assign({}, Z.dach, { scene: k }); scenesDraw(); send(); obsBackgroundVisible(0); };
+function dachSwitch(k) {
+  if (k === "ads") return sceneSwitch("ads");                          // Werbung: Szene der App (Overlay legt sie über die DACH-Seite)
+  if (!K.DACH_PAGES[k]) return;
+  if (Z.broadcast.scene === "ads" && Z.ads) { Z.ads.play = null; adsBack = null; }   // Werbung verlassen: sie endet
+  Z.broadcast.scene = k; Z.dach = Object.assign({}, Z.dach, { scene: k }); scenesDraw(); send(); obsBackgroundVisible(0); };
 function dachCardShow() { const card = document.querySelector(".dach-card"); if (card) card.hidden = !dachMode(); }
 const DFRAME_NAMES = { c1: "Caster 1", c2: "Caster 2", c3: "Caster 3", guest: "Gast", content: "Inhalt", p3: "Person 3", p4: "Person 4",
   v1: "Zuschauer 1", v2: "Zuschauer 2", v3: "Zuschauer 3", v4: "Zuschauer 4", v5: "Zuschauer 5", v6: "Zuschauer 6" };

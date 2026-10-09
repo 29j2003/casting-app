@@ -121,7 +121,7 @@ async function bgMedia(action) {
 async function obsBackgroundSync(fade) {
   if ((Z.background || {}).source !== "obs" || !onSource() || !channel.obs.isOpen) return;
   // aus: in Ingame (Spielbild) und bei DACH CS – Offiziell (die DACH-Seiten haben einen eigenen Hintergrund)
-  const run = bgFadeRun, on = Z.broadcast.scene !== "ingame" && !/^dach-/.test(Z.broadcast.scene || ""), scene = "Cast – Sendung";
+  const run = bgFadeRun, on = Z.broadcast.scene !== "ingame" && !/^dach-/.test(Z.broadcast.scene || "") && !dachMode(), scene = "Cast – Sendung";
   try {
     const { sceneItemId } = await channel.obs.question("GetSceneItemId", { sceneName: scene, sourceName: BG_NAME });
     const { sceneItemEnabled } = await channel.obs.question("GetSceneItemEnabled", { sceneName: scene, sceneItemId });
@@ -163,7 +163,10 @@ setInterval(async () => {
      transition: "cut"|"fade"|"black", fade: ms, audio, scenes: [Szenen-Schlüssel] }].
    Je Szene läuft die Playlist, in deren scenes sie steht (Clips nie von selbst); die Ecke in Live kann das für die
    laufende Szene ändern (override, gilt bis zum nächsten Szenenwechsel). bgApply() schreibt das Ergebnis nach
-   Z.background.videos/play – das liest das Overlay (cast.js: background()). */
+   Z.background.videos/play – das liest das Overlay (cast.js: background()).
+   Ton: Standard ist der Haken der Playlist („Ton der Videos abspielen“); je Szene lässt er sich in Live ändern
+   (Z.background.sceneAudio[szene] = true|false). Das Ergebnis steht in Z.background.play.audio – das Overlay spielt
+   danach mit oder ohne Ton, spielt OBS ab, schaltet die App „Cast – Hintergrund“ in OBS laut bzw. stumm. */
 let bgChosen = "";
 function bgPlaylists() {
   const H = Z.background;
@@ -176,6 +179,12 @@ function bgPlaylists() {
   return H.playlists;
 }
 const bgList = id => bgPlaylists().find(p => p.id === id) || null;
+// Ton des Hintergrunds in Szene k: eigene Wahl der Szene, sonst der Haken ihrer Playlist
+function bgAudioFor(k) {
+  const own = (Z.background.sceneAudio || {})[k];
+  if (typeof own === "boolean") return own;
+  const p = bgForScene(k); return !!(p && p.audio);
+}
 function bgForScene(k) {
   const o = Z.background.override;
   if (o && o.scene === k) return bgList(o.id);
@@ -188,10 +197,20 @@ function bgApply(k) {
   H.videos = p ? (p.kind === "loop" ? p.videos.slice(0, 1) : p.videos.slice()) : [];
   // since: Start der Playlist – OBS-Browserquelle und Vorschau rechnen daraus dieselbe Stelle im Video (Gleichlauf)
   const since = JSON.stringify(H.videos) === before && (H.play || {}).since ? H.play.since : Date.now();
-  H.play = p ? { order: p.order || "seq", transition: p.transition || "fade", fade: p.fade ?? 1200, since } : {};
+  H.play = p ? { order: p.order || "seq", transition: p.transition || "fade", fade: p.fade ?? 1200, since, audio: bgAudioFor(k ?? sceneNow()) } : {};
   H.active = p ? p.id : "";
+  setTimeout(obsBackgroundAudio, 0);
   if (JSON.stringify(H.videos) !== before) setTimeout(() => obsBackground(true), 0);
   bgCornerDraw();
+}
+// Spielt OBS das Video ab: „Cast – Hintergrund“ je nach Szene laut oder stumm (nur bei einer Änderung)
+let bgAudioSent = "";
+async function obsBackgroundAudio() {
+  const H = Z.background || {};
+  if (H.source !== "obs" || !channel.obs.isOpen) return;
+  const mute = !(H.play || {}).audio || dachMode() || Z.broadcast.scene === "ingame";
+  if (bgAudioSent === String(mute)) return;
+  try { await channel.obs.question("SetInputMute", { inputName: BG_NAME, inputMuted: mute }); bgAudioSent = String(mute); } catch (err) {}
 }
 function bgDraw() {
   const lists = bgPlaylists();
@@ -215,7 +234,7 @@ function bgDraw() {
   document.querySelectorAll("#bgOrder button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === (p.order || "seq")));
   $("bgFade").value = ((p.fade ?? 1200) / 1000).toFixed(1);
   $("bgAudio").checked = p.kind === "clips" ? p.audio !== false : !!p.audio;
-  $("bgPassageLine").hidden = p.kind !== "list"; $("bgScenesLine").hidden = p.kind === "clips";
+  $("bgPassageLine").hidden = p.kind !== "list"; $("bgScenesLine").hidden = $("bgAudioHint").hidden = p.kind === "clips";
   $("bgVideosHead").textContent = p.kind === "loop" ? "Video – es läuft das erste" : "Videos – Reihenfolge mit ↑ ↓";
   const vids = $("bgVideos"); vids.innerHTML = p.videos.length ? "" : `<p class="small">Noch keine Videos – unten in der Bibliothek anhaken.</p>`;
   p.videos.forEach((v, i) => {
@@ -273,6 +292,12 @@ function bgCornerDraw() {
     + `<option value=""${now ? "" : " selected"}>Kein Hintergrund</option>`;
   if ($("bgCornerList")._h !== html) { $("bgCornerList").innerHTML = html; $("bgCornerList")._h = html; }
   $("bgCornerKeep").disabled = !now || (now.scenes || []).includes(k);
+  const sound = !!now && bgAudioFor(k), own = typeof (Z.background.sceneAudio || {})[k] === "boolean";
+  $("bgCornerAudio").hidden = !now;
+  $("bgCornerAudio").setAttribute("aria-pressed", sound);
+  $("bgCornerAudio").innerHTML = icon(sound ? "volume" : "volume-off") + (sound ? "Ton an" : "Ton aus");
+  const t = CastI18n.t;                                                // Titel aus Teilen: jedes Stück einzeln übersetzen
+  $("bgCornerAudio").title = t(sound ? "Hintergrund mit Ton" : "Hintergrund ohne Ton") + " – " + t(own ? "gilt nur in dieser Szene" : "Standard der Playlist") + ". " + t("Klicken zum Umschalten (für diese Szene).");
   const clipHtml = clipLists.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
   if ($("bgClipList")._h !== clipHtml) { $("bgClipList").innerHTML = clipHtml; $("bgClipList")._h = clipHtml; }
   $("bgClipList").hidden = $("bgClipPlay").hidden = !clipLists.length;
@@ -282,6 +307,12 @@ $("bgCornerKeep").onclick = () => {
   const k = sceneNow(), p = bgForScene(k); if (!p) return;
   bgPlaylists().forEach(o => { o.scenes = (o.scenes || []).filter(x => x !== k); });
   p.scenes.push(k); Z.background.override = null; bgApply(); bgDraw(); send();
+};
+$("bgCornerAudio").onclick = () => {
+  const k = sceneNow(), p = bgForScene(k); if (!k || !p) return;
+  const next = !bgAudioFor(k), all = Z.background.sceneAudio = Object.assign({}, Z.background.sceneAudio);
+  if (next === !!p.audio) delete all[k]; else all[k] = next;          // wie die Playlist: keine eigene Wahl nötig
+  bgApply(); send();
 };
 let bgClipTimer = null;
 $("bgClipPlay").onclick = () => {

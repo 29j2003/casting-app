@@ -233,7 +233,14 @@ def test_dach_pages_keep_running_when_app_audio_changes(server, browser):
         z.broadcast.scene = 'dach-singlecast'; z.broadcast.active = true; z.revision = Date.now();
         fetch('/api/state', { method: 'POST', body: JSON.stringify(z) });            // the server's state wins in the overlay
         document.getElementById('p').contentWindow.postMessage({ cast: 'state', z }, location.origin); })()""")
-    page.wait_for_timeout(1500)
+    # wait until the scene stands (pages and camera frames) – slow runners need longer than a fixed pause
+    for _ in range(60):                       # (the page's CSP forbids wait_for_function with a string)
+        if page.evaluate("""(() => { const d = document.getElementById('p').contentDocument;
+                return d.querySelectorAll('.dach-cam').length > 0
+                    && [...d.querySelectorAll('.dach-page')].some(f => (f.getAttribute('src') || '').includes('/dach/singlecast')); })()"""):
+            break
+        page.wait_for_timeout(250)
+    page.wait_for_timeout(500)
     before = page.evaluate("""(() => { const d = document.getElementById('p').contentDocument;
         const pages = [...d.querySelectorAll('.dach-page')];
         // a reload by the overlay means writing src again (even the same value) or a new frame – not a late first load

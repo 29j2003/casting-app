@@ -205,6 +205,20 @@ Spielt OBS ab (`source: "obs"`), bekommt die Quelle „Cast – Hintergrund“ d
   4 s nach. Spielt OBS ab, fragt die Steuerseite alle 4 s `GetMediaInputStatus` und schickt `{cast: "bg-sync", cursor, at}`
   an ihre Vorschau-iframes (`bgSeek`, Sprung erst ab 0,35 s Abweichung).
 
+### Werbung (Szene `ads`)
+
+`Z.ads = { videos, badge, back, play }`. Die Steuerseite (`07-background.js`, „Werbung“) setzt `play = { id, list, from }`
+und wechselt nach `ads`; `cast.js` (`ads()`) spielt die Liste im Teil `[data-part=ads]` nacheinander mit Ton, das letzte
+Bild bleibt stehen. Die Vorschau im App-Fenster meldet `ads-progress` und `ads-ended` per `postMessage` an die
+Steuerseite; danach läuft `adsBack` (Sekunden aus `back`) bis zurück zu `from`. Verlässt die Sendung die Szene, wird
+`play` gelöscht (`sceneSwitch`). Schild „WERBUNG“/„AD“: `OVERLAY_WORDS.ad`.
+
+### Videos je Theme
+
+`Z.themeVideos[theme] = [Dateinamen]`. `themeVideoFilter(names)` liefert für das aktuelle Theme nur die zugeordneten
+(keine zugeordnet = alle) – benutzt von Bibliothek, Werbung und Quelle „Video“ (`03-match.js`). Zuordnen in der
+Bibliothek (`videoInfoDraw`, Schalter „Theme“, `ui.videosAssign`).
+
 ### Steam Workshop (`casting_app/server/workshop.py`)
 
 `/api/workshop?id=<Link oder Nummer>` → `{id, title, image}`. Nur die Nummer geht an Steams öffentliche
@@ -353,7 +367,10 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
   legen `.dach-floor` (dasselbe Blau, z 0) darunter, außer die Ingame-Seite (durchsichtig) ist beteiligt.
   **Match aktiv?** `server/dach_match.py` lädt `lineup.php` selbst (ID und Key bleiben im Server) und sucht „kein aktives
   Match“; `/api/dach-match` → `{match: true|false|null}` (20 s zwischengespeichert). Die Steuerseite fragt alle 30 s
-  (`dachMatchCheck`) und sperrt bei `false` die Szenen aus `DACH_NEEDS_MATCH` (`aria-disabled`). Neue Seite vermessen:
+  (`dachMatchCheck`) und sperrt bei `false` die Szenen aus `DACH_NEEDS_MATCH` (`aria-disabled`). **Quelle je Rahmen:**
+  `Z.dachFrame[seite][rahmen].src` (eine aus `DACH_SOURCES`, Standard = der Rahmen selbst); `dachFrameSet` legt je
+  Quelle ein `.dach-cam[data-source]` an (dieselbe Quelle nur einmal). Quellenart **„Video“** (`Z.sources[k].type =
+  "video"`, `video: "media/videos/…"`, `loop`, `audio`) zeichnet `sources()` in `cast.js`. Neue Seite vermessen:
   Video/Screenshot der Seite, gelbe Linie suchen (1920 × 1080), Werte in `DACH_FRAME` eintragen.
 * **PySide6 unter 6.12** (`pyproject.toml`): Ab 6.12 steckt Qt WebEngine im eigenen Paket `PySide6_WebEngine` (nicht mehr
   in Addons) – ohne es fehlt `PySide6.QtWebEngineWidgets`. Zum Umstieg: Paket ergänzen, `tools/build.py` und die

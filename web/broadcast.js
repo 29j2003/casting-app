@@ -364,8 +364,11 @@
     dachKey = cacheKey;
     const box = dachLayer.querySelector(".dach-cams"), da = {};
     box.querySelectorAll(".dach-cam").forEach(k => { da[k.dataset.source] = k; });
-    const opt = { duration: d, easing: "cubic-bezier(.4,0,.2,1)" };
-    Object.entries(frame).forEach(([source, r]) => {
+    const opt = { duration: d, easing: "cubic-bezier(.4,0,.2,1)" }, used = new Set();
+    Object.values(frame).forEach(r => {
+      const source = r.src;                                    // gewählte Quelle des Rahmens (Standard: seine eigene)
+      if (used.has(source)) return;                            // dieselbe Quelle nur einmal (ein Stream, ein Ton)
+      used.add(source);
       const target = { left: r.x + "px", top: r.y + "px", width: r.w + "px", height: r.h + "px" };
       let k = da[source];
       if (k) {
@@ -374,7 +377,7 @@
         Object.assign(k.style, target); if (d) k.animate([from, target], opt);
       } else {
         k = document.createElement("div"); k.className = "cam dach-cam"; k.dataset.source = source; Object.assign(k.style, target);
-        k.innerHTML = `<div class="dach-frame-name">${{ c1: "Caster 1", c2: "Caster 2", guest: "Gast", content: "Inhalt" }[source] || source}</div>`;
+        k.innerHTML = `<div class="dach-frame-name">${{ c1: "Caster 1", c2: "Caster 2", c3: "Caster 3", guest: "Gast", content: "Inhalt", p3: "Person 3", p4: "Person 4" }[source] || source.replace(/^v/, "Zuschauer ")}</div>`;
         box.appendChild(k); if (d) k.animate([{ opacity: 0 }, { opacity: 1 }], opt);
       }
     });

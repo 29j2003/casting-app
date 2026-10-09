@@ -560,7 +560,7 @@ details.explain-open .explain { display: block; }
 /* Szenen: Gruppen brechen bei wenig Platz in neue Zeilen um, statt Text abzuschneiden */
 .scenes-buttons.columns { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important; }
 .dach-card[hidden] { display: none !important; }
-.dframe-row { display: grid; grid-template-columns: 90px repeat(4, minmax(0, 1fr)); gap: 6px; align-items: center; } .dframe-row input { min-width: 0; }
+.dframe-row { display: grid; grid-template-columns: 80px minmax(0, 1.6fr) repeat(4, minmax(0, 1fr)); gap: 6px; align-items: center; } .dframe-row input, .dframe-row select { min-width: 0; width: 100%; box-sizing: border-box; }
 .dach-card { display: grid; gap: 8px; padding: 12px; border-radius: 10px; border: 1px solid #FCC659; background: color-mix(in srgb, #FCC659 8%, var(--f1)); }
 .dach-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; } .dach-head b { font-size: 15px; }
 /* Befehlspalette (Strg K) */
@@ -860,3 +860,9 @@ body { background: radial-gradient(1200px 600px at 75% -10%, rgba(139, 92, 255, 
   background: #FAF9F6; color: var(--text); border-color: var(--line); }
 :root[data-design=light] .tool, :root[data-design=light] .bracket-search, :root[data-design=light] .bracket-connected,
 :root[data-design=light] .workspace-button, :root[data-design=light] .bracket-program { background: #F6F4EF; color: var(--text); border-color: var(--line); }
+
+/* Videos je Theme (Bibliothek): Schalter „Theme“ je Video */
+.vid-row .vid-theme-chip { margin-left: auto; align-self: center; height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--f1); color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer; }
+.vid-row .vid-theme-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.vid-theme { justify-content: space-between; }

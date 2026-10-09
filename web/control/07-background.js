@@ -291,3 +291,90 @@ $("bgClipPlay").onclick = () => {
   send();
 };
 $("bgClipStop").onclick = () => { Z.background.clip = { id: Date.now(), videos: [] }; $("bgClipStop").hidden = true; send(); };
+
+/* ---------- Videos je Theme ----------
+   Z.themeVideos[theme] = [Dateinamen]: welche Videos in diesem Theme zur Auswahl stehen (Playlisten, Werbung, Quelle
+   „Video“). Hat ein Theme keine zugeordnet, stehen alle zur Auswahl. Zuordnen: Bibliothek (Setup → Hintergrund). */
+function themeVideoNames() { const T = (Z.themeVideos || {})[Z.theme]; return Array.isArray(T) && T.length ? T : null; }
+function themeVideoFilter(names) { const T = themeVideoNames(); return T ? names.filter(n => T.includes(n)) : names; }
+function themeVideoToggle(name) {
+  const all = Z.themeVideos = Object.assign({}, Z.themeVideos), T = (all[Z.theme] || []).slice();
+  all[Z.theme] = T.includes(name) ? T.filter(n => n !== name) : [...T, name];
+  send();
+}
+
+/* ---------- Werbung ----------
+   Setup → Sponsoren: Werbe-Videos anhaken (Reihenfolge = Reihenfolge des Anhakens). Live → Panel „Werbung“:
+   „Alle“ oder einzeln abspielen – die App wechselt in die Szene „Werbung“, die Videos laufen mit Ton nacheinander.
+   Danach bleibt das letzte Bild stehen; nach Z.ads.back Sekunden geht es zurück in die Szene, aus der gestartet
+   wurde (0 = bleibt). Fortschritt und Ende meldet die Vorschau (overlay.html im App-Fenster). */
+var adsLibrary = null, adsProgress = null, adsBack = null;   // var: Panel und Szenenwechsel (andere Teile) dürfen schon beim Laden fragen
+async function adsLibraryLoad() {
+  try { adsLibrary = ((await (await fetch("/api/videos", { cache: "no-store" })).json()).videos || []).filter(v => !v.error).map(v => v.name); }
+  catch (err) { adsLibrary = []; }
+  adsSetupDraw(); adsDraw();
+}
+const adsState = () => { Z.ads = Object.assign({ videos: [], badge: true, back: 10, play: null }, Z.ads); return Z.ads; };
+const adsName = path => String(path).replace(/^media\/videos\//, "").replace(/\.[a-z0-9]+$/i, "");
+function adsSetupDraw() {
+  const box = $("adVideos"); if (!box) return;
+  if (!adsLibrary) { box.innerHTML = `<p class="small">lädt …</p>`; adsLibraryLoad(); return; }
+  const A = adsState(), names = themeVideoFilter(adsLibrary);
+  box.innerHTML = names.length ? "" : `<p class="small">Noch keine Videos im Videos-Ordner (Setup → Hintergrund → Videos-Ordner öffnen).</p>`;
+  names.forEach(n => {
+    const path = "media/videos/" + n, z = document.createElement("label"); z.className = "row vid-row";
+    z.innerHTML = `<input type="checkbox"${A.videos.includes(path) ? " checked" : ""}><span><b>${esc(adsName(n))}</b> <span class="small">${esc(n)}</span></span>`;
+    z.querySelector("input").onchange = ev => { A.videos = ev.target.checked ? [...A.videos.filter(p => p !== path), path] : A.videos.filter(p => p !== path); send(); adsDraw(); };
+    box.appendChild(z);
+  });
+}
+function adsPlay(list) {
+  const A = adsState(); list = list.filter(Boolean); if (!list.length) return;
+  const from = Z.broadcast.scene !== "ads" ? Z.broadcast.scene : ((A.play || {}).from || "pause");
+  A.play = { id: Date.now(), list, from }; adsProgress = null; adsBack = null;
+  if (Z.broadcast.scene !== "ads") sceneSwitch("ads"); else send();
+  adsDraw();
+}
+function adsStop() {
+  const A = adsState(), from = (A.play || {}).from;
+  A.play = null; adsProgress = null; adsBack = null;
+  if (Z.broadcast.scene === "ads" && from) sceneSwitch(from); else send();
+  adsDraw();
+}
+function adsDraw() {
+  const box = $("pAds"); if (!box) return;
+  const A = adsState(), P = A.play, list = A.videos.filter(p => themeVideoFilter([p.replace(/^media\/videos\//, "")]).length);
+  const running = P && Z.broadcast.scene === "ads", fromName = P ? audioSceneTitle(P.from) : "";
+  const prog = running && adsProgress && adsProgress.id === P.id ? adsProgress : null;
+  const status = !running ? "" : adsBack ? `Fertig · zurück zu „${esc(fromName)}“ in ${Math.max(0, Math.ceil((adsBack - Date.now()) / 1000))} s`
+    : prog ? `▶ ${esc(adsName(P.list[prog.index] || ""))} (${prog.index + 1}/${prog.count}) · ${K.time(Math.max(0, (prog.d || 0) - (prog.t || 0)) * 1000)}`
+    : "▶ läuft …";
+  const html = !list.length ? `<p class="small">Noch keine Werbe-Videos – Setup → Sponsoren → Werbung.</p>`
+    : `<div class="map-buttons"><button class="button main" data-ads="all">${icon("play")}Alle (${list.length})</button>${list.map((p, i) =>
+        `<button class="button" data-ads="${i}">${icon("play")}${esc(adsName(p))}</button>`).join("")}</div>
+      ${running ? `<div class="line" style="align-items:center"><span class="small">${status}</span>
+        ${adsBack ? `<button class="button" data-ads-now>Jetzt zurück</button><button class="button" data-ads-stay>Bleiben</button>` : ""}
+        <button class="button danger" data-ads-stop>Stopp</button></div>` : ""}`;
+  if (box._h === html) return;
+  box._h = html; box.innerHTML = html;
+  box.querySelectorAll("[data-ads]").forEach(b => b.onclick = () => adsPlay(b.dataset.ads === "all" ? list : [list[+b.dataset.ads]]));
+  const stop = box.querySelector("[data-ads-stop]"); if (stop) stop.onclick = adsStop;
+  const now = box.querySelector("[data-ads-now]"); if (now) now.onclick = adsStop;
+  const stay = box.querySelector("[data-ads-stay]"); if (stay) stay.onclick = () => { adsBack = null; adsDraw(); };
+}
+addEventListener("message", ev => {
+  const d = ev.data, P = (Z.ads || {}).play;
+  if (!d || !P || d.id !== P.id || !$("frame") || ev.source !== $("frame").contentWindow) return;
+  if (d.cast === "ads-progress") { adsProgress = d; adsDraw(); }
+  if (d.cast === "ads-ended" && Z.broadcast.scene === "ads") {
+    const s = +((Z.ads || {}).back ?? 10);
+    adsBack = s > 0 ? Date.now() + s * 1000 : null; adsDraw();
+  }
+});
+setInterval(() => {                                   // Rückweg nach dem Ende (abbrechbar mit „Bleiben“)
+  if (!adsBack) return;
+  const P = (Z.ads || {}).play;
+  if (!P || Z.broadcast.scene !== "ads") { adsBack = null; adsDraw(); return; }
+  if (Date.now() >= adsBack) adsStop(); else adsDraw();
+}, 500);
+setTimeout(adsSetupDraw, 0);

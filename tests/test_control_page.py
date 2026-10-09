@@ -1000,6 +1000,9 @@ def test_ads_play_all_or_one_and_go_back_afterwards(server, browser):
       Z.ads = { videos: ['media/videos/ad-a.webm', 'media/videos/ad-b.webm'], badge: true, back: 2, play: null }; send(); tabs('live'); panelValues();""")
     page.wait_for_timeout(500)
     assert page.evaluate("[...document.querySelectorAll('#pAds [data-ads]')].map(b => b.textContent.trim())") == ["Alle (2)", "ad-a", "ad-b"]
+    page.evaluate("everything()")                                # loaded state (e.g. after a restart) shows the ticks in Setup
+    page.wait_for_timeout(300)
+    assert page.evaluate("[...document.querySelectorAll('#adVideos input:checked')].length") == 2
     page.evaluate("document.querySelector('#pAds [data-ads=all]').click()")
     page.wait_for_timeout(1200)
     assert page.evaluate("[Z.broadcast.scene, Z.ads.play.from, Z.ads.play.list.length]") == ["ads", "pause", 2]

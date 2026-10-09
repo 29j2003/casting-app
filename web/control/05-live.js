@@ -460,8 +460,8 @@ $("sceneDefault").onclick = () => { ui.sceneRow = null; uiSave(); scenesDraw(); 
 const TRANSITIONS = [["cut", "Schnitt"], ["fade", "Blende"], ["slide", "Schieben"], ["wipe", "Wischen"], ["stinger", "Stinger"]];
 const onSource = () => !!(Z.broadcast && Z.broadcast.active);
 function transitionChoiceDraw() {
-  $("ubDuration").textContent = ((Z.broadcast.duration || 0) / 1000).toFixed(1).replace(".", ",") + " s";
-  $("ubSlider").oninput = () => { $("ubDuration").textContent = (+$("ubSlider").value / 1000).toFixed(1).replace(".", ",") + " s"; };
+  $("ubDuration").textContent = ((Z.broadcast.duration || 0) / 1000).toFixed(1).replace(".", CastI18n.language === "de" ? "," : ".") + " s";
+  $("ubSlider").oninput = () => { $("ubDuration").textContent = (+$("ubSlider").value / 1000).toFixed(1).replace(".", CastI18n.language === "de" ? "," : ".") + " s"; };
   const box = $("ubChoice"); box.innerHTML = "";
   TRANSITIONS.forEach(([k, n]) => {
     const b = document.createElement("button"); b.textContent = n;

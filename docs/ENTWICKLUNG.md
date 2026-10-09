@@ -578,3 +578,5 @@ kommen aus `tools/build.py` – wer sie ändert, muss `asset_suffix()` anpassen.
 * **Doku:** genau zwei Dateien – `README.md` (Startseite und Anleitung für Nutzer, auf Englisch, nur der aktuelle Stand ohne
   Versionsgeschichte; Knopf-Namen wie in `web/lang-en.js`) und `ENTWICKLUNG.md` (alles für
   Entwickler). Dazu `.claude/CLAUDE.md` für Claude Code. Keine weiteren `.md`-Dateien.
+  Bilder der README liegen in `docs/images/` (App auf Englisch, nur erfundene Namen – keine echten Personen, Teams oder Sponsoren);
+  bei sichtbaren Änderungen an der Oberfläche neu aufnehmen (Steuerseite 1600 × 960, Overlay 1920 × 1080 auf 1280 × 720 verkleinert).

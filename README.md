@@ -4,6 +4,10 @@ Control and overlays for CS2 casts in OBS – one desktop app for Windows, Linux
 Scenes with transitions, graphics, themes (including DACH CS – official), FACEIT import, CS2 live data (GSI),
 brackets/tables and audio control via OBS. Interface and overlays in English or German.
 
+![The control page on air: preview, scene panel and scenes](docs/images/app-live.png)
+
+![Overlay in OBS: scene “Cast Duo”](docs/images/overlay-cast-duo.png)
+
 **Download:** [latest version](https://github.com/29j2003/casting-app/releases/latest) –
 Windows `…-Setup.exe`, Linux `…-linux-x86_64.AppImage`, macOS `…-mac-arm64.dmg` (Apple Silicon) or `…-mac-x64.dmg` (Intel).
 

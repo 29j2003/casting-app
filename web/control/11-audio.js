@@ -76,11 +76,11 @@ function audioDraw() {
     z.innerHTML = `<div class="audio-head"><div class="tname"><b title="${esc(name)}">${esc(title)}</b>${title !== name ? `<span>${esc(name)}</span>` : ""}</div>
         ${sceneOwn ? `<span class="audio-scene-own" title="Diese Lautstärke gilt nur in der Szene „${esc(audioSceneTitle(audioScene()))}“">Szene</span>` : ""}
         ${T.monitor && T.monitor !== "OBS_MONITORING_TYPE_NONE" ? `<span class="audio-listen" title="${esc((MONITOR.find(([v]) => v === T.monitor) || [, ""])[1])}: ${esc(MONITOR_HINT[T.monitor] || "")}">${icon("headphones")}</span>` : ""}
-        <b class="audio-vol${T.vol > 100 ? " loud" : ""}">${T.vol} %</b>
+        <b class="audio-vol${T.vol > 100 ? " loud" : ""}">${esc(T.vol)} %</b>
         <button class="audio-mute${T.mute ? " off" : ""}" aria-pressed="${T.mute}">${T.mute ? "STUMM" : "Stumm"}</button>
         <button class="gfx-more" aria-label="Mehr Einstellungen">${icon("more")}</button></div>
       <div class="audio-meter" data-name="${esc(name)}"><i></i><i class="pk"></i></div>
-      <div class="audio-slider"><input type="range" min="0" max="300" step="5" value="${Math.min(300, T.vol)}" aria-label="Lautstärke ${esc(title)}"></div>
+      <div class="audio-slider"><input type="range" min="0" max="300" step="5" value="${Math.min(300, +T.vol || 0)}" aria-label="Lautstärke ${esc(title)}"></div>
       <div class="audio-more"${audioMoreOpen.has(name) ? "" : " hidden"}>
         <label>Abhören<select class="audio-monitor-choice" aria-label="Abhören ${esc(title)}">${MONITOR.map(([v, n]) => `<option value="${v}"${T.monitor === v ? " selected" : ""}>${n}</option>`).join("")}</select></label>
         <label>Verzögerung (ms)<input type="number" min="-950" max="20000" step="10" value="${T.delay}"></label>
@@ -149,8 +149,8 @@ function sceneVolumesApply(k) {
   if (!audioPerScene() || !channel.obs.isOpen) return;
   const S = (Z.audio || {}).sceneVolumes || {}, own = S[k] || {}, standard = S["*"] || {};
   for (const name of new Set([...Object.keys(standard), ...Object.keys(own)])) {
-    const vol = name in own ? own[name] : standard[name], T = audioRevision[name];
-    if (vol === undefined || (T && T.vol === vol)) continue;
+    const vol = Math.round(+(name in own ? own[name] : standard[name])), T = audioRevision[name];   // nur Zahlen (Daten aus einer Datei)
+    if (!Number.isFinite(vol) || vol < 0 || vol > 2000 || (T && T.vol === vol)) continue;
     if (T) T.vol = vol;
     audioSet(name, "SetInputVolume", { inputVolumeMul: vol / 100 });
   }

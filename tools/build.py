@@ -20,6 +20,7 @@ Signing
              APPLE_APP_PASSWORD and APPLE_TEAM_ID to sign with hardened runtime and notarize.
 """
 
+import hashlib
 import importlib.util
 import os
 import platform
@@ -38,7 +39,11 @@ from casting_app.version import APP_NAME, VERSION  # noqa: E402
 DIST = ROOT / "dist"
 WORK = ROOT / "pyinstaller-work"
 ICONS = ROOT / "build"
-APPIMAGETOOL_URL = "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+# fixed versions with checksums: a changed file upstream stops the build instead of ending up in the AppImage
+APPIMAGETOOL_URL = "https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage"
+APPIMAGETOOL_SHA256 = "ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0"
+APPIMAGE_RUNTIME_URL = "https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64"
+APPIMAGE_RUNTIME_SHA256 = "2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d"
 BUNDLE_ID = "de.casting-app.desktop"
 # Qt parts the app never uses (PyInstaller's hooks would pull them in with Qt WebEngine)
 UNUSED_MODULES = ["PySide6.QtQuick", "PySide6.QtQml", "PySide6.QtQuickWidgets", "PySide6.QtPositioning",
@@ -150,12 +155,24 @@ def package_linux(app_folder: Path) -> None:
         "[Desktop Entry]\nType=Application\nName=Casting-App\nComment=Steuerung und Overlays für CS2-Casts in OBS\n"
         "Exec=Casting-App\nIcon=casting-app\nCategories=AudioVideo;\nTerminal=false\n")
     shutil.copy(ICONS / "icon.png", app_dir / "casting-app.png")
-    tool = WORK / "appimagetool"
-    if not tool.exists():
-        urllib.request.urlretrieve(APPIMAGETOOL_URL, tool)
-        tool.chmod(0o755)
+    tool = download_checked(APPIMAGETOOL_URL, APPIMAGETOOL_SHA256, WORK / "appimagetool-1.9.1")
+    tool.chmod(0o755)
+    runtime = download_checked(APPIMAGE_RUNTIME_URL, APPIMAGE_RUNTIME_SHA256, WORK / "appimage-runtime-20251108")
     target = DIST / f"{APP_NAME}-{VERSION}-linux-x86_64.AppImage"
-    run(tool, app_dir, target, env={**os.environ, "ARCH": "x86_64", "APPIMAGE_EXTRACT_AND_RUN": "1"})
+    run(tool, "--runtime-file", runtime, app_dir, target, env={**os.environ, "ARCH": "x86_64", "APPIMAGE_EXTRACT_AND_RUN": "1"})
+
+
+def download_checked(url: str, sha256: str, target: Path) -> Path:
+    """Download `url` once to `target` and make sure it is exactly the expected file (SHA-256)."""
+    if not target.exists() or hashlib.sha256(target.read_bytes()).hexdigest() != sha256:
+        partial = target.with_name(target.name + ".part")
+        urllib.request.urlretrieve(url, partial)
+        found = hashlib.sha256(partial.read_bytes()).hexdigest()
+        if found != sha256:
+            partial.unlink()
+            sys.exit(f"Download stimmt nicht (Prüfsumme): {url}\n  erwartet {sha256}\n  bekommen {found}")
+        partial.replace(target)
+    return target
 
 
 # --- macOS ---

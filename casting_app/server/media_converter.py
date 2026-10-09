@@ -33,7 +33,9 @@ MAX_JOBS = 2
 CHUNK = 256 * 1024
 # limits for every source: only web protocols (no local files, no other schemes), give up on a silent server,
 # and never let one video grow without end (a live stream or a trickling server would otherwise fill the disk)
-INPUT_LIMITS = ["-protocol_whitelist", "http,https,tls,tcp", "-rw_timeout", "15000000"]
+# and only plain video files (no playlists such as HLS, whose entries could point anywhere)
+INPUT_LIMITS = ["-protocol_whitelist", "http,https,tls,tcp", "-format_whitelist", "mov,mp4,m4a,matroska,webm,aac",
+                "-rw_timeout", "15000000"]
 OUTPUT_LIMITS = ["-t", "3600", "-fs", str(2 * 1024 ** 3)]
 STALL_SECONDS = 60                    # a reader gives up when the file has not grown for this long
 # The app window only shows a preview: at most 720 lines and 30 frames per second are plenty and much lighter to

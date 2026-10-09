@@ -36,7 +36,9 @@ Section "Casting-App"
   nsExec::Exec 'taskkill /IM Casting-App.exe /F'
   Sleep 1500
   SetOutPath "$INSTDIR"
-  RMDir /r "$INSTDIR\_internal"
+  ; old app files only where the Casting-App really is – a shared folder (e.g. D:\Tools) may hold another app's _internal
+  IfFileExists "$INSTDIR\Casting-App.exe" 0 +2
+    RMDir /r "$INSTDIR\_internal"
   File /r "${APP_FOLDER}\*.*"
   WriteUninstaller "$INSTDIR\Deinstallieren.exe"
   CreateShortcut "$SMPROGRAMS\Casting-App.lnk" "$INSTDIR\Casting-App.exe"
@@ -58,7 +60,8 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\Casting-App.lnk"
   Delete "$DESKTOP\Casting-App.lnk"
   ; only the app's own files – the folder may have been chosen freely (e.g. Documents), so never delete it as a whole
-  RMDir /r "$INSTDIR\_internal"
+  IfFileExists "$INSTDIR\Casting-App.exe" 0 +2
+    RMDir /r "$INSTDIR\_internal"
   Delete "$INSTDIR\Casting-App.exe"
   Delete "$INSTDIR\Deinstallieren.exe"
   RMDir "$INSTDIR"

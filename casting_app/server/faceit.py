@@ -26,7 +26,7 @@ def needs_api_key(path: str) -> bool:
 
 def clean_query(params: dict[str, str]) -> str:
     """Only the allowed query parameters with harmless values."""
-    kept = [f"{key}={params[key]}" for key in ALLOWED_QUERY_KEYS if QUERY_VALUE.match(params.get(key) or "")]
+    kept = [f"{key}={params[key]}" for key in ALLOWED_QUERY_KEYS if QUERY_VALUE.fullmatch(params.get(key) or "")]
     return "?" + "&".join(kept) if kept else ""
 
 

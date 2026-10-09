@@ -11,6 +11,7 @@ are kept as aliases: see LEGACY_PAGES and the last entries of _api_routes().
 """
 
 import base64
+import errno
 import hashlib
 import hmac
 import ipaddress
@@ -96,16 +97,28 @@ LEGACY_PAGES = {"steuerung.html": "control.html", "ende.html": "end.html", "seri
 PRIVATE_SOURCE_FIELDS = ("url", "device", "deviceName")
 
 
-def public_host(address: str) -> bool:
-    """False for addresses on this PC or in the local network (the app must not be used to reach those)."""
-    host = (urllib.parse.urlsplit(address).hostname or "").lower()
+def resolve_host(host: str) -> set[str]:
+    """All addresses a host name stands for (as FFmpeg would find them). Raises OSError."""
+    return {info[4][0] for info in socket.getaddrinfo(host, None)}
+
+
+def public_host(address: str, resolve: Callable[[str], set[str]] = resolve_host) -> bool:
+    """False for addresses on this PC or in the local network (the app must not be used to reach those).
+
+    Names – and odd number forms like "2130706433" or "127.1" that the system also reads as an address – are
+    resolved first: every address behind them must be public (a name like 192.168.1.1.nip.io points into the LAN)."""
+    host = (urllib.parse.urlsplit(address).hostname or "").lower().rstrip(".")
     if not host or host == "localhost" or host.endswith(".localhost") or host.endswith(".local"):
         return False
     try:
-        ip = ipaddress.ip_address(host)
+        return ipaddress.ip_address(host).is_global
     except ValueError:
-        return True                               # a name: resolved by FFmpeg (names of local machines are rare in links)
-    return ip.is_global
+        pass
+    try:
+        addresses = resolve(host)
+        return bool(addresses) and all(ipaddress.ip_address(a.split("%")[0]).is_global for a in addresses)
+    except (OSError, ValueError, UnicodeError):
+        return False
 
 
 def own_video(address: str) -> bool:
@@ -118,6 +131,11 @@ def own_video(address: str) -> bool:
 
 class BodyTooLarge(ValueError):
     """A request body over the limit of its route (answered with 413)."""
+
+
+def log_text(value, limit: int) -> str:
+    """A value from a request as one line for the log (a line break would forge further log lines)."""
+    return re.sub(r"[\x00-\x1f\x7f]", " ", str(value))[:limit]
 
 
 def ping_proof(access_key: str, nonce: str) -> str:
@@ -135,7 +153,7 @@ def public_state(text: str) -> str:
                     if field in source:
                         source[field] = ""
         return json.dumps(state, ensure_ascii=False)
-    except (ValueError, AttributeError):
+    except (ValueError, AttributeError, RecursionError):
         match = STATE_REVISION.search(text)
         return json.dumps({"revision": int(match.group(1)) if match else 0})
 
@@ -189,8 +207,12 @@ class CastingServer:
         try:
             ipv6_server = _IPv6Server(("::1", PORT), handler)
             self._servers.append(ipv6_server)
-        except OSError:
-            pass                                  # no IPv6 – not needed
+        except OSError as error:
+            # no IPv6 on this PC – not needed. But if ANOTHER program holds [::1]:8787, the window (localhost may
+            # resolve to ::1 first) would load that program's page as ours: then refuse to start.
+            if error.errno in _PORT_TAKEN or getattr(error, "winerror", None) in _PORT_TAKEN:
+                main_server.server_close()
+                raise
         for server in self._servers:
             server.daemon_threads = True
             threading.Thread(target=server.serve_forever, name="http", daemon=True).start()
@@ -225,7 +247,7 @@ class CastingServer:
                 raise ValueError("kein Zustand")
         except FileNotFoundError:
             return
-        except (OSError, ValueError):
+        except (OSError, ValueError, RecursionError):   # RecursionError: nested too deep for Python's json
             set_aside(self._state_file, self.log.write)
             return
         match = STATE_REVISION.search(text)
@@ -238,11 +260,17 @@ class CastingServer:
         if not match:
             return False
         number = int(match.group(1))
+        try:                                      # only a state Python can read again (else the next start fails)
+            if not isinstance(json.loads(text), dict):
+                return False
+        except (ValueError, RecursionError):
+            return False
+        public = public_state(text)
         with self._state_lock:
             if number < self._state_revision:
                 return False
             self._state_text, self._state_revision = text, number
-            self._public_state_text = public_state(text)
+            self._public_state_text = public
             if self._save_timer:
                 self._save_timer.cancel()
             self._save_timer = threading.Timer(STATE_SAVE_DELAY, self.save_state_now)
@@ -339,6 +367,8 @@ class CastingServer:
             return request.send_plain(403)
         url = urllib.parse.urlsplit(request.path)
         path = urllib.parse.unquote(url.path)
+        if re.search(r"[\x00-\x1f\x7f]", path):   # line breaks would end up in headers (e.g. a redirect)
+            return request.send_plain(400)
         query = {k: v[0] for k, v in urllib.parse.parse_qs(url.query).items()}
         origin = request.headers.get("Origin")
         fetch_site = request.headers.get("Sec-Fetch-Site")
@@ -581,9 +611,9 @@ class CastingServer:
 
     def _stream_events(self, request, query: dict) -> None:
         """Live connection: state, live data, client list and reload requests."""
-        client = EventClient(page=str(query.get("page", "?"))[:40],
+        client = EventClient(page=log_text(query.get("page", "?"), 40),
                              from_obs="OBS/" in request.headers.get("User-Agent", ""),
-                             version=str(query.get("v", "old"))[:20], trusted=self.has_access(request, query))
+                             version=log_text(query.get("v", "old"), 20), trusted=self.has_access(request, query))
         if not self.events.add(client):
             return request.send_json(503, {"error": "zu viele Verbindungen"})
         label = f"{client.page}{' (OBS)' if client.from_obs else ''}"
@@ -615,6 +645,12 @@ class CastingServer:
             text = request.read_body(MAX_STATE_SIZE)
             if not STATE_REVISION.search(text):
                 return request.send_json(400, {"error": "keine Revision"})
+            try:                                  # e.g. nested deeper than Python's json reads (imported file)
+                valid = isinstance(json.loads(text), dict)
+            except (ValueError, RecursionError):
+                valid = False
+            if not valid:
+                return request.send_json(400, {"error": "kein gültiger Zustand"})
             if not self._store_state(text):
                 # older than what the server has (e.g. the PC clock went back): the page continues above it
                 return request.send_json(409, {"error": "veraltet", "revision": self._state_revision})
@@ -796,7 +832,7 @@ class CastingServer:
 
     def _api_faceit(self, request, resource: str, query: dict) -> None:
         """Forward an allowed FACEIT request; the API key is added here and never leaves the server."""
-        if not faceit.ALLOWED_PATH.match(resource):
+        if not faceit.ALLOWED_PATH.fullmatch(resource):
             return request.send_json(404, {"error": "unbekannt"})
         if faceit.needs_api_key(resource) and not self.secrets.has(secret_store.FACEIT_KEY):
             return request.send_json(401, {"error": "kein FACEIT-Schlüssel gespeichert"})
@@ -862,7 +898,8 @@ class CastingServer:
         if legacy_name:
             query = urllib.parse.urlsplit(request.path).query
             return request.send_plain(301, {"Location": "/" + legacy_name + ("?" + query if query else "")})
-        if re.search(r"(^|/)\.|\\|:|\x00", relative):
+        # no hidden files, "..", backslashes, drive letters or "//" (on Windows "//server/share" is a network path)
+        if re.search(r"(^|/)\.|\\|:|\x00|//", relative):
             return request.send_json(404, {"error": "nicht gefunden"})
         if relative == "control.js":
             return request.send_body(200, control_script(), CONTENT_TYPES[".js"])
@@ -885,7 +922,7 @@ class CastingServer:
         if not full:
             return request.send_json(404, {"error": "nicht gefunden"})
         # pages may only be embedded by our own pages
-        extra = {"Content-Security-Policy": "frame-ancestors 'self'"} if suffix == ".html" else {}
+        extra = {"Content-Security-Policy": "frame-ancestors 'self'; object-src 'none'; base-uri 'none'"} if suffix == ".html" else {}
         send_file(request, full, CONTENT_TYPES[suffix], VERSION, extra)
 
 
@@ -895,10 +932,19 @@ def control_script() -> bytes:
     Humans edit the numbered files; the browser gets one script, so a function may be used before the file that
     declares it (as if it were one big file). A marker line in front of each part shows where it came from.
     """
-    parts = []
-    for file in sorted((WEB_DIR / "control").glob("*.js")):
-        parts.append(f"\n// ===== control/{file.name} =====\n" + file.read_text(encoding="utf-8"))
-    return "".join(parts).encode("utf-8")
+    files = sorted((WEB_DIR / "control").glob("*.js"))
+    stamp = tuple((file.name, file.stat().st_mtime_ns) for file in files)    # rebuilt only when a part changed
+    if _control_cache.get("stamp") != stamp:
+        parts = [f"\n// ===== control/{file.name} =====\n" + file.read_text(encoding="utf-8") for file in files]
+        _control_cache.update(stamp=stamp, body="".join(parts).encode("utf-8"))
+    return _control_cache["body"]
+
+
+_control_cache: dict = {}
+
+
+# "address in use" / "access denied" (Windows: port held exclusively by another program)
+_PORT_TAKEN = {errno.EADDRINUSE, errno.EACCES, getattr(errno, "WSAEADDRINUSE", 10048), getattr(errno, "WSAEACCES", 10013)}
 
 
 class _IPv6Server(ExclusiveHTTPServer):

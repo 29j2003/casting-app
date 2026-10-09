@@ -15,7 +15,7 @@ import urllib.request
 DETAILS_URL = "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/"
 WORKSHOP_ID = re.compile(r"^\d{4,20}$")
 # Steam serves workshop previews from these hosts; anything else is refused
-IMAGE_HOSTS = re.compile(r"(^|\.)(steamusercontent\.com|steamuserimages-a\.akamaihd\.net|steamstatic\.com|akamaihd\.net)$")
+IMAGE_HOSTS = re.compile(r"(^|\.)(steamusercontent\.com|steamstatic\.com)$|^steamuserimages-a\.akamaihd\.net$")
 IMAGE_TYPES = {"image/jpeg": "image/jpeg", "image/jpg": "image/jpeg", "image/png": "image/png", "image/webp": "image/webp",
                "image/gif": "image/gif"}
 MAX_DETAILS_SIZE = 1_000_000
@@ -32,7 +32,7 @@ def workshop_id(text: str) -> str | None:
     text = (text or "").strip()
     match = re.search(r"[?&]id=(\d+)", text)
     candidate = match.group(1) if match else text
-    return candidate if WORKSHOP_ID.match(candidate) else None
+    return candidate if WORKSHOP_ID.fullmatch(candidate) else None
 
 
 def _read(answer, limit: int) -> bytes:
@@ -60,6 +60,18 @@ def _allowed_image_url(url: str) -> bool:
     return parts.scheme == "https" and bool(IMAGE_HOSTS.search(parts.hostname or ""))
 
 
+class _SteamRedirects(urllib.request.HTTPRedirectHandler):
+    """Follow a redirect only if it stays on Steam's image hosts – checked BEFORE the next request goes out."""
+
+    def redirect_request(self, request, fp, code, message, headers, new_url):
+        if not _allowed_image_url(new_url):
+            raise WorkshopError("Vorschaubild liegt nicht bei Steam")
+        return super().redirect_request(request, fp, code, message, headers, new_url)
+
+
+_image_opener = urllib.request.build_opener(_SteamRedirects)
+
+
 def preview(url: str) -> str:
     """The preview picture as data URL ("" without one). Raises WorkshopError or OSError."""
     if not url:
@@ -67,8 +79,8 @@ def preview(url: str) -> str:
     if not _allowed_image_url(url):
         raise WorkshopError("Vorschaubild liegt nicht bei Steam")
     request = urllib.request.Request(url, headers={"User-Agent": "casting-app"})
-    with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as answer:
-        if not _allowed_image_url(answer.geturl()):          # a redirect must stay on Steam as well
+    with _image_opener.open(request, timeout=TIMEOUT_SECONDS) as answer:
+        if not _allowed_image_url(answer.geturl()):          # (checked per redirect already – stays as a backstop)
             raise WorkshopError("Vorschaubild liegt nicht bei Steam")
         kind = IMAGE_TYPES.get((answer.headers.get_content_type() or "").lower())
         if not kind:

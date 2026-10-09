@@ -10,7 +10,7 @@ import json
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QFile, QIODevice, QStandardPaths, QUrl
+from PySide6.QtCore import QFile, QIODevice, QStandardPaths, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineCore import (QWebEngineDownloadRequest, QWebEnginePage, QWebEnginePermission,
@@ -28,6 +28,7 @@ ALLOWED_PERMISSIONS = {QWebEnginePermission.PermissionType.MediaAudioCapture,
                        QWebEnginePermission.PermissionType.MediaVideoCapture,
                        QWebEnginePermission.PermissionType.MediaAudioVideoCapture}
 BRIDGE_WORLD = QWebEngineScript.ScriptWorldId.ApplicationWorld
+SUBFRAME_SCHEMES = {"http", "https", "about", "data", "blob"}      # what embedded frames may load
 
 
 def is_own_page(url: QUrl) -> bool:
@@ -46,6 +47,10 @@ def create_profile(storage_dir: Path, parent=None) -> QWebEngineProfile:
     settings.setAttribute(QWebEngineSettings.WebAttribute.PlaybackRequiresUserGesture, False)
     settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanAccessClipboard, True)
     settings.setAttribute(QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, True)
+    # no pop-ups without a click (an embedded page could otherwise open windows in a loop) and no hand-over of
+    # unknown link types (steam:, search-ms:, smb: …) to programs of the system
+    settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanOpenWindows, False)
+    settings.setUnknownUrlSchemePolicy(QWebEngineSettings.UnknownUrlSchemePolicy.DisallowUnknownUrlSchemes)
     return profile
 
 
@@ -132,15 +137,34 @@ class AppWebPage(QWebEnginePage):
     def acceptNavigationRequest(self, url: QUrl, navigation_type, is_main_frame: bool) -> bool:
         """The window shows only the app's own pages; internet links go to the default browser.
 
-        about:/data:/blob: in the main frame only while one of our pages is shown – an embedded foreign page
-        must not replace the window with a page of its own."""
-        if not is_main_frame or is_own_page(url):
+        Embedded frames (DACH, clips, camera links) may load web pages only – other link types (steam:, smb: …)
+        would otherwise be handed to programs of the system. In the main frame about:blank and blobs made by
+        our own pages only: an embedded foreign page must not replace the window with a page of its own."""
+        if is_own_page(url):
             return True
-        if url.scheme() in ("about", "data", "blob"):
-            return url.scheme() == "about" or is_own_page(self.url())
+        if not is_main_frame:
+            return url.scheme() in SUBFRAME_SCHEMES
+        if url.scheme() == "about":
+            return True
+        if url.scheme() == "blob":
+            return is_own_page(QUrl(url.path())) and is_own_page(self.url())
         if url.scheme() in ("http", "https"):
             open_link(url)
         return False
+
+    # JavaScript dialogs (alert/confirm/prompt) only from our own pages – an embedded page could otherwise block
+    # the window with dialogs in a loop or ask for a key in a fake prompt
+    def javaScriptAlert(self, origin: QUrl, text: str) -> None:
+        if is_own_page(origin):
+            super().javaScriptAlert(origin, text)
+
+    def javaScriptConfirm(self, origin: QUrl, text: str) -> bool:
+        return is_own_page(origin) and super().javaScriptConfirm(origin, text)
+
+    def javaScriptPrompt(self, origin: QUrl, text: str, default: str):
+        if not is_own_page(origin):
+            return False, ""
+        return super().javaScriptPrompt(origin, text, default)
 
     def createWindow(self, window_type):
         """Links opened in a new window: hand them to the default browser (at most one every 2 s – an embedded
@@ -152,6 +176,11 @@ class _ExternalLinkPage(QWebEnginePage):
     """Throw-away page that passes its first navigation to the default browser."""
 
     last_opened = 0.0
+
+    def __init__(self, profile: QWebEngineProfile, parent=None):
+        """Removes itself after a few seconds if no navigation comes (window.open() without an address)."""
+        super().__init__(profile, parent)
+        QTimer.singleShot(5000, self, self.deleteLater)
 
     def acceptNavigationRequest(self, url: QUrl, navigation_type, is_main_frame: bool) -> bool:
         now = time.monotonic()

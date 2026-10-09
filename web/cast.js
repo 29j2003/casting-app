@@ -67,7 +67,7 @@
       if (!loadedFonts[name]) {
         loadedFonts[name] = true;
         const f = new FontFace(name, K.cssUrl(T.fontFile), { weight: "100 900" });
-        f.load().then(ff => { document.fonts.add(ff); $$(".ticker").forEach(t => { t._cacheKey = null; }); ticker(); fit(); }).catch(() => {});
+        f.load().then(ff => { document.fonts.add(ff); $$(".ticker").forEach(t => { t._cacheKey = null; }); ticker(); fit(true); }).catch(() => {});
       }
     } else if (T.font) {
       r.setProperty("--font", `"${String(T.font).replace(/"/g, "")}", ${stack}`);
@@ -134,14 +134,20 @@
   /* ---------- Texte ---------- */
   function texts() {
     $$("[data-t]").forEach(e => { const v = pull(e.dataset.t); if (e.textContent !== String(v ?? "")) e.textContent = v ?? ""; });
-    fit();
   }
   // Text an die Box anpassen: erst verkleinern; müsste ein Teamname stärker als auf 70 % schrumpfen
   // und gibt es ein Kürzel, steht stattdessen das Kürzel da (in voller Größe, wenn es passt).
   const FIT_SHORT_BELOW = 0.7;
-  function fit() {
+  // Gemessen wird nur bei neuem Text, neuer Schrift oder anderer Kastenbreite (jeder Schritt erzwingt ein Layout) –
+  // force: nach dem Laden einer Schrift (gleiche Texte, andere Breite)
+  function fit(force) {
+    const th = themeData() || {}, font = [Z.theme, th.font, th.fontFile, th.bold].join("|");   // Schrift ändert die Breite
     $$("[data-matching]").forEach(e => {
       const names = [...e.querySelectorAll("[data-team-name]"), ...(e.matches("[data-team-name]") ? [e] : [])];
+      const key = (names.length ? names.map(n => (n.dataset.full || "") + "\u0001" + (n.dataset.short || "")).join("|") : e.textContent)
+        + "|" + font + "|" + (e.parentElement ? e.parentElement.clientWidth : 0);
+      if (!force && e._fitKey === key) return;
+      e._fitKey = key;
       names.forEach(n => { if (n.dataset.full !== undefined && n.textContent !== n.dataset.full) n.textContent = n.dataset.full; });
       const shrink = () => {
         e.style.fontSize = "";
@@ -209,12 +215,13 @@
         if (e.dataset.full === full && e.dataset.short === short) return;
         e.dataset.full = full; e.dataset.short = short; e.textContent = full;
       });
-      $$(`[data-team-score="${k}"]`).forEach(e => { e.textContent = t.score ?? 0; });
+      $$(`[data-team-score="${k}"]`).forEach(e => { const v = String(t.score ?? 0); if (e.textContent !== v) e.textContent = v; });
     });
     $$(".vs").forEach(e => {
       const res = Z.teams.result;
       e.classList.toggle("result", !!res);
-      e.innerHTML = res ? `${esc(Z.teams.a.score ?? 0)}<span class="dp">:</span>${esc(Z.teams.b.score ?? 0)}` : "vs";
+      const h = res ? `${esc(Z.teams.a.score ?? 0)}<span class="dp">:</span>${esc(Z.teams.b.score ?? 0)}` : "vs";
+      if (e._html !== h) { e._html = h; e.innerHTML = h; }                  // bis zu 5×/s bei CS2-Daten – nur bei Änderung
     });
   }
 
@@ -276,7 +283,8 @@
   }
   function series() {
     const [sa, sb] = seriesScore();
-    $$(".series-total").forEach(e => { e.innerHTML = `${sa}<span class="dp">:</span>${sb}`; });
+    const total = `${sa}<span class="dp">:</span>${sb}`;
+    $$(".series-total").forEach(e => { if (e._html !== total) { e._html = total; e.innerHTML = total; } });
     const maps = playedMaps();
     const keyName = JSON.stringify([maps, Z.mapPool, Z.texts.map, Z.texts.running, Z.texts.pending]);
     $$(".series-cards").forEach(k => { if (newNeeded(k, keyName)) seriesDraw(k, null, maps); });
@@ -419,7 +427,7 @@
     else if (B.format === "gsl") h = `<div class="bracket-groups">${B.groups.filter((g, i) => T.showGroup === undefined || T.showGroup === "" || i === +T.showGroup).map(g => `<div class="bracket-group"><div class="bracket-title">${esc(g.name)}</div>${g.matches.map(m => `<div class="bracket-gm"><span>${esc(m.title)}</span>${card(m, false)}</div>`).join("")}</div>`).join("")}</div>`;
     else if (B.format === "swiss") h = `<div class="bracket-row">${columns(B.rounds, 1)}</div>` + (B.table.length ? `<div class="bracket-swiss">${B.table.map(b => `<div class="bracket-sw ${b.status}">${row(b.id, `${b.wins}–${b.losses}`, b.status === "proceed", false)}</div>`).join("")}</div>` : "");
     else {
-      h = `<div class="bracket-row">${columns(B.rounds, 1)}${B.finale && B.bottom.length === 0 ? "" : ""}</div>`;
+      h = `<div class="bracket-row">${columns(B.rounds, 1)}</div>`;
       if (B.bottom.length) h = `<div class="bracket-de"><div class="bracket-row">${columns(B.rounds, 1)}</div><div class="bracket-row bottom">${columns(B.bottom, 1)}</div></div>` +
         (B.finale ? `<div class="bracket-round bracket-gf"><div class="bracket-title">GRAND FINAL</div><div class="bracket-games">${card(B.finale, !show(B.rounds.length + 1))}</div></div>` : "");
     }
@@ -448,8 +456,7 @@
 
   /* ---------- CS2-Livedaten ---------- */
   let liveData = null;
-  const MAPNAME = n => { const raw = String(n || "").replace(/^(de|cs|ar)_/, ""); const p = (Z.mapPool || []).find(m => normMapName(m.name) === normMapName(raw)); return p ? p.name : raw.charAt(0).toUpperCase() + raw.slice(1); };
-  const normMapName = s => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "").replace(/^dust2$/, "dustii");
+  const MAPNAME = n => { const raw = String(n || "").replace(/^(de|cs|ar)_/, ""); const p = (Z.mapPool || []).find(m => normMap(m.name) === normMap(raw)); return p ? p.name : raw.charAt(0).toUpperCase() + raw.slice(1); };
   const sideFrom = team => !liveData ? "" : team === "a" ? liveData.sideA : (liveData.sideA === "CT" ? "T" : "CT");
   const strength = p => p.adr + 2 * (p.k - p.d);                  // „stärkster Spieler“: Schaden pro Runde + 2 × (Kills − Tode)
   const playersFrom = team => !liveData ? [] : liveData.players.filter(p => p.side === sideFrom(team)).sort((x, y) => y.k - x.k || y.adr - x.adr).slice(0, 5);
@@ -469,18 +476,19 @@
   }
   function liveDraw() {
     const da = !!liveData;
+    let changed = false;                                        // CS2 schickt bis zu 5×/s – nur Neues weiterreichen
     // ohne CS2-Daten steht der Match-Titel im Kopf (nie ein leeres Feld)
     $$(".live-info").forEach(e => { const t = da ? `${MAPNAME(liveData.map)} · ${Z.texts.round || K.word(Z, "round")} ${liveData.round + 1}` : (Z.texts.title || ""); if (e.textContent !== t) e.textContent = t; });
     $$(".live-table").forEach(e => {
       const team = e.dataset.team, h = da ? tableHtml(team, e.classList.contains("compact")) : wait();
-      if (newNeeded(e, h)) e.innerHTML = h;
+      if (newNeeded(e, h)) { e.innerHTML = h; changed = true; }
     });
     $$(".live-team").forEach(e => {
       const team = e.dataset.team;
       const h = !da ? wait() : playersFrom(team).map(p => `<div class="box stat-card"><div class="box-head">${esc(p.name)}</div><div class="box-field">
           <div class="stat-large"><b>${p.k}</b><span>/</span><b>${p.d}</b><span>/</span><b>${p.a}</b></div><div class="stat-small">K / D / A</div>
           <div class="stat-values"><div><b>${p.adr}</b><span>ADR</span></div><div><b>${p.hs}%</b><span>HS</span></div><div><b>${p.mvps}</b><span>MVP</span></div></div></div></div>`).join("");
-      if (newNeeded(e, h)) e.innerHTML = h;
+      if (newNeeded(e, h)) { e.innerHTML = h; changed = true; }
     });
     $$(".live-h2h").forEach(e => {
       const [pa, pb] = da ? h2hPair() : [];
@@ -495,9 +503,9 @@
              <div class="box"><div class="box-head"><span data-team-name="b"></span></div><div class="box-field">${esc(pb.name)}</div></div></div>
              <div class="h2h-values">${row("KILLS", pa.k, pb.k)}${row("DEATHS", pa.d, pb.d, false)}${row("ASSISTS", pa.a, pb.a)}${row("ADR", pa.adr, pb.adr)}${row("HS %", pa.hs, pb.hs)}${row("MVPs", pa.mvps, pb.mvps)}</div>`;
       }
-      if (newNeeded(e, h)) e.innerHTML = h;
+      if (newNeeded(e, h)) { e.innerHTML = h; changed = true; }
     });
-    teams();                                                    // Teamnamen/Logos in neu gezeichneten Teilen
+    if (changed) teams();                                       // Teamnamen/Logos in neu gezeichneten Teilen
     if ((Z.graphics || []).some(x => x.on && (x.type === "scoreboard" || x.type === "players"))) graphics();
   }
 
@@ -578,6 +586,17 @@
   }
 
   /* ---------- Spieler ---------- */
+  /* Fünf Spielerkarten eines Teams (Aufstellung, Teams-Vorstellung); leere Plätze als „–“ */
+  function playerCards(k) {
+    const list = ((Z.players || {})[k] || []).slice(0, 5);
+    while (list.length < 5) list.push(null);
+    return list.map(p => {
+      if (!p || !p.name) return `<div class="box players-card empty"><div class="players-image"></div><div class="box-head">–</div><div class="box-field"></div></div>`;
+      const image = p.image ? `<img${p.imageMode === "whole" ? ' class="whole"' : ""} src="${esc(p.image)}" alt="">` : `<div class="initial">${esc(p.name[0].toUpperCase())}</div>`;
+      const level = p.level ? `<div class="players-level">${esc(p.level)}</div>` : "";
+      return `<div class="box players-card"><div class="players-image">${image}${level}</div><div class="box-head">${esc(p.name)}</div><div class="box-field">${esc(p.real || "")}</div></div>`;
+    }).join("");
+  }
   function players() {
     const boxes = $$(".lineup[data-team]");
     if (!boxes.length) return;
@@ -585,15 +604,8 @@
     boxes.forEach(box => {
       if (!newNeeded(box, keyName)) return;
       const k = box.dataset.team;
-      const list = ((Z.players || {})[k] || []).slice(0, 5);
-      while (list.length < 5) list.push(null);
       box.innerHTML = `<div class="box lineup-team"><div class="team-logo ${k}"></div><div class="box-field"><span data-team-name="${k}" data-matching></span></div></div>` +
-        list.map(p => {
-          if (!p || !p.name) return `<div class="box players-card empty"><div class="players-image"></div><div class="box-head">–</div><div class="box-field"></div></div>`;
-          const image = p.image ? `<img${p.imageMode === "whole" ? ' class="whole"' : ""} src="${esc(p.image)}" alt="">` : `<div class="initial">${esc(p.name[0].toUpperCase())}</div>`;
-          const level = p.level ? `<div class="players-level">${esc(p.level)}</div>` : "";
-          return `<div class="box players-card"><div class="players-image">${image}${level}</div><div class="box-head">${esc(p.name)}</div><div class="box-field">${esc(p.real || "")}</div></div>`;
-        }).join("");
+        playerCards(k);
     });
   }
 
@@ -627,14 +639,7 @@
       b.querySelectorAll("[data-ti-word]").forEach(e => { e.innerHTML = W(e.dataset.tiWord); });
       b.querySelectorAll("[data-ti]").forEach(e => { const [k, f] = e.dataset.ti.split("."); e.innerHTML = f === "head" ? head(k) : value(k, f); });
       b.querySelectorAll("[data-ti-players]").forEach(box => {
-        const list = ((Z.players || {})[box.dataset.tiPlayers] || []).slice(0, 5);
-        while (list.length < 5) list.push(null);
-        box.innerHTML = list.map(p => {
-          if (!p || !p.name) return `<div class="box players-card empty"><div class="players-image"></div><div class="box-head">–</div><div class="box-field"></div></div>`;
-          const image = p.image ? `<img${p.imageMode === "whole" ? ' class="whole"' : ""} src="${esc(p.image)}" alt="">` : `<div class="initial">${esc(p.name[0].toUpperCase())}</div>`;
-          const level = p.level ? `<div class="players-level">${esc(p.level)}</div>` : "";
-          return `<div class="box players-card"><div class="players-image">${image}${level}</div><div class="box-head">${esc(p.name)}</div><div class="box-field">${esc(p.real || "")}</div></div>`;
-        }).join("");
+        box.innerHTML = playerCards(box.dataset.tiPlayers);
       });
       // Vergleich: nur die eingeschalteten Zeilen (I.rows, fehlt = an); „Direkter Vergleich“ nur mit Bilanz (I.h2h)
       const rows = I.rows || {}, h2h = I.h2h || {};
@@ -851,7 +856,7 @@
   setInterval(timer, 250);
 
   /* ---------- Diagnose (in der Steuerseite einschaltbar) ---------- */
-  let receivedFrom = "gespeicherter Stand", receivedUm = 0, diagnoseTimer = 0;
+  let receivedFrom = "gespeicherter Stand", receivedAt = 0, diagnoseTimer = 0;
   function diagnose() {
     if (EMBEDDED) return;
     let box = document.querySelector(".diagnose");
@@ -867,7 +872,7 @@
       "DIAGNOSE – " + (document.body.dataset.scene || location.pathname.split("/").pop()) + " · Version " + K.VERSION,
       "Datei:     " + (location.pathname.split("/").pop() || "?") + (location.protocol === "file:" ? " (lokale Datei)" : " (" + location.protocol.replace(":", "") + ")"),
       "Browser:   " + (navigator.userAgent.match(/(OBS|Chrome|Edg|Firefox|Safari)\/[\d.]+/g) || []).join(" "),
-      "Zustand:   " + receivedFrom + (receivedUm ? " · " + new Date(receivedUm).toLocaleTimeString("de-DE") : "") + " · Stand " + (Z.revision ? new Date(Z.revision).toLocaleTimeString("de-DE") : "–"),
+      "Zustand:   " + receivedFrom + (receivedAt ? " · " + new Date(receivedAt).toLocaleTimeString("de-DE") : "") + " · Stand " + (Z.revision ? new Date(Z.revision).toLocaleTimeString("de-DE") : "–"),
       "Bilder:    " + Object.keys(K.Images.mem).length + " gemerkt · Zustand " + Math.round(JSON.stringify(rawState).length / 1024) + " KB",
       "Videos:    " + ((H.videos || []).length || "keine eingetragen") + (H.transparent ? " (Hintergrund durchsichtig!)" : ""),
       "Formate:   H.264 " + (t.canPlayType('video/mp4; codecs="avc1.640028"') || "nein") + " · H.265 " + (t.canPlayType('video/mp4; codecs="hvc1.1.6.L120.90"') || "nein") + " · VP9 " + (t.canPlayType('video/webm; codecs="vp9"') || "nein")
@@ -1183,6 +1188,7 @@
     (function retrieve() {
       // nur wenn es Musik-Boxen gibt (bzw. in overlay.html jederzeit welche kommen können)
       if (!$$(".music").length && !document.querySelector(".stage")) return setTimeout(retrieve, 3000);
+      if ((Z.music || {}).displayed === false) return setTimeout(retrieve, 3000);   // Musik-Anzeige aus: Tuna nicht fragen
       const adr = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(Z.music.address || "") ? Z.music.address : "http://localhost:1608/";
       fetch(adr, { cache: "no-store" })
         .then(r => r.json()).then(d => { failures = 0; musicShow(d); }).catch(() => { failures++; musicShow(null); })
@@ -1222,7 +1228,7 @@
   function adopt(z, originPage) {
     if (!z || (z.revision || 0) < (Z.revision || 0)) return;
     imagesCleanup(z);
-    receivedFrom = originPage || "Steuerseite"; receivedUm = Date.now();
+    receivedFrom = originPage || "Steuerseite"; receivedAt = Date.now();
     rawState = K.merge(K.clone(K.DEFAULT), z);
     Z = K.resolve(rawState, K.Images.mem);
     K.save(rawState);
@@ -1306,7 +1312,7 @@
     if (window.parent === window || ev.source !== window.parent) return;   // nur die Vorschau der Steuerseite
     const d = ev.data;
     if (d && d.cast === "show") { document.body.classList.remove("waiting"); return; }
-    if (d && d.cast === "state" && d.z) { Z = rawState = K.merge(K.clone(K.DEFAULT), d.z); receivedFrom = "Vorschau der Steuerseite"; receivedUm = Date.now(); draw(); }
+    if (d && d.cast === "state" && d.z) { Z = rawState = K.merge(K.clone(K.DEFAULT), d.z); receivedFrom = "Vorschau der Steuerseite"; receivedAt = Date.now(); draw(); }
     if (d && d.cast === "live") { liveData = d.live; liveDraw(); }
     if (d && d.cast === "bg-sync" && +d.cursor >= 0) bgSeek(bgActiveVideo(), (+d.cursor + Date.now() - (+d.at || Date.now())) / 1000, .35);
     if (d && d.cast === "studio" && STUDIO && studioScene(d.scene)) { STUDIO = d.scene; draw(); }
@@ -1318,5 +1324,5 @@
   music();
   draw();
   K.Images.load().then(newDraw);             // gemerkte Bilder aus der Datenbank holen
-  if (document.fonts) document.fonts.ready.then(() => { $$(".ticker").forEach(t => { t._cacheKey = null; }); ticker(); fit(); });
+  if (document.fonts) document.fonts.ready.then(() => { $$(".ticker").forEach(t => { t._cacheKey = null; }); ticker(); fit(true); });
 })();

@@ -205,6 +205,22 @@ def test_secrets_stay_in_keyring_only(qtbot, desktop):
             assert faceit_key.encode() not in content and dach_key.encode() not in content, f"Geheimnis in {file}"
 
 
+def test_embedded_pages_cannot_hand_links_to_the_system_or_take_over_the_window(qtbot, desktop):
+    """Frames (DACH, clips, camera links) load web pages only; the window itself shows only our pages and blobs made
+    by them; dialogs of foreign pages are dropped."""
+    from PySide6.QtCore import QUrl
+    from PySide6.QtWebEngineCore import QWebEnginePage
+    page = wait_for_page(qtbot, desktop)
+    link = QWebEnginePage.NavigationType.NavigationTypeLinkClicked
+    assert page.acceptNavigationRequest(QUrl("https://dachcs.de/x"), link, False) is True
+    for address in ("steam://run/730", "search-ms:query=x&crumb=location:\\\\evil\\share", "smb://evil/share", "file:///etc/passwd"):
+        assert page.acceptNavigationRequest(QUrl(address), link, False) is False, address
+    assert page.acceptNavigationRequest(QUrl("blob:https://evil.example/abc"), link, True) is False
+    assert page.acceptNavigationRequest(QUrl("blob:http://localhost:8787/abc"), link, True) is True
+    assert page.javaScriptConfirm(QUrl("https://evil.example"), "Schlüssel?") is False
+    assert page.javaScriptPrompt(QUrl("https://evil.example"), "Schlüssel?", "") == (False, "")
+
+
 def test_quit_from_dialog_stops_everything(qtbot, desktop):
     page = wait_for_page(qtbot, desktop)
     desktop.window.close()
@@ -277,3 +293,4 @@ class _https_test_page:
 
     def __exit__(self, *errors):
         self._server.shutdown()
+

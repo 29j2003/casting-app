@@ -12,7 +12,7 @@ const MONITOR = [["OBS_MONITORING_TYPE_NONE", "Abhören aus"], ["OBS_MONITORING_
 const MONITOR_HINT = { OBS_MONITORING_TYPE_NONE: "nur im Stream/der Aufnahme, nicht auf deinem Kopfhörer",
   OBS_MONITORING_TYPE_MONITOR_ONLY: "nur auf deinem Kopfhörer, nicht im Stream",
   OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT: "im Stream und auf deinem Kopfhörer" };
-let audioRevision = {}, audioOffen2 = new Set(), audioFetchRunning = false;
+let audioRevision = {}, audioMoreOpen = new Set(), audioFetchRunning = false;
 // alle Quellen mit Ton in OBS (wie der OBS-Mixer) – die der App zuerst; die Liste wird alle 15 s erneuert
 let audioInputs = [], audioInputsAt = 0;
 async function audioInputsLoad() {
@@ -24,8 +24,13 @@ async function audioInputsLoad() {
   audioInputs = own.concat(withAudio.filter(n => !own.includes(n))); audioInputsAt = Date.now();
   return audioInputs;
 }
+// Ton-Bereich zu sehen? (zugeklappt, anderer Reiter oder Fenster im Hintergrund: OBS nicht fragen – spart ~24 Anfragen/s)
+function audioVisible() { const b = $("audioList"); return !document.hidden && !!b && !!b.offsetParent; }
+// Pegel (InputVolumeMeters, ~20 Meldungen/s je Quelle) nur abonnieren, solange der Ton-Bereich zu sehen ist
+function audioMeterSubscribe() { if (channel.obs && channel.obs.subscribe) channel.obs.subscribe(1 | 4 | 16 | (audioVisible() ? 65536 : 0)); }
 async function audioFetch() {
-  if (!channel.obs.isOpen || audioFetchRunning) return;
+  audioMeterSubscribe();
+  if (!channel.obs.isOpen || audioFetchRunning || !audioVisible()) return;
   audioFetchRunning = true;
   try {
     const inputs = await audioInputsLoad();
@@ -39,6 +44,9 @@ async function audioFetch() {
   } catch (err) {} finally { audioFetchRunning = false; }
 }
 setInterval(audioFetch, 2000);                                    // auch Änderungen direkt in OBS erscheinen hier
+// Bereich aufgeklappt / Reiter gewechselt / Fenster wieder vorn: gleich nachfragen statt bis zu 2 s zu warten
+document.querySelector('details[data-area="audio"]')?.addEventListener("toggle", () => setTimeout(audioFetch, 0));
+document.addEventListener("visibilitychange", () => setTimeout(audioFetch, 0));
 const audioSet = (name, req, data) => channel.obs.question(req, Object.assign({ inputName: name }, data)).catch(err => { $("audioList").insertAdjacentHTML("afterbegin", `<p class="small" style="color:var(--red)">OBS: ${esc(err.message || String(err))}</p>`); });
 function audioDraw() {
   const box = $("audioList"); if (!box) return;
@@ -68,12 +76,12 @@ function audioDraw() {
     z.innerHTML = `<div class="audio-head"><div class="tname"><b title="${esc(name)}">${esc(title)}</b>${title !== name ? `<span>${esc(name)}</span>` : ""}</div>
         ${sceneOwn ? `<span class="audio-scene-own" title="Diese Lautstärke gilt nur in der Szene „${esc(audioSceneTitle(audioScene()))}“">Szene</span>` : ""}
         ${T.monitor && T.monitor !== "OBS_MONITORING_TYPE_NONE" ? `<span class="audio-listen" title="${esc((MONITOR.find(([v]) => v === T.monitor) || [, ""])[1])}: ${esc(MONITOR_HINT[T.monitor] || "")}">${icon("headphones")}</span>` : ""}
-        <b class="audio-vol${T.vol > 100 ? " loud" : ""}">${T.vol} %</b>
+        <b class="audio-vol${T.vol > 100 ? " loud" : ""}">${esc(T.vol)} %</b>
         <button class="audio-mute${T.mute ? " off" : ""}" aria-pressed="${T.mute}">${T.mute ? "STUMM" : "Stumm"}</button>
         <button class="gfx-more" aria-label="Mehr Einstellungen">${icon("more")}</button></div>
       <div class="audio-meter" data-name="${esc(name)}"><i></i><i class="pk"></i></div>
-      <div class="audio-slider"><input type="range" min="0" max="300" step="5" value="${Math.min(300, T.vol)}" aria-label="Lautstärke ${esc(title)}"></div>
-      <div class="audio-more"${audioOffen2.has(name) ? "" : " hidden"}>
+      <div class="audio-slider"><input type="range" min="0" max="300" step="5" value="${Math.min(300, +T.vol || 0)}" aria-label="Lautstärke ${esc(title)}"></div>
+      <div class="audio-more"${audioMoreOpen.has(name) ? "" : " hidden"}>
         <label>Abhören<select class="audio-monitor-choice" aria-label="Abhören ${esc(title)}">${MONITOR.map(([v, n]) => `<option value="${v}"${T.monitor === v ? " selected" : ""}>${n}</option>`).join("")}</select></label>
         <label>Verzögerung (ms)<input type="number" min="-950" max="20000" step="10" value="${T.delay}"></label>
         <span class="small">${esc(MONITOR_HINT[T.monitor] || "")}</span>
@@ -83,7 +91,7 @@ function audioDraw() {
     slider.oninput = () => { sceneVolumeRemember(name, T.vol, +slider.value); T.vol = +slider.value; display.textContent = T.vol + " %"; display.classList.toggle("loud", T.vol > 100);
       clearTimeout(timerHandle); timerHandle = setTimeout(() => audioSet(name, "SetInputVolume", { inputVolumeMul: T.vol / 100 }), 40); };       // live, wie der OBS-Regler
     z.querySelector(".audio-mute").onclick = () => { T.mute = !T.mute; audioSet(name, "SetInputMute", { inputMuted: T.mute }); audioDraw(); };
-    z.querySelector(".gfx-more").onclick = () => { audioOffen2.has(name) ? audioOffen2.delete(name) : audioOffen2.add(name); audioDraw(); };
+    z.querySelector(".gfx-more").onclick = () => { audioMoreOpen.has(name) ? audioMoreOpen.delete(name) : audioMoreOpen.add(name); audioDraw(); };
     z.querySelector("input[type=number]").onchange = ev => { T.delay = Math.max(-950, Math.min(20000, +ev.target.value || 0)); audioSet(name, "SetInputAudioSyncOffset", { inputAudioSyncOffset: T.delay }); };
     z.querySelector(".audio-monitor-choice").onchange = ev => { T.monitor = ev.target.value; audioSet(name, "SetInputAudioMonitorType", { monitorType: T.monitor }); audioDraw(); };
     box.appendChild(z);
@@ -141,8 +149,8 @@ function sceneVolumesApply(k) {
   if (!audioPerScene() || !channel.obs.isOpen) return;
   const S = (Z.audio || {}).sceneVolumes || {}, own = S[k] || {}, standard = S["*"] || {};
   for (const name of new Set([...Object.keys(standard), ...Object.keys(own)])) {
-    const vol = name in own ? own[name] : standard[name], T = audioRevision[name];
-    if (vol === undefined || (T && T.vol === vol)) continue;
+    const vol = Math.round(+(name in own ? own[name] : standard[name])), T = audioRevision[name];   // nur Zahlen (Daten aus einer Datei)
+    if (!Number.isFinite(vol) || vol < 0 || vol > 2000 || (T && T.vol === vol)) continue;
     if (T) T.vol = vol;
     audioSet(name, "SetInputVolume", { inputVolumeMul: vol / 100 });
   }

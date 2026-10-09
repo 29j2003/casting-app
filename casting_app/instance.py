@@ -55,7 +55,10 @@ def genuine_server(access_key: str) -> bool:
 def ask_running_app_to_quit(wait_seconds: float = 10, access_key: str = "") -> bool:
     """Ask the running app to quit and wait until its port is free. True if it is gone.
 
-    Versions 2.12 and newer only quit with the access key; older ones ignore it."""
+    Versions 2.12 and newer only quit with the access key; older ones ignore it. The key is only sent to a
+    server that first proves it knows it (genuine_server) – a foreign program squatting on our port gets nothing."""
+    if access_key and not genuine_server(access_key):
+        access_key = ""
     headers = dict(HOST_HEADER, **({ACCESS_HEADER: access_key} if access_key else {}))
     request = urllib.request.Request(QUIT_URL, data=b"", method="POST", headers=headers)
     try:

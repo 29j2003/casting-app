@@ -1,6 +1,6 @@
 """Minimal Chrome DevTools Protocol client for tests that drive the app window.
 
-The desktop app exposes DevTools when started with QTWEBENGINE_REMOTE_DEBUGGING=9222.
+The desktop app exposes DevTools on port 9222 when started with --debug.
 (Playwright cannot attach to Qt WebEngine, so the tests talk CDP directly.)
 """
 

@@ -15,6 +15,7 @@ import subprocess
 import sys
 
 IS_FROZEN_LINUX = sys.platform.startswith("linux") and bool(getattr(sys, "frozen", False))
+APP_ONLY = {"APPIMAGE", "APPDIR", "ARGV0", "OWD", "CASTING_APP_VAULT_PASSWORD"}
 
 
 def system_environment(environment: dict[str, str] | None = None, bundle: str | None = None) -> dict[str, str]:
@@ -29,6 +30,9 @@ def system_environment(environment: dict[str, str] | None = None, bundle: str | 
         env["LD_LIBRARY_PATH"] = original
     else:
         env.pop("LD_LIBRARY_PATH", None)
+    for name in list(env):                       # the app's own settings (browser engine, AppImage) stay with it
+        if name.startswith("QTWEBENGINE_") or name in APP_ONLY:
+            del env[name]
     if bundle:
         for name, value in list(env.items()):
             if bundle in value:

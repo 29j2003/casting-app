@@ -58,7 +58,7 @@ def _number(value) -> int:
     """int of a GSI value; anything missing or invalid counts as 0."""
     try:
         return int(float(value))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):      # OverflowError: "1e999", "inf"
         return 0
 
 
@@ -130,7 +130,7 @@ class GameStateReceiver:
         """Handle one post from CS2. Returns (HTTP status, answer)."""
         try:
             state = json.loads(body)
-        except ValueError:
+        except (ValueError, RecursionError):
             return 400, {"error": "kein JSON"}
         if not isinstance(state, dict) or not isinstance(state.get("auth") or {}, dict):
             return 400, {"error": "kein JSON"}
@@ -144,7 +144,7 @@ class GameStateReceiver:
         state.pop("auth", None)                        # the token is not kept or shown anywhere
         try:
             self._process(state, source)
-        except (AttributeError, TypeError, ValueError):       # not what CS2 sends (e.g. "allplayers" as a list)
+        except (AttributeError, TypeError, ValueError, OverflowError):       # not what CS2 sends (e.g. "allplayers" as a list)
             return 400, {"error": "unerwartete Daten"}
         self.last_raw, self.last_time = json.dumps(state, ensure_ascii=False), time.time()
         return 200, {"ok": True}

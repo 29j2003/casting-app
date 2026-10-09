@@ -156,7 +156,10 @@ $("tourTeamsClear").onclick = () => tourClear(true);
 $("tourGamesClear").onclick = () => tourClear(false);
 // FACEIT: Teams eines Turniers, Team-Statistiken, Ergebnisse
 const tournamentId = s => (String(s || "").match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i) || [])[0] || "";
-async function faceitJson(path) { const r = await fetch("/api/faceit/" + path); if (!r.ok) throw new Error(r.status === 401 ? "kein FACEIT-Schlüssel gespeichert (⚙ App-Einstellungen → Verbindungen & Zugänge)" : "FACEIT antwortet mit " + r.status); return r.json(); }
+async function faceitJson(path) {
+  // IDs kommen auch aus geladenen Dateien: nur Pfade aus Buchstaben, Zahlen, - und / (kein „..“ – sonst landet die Anfrage woanders in /api)
+  if (!/^[A-Za-z0-9/_-]+(\?[A-Za-z0-9=&_-]*)?$/.test(path)) throw new Error("ungültige FACEIT-ID");
+  const r = await fetch("/api/faceit/" + path); if (!r.ok) throw new Error(r.status === 401 ? "kein FACEIT-Schlüssel gespeichert (⚙ App-Einstellungen → Verbindungen & Zugänge)" : "FACEIT antwortet mit " + r.status); return r.json(); }
 // Turnier komplett übernehmen: Teams (mit Logos und Spielern), Aufbau (Gruppen-Tabelle oder Baum), Ergebnisse, Team-Statistiken
 async function faceitGames(id) {
   const games = [];

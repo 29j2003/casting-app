@@ -87,8 +87,12 @@ def main(arguments: list[str] | None = None) -> int:
         sys.stdout.reconfigure(errors="replace")
     options = parse_arguments(arguments)
     password_vault.take_environment_password()   # out of the environment before any child process starts
-    if options.debug:                            # Chrome/Edge → http://localhost:9222 (also used by tests/live)
-        os.environ.setdefault("QTWEBENGINE_REMOTE_DEBUGGING", "9222")
+    # remote debugging (Chrome/Edge → http://localhost:9222, used by tests/live) only with --debug: any program on
+    # this PC could attach and read the access key – never because of a variable inherited from elsewhere
+    if options.debug:
+        os.environ["QTWEBENGINE_REMOTE_DEBUGGING"] = "127.0.0.1:9222"
+    else:
+        os.environ.pop("QTWEBENGINE_REMOTE_DEBUGGING", None)
     if options.no_window:
         return run_server_only()
     from .desktop.app import run_desktop                 # Qt is only loaded for the desktop app

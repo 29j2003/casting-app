@@ -339,7 +339,7 @@ function themeVideoToggle(name) {
    „Alle“ oder einzeln abspielen – die App wechselt in die Szene „Werbung“, die Videos laufen mit Ton nacheinander.
    Danach bleibt das letzte Bild stehen; nach Z.ads.back Sekunden geht es zurück in die Szene, aus der gestartet
    wurde (0 = bleibt). Fortschritt und Ende meldet die Vorschau (overlay.html im App-Fenster). */
-var adsLibrary = null, adsProgress = null, adsBack = null;   // var: Panel und Szenenwechsel (andere Teile) dürfen schon beim Laden fragen
+var adsLibrary = null, adsProgress = null, adsBack = null, adsEnded = null;   // var: Panel und Szenenwechsel (andere Teile) dürfen schon beim Laden fragen
 async function adsLibraryLoad() {
   try { adsLibrary = ((await (await fetch("/api/videos", { cache: "no-store" })).json()).videos || []).filter(v => !v.error).map(v => v.name); }
   catch (err) { adsLibrary = []; }
@@ -397,7 +397,8 @@ addEventListener("message", ev => {
   const d = ev.data, P = (Z.ads || {}).play;
   if (!d || !P || d.id !== P.id || !$("frame") || ev.source !== $("frame").contentWindow) return;
   if (d.cast === "ads-progress") { adsProgress = d; adsDraw(); }
-  if (d.cast === "ads-ended" && Z.broadcast.scene === "ads") {
+  if (d.cast === "ads-ended" && Z.broadcast.scene === "ads" && adsEnded !== P.id) {
+    adsEnded = P.id;                                  // je Durchgang nur einmal – „Bleiben“ hält auch bei einer zweiten Meldung
     const s = +((Z.ads || {}).back ?? 10);
     adsBack = s > 0 ? Date.now() + s * 1000 : null; adsDraw();
   }

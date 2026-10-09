@@ -419,11 +419,11 @@ $("faceitUrl").value = faceit.url || "";
 // Der Schlüssel liegt nur noch verschlüsselt in der App – hier bleibt nur der Matchroom-Link
 const faceitRemember = () => localStorage.setItem(FACEIT_KEY, JSON.stringify({ url: $("faceitUrl").value.trim() }));
 $("faceitUrl").oninput = faceitRemember;
-let faceitKeyDa = false;
+let faceitKeySaved = false;
 async function faceitKeyState() {
-  try { faceitKeyDa = !!(await (await fetch("/api/faceit-key", { cache: "no-store" })).json()).isSet; } catch (err) {}
-  $("faceitKey").placeholder = faceitKeyDa ? "✓ Schlüssel gespeichert – zum Ersetzen neuen einfügen" : "Schlüssel einfügen …";
-  $("faceitKeyDelete").disabled = !faceitKeyDa;
+  try { faceitKeySaved = !!(await (await fetch("/api/faceit-key", { cache: "no-store" })).json()).isSet; } catch (err) {}
+  $("faceitKey").placeholder = faceitKeySaved ? "✓ Schlüssel gespeichert – zum Ersetzen neuen einfügen" : "Schlüssel einfügen …";
+  $("faceitKeyDelete").disabled = !faceitKeySaved;
 }
 async function faceitKeySet(k) {
   const r = await fetch("/api/faceit-key", { method: "POST", body: JSON.stringify({ key: k }) });
@@ -478,7 +478,7 @@ async function faceitFetch(path, key) {
   return fetch((path.startsWith("/data/") ? "https://open.faceit.com" : "https://api.faceit.com") + path, opts);
 }
 async function faceitLoad(muted) {
-  const id = matchId($("faceitUrl").value), key = faceitKeyDa;
+  const id = matchId($("faceitUrl").value), key = faceitKeySaved;
   if (!id) return faceitStatus("Kein gültiger Matchroom-Link.", "var(--red)");
   if (!key) return faceitStatus("Bitte zuerst den FACEIT API-Key eintragen und speichern.", "var(--red)");
   if (!muted) faceitStatus("Lade Daten von FACEIT …");

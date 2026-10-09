@@ -44,6 +44,11 @@ function stepsDraw() {
   const done = off || finished.every(Boolean);
   $("firstSteps").hidden = done; $("stepsPill").hidden = done;
   setText($("stepsCount"), `${finished.filter(Boolean).length}/${STEPS.length}`);
+  // läuft bei jedem Senden: nur neu aufbauen, wenn sich ein Schritt geändert hat (fertig: gar nicht mehr)
+  const key = done ? "done" : finished.join();
+  if (box._key === key) return;
+  box._key = key;
+  if (done) { box.innerHTML = ""; return; }
   box.innerHTML = "";
   STEPS.forEach(([text, target], i) => {
     const z = document.createElement("div"); z.className = "step" + (finished[i] ? " done" : "");
@@ -132,7 +137,7 @@ function overlaysPill() {
   if (ov.some(c => c.obs && c.v !== K.VERSION)) obsOverlaysNewLoad(false);   // nur wenn das Overlay IN OBS alt ist
 }
 // Browserquellen der App in OBS neu laden (z. B. nach einem Update – sonst läuft dort der alte Code weiter)
-let newLoadedUm = 0;
+let newLoadedAt = 0;
 // Tray „Overlays in OBS neu laden“: über OBS, wenn verbunden (sonst lädt die App die Overlays über ihre Live-Verbindung neu)
 if (window.castApp) window.castApp.onReloadOverlays(async () => {
   if (!channel || !channel.obs || !channel.obs.isOpen) return false;
@@ -140,8 +145,8 @@ if (window.castApp) window.castApp.onReloadOverlays(async () => {
 });
 async function obsOverlaysNewLoad(fromHand) {
   if (!channel || !channel.obs || !channel.obs.isOpen) { if (fromHand) $("obsNewStatus").textContent = "Nicht mit OBS verbunden."; return; }
-  if (!fromHand && Date.now() - newLoadedUm < 600000) return;                 // automatisch höchstens alle 10 Minuten
-  newLoadedUm = Date.now();
+  if (!fromHand && Date.now() - newLoadedAt < 600000) return;                 // automatisch höchstens alle 10 Minuten
+  newLoadedAt = Date.now();
   try {
     const inputs = (await channel.obs.question("GetInputList", { inputKind: "browser_source" })).inputs || [];
     let n = 0;
@@ -336,7 +341,7 @@ function vsHead() {
 function tabs(target) {
   document.querySelectorAll(".group").forEach(g => { g.hidden = g.dataset.group !== target; });
   document.body.classList.toggle("pages-mode", target !== "live");
-  setTimeout(columnEmptyCheck, 0);
+  setTimeout(columnEmptyCheck, 0); setTimeout(audioFetch, 0); setTimeout(subStatusDraw, 0);              // Ton: Abfrage/Pegel folgen der Sichtbarkeit
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.target === target));
   try { localStorage.setItem("cast-tabs", target); } catch (e) {}
 }

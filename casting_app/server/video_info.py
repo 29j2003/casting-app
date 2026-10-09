@@ -14,9 +14,22 @@ CODEC_MARKERS = (
 )
 
 
+_cache: dict[tuple, dict] = {}       # (path, size, mtime) -> info; the setup page asks on every click
+
+
 def video_info(path: Path) -> dict:
-    """Info shown in the setup page."""
-    size = path.stat().st_size
+    """Info shown in the setup page – read once per file version (up to 8 MB and 5 searches per video)."""
+    stat = path.stat()
+    key = (str(path), stat.st_size, stat.st_mtime_ns)
+    if key not in _cache:
+        if len(_cache) > 500:
+            _cache.clear()
+        _cache[key] = _read(path, stat.st_size)
+    return dict(_cache[key])
+
+
+def _read(path: Path, size: int) -> dict:
+    """Codec, resolution and faststart from the first and last 4 MB of the file."""
     info = {"name": path.name, "size": size}
     with open(path, "rb") as f:
         head = f.read(min(size, SCAN_BYTES))

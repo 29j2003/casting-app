@@ -205,7 +205,7 @@ channel = K.channel({
   onStale() { send(); },                 // der Server hatte einen neueren Stand: gleich mit höherer Nummer erneut
   onClients(list) { clientsList = list; overlaysPill(); },
   onLive(d) { liveReceived(d); },
-  events: 1 | 4 | 16 | 65536,   // Allgemein, Szenen, Übergänge, Pegel (InputVolumeMeters, Bereich Ton)
+  events: 1 | 4 | 16,           // Allgemein, Szenen, Übergänge – Pegel (65536) nur bei offenem Ton-Bereich (11-audio.js)
   onEvent(type, d) {
     if (type === "InputVolumeMeters") audioMeters(d.inputs);
     else if (type === "CurrentProgramSceneChanged") { currentScene = d.sceneName; scenesDraw(); }

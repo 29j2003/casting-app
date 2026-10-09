@@ -4,6 +4,10 @@ Control and overlays for CS2 casts in OBS – one desktop app for Windows, Linux
 Scenes with transitions, graphics, themes (including DACH CS – official), FACEIT import, CS2 live data (GSI),
 brackets/tables and audio control via OBS. Interface and overlays in English or German.
 
+![The control page on air: preview, scene panel and scenes](docs/images/app-live.png)
+
+![Overlay in OBS: scene “Cast Duo”](docs/images/overlay-cast-duo.png)
+
 **Download:** [latest version](https://github.com/29j2003/casting-app/releases/latest) –
 Windows `…-Setup.exe`, Linux `…-linux-x86_64.AppImage`, macOS `…-mac-arm64.dmg` (Apple Silicon) or `…-mac-x64.dmg` (Intel).
 
@@ -114,7 +118,7 @@ workspace” and “Done”. Only then can areas be dragged, docked and resized 
 
 By default there are five groups, each with its own colour: **Before the match** (Intro, Cast Solo, Cast Duo, Cast trio,
 4 people, Line-ups, Team intro, Map-Veto) · **In the match** (Ingame) · **Stats & tournament** (Scoreboard, Team A/B,
-Head-to-Head, Bracket, Series) · **Pause** (Pause, Sponsors, Clips, Viewers + casters) · **After the match** (Interviews, End).
+Head-to-Head, Bracket, Series) · **Pause** (Pause, Sponsors, Ads, Clips, Viewers + casters) · **After the match** (Interviews, End).
 More scenes (e.g. *Trio – large host*, *Viewer cams*) are switched on under Setup → Scenes & OBS.
 
 **Scene changes:** whatever appears in both scenes (logo, ticker, match-up, sponsor, cameras …) **stays or glides to its
@@ -253,8 +257,9 @@ veto in the scene panel (see above).
 
 ### Casters & cameras
 
-Per camera frame: a VDO.Ninja link, a device (webcam/capture card, “Find devices”), a picture – or empty if you place
-your own source over it in OBS. The speaker indicator lights up the name tag when someone talks (threshold adjustable).
+Per camera frame: a VDO.Ninja link, a device (webcam/capture card, “Find devices”), a picture, a **video** from your
+videos folder (with sound and loop if you like – e.g. for the DACH own content break) – or empty if you place your own
+source over it in OBS. The speaker indicator lights up the name tag when someone talks (threshold adjustable).
 **More people** (names for Cast trio, 4 people and the viewer scenes; viewers with name only, as a small tag in the
 tile) and **More cameras** (VDO.Ninja, device, picture or empty).
 
@@ -308,6 +313,15 @@ Four sub-pages with status: **Setup** (name, format, points rule) · **Teams & F
 * Without a logo the sponsor name appears large in the box; long names get smaller and wrap onto two lines if needed.
 * Optionally a **countdown bar** under the logo – it shows when the next sponsor comes.
 
+### Ads
+
+The scene **Ads** plays your own ad videos full screen with sound. Under Setup → Sponsors → **Ads** tick the videos
+(order = order of ticking). In Live the scene panel field **Ads** (in Ads, Pause and Sponsors) has **“All (n)”** and one
+button per ad – a click switches to the Ads scene and plays them one after another. A small **“AD”/“WERBUNG”** label
+marks them (can be switched off). When they are done the last frame stays: switch yourself, or the app goes back to the
+scene you came from after the set seconds (default 10, 0 = stays); **“Stay”** keeps it, **“Back now”** goes at once,
+**“Stop”** ends the ads and goes back.
+
 ### Map pool
 
 Tiles with pictures – at the top the maps in the pool (drag = order in the veto), below the others. At the top it says
@@ -322,6 +336,9 @@ graphic “Map fact”.
   shuffled; transition cut, fade or through black, duration in seconds) or **Clips** (once through, with sound, then back
   to the background). Each scene plays the playlist that has the scene ticked; Ingame never. Tick videos from the library
   (videos folder), order with ↑ ↓.
+* **Videos per theme:** in the library, “Theme” on a video assigns it to the current theme. Once a theme has assigned
+  videos, only those are offered there (playlists, ads, source “Video”) – “Assign” shows all again to change it. A theme
+  without assigned videos offers all of them.
 * **In Live**, below the program preview, the corner **BACKGROUND**: another playlist for the running scene (until the
   next scene change), “Keep for this scene”, and **“Show clip”** / “Stop clip”.
 * **Who plays the videos?**
@@ -370,7 +387,9 @@ area (Casting → Browserquellen) under **⚙ → Connections & access**. The ke
   interaction single/duo, own content break, interview single/duo – measured from the real DACH pages). They sit
   **below** the page: the yellow line and name tag of DACH CS stay visible. An empty frame is black – never the
   background of a DACH page, not even during a change. “Adjust camera and content frames” shows the frames in the
-  preview and lets you move them pixel by pixel; “Default” restores the measured sizes.
+  preview and lets you move them pixel by pixel; “Default” restores the measured sizes. Per frame you also choose the
+  **source** that runs in it – e.g. the guest or a live feed (any camera source) in the big frame of the interaction
+  pages, like in the interviews, or a video for the own content break.
 * **Match at DACH CS:** the app checks by itself whether a match is active in the DACH CS user area (every 30 s while
   the style is on, “Check” checks right away; the line above the DACH scenes shows the result). Without an active match
   the pages only show “Du hast kein aktives Match eingetragen …”, so the scenes that need one (team lineup, map veto,

@@ -76,10 +76,22 @@ async function videoInfoDraw() {
   if (!d.videos.length) { box.innerHTML = `<p class="small">Noch keine Videos im Ordner.</p>`; return; }
   const list = typeof bgList === "function" ? bgList(bgChosen) || bgPlaylists()[0] : null;
   const chosen = new Set(list ? list.videos : []);
-  d.videos.forEach(v => {
+  // Videos je Theme: nur die des Themes zeigen – „Zuordnen“ zeigt alle mit Schalter je Video
+  const T = themeVideoNames(), assign = !!ui.videosAssign || !T, themeName = themeFull(Z.theme).name || Z.theme;
+  const head = document.createElement("div"); head.className = "line vid-theme"; head.style.alignItems = "center";
+  head.innerHTML = `<span class="small">${T ? `Theme „${esc(themeName)}“: ${T.length} Video(s) zur Auswahl (Playlisten, Werbung, Quelle „Video“)`
+    : `Theme „${esc(themeName)}“: alle Videos zur Auswahl – „Theme“ an einem Video beschränkt die Auswahl auf die markierten`}</span>
+    ${T ? `<button class="button">${ui.videosAssign ? "Fertig" : "Zuordnen"}</button>` : ""}`;
+  const assignButton = head.querySelector("button");
+  if (assignButton) assignButton.onclick = () => { ui.videosAssign = !ui.videosAssign; uiSave(); videoInfoDraw(); };
+  box.appendChild(head);
+  d.videos.filter(v => assign || T.includes(v.name)).forEach(v => {
     const path = "media/videos/" + v.name, [chars, text] = videoRating(v);
     const z = document.createElement("label"); z.className = "row vid-row";
-    z.innerHTML = `<input type="checkbox"><span><b>${esc(v.name)}</b><br><span class="small" style="color:${chars === "✗" ? "var(--red)" : chars === "⚠" ? "var(--warn)" : "var(--ok)"}">${chars} ${esc(text)}</span></span>`;
+    z.innerHTML = `<input type="checkbox"><span><b>${esc(v.name)}</b><br><span class="small" style="color:${chars === "✗" ? "var(--red)" : chars === "⚠" ? "var(--warn)" : "var(--ok)"}">${chars} ${esc(text)}</span></span>`
+      + (assign ? `<button type="button" class="vid-theme-chip${T && T.includes(v.name) ? " on" : ""}" aria-pressed="${!!(T && T.includes(v.name))}">Theme</button>` : "");
+    const chip = z.querySelector(".vid-theme-chip");
+    if (chip) chip.onclick = ev => { ev.preventDefault(); themeVideoToggle(v.name); videoInfoDraw(); adsSetupDraw(); };
     const cb = z.querySelector("input"); cb.checked = chosen.has(path);
     cb.onchange = () => {                                    // Haken = in der gewählten Playlist (neue Videos hinten anhängen)
       if (!list) return;
@@ -336,7 +348,7 @@ setTimeout(audioFetch, 1500);
 function everything() {
   const parts = [bgApply, bgDraw, timerEndDraw, languageDraw, () => { if (typeof dachCardShow === "function") { dachCardShow(); dframeDraw(); } },
     audioDraw, cleanDraw, mbarDraw, tournamentDraw, mdDraw, bgSourceDraw, graphicsDraw, poolComplete, scenesDraw, scenesSetupDraw, sponsorsDraw,
-    seriesDraw, videoInfoDraw, sourcesDraw, themesDraw, themeAdjust, fieldsFill, () => teamDraw("a"), () => teamDraw("b"), timerShow, poolDraw,
+    seriesDraw, videoInfoDraw, adsSetupDraw, adsDraw, sourcesDraw, themesDraw, themeAdjust, fieldsFill, () => teamDraw("a"), () => teamDraw("b"), timerShow, poolDraw,
     vetoDraw, () => playersDraw("a"), () => playersDraw("b")];
   for (const part of parts) {
     try { part(); } catch (err) { console.error("Anzeige-Fehler", part.name || "Teil", err); }

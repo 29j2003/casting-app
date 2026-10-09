@@ -214,6 +214,10 @@ scene('series.html', 'Serie',
       head_box(482, 47, 1381, .2, 'series', SERIES_FIELD) +
       '<div class="series-cards enter" data-part="series-cards" style="left:57px;right:57px;top:236px;height:590px;--d:.35s"></div>\n' +
       bottom_cast(.6), max_brand=400)
+# Advertising: own videos full screen with sound, one after another (control page: „Alle“ or single ones); small label
+scene('ads.html', 'Werbung',
+      '<div data-part="ads" class="ads-stage" style="left:0;top:0;width:1920px;height:1080px"><div class="ads-label"></div></div>\n',
+      without_brand=True)
 scene('sponsors.html', 'Sponsoren',
       head_box(482, 47, 1381, .2, 'sponsorsTitle', VS_FIELD) +
       '<div class="sponsor-grid enter" data-part="sponsor-grid" style="left:57px;right:57px;top:230px;height:600px;--d:.35s"></div>\n' +

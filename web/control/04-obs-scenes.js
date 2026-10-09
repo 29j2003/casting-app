@@ -11,7 +11,7 @@ const OVERLAY_SCENES = [
   ["cast-trio", "Cast Trio"], ["cast-trio-host", "Trio – Moderator groß"], ["cast-quad", "4 Personen"],
   ["viewers", "Zuschauer-Cams"], ["viewers-cast", "Zuschauer + Caster"],
   ["map-veto", "Map-Veto"], ["players", "Line-ups"], ["teams", "Teams-Vorstellung"], ["series", "Serie"],
-  ["sponsors", "Sponsoren"], ["ingame", "Ingame"], ["pause", "Pause"], ["end", "Ende"],
+  ["sponsors", "Sponsoren"], ["ads", "Werbung"], ["ingame", "Ingame"], ["pause", "Pause"], ["end", "Ende"],
   ["scoreboard", "Scoreboard"], ["team-a", "Team A"], ["team-b", "Team B"], ["h2h", "Head-to-Head"], ["bracket", "Turnierbaum"]
 ];
 // Varianten, die erst nach Einschalten (Setup → Szenen & OBS) als Knopf erscheinen
@@ -56,6 +56,7 @@ async function sceneSwitch(k) {
     const before = Z.broadcast.scene;
     Z.broadcast.scene = k; Z.broadcast.num = (Z.broadcast.num || 0) + 1;
     if (before !== k) Z.background.override = null;                   // eine Änderung in der Live-Ecke gilt bis zum Szenenwechsel
+    if (before === "ads" && k !== "ads" && Z.ads) { Z.ads.play = null; adsBack = null; }   // Werbung verlassen: sie endet
     bgApply(k); scenesDraw(); send();
     // Hintergrund-Video in OBS: blendet mit der Szene (wie das Overlay: zu Ingame 55 %, aus Ingame 60 % der Dauer),
     // beim Stinger schaltet es unter dem Stinger um, bei Schnitt sofort
@@ -103,7 +104,7 @@ setInterval(() => { const U = Z.broadcast.overGame; if (U && U.until && U.until 
 const SCENE_DEFAULT = ["#pregame", "intro", "cast-solo", "cast-duo", "cast-trio", "cast-trio-host", "cast-quad", "players", "teams", "map-veto",
   "#during", "ingame",
   "#stats", "scoreboard", "team-a", "team-b", "h2h", "bracket", "series",
-  "#pause", "pause", "sponsors", "cast-duo-clips", "cast-solo-clips", "viewers-cast", "viewers",
+  "#pause", "pause", "sponsors", "ads", "cast-duo-clips", "cast-solo-clips", "viewers-cast", "viewers",
   "#post", "cast-duo-interview", "cast-solo-interview", "end"];
 const SCENE_GROUPS = { "#pregame": "Vor dem Spiel", "#during": "Im Spiel", "#stats": "Stats & Turnier", "#pause": "Pause", "#post": "Nach dem Spiel", "#between": "Zwischen den Maps" };
 let sceneArrange = false;

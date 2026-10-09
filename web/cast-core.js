@@ -18,7 +18,7 @@ window.CastCore = (function () {
   "use strict";
 
   const KEY = "cast-state-v1";
-  const VERSION = "2.18.0";                     // muss zur App passen – sonst lädt sich die Seite neu
+  const VERSION = "2.19.0";                     // muss zur App passen – sonst lädt sich die Seite neu
   // Läuft die Seite über den Server der App (http://localhost:8787)?
   const SERVER = /^https?:$/.test(location.protocol) && location.port === "8787" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
@@ -147,7 +147,7 @@ window.CastCore = (function () {
           previewNoH264: "Das Video dieser DACH-Seite (H.264) spielt nur im Stream in OBS – die Vorschau im App-Fenster kann dieses Format nicht abspielen.",
           tableTeam: "TEAM", tableGames: "SP", tableWins: "S", tableLosses: "N", tablePoints: "PKT",
           winRate: "SIEGQUOTE", matches: "SPIELE", streak: "SERIE", formWin: "S", formLoss: "N",
-          seed: "SETZPLATZ", lastFive: "LETZTE 5", compare: "IM VERGLEICH", headToHead: "DIREKTER VERGLEICH" },
+          seed: "SETZPLATZ", lastFive: "LETZTE 5", compare: "IM VERGLEICH", headToHead: "DIREKTER VERGLEICH", ad: "WERBUNG" },
     en: { final: "FINAL", upperFinal: "UPPER FINAL", lowerFinal: "LOWER FINAL", semifinal: "SEMIFINAL", quarterfinal: "QUARTERFINAL",
           roundOf16: "ROUND OF 16", round: "ROUND", upperRound: "UPPER R", lowerRound: "LOWER R", group: "GROUP", table: "TABLE",
           opening: "OPENING", winners: "WINNERS", elimination: "ELIMINATION", decider: "DECIDER", bye: "Bye",
@@ -156,7 +156,7 @@ window.CastCore = (function () {
           previewNoH264: "The video of this DACH page (H.264) only plays in the stream in OBS – the preview in the app window cannot play this format.",
           tableTeam: "TEAM", tableGames: "P", tableWins: "W", tableLosses: "L", tablePoints: "PTS",
           winRate: "WIN RATE", matches: "MATCHES", streak: "STREAK", formWin: "W", formLoss: "L",
-          seed: "SEED", lastFive: "LAST 5", compare: "HEAD TO HEAD", headToHead: "HEAD TO HEAD" }
+          seed: "SEED", lastFive: "LAST 5", compare: "HEAD TO HEAD", headToHead: "HEAD TO HEAD", ad: "AD" }
   };
   /** A fixed overlay word in the overlay language of the state. */
   const word = (Z, key) => (OVERLAY_WORDS[(Z || {}).overlayLanguage] || OVERLAY_WORDS.de)[key];
@@ -237,6 +237,9 @@ window.CastCore = (function () {
     matchday: { list: [], current: "" },
     // Serie: Ergebnisse stehen direkt an den Pick-/Decider-Schritten des Vetos (schritt.ergebnis)
     series: { autoPoints: true },
+    // Werbung (Szene „ads“): Werbe-Videos aus dem Videos-Ordner; badge = Schild „Werbung“; back = s bis zurück zur
+    // vorigen Szene nach dem Ende (0 = bleibt); play = { id, list, from } während sie läuft
+    ads: { videos: [], badge: true, back: 10, play: null },
     // Sprecher-Anzeige: Namensschild leuchtet, wenn jemand spricht
     speaker: { on: false, threshold: 0.08 },
     // Sponsoren pro Theme
@@ -735,6 +738,7 @@ window.CastCore = (function () {
     solo_interview: { c1: { x: 39, y: 40, w: 902, h: 682 }, guest: { x: 980, y: 40, w: 903, h: 682 } },
     duointerview: { c1: { x: 39, y: 40, w: 522, h: 321 }, c2: { x: 39, y: 441, w: 522, h: 321 }, guest: { x: 600, y: 40, w: 1282, h: 722 } }
   };
+  const DACH_SOURCES = ["c1", "c2", "c3", "guest", "content", "p3", "p4", "v1", "v2", "v3", "v4", "v5", "v6"];
   function dachFrame(Z, page) {
     const own = ((Z || {}).dachFrame || {})[page] || {};
     const std = DACH_FRAME[page] || {};
@@ -742,6 +746,8 @@ window.CastCore = (function () {
     Object.keys(std).forEach(k => {
       const o = Object.assign({}, std[k], isObj(own[k]) ? own[k] : {});
       for (const f of ["x", "y", "w", "h"]) o[f] = Math.round(+o[f]) || 0;                 // nur Zahlen
+      // welche Quelle im Rahmen läuft (Setup → DACH-Rahmen): Standard = die des Rahmens, sonst eine der Kamera-Quellen
+      o.src = DACH_SOURCES.includes(o.src) ? o.src : k;
       r[k] = o;
     });
     return r;
@@ -765,5 +771,5 @@ window.CastCore = (function () {
     return e.until && e.until > now ? e.until : 0;
   }
 
-  return { VERSION, SERVER, ACCESS, withAccess, dachUrl, nextRevision, GFX_POSITIONS, GFX_DEFAULT_POS, OVERLAY_TEXTS, OVERLAY_WORDS, word, overlayLanguageSet, split, gfxVisible, gfxNextSwitch, DACH_PAGES, DACH_FRAME, dachFrame, tournamentBuild, swissDraw, resolve, Images, cssUrl, DEFAULT, KEY, clone, merge, load, save, savedRevision, channel, timerRest, time };
+  return { VERSION, SERVER, ACCESS, withAccess, dachUrl, nextRevision, GFX_POSITIONS, GFX_DEFAULT_POS, OVERLAY_TEXTS, OVERLAY_WORDS, word, overlayLanguageSet, split, gfxVisible, gfxNextSwitch, DACH_PAGES, DACH_FRAME, DACH_SOURCES, dachFrame, tournamentBuild, swissDraw, resolve, Images, cssUrl, DEFAULT, KEY, clone, merge, load, save, savedRevision, channel, timerRest, time };
 })();

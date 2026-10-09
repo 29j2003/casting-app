@@ -38,7 +38,8 @@ function headDraw() {
   $("bracketScene").textContent = n || "–"; $("vsScene").textContent = n || "";
   $("bracketTheme").textContent = "Theme " + (Object.assign({}, T[Z.theme], (Z.themeData || {})[Z.theme]).name || Z.theme);
   const trans = (TRANSITIONS.find(([k]) => k === (Z.broadcast.transition || "fade")) || [, "Blende"])[1];
-  $("transText").textContent = `${trans} · ${String(((Z.broadcast.duration || 900) / 1000).toFixed(1)).replace(".", ",")} s`;
+  const seconds = ((Z.broadcast.duration || 900) / 1000).toFixed(1);
+  $("transText").textContent = `${CastI18n.t(trans)} · ${CastI18n.language === "de" ? seconds.replace(".", ",") : seconds} s`;   // ganzer Text wird nicht übersetzt
   document.body.classList.toggle("on-source", onSource());
 }
 

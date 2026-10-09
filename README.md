@@ -85,9 +85,11 @@ In Match and Tournament, **“Next: …”** and **“← …”** below each su
 
 Top left you choose the workspace: *Beginner*, *Operator*, *Caster – big buttons*, *Laptop / next to OBS*, *Preparation*
 or your own (“Save current arrangement as …”). A workspace remembers docks, sizes, positions, locks and button size.
-* *Beginner* (used on first start) shows only preview, scenes and the scene panel; everything else is ready, collapsed.
-* *Operator*: scenes, scene tools and graphics are open; audio, match bar and tournament are collapsed (click the title to
-  open them; the state is remembered).
+* Both default workspaces have the same arrangement: **scenes on the left**, **audio in the middle below the preview**,
+  **everything else on the right** (scene panel, graphics, match bar, tournament live).
+* *Beginner* (used on first start): on the right only the scene panel is open; graphics, match bar and tournament are
+  collapsed (click the title to open them; the state is remembered).
+* *Operator*: scene panel and graphics are open on the right; match bar and tournament are collapsed.
 
 ### Edit layout
 

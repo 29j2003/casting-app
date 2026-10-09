@@ -177,6 +177,9 @@ Die Dateien `web/<scene>.html` werden erzeugt – nie von Hand ändern.
   jedes verschachtelte `details` in `.content` wird automatisch zur schlichten Klapp-Zeile (keine Karte in der Karte).
 * Lange feste Hilfetexte (`p.small` ohne id, ab 110 Zeichen) zeigt `helpTextsShorten()` (13-app.js) einzeilig mit „…“;
   ein Klick zeigt den ganzen Text. Statusmeldungen haben eine id und bleiben ganz.
+* Standard-Anordnung in Live (Vorlagen „Einsteiger“/„Operator“ in `08-navigation.js`): Szenen links (nicht angedockt,
+  `sceneList` merkt sich dort als einziger Bereich offen/zu), Ton im Dock unten, der Rest im Dock rechts. Wer eine der
+  beiden Vorlagen nutzt, bekommt sie einmal neu angewendet (`ui.layout221`).
 * Auswahl vieler Szenen: Kacheln `.scene-pick-chip` (`aria-pressed`) statt Schalter-Reihen (Szenen & OBS, Sponsoren);
   große Matrizen (Szenen-Panels) mit `.cell-check`.
 

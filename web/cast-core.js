@@ -18,7 +18,7 @@ window.CastCore = (function () {
   "use strict";
 
   const KEY = "cast-state-v1";
-  const VERSION = "2.21.0";                     // muss zur App passen – sonst lädt sich die Seite neu
+  const VERSION = "2.22.0";                     // muss zur App passen – sonst lädt sich die Seite neu
   // Läuft die Seite über den Server der App (http://localhost:8787)?
   const SERVER = /^https?:$/.test(location.protocol) && location.port === "8787" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
@@ -331,7 +331,7 @@ window.CastCore = (function () {
     return btoa(String.fromCharCode(...new Uint8Array(buf)));
   }
   function obsConnection(opt) {
-    let ws = null, isOpen = false, num = 0, attempts = 0, stop = false;
+    let ws = null, isOpen = false, num = 0, attempts = 0, stop = false, events = opt.events || 1;
     const wait = new Map();   // offene Anfragen mit Antwort (Promise)
     const status = s => opt.onStatus && opt.onStatus(s);
     function connect() {
@@ -343,7 +343,7 @@ window.CastCore = (function () {
       ws.onmessage = async ev => {
         let m; try { m = JSON.parse(ev.data); } catch (err) { return; }
         if (m.op === 0) {
-          const d = { rpcVersion: 1, eventSubscriptions: opt.events || 1 };
+          const d = { rpcVersion: 1, eventSubscriptions: events };
           if (m.d.authentication) {
             const { salt, challenge } = m.d.authentication;
             if (e.password || !SERVER) {
@@ -402,8 +402,14 @@ window.CastCore = (function () {
       return request("CallVendorRequest", { vendorName: "obs-browser", requestType: "emit_event", requestData: { event_name: name, event_data: data } });
     }
     function fresh() { stop = false; attempts = 0; try { ws && ws.close(); } catch (e) {} }
+    // welche Ereignisse OBS schickt, im laufenden Betrieb ändern (Reidentify) – z. B. Pegel nur, solange der Ton-Bereich offen ist
+    function subscribe(next) {
+      if (next === events) return;
+      events = next;
+      if (isOpen && ws) ws.send(JSON.stringify({ op: 3, d: { eventSubscriptions: events } }));
+    }
     connect();
-    return { send, request, question, onBrowsersources, fresh, get isOpen() { return isOpen; } };
+    return { send, request, question, onBrowsersources, fresh, subscribe, get isOpen() { return isOpen; } };
   }
 
   // Stand-Nummer („revision“): Zeitstempel, aber immer über dem letzten eigenen und dem des Servers

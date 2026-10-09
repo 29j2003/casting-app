@@ -62,7 +62,8 @@ _environment_password: str | None = None
 def take_environment_password() -> str | None:
     """CASTING_APP_VAULT_PASSWORD, removed from the environment on the first call (main() calls it at start, also
     when a system keyring makes it unnecessary): child processes – browser engine, FFmpeg, opened programs – must
-    never inherit it."""
+    never inherit it. Note: the system keeps the start environment of the process itself (Linux: /proc/<pid>/environ,
+    readable by the same user and root) – the variable is meant for servers without a desktop, not for shared PCs."""
     global _environment_password
     if ENVIRONMENT_VARIABLE in os.environ:
         _environment_password = os.environ.pop(ENVIRONMENT_VARIABLE)

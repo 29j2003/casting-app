@@ -12,6 +12,8 @@ Quitting
 """
 
 import os
+import re
+import secrets
 import shutil
 import sys
 import time
@@ -24,6 +26,7 @@ from PySide6.QtWidgets import QApplication
 
 from .. import instance, texts
 from ..app_log import AppLog
+from ..files import write_atomic
 from ..paths import DATA_DIR, IS_WINDOWS, WEB_DIR, create_folders
 from .. import password_vault, secret_store
 from ..secret_store import SecretStore, system_keyring_or_none
@@ -37,11 +40,32 @@ from .tray import TrayIcon
 # Keep the preview smooth in the background and covered, and allow autoplay (also for the volume control)
 CHROMIUM_FLAGS = ["--autoplay-policy=no-user-gesture-required", "--disable-renderer-backgrounding",
                   "--disable-background-timer-throttling", "--disable-backgrounding-occluded-windows"]
-# Linux/macOS: a socket file in the private data folder (a name in /tmp could be taken by another user first);
-# Windows: a pipe name per user, only this user may connect (UserAccessOption)
-_INSTANCE_FILE = str(DATA_DIR / "instance.sock")
-INSTANCE_NAME = (f"casting-app-{os.environ.get('USERNAME') or 'user'}" if IS_WINDOWS or len(_INSTANCE_FILE) > 100
-                 else _INSTANCE_FILE)
+
+
+def instance_name() -> str:
+    """Name of the local socket that finds a running window of this user.
+
+    Linux/macOS: a socket file in the private data folder (a name in /tmp could be taken by another user first).
+    Windows (and too long paths): pipe names are global – a random name kept in the private data folder, so another
+    user cannot create it first and silently swallow every start; only this user may connect (UserAccessOption)."""
+    socket_file = str(DATA_DIR / "instance.sock")
+    if not IS_WINDOWS and len(socket_file) <= 100:
+        return socket_file
+    name_file = DATA_DIR / "instance-name"
+    try:
+        name = name_file.read_text(encoding="utf-8").strip()
+        if re.fullmatch(r"casting-app-[A-Za-z0-9_-]{16,64}", name):
+            return name
+    except OSError:
+        pass
+    name = "casting-app-" + secrets.token_urlsafe(18)
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        write_atomic(name_file, name, private=True)
+    except OSError:
+        pass                                      # still unique for this start
+    return name
+
 AUTO_QUIT_AFTER_MS = 30_000
 AUTO_QUIT_CHECK_MS = 5_000
 RELOAD_FALLBACK_MS = 4_000
@@ -236,6 +260,7 @@ class SingleInstance(QObject):
     def __init__(self):
         super().__init__()
         self._server: QLocalServer | None = None
+        self._name = instance_name()
 
     def hand_over_to_running_app(self) -> bool:
         """True if another instance runs and confirmed it shows its window.
@@ -244,7 +269,7 @@ class SingleInstance(QObject):
         otherwise both would end and no app would be left running.
         """
         socket = QLocalSocket()
-        socket.connectToServer(INSTANCE_NAME)
+        socket.connectToServer(self._name)
         if not socket.waitForConnected(500):
             return False
         socket.write(f"zeigen {VERSION}\n".encode())
@@ -255,11 +280,11 @@ class SingleInstance(QObject):
 
     def listen(self) -> None:
         """Become the running instance: later starts connect here."""
-        QLocalServer.removeServer(INSTANCE_NAME)      # left over after a crash
+        QLocalServer.removeServer(self._name)      # left over after a crash
         self._server = QLocalServer(self)
         self._server.setSocketOptions(QLocalServer.SocketOption.UserAccessOption)
         self._server.newConnection.connect(self._second_start)
-        self._server.listen(INSTANCE_NAME)
+        self._server.listen(self._name)
 
     def _second_start(self) -> None:
         """Another start of the app connected: show our window instead."""

@@ -301,7 +301,14 @@ $("gsiNetworkOn").onchange = async () => {
   await fetch("/api/gsi-settings", { method: "POST", body: JSON.stringify({ network: on }) });
   setTimeout(gsiInfoFetch, 400);
 };
-$("gsiCfgLoad").onclick = () => { const a = document.createElement("a"); a.href = K.withAccess("/api/gsi-cfg"); a.download = "gamestate_integration_castoverlay.cfg"; document.body.appendChild(a); a.click(); a.remove(); };
+// über fetch (Schlüssel im Kopf der Anfrage) statt eines Links mit ?access= – der landete sonst im Download-Verlauf des Browsers
+$("gsiCfgLoad").onclick = async () => {
+  try {
+    const r = await fetch("/api/gsi-cfg"); if (!r.ok) throw new Error(r.status);
+    const a = document.createElement("a"); a.href = URL.createObjectURL(await r.blob()); a.download = "gamestate_integration_castoverlay.cfg";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  } catch (err) { $("gsiPath").textContent = "Datei konnte nicht geladen werden."; }
+};
 $("gsiSetup").onclick = async () => {
   try {
     const d = await (await fetch("/api/gsi-setup", { method: "POST" })).json();
@@ -419,7 +426,7 @@ function liveShow() {
       `<div class="gz small"><span>Spieler</span><span>K</span><span>D</span><span>ADR</span></div>` +
       (l.map(p => `<div class="gz"><span>${esc(p.name)}</span><span>${p.k}</span><span>${p.d}</span><span>${p.adr}</span></div>`).join("") || `<span class="small">–</span>`) + `</div>`;
   };
-  $("gsiTable").innerHTML = d ? team("a", d.sideA) + team("b", sideB) : "";
+  setHtml($("gsiTable"), d ? team("a", d.sideA) + team("b", sideB) : "");     // bis zu 2×/s – nur bei Änderung
   // Head-to-Head-Auswahl
   ["a", "b"].forEach(k => {
     const s = $(k === "a" ? "h2hA" : "h2hB"), side = !d ? "" : k === "a" ? d.sideA : sideB;

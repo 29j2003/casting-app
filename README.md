@@ -17,7 +17,7 @@ An experiment to see how far you can get with Claude. The app was built entirely
 I'm not a caster either; I help with the production of casts, and that's what the app is made for.
 Use it, change it, pass it on: everything is allowed, no need to ask.
 
-License: [The Unlicense](LICENSE). Bundled FFmpeg: GPL, see [LICENSES/FFmpeg.txt](LICENSES/FFmpeg.txt); interface font Inter: SIL OFL, see [LICENSES/Inter-OFL.txt](LICENSES/Inter-OFL.txt).
+License: [The Unlicense](LICENSE). Bundled parts keep their own licenses (folder [LICENSES](LICENSES)): FFmpeg (GPL), Qt and PySide6 (LGPL v3), the fonts Inter, Barlow, Rajdhani and Saira Condensed (SIL OFL).
 
 ## Getting started
 

@@ -22,7 +22,7 @@ DACH_PAGES = {"dach-duocast": "duocast", "dach-singlecast": "singlecast", "dach-
 
 
 async def access_key() -> str:
-    """The app's access key, read from its own window (the app runs with QTWEBENGINE_REMOTE_DEBUGGING=9222).
+    """The app's access key, read from its own window (the app runs with --debug).
 
     The key never appears in a file, the log or browser storage; the window gets it through window.castApp.
     """
@@ -33,7 +33,7 @@ async def access_key() -> str:
     finally:
         await page.close()
     if not key:
-        sys.exit("Zugangsschlüssel nicht gefunden – läuft die App mit Fenster und QTWEBENGINE_REMOTE_DEBUGGING=9222?")
+        sys.exit("Zugangsschlüssel nicht gefunden – läuft die App mit Fenster und --debug?")
     return key
 
 

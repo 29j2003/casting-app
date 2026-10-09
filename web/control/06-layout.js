@@ -28,7 +28,7 @@ function subStatus(group, key) {
       if (key === "texts") return Z.timer.running ? ["wait", "Timer läuft"] : ["", "Timer " + K.time(K.timerRest(Z.timer))];
     }
     if (group === "tournament") {
-      const T = tour(), B = K.tournamentBuild(T, CastI18n.language), FORMAT = { se: "Single Elimination", de: "Double Elimination", swiss: "Swiss", gsl: "Gruppen (GSL)", table: "Tabelle", import: "Baum wie bei FACEIT" };
+      const T = tour(), B = subMemo.B || (subMemo.B = K.tournamentBuild(T, CastI18n.language)), FORMAT = { se: "Single Elimination", de: "Double Elimination", swiss: "Swiss", gsl: "Gruppen (GSL)", table: "Tabelle", import: "Baum wie bei FACEIT" };
       const all = [...B.rounds.flatMap(r => r.matches), ...B.bottom.flatMap(r => r.matches), ...(B.finale ? [B.finale] : []), ...B.groups.flatMap(g => g.matches)].filter(m => m.a && m.b && m.a !== "BYE" && m.b !== "BYE");
       if (key === "setup") return T.teams.length >= 2 ? ["ok", `${FORMAT[T.format] || T.format}${T.name ? " · " + T.name : ""}`] : ["", FORMAT[T.format] || T.format];
       if (key === "teams") return T.teams.length >= 2 ? ["ok", `${T.teams.length} Teams${T.teams.some(t => t.faceitId) ? " · FACEIT" : ""}`] : ["wait", "Teams fehlen"];
@@ -50,9 +50,13 @@ function subStatus(group, key) {
   } catch (err) {}
   return ["", ""];
 }
+// je Durchgang einmal rechnen (der Turnierbaum wird sonst für jeden Knopf neu gebaut)
+let subMemo = {};
 function subStatusDraw() {
+  subMemo = {};
   document.querySelectorAll(".subnav").forEach(nav => {
-    const group = nav.dataset.for || (nav.closest(".group") || {}).dataset?.group;
+    const g = nav.closest(".group"); if (g && g.hidden) return;        // nur der sichtbare Reiter – beim Wechsel sofort (tabs)
+    const group = nav.dataset.for || (g || {}).dataset?.group;
     nav.querySelectorAll("[data-below]").forEach(b => {
       const [state, text] = b.dataset.below === "all" ? ["", ""] : subStatus(group, b.dataset.below);
       const dot = b.querySelector(".sub-dot"), small = b.querySelector(".sub-text");
@@ -196,7 +200,7 @@ function settingsShow(id) {
 // Status je Bereich: Grün = verbunden/gespeichert, Gelb = fehlt/wartet, Grau = aus – nur Anzeige
 function settingsNavDraw() {
   const obsOn = $("obsStatus").classList.contains("ok"), dachOn = typeof dachInfo !== "undefined" && dachInfo.idSet && dachInfo.keySet;
-  const faceitOn = typeof faceitKeyDa !== "undefined" && faceitKeyDa, musicOn = !(Z.music && Z.music.displayed === false);
+  const faceitOn = typeof faceitKeySaved !== "undefined" && faceitKeySaved, musicOn = !(Z.music && Z.music.displayed === false);
   const state = (id, on, text, off) => { const e = $(id); e.className = "state " + (on ? "ok" : off || ""); e.textContent = text; };
   state("setObsState", obsOn, obsOn ? "verbunden" : "nicht verbunden", "wait");
   state("setFaceitState", faceitOn, faceitOn ? "Schlüssel gespeichert" : "kein Schlüssel");

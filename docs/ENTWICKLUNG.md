@@ -102,7 +102,7 @@ schnelle Klicks und über lange Sitzungen. Jedes gibt am Ende `OK: …` oder `PR
 mit Fehlercode 1. Vorher die App starten (unter Linux als root zusätzlich `QTWEBENGINE_DISABLE_SANDBOX=1`):
 
 ```
-python -m casting_app --debug          # = QTWEBENGINE_REMOTE_DEBUGGING=9222
+python -m casting_app --debug          # DevTools auf 127.0.0.1:9222 (nur mit diesem Schalter)
 ```
 
 | Skript | Prüft |
@@ -436,7 +436,9 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
 Der Ton für OBS (obs-websocket: Lautstärke, Stumm, Verzögerung, Abhören) ist davon unabhängig.
 
 **Ton in OBS** (`web/control/11-audio.js`): eine kompakte Zeile je Quelle wie im OBS-Mixer. **Pegel:** die Steuerseite
-abonniert `InputVolumeMeters` (Bit `1<<16` in `events`, `01-core.js`; etwa 20 Meldungen pro Sekunde). `audioMeters()`
+abonniert `InputVolumeMeters` (Bit `1<<16`; etwa 20 Meldungen pro Sekunde) **nur, solange der Ton-Bereich zu sehen ist**:
+`audioMeterSubscribe()` schaltet das Bit über `channel.obs.subscribe()` (obs-websocket `Reidentify`, op 3) an und aus –
+beim Öffnen/Schließen des Bereichs, Reiterwechsel und `visibilitychange`. Grundabo in `01-core.js` ohne Pegel. `audioMeters()`
 merkt sich die Werte und zeichnet höchstens einmal je Bild (`requestAnimationFrame`) und nur, wenn der Bereich zu sehen
 ist – über `transform` (Deckel `scaleX`, Spitze `translateX`), ohne DOM-Neuaufbau. Skala −60 … 0 dB.
 
@@ -452,7 +454,8 @@ Datei mit danebenliegendem Schlüssel wäre nur scheinbar sicher und gibt es des
   (`/api/dach-access` meldet nur `idSet`/`keySet`). Die obs-websocket-Anmeldung rechnet der Server aus (`/api/obs-auth`).
 * Sie stehen nie im Zustand, im Log, in Exporten, in Dateien, in Adressen (URLs) oder in API-Antworten.
 * Dateien aus 1.x (`faceit.schluessel`, `dach.schluessel` per DPAPI bzw. Base64, `dach.json`) werden beim ersten Start
-  einmalig in den Schlüsselbund übernommen und gelöscht.
+  einmalig in den Schlüsselbund übernommen und gelöscht – ohne Schlüsselbund und ohne Tresor gelten sie nur für diese
+  Sitzung und werden trotzdem gelöscht (eine Base64-Datei wäre ein schwacher Speicher).
 * Im Repository liegen keine Zugangsdaten. Die CI liest den SignPath-Token nur aus den GitHub-Secrets.
 * **Zugangsschlüssel (ab 2.3):** Beim ersten Start erzeugt der Server einen Zufallsschlüssel (`access-key` im
   Schlüsselbund). Ohne ihn liefert er nur, was ein Overlay braucht (`OPEN_API` in `app_server.py`: Zustand lesen,
@@ -479,15 +482,41 @@ Datei mit danebenliegendem Schlüssel wäre nur scheinbar sicher und gibt es des
   dagegen schützt keine App, das ist die Grenze des Betriebssystems.
 * Die Vorschau bekommt Zustand und Live-Daten per `postMessage(…, location.origin)` – nie eine fremde Seite.
 * FACEIT-Abfragen folgen keiner Weiterleitung (der Key ginge sonst an den Ziel-Host mit).
+* **Ablösen einer älteren Version** (`instance.ask_running_app_to_quit`): der Zugangsschlüssel geht nur an einen Server,
+  der vorher beweist, dass er ihn kennt (`genuine_server`, HMAC über eine Zufallszahl). Ein fremdes Programm auf Port 8787,
+  das sich als alte Version ausgibt, bekommt ihn nicht. Belegt ein fremdes Programm `[::1]:8787`, startet der Server nicht
+  (das Fenster lädt `localhost`, das auf `::1` zeigen kann).
+* **App-Fenster** (`desktop/web_page.py`): eingebettete Rahmen dürfen nur Webseiten laden (`SUBFRAME_SCHEMES`; keine
+  `steam:`, `smb:`, `search-ms:` … an Programme des Systems, `DisallowUnknownUrlSchemes`), keine Fenster ohne Klick öffnen
+  (`JavascriptCanOpenWindows` aus) und keine Dialoge (`alert/confirm/prompt` nur von eigenen Seiten). Ins Hauptfenster
+  dürfen nur eigene Seiten und Blobs eigener Seiten.
+* **Ein Fenster je Nutzer:** unter Windows ist der Pipe-Name zufällig und liegt im privaten Datenordner
+  (`instance-name`) – ein anderer Nutzer kann ihn nicht vorher belegen und so jeden Start schlucken.
+* **Fernsteuerung** (DevTools, Port 9222) nur mit `--debug` und nur auf 127.0.0.1 – nie über eine geerbte Variable und
+  nicht nach einem Update-Neustart (`RESTART_FLAGS`). Programme des Systems bekommen keine `QTWEBENGINE_*`-Variablen.
+* **Videos fürs App-Fenster** (`/api/media`): `public_host` löst Namen und Zahlen-Schreibweisen (`127.1`, `2130706433`)
+  auf; jede Adresse dahinter muss öffentlich sein. FFmpeg liest nur Videodateien (`-format_whitelist`, keine
+  HLS-Listen mit Einträgen ins lokale Netz). Rest-Risiko: eine Weiterleitung des fremden Servers folgt FFmpeg selbst.
+* **Workshop-Bilder:** jede Weiterleitung wird vor dem Folgen geprüft (nur Steams Bild-Server).
+* **Anfragen:** Steuerzeichen im Pfad → 400 (kein Zeilenumbruch in einer Weiterleitung); `//` in Datei-Pfaden → 404
+  (unter Windows wäre das ein Netzwerkpfad); Werte aus Anfragen ins Log nur einzeilig (`log_text`); ein Zustand, den
+  Python nicht lesen kann (zu tief verschachtelt), wird abgelehnt statt gespeichert.
+* **Sitzung laden** (`13-app.js`): Theme-Farben nur als `#hex`, Schrift-Datei nur aus `fonts/` (`themeValuesClean`);
+  enthält die Datei Adressen im Internet (Kamera-Links, Bilder), fragt die Seite vorher und kann sie weglassen
+  (`importExternalHosts`). Lautstärken je Szene nur als Zahl, Playlisten nur mit Text-Einträgen, FACEIT-IDs nur aus
+  Buchstaben, Zahlen und `-` (`faceitJson`).
+* Ohne App (Seite als Datei) liegt das OBS-Passwort nur in `sessionStorage`, nie dauerhaft im Browser.
 
 ### Privatsphäre (E-Mail-Adressen)
 
 Commits tragen die E-Mail-Adresse des Autors – im öffentlichen Repository für alle sichtbar. Deshalb:
 * GitHub → Settings → Emails: „Keep my email addresses private“ und „Block command line pushes that expose my email“ an.
 * Lokal `git config user.email "<id>+<name>@users.noreply.github.com"` (die Adresse steht auf derselben GitHub-Seite).
-* `tools/check_privacy.py` (CI-Job `checks`) schlägt fehl, sobald ein Commit eine andere als eine noreply-Adresse
-  trägt oder eine Datei eine E-Mail-Adresse enthält; die Adresse selbst gibt es nie aus. `KNOWN_OLD_COMMITS` nennt den
-  einen Commit von vor dieser Prüfung.
+* `tools/check_privacy.py` (CI-Job `checks`) schlägt fehl, sobald ein Commit (Autor, Committer, eine Adresse in der
+  Nachricht) oder ein Tag eine andere als eine noreply-Adresse trägt oder eine Datei eine E-Mail-Adresse enthält; die
+  Adresse selbst gibt es nie aus. Als noreply zählen nur genau `<id>+<name>@users.noreply.github.com`,
+  `noreply@github.com` und `noreply@anthropic.com`. `KNOWN_OLD_COMMITS` nennt den einen Commit von vor dieser Prüfung –
+  er steht weiter im öffentlichen Verlauf (entfernen ginge nur durch Umschreiben der ganzen Geschichte).
 
 ### Programme des Systems starten (Linux)
 
@@ -540,7 +569,18 @@ deinstallieren).
 
   Danach signiert der Windows-Bau in zwei Runden: `build.py app` → `Casting-App.exe` signieren → `build.py package` →
   Installer signieren. Ohne Secret wird unsigniert gebaut. Laut den Bedingungen muss dann in der README stehen:
-  „Free code signing provided by SignPath.io, certificate by SignPath Foundation“.
+  „Free code signing provided by SignPath.io, certificate by SignPath Foundation“. Signiert wird nur auf `main` und
+  bei Release-Tags – ein beliebiger Branch bekommt keine Signatur.
+* **Lieferkette:** Actions in `build.yml` sind auf Commit-SHAs festgelegt (Kommentar dahinter = Version; ein Tag lässt
+  sich verschieben, ein SHA nicht). `appimagetool` und die AppImage-Laufzeit kommen in fester Version mit SHA-256
+  (`tools/build.py`, `download_checked`) – neue Version: Datei laden, `sha256sum`, beides eintragen. Checkout ohne
+  gespeicherte Zugangsdaten (`persist-credentials: false`). Ein schon veröffentlichtes Release wird nie überschrieben
+  (der Release-Job bricht ab – erst die Version erhöhen). Python-Pakete des Baus: feste Versionen mit Prüfsummen in
+  `requirements/build.txt` (`pip install --require-hashes`; Eingaben: `pyproject.toml` und `requirements/build.in`;
+  auffrischen mit `tools/update_requirements.py`, siehe „Version und Release“). Dependabot (`.github/dependabot.yml`)
+  schlägt einmal im Monat neue Versionen der Actions als PR vor.
+* **Lizenzen** mitgelieferter Teile in `LICENSES/` (FFmpeg, Qt/PySide6, alle Schriften) – neue Schrift oder Bibliothek
+  → Lizenztext dazulegen (ohne E-Mail-Adressen der Urheber, `check_privacy.py` prüft auch diese Dateien).
 
 ## Update aus der App
 
@@ -571,8 +611,10 @@ kommen aus `tools/build.py` – wer sie ändert, muss `asset_suffix()` anpassen.
    - `web/cast-core.js` (`VERSION`)
 
    `tools/build.py` prüft das. Overlays mit einer anderen Version laden sich beim Verbinden neu.
-2. Auf `main` mergen.
-3. GitHub → Actions → **Bauen** → „Run workflow“ auf `main` mit „Release erstellen“. Der Workflow baut alles,
+2. Python-Pakete auffrischen: `pip install uv` (einmal), dann `python tools/update_requirements.py` – schreibt
+   `requirements/build.txt` mit den neuesten Versionen und ihren Prüfsummen neu; die Änderung mit in den PR nehmen.
+3. Auf `main` mergen.
+4. GitHub → Actions → **Bauen** → „Run workflow“ auf `main` mit „Release erstellen“. Der Workflow baut alles,
    testet, legt den Tag `v<Version>` an und lädt die Dateien hoch (Setup.exe, portable Zip, AppImage, dmg/zip).
 
 ## Fehlersuche
@@ -581,8 +623,9 @@ kommen aus `tools/build.py` – wer sie ändert, muss `asset_suffix()` anpassen.
   aus den Overlays, z. B. aus OBS.
 * **Diagnose im Overlay:** Log-Reiter → „Diagnose in allen Overlays einblenden“. Zeigt Version, Zustand, Bilder und
   Videos direkt in der Browserquelle.
-* **Entwicklerwerkzeuge des App-Fensters:** die App mit `python -m casting_app --debug` starten (dasselbe wie
-  `QTWEBENGINE_REMOTE_DEBUGGING=9222`) und in Chrome/Edge `http://localhost:9222` öffnen. Fehler in der Steuerseite
+* **Entwicklerwerkzeuge des App-Fensters:** die App mit `python -m casting_app --debug` starten (nur dieser
+  Schalter öffnet Port 9222 – jedes Programm auf dem PC könnte darüber den Zugangsschlüssel lesen) und in Chrome/Edge
+  `http://localhost:9222` öffnen. Fehler in der Steuerseite
   zeigen auf `/control.js` – die Zeilen davor `// ===== control/<datei>.js =====` sagen, aus welcher Datei sie stammen.
 * **Overlays im normalen Browser:** `http://localhost:8787/overlay.html` oder eine einzelne Szene, z. B.
   `http://localhost:8787/players.html?preview=1`.
@@ -595,6 +638,15 @@ kommen aus `tools/build.py` – wer sie ändert, muss `asset_suffix()` anpassen.
   - nur neu zeichnen, was sich geändert hat (`newNeeded` in `cast.js`)
   - keine Endlos-Animationen im Leerlauf
   - keine Filter auf großen Flächen
+  - teure Messungen nur bei Änderung: `fit()` (Namen kürzen) merkt sich Text, Theme-Schrift und Breite und misst sonst
+    nicht neu; Spielstand und Serie schreiben nur, wenn sich der Text ändert; Live-Stats zeichnen die Teams nur bei
+    geänderten Werten neu
+* **Leistung der Steuerseite und des Servers:**
+  - `/control.js` wird einmal verbunden und erst neu gebaut, wenn sich eine Datei in `web/control/` ändert
+    (`control_script()`, Stempel aus den Änderungszeiten)
+  - `video_info.py` merkt sich die Angaben je Datei (Pfad, Größe, Änderungszeit) – FFprobe läuft nur einmal je Video
+  - Status der Unterseiten (`subStatusDraw`) rechnet nur sichtbare Gruppen und das Turnier einmal je Durchlauf (`subMemo`)
+  - HTML nur setzen, wenn es sich ändert (`setHtml`); laufender Status (Werbung) wird als Text nachgetragen, ohne die Liste neu zu bauen
 * **Keine Bedien-Hinweise im Stream:** Hinweise für den Bediener nur in der Vorschau (`body.idle`).
 * **Overlays ändern sich nicht durch die Desktop-App:** Desktop-Besonderheiten liegen in `casting_app/desktop/` oder
   hinter `window.castApp`.

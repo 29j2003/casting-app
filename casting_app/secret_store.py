@@ -209,5 +209,10 @@ class SecretStore:
             except Exception:                          # keyring refused: keep the file and try again next start
                 self._log(f"Alte Datei {file_name} konnte noch nicht übernommen werden", "warn")
                 continue
-            if self.persistent:                        # without keyring keep the file for the next try
+            if self.persistent:
                 path.unlink(missing_ok=True)
+            elif self._backend is None:
+                # no keyring and no vault (declined): the value lives for this session only, like every other secret –
+                # the old file (on Linux/macOS only Base64) must not stay on disk as a weak store
+                path.unlink(missing_ok=True)
+                self._log(f"Alte Datei {file_name} gelöscht – ohne Schlüsselbund gilt der Zugang nur bis zum Beenden", "warn")

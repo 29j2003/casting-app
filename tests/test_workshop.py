@@ -40,6 +40,7 @@ def steam(monkeypatch, details: dict, image_url: str = "", image_type: str = "im
         return Answer(b"\xff\xd8jpeg", final_url or request.full_url, image_type)
 
     monkeypatch.setattr(workshop.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(workshop, "_image_opener", type("Opener", (), {"open": staticmethod(urlopen)}))
     return sent
 
 
@@ -69,6 +70,18 @@ def test_pictures_from_other_hosts_are_refused_but_the_map_still_counts(monkeypa
     assert workshop.lookup("3070284539")["image"] == ""
     with pytest.raises(workshop.WorkshopError):
         workshop.preview("https://evil.example.com/a.jpg")
+
+
+def test_a_redirect_away_from_steam_is_refused_before_it_is_followed():
+    """The next address is checked before a request goes there (no request into the LAN via a redirect)."""
+    import urllib.request
+    handler = workshop._SteamRedirects()
+    request = urllib.request.Request("https://images.steamusercontent.com/a")
+    with pytest.raises(workshop.WorkshopError):
+        handler.redirect_request(request, None, 302, "Found", {}, "http://192.168.1.1/admin")
+    with pytest.raises(workshop.WorkshopError):
+        handler.redirect_request(request, None, 302, "Found", {}, "https://customer.akamaihd.net/x.jpg")
+    assert handler.redirect_request(request, None, 302, "Found", {}, "https://images.steamusercontent.com/b") is not None
 
 
 def test_an_unknown_item_is_reported(monkeypatch):

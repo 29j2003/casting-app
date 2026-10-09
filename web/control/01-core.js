@@ -139,9 +139,19 @@ let Z = K.load();
 
 /* ---------- Verbindungsdaten (hier im Browser gemerkt) ---------- */
 const CONN_KEY = "cast-connection";
+// ohne App (Seite als Datei geöffnet): das OBS-Passwort nur für diese Sitzung des Browsers (sessionStorage) –
+// nie dauerhaft im Browser-Speicher; ein älterer Eintrag aus localStorage zieht einmal um
 function connection() {
-  try { return Object.assign({}, window.CAST_CONNECTION || {}, JSON.parse(localStorage.getItem(CONN_KEY) || "{}")); }
-  catch (e) { return Object.assign({}, window.CAST_CONNECTION || {}); }
+  let c;
+  try { c = Object.assign({}, window.CAST_CONNECTION || {}, JSON.parse(localStorage.getItem(CONN_KEY) || "{}")); }
+  catch (e) { c = Object.assign({}, window.CAST_CONNECTION || {}); }
+  if (!K.SERVER) {
+    try {
+      if (c.password) { sessionStorage.setItem(CONN_KEY + "-password", c.password); localStorage.setItem(CONN_KEY, JSON.stringify({ port: c.port || 4455 })); }
+      c.password = sessionStorage.getItem(CONN_KEY + "-password") || "";
+    } catch (e) {}
+  }
+  return c;
 }
 $("obsPort").value = connection().port || 4455;
 // OBS-Passwort: in der App im Schlüsselbund des Systems (nicht im Browser-Speicher); ohne App wie bisher hier gemerkt
@@ -205,7 +215,7 @@ channel = K.channel({
   onStale() { send(); },                 // der Server hatte einen neueren Stand: gleich mit höherer Nummer erneut
   onClients(list) { clientsList = list; overlaysPill(); },
   onLive(d) { liveReceived(d); },
-  events: 1 | 4 | 16 | 65536,   // Allgemein, Szenen, Übergänge, Pegel (InputVolumeMeters, Bereich Ton)
+  events: 1 | 4 | 16,           // Allgemein, Szenen, Übergänge – Pegel (65536) nur bei offenem Ton-Bereich (11-audio.js)
   onEvent(type, d) {
     if (type === "InputVolumeMeters") audioMeters(d.inputs);
     else if (type === "CurrentProgramSceneChanged") { currentScene = d.sceneName; scenesDraw(); }
@@ -294,7 +304,10 @@ $("obsNew").onclick = async () => {
     await obsPasswordSave($("obsPassword").value);
     $("obsPassword").value = "";                 // Passwort sofort aus der Seite entfernen
     obsPasswordStatus();
-  } else localStorage.setItem(CONN_KEY, JSON.stringify({ port: +$("obsPort").value || 4455, password: $("obsPassword").value }));
+  } else {
+    localStorage.setItem(CONN_KEY, JSON.stringify({ port: +$("obsPort").value || 4455 }));
+    try { sessionStorage.setItem(CONN_KEY + "-password", $("obsPassword").value); } catch (e) {}
+  }
   channel.obs.fresh();
 };
 $("obsPasswordDelete").onclick = async () => {

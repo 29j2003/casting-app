@@ -5,6 +5,7 @@ loads every scene – a renamed name that one part of the code still uses the ol
     pytest tests/test_control_page.py
 """
 
+import json
 import os
 import re
 from pathlib import Path
@@ -1199,4 +1200,37 @@ def test_videos_can_be_limited_per_theme(server, browser):
     page.wait_for_timeout(300)
     assert page.evaluate("themeVideoFilter(['ad-a.webm', 'ad-b.webm'])") == ["ad-a.webm", "ad-b.webm"]
     page.evaluate("Z.themeVideos = {}; send()")
+    assert errors == []
+
+
+def test_loading_a_session_asks_before_internet_addresses_and_cleans_theme_colours(server, browser):
+    """A session file from someone else: addresses on the internet (camera links, pictures) only after asking,
+    theme colours only as #hex (no extra CSS), volumes only as numbers, playlists only with text entries."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    source = page.evaluate("Object.keys(K.DEFAULT.sources || {})[0]")
+    session = {"sources": {source: {"url": "https://cams.example/view?id=1"}},
+               "themeData": {"regular": {"accent": "red;background:url(https://track.example/x)", "dark": "#112233"}},
+               "audio": {"sceneVolumes": {"*": {"Mic": "<img src=x>"}}},
+               "background": {"playlists": [{"id": "x", "name": "a", "kind": "loop", "videos": {"length": "<b>x</b>"}}]}}
+
+    def load(choice: str) -> None:
+        page.set_input_files("#importFile", files=[{"name": "sitzung.json", "mimeType": "application/json",
+                                                    "buffer": json.dumps(session).encode()}])
+        box = page.locator(".question-box:has([data-w])")
+        box.wait_for()
+        assert "cams.example" in box.inner_text()             # the bad colour was already dropped, so only the camera
+        box.locator(f"[data-w='{choice}']").click()
+        page.wait_for_timeout(400)
+
+    load("drop")
+    assert page.evaluate(f"Z.sources[{source!r}].url") == ""
+    assert page.evaluate("[Z.themeData.regular.accent, Z.themeData.regular.dark]") == [None, "#112233"]
+    assert page.evaluate("Array.isArray(bgPlaylists().find(p => p.id === 'x').videos)") is True
+    load("keep")
+    assert page.evaluate(f"Z.sources[{source!r}].url") == "https://cams.example/view?id=1"
+    assert page.evaluate("Z.themeData.regular.accent ?? null") is None          # the colour stays out either way
+    page.evaluate("Z = K.clone(K.DEFAULT); everything(); send();")
     assert errors == []

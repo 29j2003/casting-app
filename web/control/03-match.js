@@ -565,6 +565,13 @@ async function devicesSearch(ask) {
   sourcesDraw();
 }
 $("devicesSearch").onclick = () => devicesSearch(true);
+// Videos aus dem Videos-Ordner für die Quellenart „Video“ (einmal laden, „Ordner neu lesen“ in Setup → Hintergrund lädt neu)
+let sourceVideos = null;
+async function sourceVideosLoad() {
+  try { sourceVideos = ((await (await fetch("/api/videos", { cache: "no-store" })).json()).videos || []).filter(v => !v.error).map(v => v.name); }
+  catch (err) { sourceVideos = []; }
+  sourcesDraw();
+}
 function sourcesDraw() {
   const box = $("sources"); box.innerHTML = "";
   Z.sources = Z.sources || {};
@@ -574,7 +581,7 @@ function sourcesDraw() {
   SLOTS.forEach(([k, name, group]) => {
     const Q = Z.sources[k] = Object.assign({ type: "empty", url: "", device: "", deviceName: "", audio: true, mirror: false, adjust: k === "content" ? "whole" : "fill", image: "" }, Z.sources[k] || {});
     const d = document.createElement("div"); d.className = "source-box";
-    const types = [["empty", "Leer (OBS-Quelle darüber)"], ["link", "VDO.Ninja / Link"], ["device", "Gerät (Webcam/Capture)"], ["image", "Bild"]];
+    const types = [["empty", "Leer (OBS-Quelle darüber)"], ["link", "VDO.Ninja / Link"], ["device", "Gerät (Webcam/Capture)"], ["image", "Bild"], ["video", "Video (Videos-Ordner)"]];
     d.innerHTML = `<h3>${name}<select>${types.map(([v, n]) => `<option value="${v}"${v === Q.type ? " selected" : ""}>${n}</option>`).join("")}</select></h3><div class="fields" style="display:grid;gap:8px"></div>`;
     d.querySelector("select").onchange = ev => { Q.type = ev.target.value; sourcesDraw(); send(); };
     const f = d.querySelector(".fields");
@@ -608,6 +615,18 @@ function sourcesDraw() {
       l.appendChild(s); f.appendChild(l);
       const r = document.createElement("div"); r.className = "line"; r.append(toggleSwitch("audio", "Mikrofon-Ton"), toggleSwitch("mirror", "Spiegeln"), rendering()); f.appendChild(r);
       f.insertAdjacentHTML("beforeend", `<p class="small">In OBS muss dafür der Kamerazugriff für Browserquellen erlaubt sein – siehe Anleitung (README).</p>`);
+    }
+    if (Q.type === "video") {                                // eigenes Video, z. B. für die eigene Contentpause (DACH)
+      const l = document.createElement("label"); l.textContent = "Video";
+      const s = document.createElement("select");
+      s.appendChild(new Option(sourceVideos ? (sourceVideos.length ? "– wählen –" : "– keine Videos im Ordner –") : "lädt …", ""));
+      themeVideoFilter(sourceVideos || []).forEach(n => s.appendChild(new Option(n, "media/videos/" + n, false, Q.video === "media/videos/" + n)));
+      if (Q.video && !(sourceVideos || []).some(n => Q.video === "media/videos/" + n)) s.appendChild(new Option(Q.video.replace(/^media\/videos\//, ""), Q.video, false, true));
+      s.onchange = () => { Q.video = s.value; send(); };
+      l.appendChild(s); f.appendChild(l);
+      if (Q.loop === undefined) Q.loop = true;
+      const r = document.createElement("div"); r.className = "line"; r.append(toggleSwitch("audio", "Ton"), toggleSwitch("loop", "Schleife"), rendering()); f.appendChild(r);
+      if (!sourceVideos) sourceVideosLoad();
     }
     if (Q.type === "image") {
       const r = document.createElement("div"); r.className = "image-row";

@@ -87,7 +87,8 @@ const DACH_STYLE = "dachcs-official";
 dachMode = () => Z.theme === DACH_STYLE;
 function dachSwitch(k) { if (!K.DACH_PAGES[k]) return; Z.broadcast.scene = k; Z.dach = Object.assign({}, Z.dach, { scene: k }); scenesDraw(); send(); obsBackgroundVisible(0); };
 function dachCardShow() { const card = document.querySelector(".dach-card"); if (card) card.hidden = !dachMode(); }
-const DFRAME_NAMES = { c1: "Caster 1", c2: "Caster 2", guest: "Gast", content: "Inhalt" };
+const DFRAME_NAMES = { c1: "Caster 1", c2: "Caster 2", c3: "Caster 3", guest: "Gast", content: "Inhalt", p3: "Person 3", p4: "Person 4",
+  v1: "Zuschauer 1", v2: "Zuschauer 2", v3: "Zuschauer 3", v4: "Zuschauer 4", v5: "Zuschauer 5", v6: "Zuschauer 6" };
 function dframeDraw() {
   const sel = $("dframeSide"); if (!sel) return;
   const pages = Object.keys(K.DACH_FRAME);
@@ -95,7 +96,14 @@ function dframeDraw() {
   const page = sel.value || pages[0], r = K.dachFrame(Z, page), box = $("dframeFields"); box.innerHTML = "";
   Object.entries(r).forEach(([q, w]) => {
     const z = document.createElement("div"); z.className = "dframe-row";
-    z.innerHTML = `<b>${DFRAME_NAMES[q] || q}</b>` + ["x", "y", "w", "h"].map(f => `<label class="small">${f.toUpperCase()}<input type="number" step="1" data-f="${f}" value="${esc(w[f])}"></label>`).join("");
+    // Rahmen · welche Quelle darin läuft (z. B. bei Interaktion der Gast oder ein Live-Feed statt „Inhalt“) · Lage
+    z.innerHTML = `<b>${DFRAME_NAMES[q] || q}</b><label class="small">Quelle<select data-src>${K.DACH_SOURCES.map(x =>
+        `<option value="${x}"${x === w.src ? " selected" : ""}>${DFRAME_NAMES[x] || x}</option>`).join("")}</select></label>` +
+      ["x", "y", "w", "h"].map(f => `<label class="small">${f.toUpperCase()}<input type="number" step="1" data-f="${f}" value="${esc(w[f])}"></label>`).join("");
+    z.querySelector("[data-src]").onchange = ev => {
+      Z.dachFrame = Z.dachFrame || {}; Z.dachFrame[page] = Z.dachFrame[page] || {};
+      Z.dachFrame[page][q] = Object.assign({}, K.dachFrame(Z, page)[q], { src: ev.target.value }); send();
+    };
     z.querySelectorAll("input").forEach(i => i.oninput = () => {
       Z.dachFrame = Z.dachFrame || {}; Z.dachFrame[page] = Z.dachFrame[page] || {};
       Z.dachFrame[page][q] = Object.assign({}, K.dachFrame(Z, page)[q], { [i.dataset.f]: Math.round(+i.value || 0) }); laterSend();

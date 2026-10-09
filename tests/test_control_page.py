@@ -954,3 +954,102 @@ def test_audio_rows_show_live_levels_from_obs(server, browser):
     cover, peak = page.evaluate(f"[...document.querySelectorAll('{row} .audio-meter i')].map(i => i.style.transform)")
     assert cover == "scaleX(0.333)" and peak.startswith("translateX(90")
     assert errors == []
+
+
+def test_dach_frames_take_any_source_and_a_video(server, browser):
+    """DACH CS – official: each frame can show another source (e.g. the guest in the big frame of the interaction page),
+    and a source can be an own video from the videos folder (e.g. the own content break)."""
+    import subprocess
+    from casting_app.server.media_converter import find_ffmpeg
+    video = server.folders.videos / "sync-test.webm"
+    if not video.is_file():
+        subprocess.run([find_ffmpeg(), "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=25", "-t", "20",
+                        "-c:v", "libvpx-vp9", "-b:v", "200k", "-deadline", "realtime", str(video)], check=True)
+    control, overlay = browser.new_page(viewport={"width": 1600, "height": 1000}), browser.new_page(viewport={"width": 1920, "height": 1080})
+    errors = watch(control) + watch(overlay)
+    control.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    overlay.goto(f"{BASE_URL}/overlay.html?access={server.access_key}")
+    control.wait_for_timeout(1200)
+    control.evaluate("""Z.theme = 'dachcs-official'; Z.broadcast.active = true; everything();
+      Z.sources.guest = { type: 'video', video: 'media/videos/sync-test.webm', loop: true, audio: false };
+      Z.dachFrame = { duointeraction: { content: { src: 'guest' } } }; dachSwitch('dach-inter2'); send();""")
+    overlay.wait_for_timeout(2500)
+    cams = overlay.evaluate("""[...document.querySelectorAll('.dach-cams .dach-cam')].map(k => [k.dataset.source, k.style.left, k.style.top,
+      !!k.querySelector('video')])""")
+    assert ["guest", "600px", "40px", True] in cams and not any(c[0] == "content" for c in cams), cams
+    control.evaluate("tabs('setup'); dframeDraw();")
+    assert control.evaluate("[...document.querySelectorAll('#dframeFields [data-src]')].length") >= 1
+    control.evaluate("Z.theme = 'regular'; Z.dachFrame = {}; Z.sources.guest = { type: 'empty' }; everything(); send()")
+    assert errors == []
+
+
+def test_ads_play_all_or_one_and_go_back_afterwards(server, browser):
+    """Ads: „All“ switches to the scene „Werbung“ and plays the ad videos with the label; at the end the last frame stays
+    and after the set seconds the app goes back to the scene it came from („Stay“ would keep it)."""
+    import subprocess
+    from casting_app.server.media_converter import find_ffmpeg
+    for name, source in (("ad-a.webm", "testsrc2"), ("ad-b.webm", "smptebars")):
+        if not (server.folders.videos / name).is_file():
+            subprocess.run([find_ffmpeg(), "-v", "error", "-y", "-f", "lavfi", "-i", f"{source}=size=320x180:rate=25", "-t", "1.5",
+                            "-c:v", "libvpx-vp9", "-b:v", "200k", "-deadline", "realtime", str(server.folders.videos / name)], check=True)
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("""Z.theme = 'regular'; Z.broadcast.transition = 'cut'; everything(); sceneSwitch('pause');
+      Z.ads = { videos: ['media/videos/ad-a.webm', 'media/videos/ad-b.webm'], badge: true, back: 2, play: null }; send(); tabs('live'); panelValues();""")
+    page.wait_for_timeout(500)
+    assert page.evaluate("[...document.querySelectorAll('#pAds [data-ads]')].map(b => b.textContent.trim())") == ["Alle (2)", "ad-a", "ad-b"]
+    page.evaluate("document.querySelector('#pAds [data-ads=all]').click()")
+    page.wait_for_timeout(1200)
+    assert page.evaluate("[Z.broadcast.scene, Z.ads.play.from, Z.ads.play.list.length]") == ["ads", "pause", 2]
+    frame = "$('frame').contentDocument"
+    assert page.evaluate(f"{frame}.querySelector('.ads-label').textContent") == "WERBUNG"
+    assert page.evaluate(f"!!{frame}.querySelector('.ads-stage video')")
+    for _ in range(100):                                       # both videos (2 × 1.5 s), then 2 s until going back – slow under load
+        if page.evaluate("Z.broadcast.scene") != "ads":
+            break
+        page.wait_for_timeout(250)
+    assert page.evaluate("[Z.broadcast.scene, Z.ads.play]") == ["pause", None]
+    # a single ad, then „Stay“: remains in the scene
+    page.evaluate("document.querySelector('#pAds [data-ads=\"1\"]').click()")
+    for _ in range(75):
+        if page.evaluate("!!document.querySelector('#pAds [data-ads-stay]')"):
+            break
+        page.wait_for_timeout(200)
+    page.evaluate("document.querySelector('#pAds [data-ads-stay]').click()")
+    page.wait_for_timeout(2500)
+    assert page.evaluate("Z.broadcast.scene") == "ads"
+    page.evaluate("document.querySelector('#pAds [data-ads-stop]').click()")
+    assert page.evaluate("Z.broadcast.scene") == "pause"
+    page.evaluate("Z.ads = { videos: [], badge: true, back: 10, play: null }; send()")
+    assert errors == []
+
+
+def test_videos_can_be_limited_per_theme(server, browser):
+    """Videos per theme: marking videos with „Theme“ limits the choice in this theme (ads list, source „Video“);
+    another theme without marks still offers all videos."""
+    import subprocess
+    from casting_app.server.media_converter import find_ffmpeg
+    for name in ("ad-a.webm", "ad-b.webm"):
+        if not (server.folders.videos / name).is_file():
+            subprocess.run([find_ffmpeg(), "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=25", "-t", "1.5",
+                            "-c:v", "libvpx-vp9", "-b:v", "200k", "-deadline", "realtime", str(server.folders.videos / name)], check=True)
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("themeChoose('esea'); Z.themeVideos = {}; send(); tabs('setup'); videoInfoDraw(); adsLibrary = null; adsSetupDraw();")
+    page.wait_for_timeout(800)
+    ads_offered = "[...document.querySelectorAll('#adVideos .vid-row b')].map(b => b.textContent)"
+    assert {"ad-a", "ad-b"} <= set(page.evaluate(ads_offered))
+    page.evaluate("[...document.querySelectorAll('#videoInfo .vid-row')].find(r => r.textContent.includes('ad-a.webm')).querySelector('.vid-theme-chip').click()")
+    page.wait_for_timeout(500)
+    assert page.evaluate("Z.themeVideos.esea") == ["ad-a.webm"]
+    assert page.evaluate(ads_offered) == ["ad-a"]
+    assert page.evaluate("themeVideoFilter(['ad-a.webm', 'ad-b.webm'])") == ["ad-a.webm"]
+    page.evaluate("themeChoose('regular')")
+    page.wait_for_timeout(300)
+    assert page.evaluate("themeVideoFilter(['ad-a.webm', 'ad-b.webm'])") == ["ad-a.webm", "ad-b.webm"]
+    page.evaluate("Z.themeVideos = {}; send()")
+    assert errors == []

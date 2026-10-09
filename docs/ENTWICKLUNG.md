@@ -195,6 +195,11 @@ jedem Senden, was laufen soll, nach `Z.background.videos` (Liste) und `Z.backgro
 das Overlay (`cast.js`: `background()`) kennt keine Playlisten. Clips: `Z.background.clip = { id: Zeitpunkt, videos, audio }`,
 jede Seite spielt einen Abruf einmal (`clips()`). Alte Zustände: `bgPlaylists()` macht aus `videos` die Playlist „Standard“.
 Spielt OBS ab (`source: "obs"`), bekommt die Quelle „Cast – Hintergrund“ die Videos (`obsBackground(true)`).
+* **Ton je Szene:** `bgAudioFor(szene)` – eigene Wahl der Szene (`Z.background.sceneAudio[szene]`, Knopf „Ton an/aus“
+  in der Live-Ecke), sonst der Haken `audio` ihrer Playlist. Ergebnis in `Z.background.play.audio`: das Overlay
+  (`audioApply`) schaltet danach die Playlist-Videos laut/stumm (Clips nach `clip.audio`); spielt OBS ab, schaltet
+  `obsBackgroundAudio()` „Cast – Hintergrund“ per `SetInputMute` (nur bei Änderung; aus in Ingame und bei DACH).
+  Für den Schlüssel `background` gibt es im Overlay keine eigene Stummschaltung mehr (`audioSettings`).
 * **Sichtbarkeit in OBS** (`obsBackgroundVisible(delay, fade)` → `obsBackgroundSync`): aus bei Ingame und bei DACH CS –
   Offiziell, sonst an. Weich über den Farbkorrektur-Filter „Cast – Blende“ (`color_filter_v2`, `opacity`; legt die App
   bei Bedarf an): `bgOpacityTo()` schickt ~30 Schritte pro Sekunde per `SetSourceFilterSettings`, erst danach
@@ -211,7 +216,12 @@ Spielt OBS ab (`source: "obs"`), bekommt die Quelle „Cast – Hintergrund“ d
 und wechselt nach `ads`; `cast.js` (`ads()`) spielt die Liste im Teil `[data-part=ads]` nacheinander mit Ton, das letzte
 Bild bleibt stehen. Die Vorschau im App-Fenster meldet `ads-progress` und `ads-ended` per `postMessage` an die
 Steuerseite; danach läuft `adsBack` (Sekunden aus `back`) bis zurück zu `from`. Verlässt die Sendung die Szene, wird
-`play` gelöscht (`sceneSwitch`). Schild „WERBUNG“/„AD“: `OVERLAY_WORDS.ad`.
+`play` gelöscht (`sceneSwitch`, bei DACH-Seiten `dachSwitch`). Schild „WERBUNG“/„AD“: `OVERLAY_WORDS.ad`.
+* **DACH CS – Offiziell:** DACH CS hat keine Werbe-Seite. `ads` steht in `DACH_SCENES` (Spalte Pause, ohne DACH-Seite);
+  `dachSwitch("ads")` geht über `sceneSwitch`, `sceneSwitch("dach-…")` über `dachSwitch`. `broadcast.js` (`dachAds`)
+  legt dann eine eigene Ebene `.dach-ads` mit `[data-part=ads]` über die laufende DACH-Seite (die geladen bleibt) und
+  blendet sie mit dem Übergang ein/aus. Geht es danach auf eine andere DACH-Seite, lädt sie unter der Werbung, schaltet
+  hart um, und erst dann blendet die Werbung aus. Panel-Vorgaben der DACH-Pausen enthalten „Werbung“.
 
 ### Videos je Theme
 

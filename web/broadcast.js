@@ -250,7 +250,7 @@
   /* ---------- DACH CS – Offiziell: Seite als Vollbild-Rahmen, vorgeladen und hart umgeschaltet (DACH nutzt keine bewegten Übergänge) ---------- */
   const dachOfficial = Z => !!((window.CAST_THEMES || {})[(Z || {}).theme] || {}).official;
   let dachLayer = null, dachActive = null, dachRunning = null, dachPage = null, dachKey = "", dachChain = Promise.resolve();
-  function dachOff() { if (dachLayer) { dachLayer.remove(); dachLayer = null; dachActive = null; dachRunning = null; dachPage = null; dachKey = ""; } document.body.classList.remove("dach-official"); currentScene = null; }
+  function dachOff() { if (dachLayer) { if (dachAdsLayer) dachAds(null, false); dachLayer.remove(); dachLayer = null; dachActive = null; dachRunning = null; dachPage = null; dachKey = ""; } document.body.classList.remove("dach-official"); currentScene = null; }
   function dachShow(Z) {
     document.body.classList.add("dach-official");
     if (!dachLayer) {
@@ -261,7 +261,10 @@
       document.body.insertBefore(dachLayer, document.body.firstChild);
       if (currentLayer) { currentLayer.remove(); currentLayer = null; }
     }
-    const k = (Z.broadcast || {}).scene, page = (window.CastCore.DACH_PAGES || {})[k] || "overview";
+    const k = (Z.broadcast || {}).scene;
+    if (k === "ads") { dachAds(Z, true); currentScene = k; return; }    // Werbung: eigene Ebene über der laufenden DACH-Seite
+    const page = (window.CastCore.DACH_PAGES || {})[k] || "overview";
+    if (dachAdsLayer) { if (page === dachPage) dachAds(Z, false); else dachAdsLayer._leave = true; }   // neue Seite: erst laden, dann aus
     if (page !== dachPage) {
       dachPage = page; currentScene = k;
       // drei Rahmen im Wechsel: einer zeigt, einer lädt, einer ist frei – schnelle Klicks können nie die sichtbare Seite treffen
@@ -274,7 +277,9 @@
         if (done || fresh._brand !== brand || dachPage !== page || fresh.getAttribute("src") !== window.CastCore.dachUrl(page)) return;
         done = true;
         if (fresh === dachActive) return;                      // zeigt diese Seite schon – kein Übergang auf sich selbst
-        const S = (C().Z || Z).broadcast || {}, previous = dachActive, kind = previous ? (S.transition || "fade") : "cut", d = Math.max(0, +S.duration || 0);
+        // unter der Werbung sieht niemand den Wechsel: hart umschalten, danach blendet die Werbung aus
+        const covered = !!(dachAdsLayer && dachAdsLayer._leave);
+        const S = (C().Z || Z).broadcast || {}, previous = dachActive, kind = previous && !covered ? (S.transition || "fade") : "cut", d = Math.max(0, +S.duration || 0);
         const before = previous ? dachUnderlay(C().Z || Z, previous, page) : null;   // Löcher beider Seiten bleiben schwarz
         // Untergrund im DACH-Dunkelblau, solange beide Seiten deckend sind (die Ingame-Seite ist durchsichtig: dort Spielbild)
         const floor = page !== "ingame" && !(previous && previous.getAttribute("src") === window.CastCore.dachUrl("ingame"));
@@ -283,6 +288,7 @@
         if (before) before.remove();
         all.forEach(x => { if (x !== fresh) { x.classList.remove("on"); x.style.zIndex = ""; } });
         fresh.style.zIndex = 3; dachActive = fresh; dachRunning = null;
+        if (covered && dachAdsLayer && dachAdsLayer._leave && (C().Z || Z).broadcast.scene !== "ads") dachAds(C().Z || Z, false);
         all.forEach(x => { if (x === fresh) return; const m = x._brand;
           x._clear = setTimeout(() => { if (x._brand === m && x !== dachActive && x.getAttribute("src") !== window.CastCore.dachUrl(dachPage)) x.src = "about:blank"; }, 300); });
       }).catch(() => {}); };
@@ -292,6 +298,25 @@
     }
     // Rahmen von Hand verschoben (gleiche Seite): sofort übernehmen
     else dachFrameSet(Z, page, 0);
+  }
+  /* Werbung im DACH-Stil: DACH CS hat keine Werbe-Seite – die Szene „Werbung“ der App liegt als Vollbild über der
+     DACH-Seite (die darunter geladen bleibt) und blendet mit dem gewählten Übergang ein und aus (Schnitt: hart). */
+  let dachAdsLayer = null;
+  function dachAds(Z, on) {
+    const S = (Z || {}).broadcast || {}, d = S.transition === "cut" ? 0 : Math.max(0, +S.duration || 0);
+    if (on) {
+      if (dachAdsLayer) { dachAdsLayer._leave = false; dachAdsLayer.getAnimations().forEach(a => a.cancel()); dachAdsLayer.style.opacity = ""; return; }
+      dachAdsLayer = document.createElement("div"); dachAdsLayer.className = "dach-ads";
+      dachAdsLayer.innerHTML = '<div data-part="ads" class="ads-stage"><div class="ads-label"></div></div>';
+      dachLayer.appendChild(dachAdsLayer);
+      if (d) dachAdsLayer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: d, easing: "ease-in-out" });
+      C().newDraw();                                            // cast.js: ads() spielt in der neuen Bühne
+      return;
+    }
+    if (!dachAdsLayer) return;
+    const layer = dachAdsLayer; dachAdsLayer = null;
+    const end = () => { layer.querySelectorAll("video").forEach(v => { v.pause(); v.removeAttribute("src"); v.load(); }); layer.remove(); };
+    if (d) layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: d, easing: "ease-in-out", fill: "forwards" }).finished.then(end, end); else end();
   }
   // Das App-Fenster (Qt WebEngine) spielt kein H.264 – Seiten mit DACH-Video bekommen dort einen Hinweis (nur Vorschau, nie in OBS)
   const DACH_VIDEO_PAGES = ["pause_content"];

@@ -643,7 +643,8 @@ const PANEL_DEFAULTS = {
   "cast-trio": ["timer", "texts", "note"], "cast-trio-host": ["timer", "texts", "note"], "cast-quad": ["series", "texts", "note"], "viewers": ["texts", "note"], "viewers-cast": ["texts", "note"], "teams": ["slides", "note"],
   "map-veto": ["veto", "series"], "players": ["series", "note"], "series": ["series", "score"], "sponsors": ["sponsor", "ads"], "ads": ["ads", "note"],
   "ingame": ["over", "score", "series", "note"], "pause": ["timer", "texts", "sponsor", "ads"], "end": ["series", "texts", "sponsor"],
-  "scoreboard": ["score", "series"], "team-a": ["score", "series"], "team-b": ["score", "series"], "h2h": ["score", "series"], "bracket": ["group", "note"]
+  "scoreboard": ["score", "series"], "team-a": ["score", "series"], "team-b": ["score", "series"], "h2h": ["score", "series"], "bracket": ["group", "note"],
+  "dach-pause": ["ads", "note"], "dach-content": ["ads", "note"], "dach-owncontent": ["ads", "note"]
 };
 let sceneToolsShown = "";
 const panelList = k => (ui.panels && ui.panels[k]) || PANEL_DEFAULTS[k] || [];

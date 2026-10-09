@@ -668,7 +668,9 @@
     if (audioAudioctx.state === "suspended") audioAudioctx.resume().catch(() => {});
     return audioAudioctx;
   }
-  function audioSettings(key) { return Object.assign({ vol: 100, mute: key === "background", delay: 0, monitor: "both" }, ((Z.audio || {})[key]) || {}); }
+  // Hintergrund (Playlisten, Clips, Quellen-Art „Video“): ob Ton läuft, entscheidet die Steuerseite je Szene bzw. Clip –
+  // hier keine eigene Stummschaltung (ältere Stände hatten background.mute fest an)
+  function audioSettings(key) { const T = { vol: 100, mute: false, delay: 0, monitor: "both" }; return key === "background" ? T : Object.assign(T, ((Z.audio || {})[key]) || {}); }
   function audioLevel(key) {
     const T = audioSettings(key);
     if (T.mute) return 0;
@@ -682,8 +684,8 @@
     const t = { d, g, key, alive }; audioChains.add(t); audioApply(); return t;
   }
   function audioApply() {
-    const bgOn = !audioSettings("background").mute;
-    $$(".backdrop video").forEach(v => audioForVideo(v, bgOn));
+    const H = Z.background || {}, bgOn = (H.play || {}).audio === true, clipOn = (H.clip || {}).audio !== false;
+    $$(".backdrop video").forEach(v => audioForVideo(v, v.classList.contains("bg-clip") ? clipOn : bgOn));
     audioChains.forEach(t => {
       if (!t.alive()) { try { t.g.disconnect(); } catch (e) {} audioChains.delete(t); return; }
       t.g.gain.value = audioLevel(t.key); t.d.delayTime.value = Math.min(5, Math.max(0, (+audioSettings(t.key).delay || 0) / 1000));

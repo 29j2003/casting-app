@@ -380,17 +380,19 @@ function adsDraw() {
   const A = adsState(), P = A.play, list = A.videos.filter(p => themeVideoFilter([p.replace(/^media\/videos\//, "")]).length);
   const running = P && Z.broadcast.scene === "ads", fromName = P ? audioSceneTitle(P.from) : "";
   const prog = running && adsProgress && adsProgress.id === P.id ? adsProgress : null;
-  const status = !running ? "" : adsBack ? `Fertig · zurück zu „${esc(fromName)}“ in ${Math.max(0, Math.ceil((adsBack - Date.now()) / 1000))} s`
-    : prog ? `▶ ${esc(adsName(P.list[prog.index] || ""))} (${prog.index + 1}/${prog.count}) · ${K.time(Math.max(0, (prog.d || 0) - (prog.t || 0)) * 1000)}`
+  // Status (Restzeit) ändert sich jede Sekunde: eigenes Feld – die Knöpfe bleiben stehen (kein verlorener Klick)
+  const status = !running ? "" : adsBack ? `Fertig · zurück zu „${fromName}“ in ${Math.max(0, Math.ceil((adsBack - Date.now()) / 1000))} s`
+    : prog ? `▶ ${adsName(P.list[prog.index] || "")} (${prog.index + 1}/${prog.count}) · ${K.time(Math.max(0, (prog.d || 0) - (prog.t || 0)) * 1000)}`
     : "▶ läuft …";
   const html = !list.length ? `<p class="small">Noch keine Werbe-Videos – Setup → Sponsoren → Werbung.</p>`
     : `<div class="map-buttons"><button class="button main" data-ads="all">${icon("play")}Alle (${list.length})</button>${list.map((p, i) =>
         `<button class="button" data-ads="${i}">${icon("play")}${esc(adsName(p))}</button>`).join("")}</div>
-      ${running ? `<div class="line" style="align-items:center"><span class="small">${status}</span>
+      ${running ? `<div class="line" style="align-items:center"><span class="small" data-ads-status></span>
         ${adsBack ? `<button class="button" data-ads-now>Jetzt zurück</button><button class="button" data-ads-stay>Bleiben</button>` : ""}
         <button class="button danger" data-ads-stop>Stopp</button></div>` : ""}`;
-  if (box._h === html) return;
-  box._h = html; box.innerHTML = html;
+  const statusSet = () => { const s = box.querySelector("[data-ads-status]"); if (s && s.textContent !== CastI18n.t(status)) s.textContent = CastI18n.t(status); };
+  if (box._h === html) return statusSet();
+  box._h = html; box.innerHTML = html; statusSet();
   box.querySelectorAll("[data-ads]").forEach(b => b.onclick = () => adsPlay(b.dataset.ads === "all" ? list : [list[+b.dataset.ads]]));
   const stop = box.querySelector("[data-ads-stop]"); if (stop) stop.onclick = adsStop;
   const now = box.querySelector("[data-ads-now]"); if (now) now.onclick = adsStop;

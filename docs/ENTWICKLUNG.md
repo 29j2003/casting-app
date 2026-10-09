@@ -436,7 +436,9 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
 Der Ton für OBS (obs-websocket: Lautstärke, Stumm, Verzögerung, Abhören) ist davon unabhängig.
 
 **Ton in OBS** (`web/control/11-audio.js`): eine kompakte Zeile je Quelle wie im OBS-Mixer. **Pegel:** die Steuerseite
-abonniert `InputVolumeMeters` (Bit `1<<16` in `events`, `01-core.js`; etwa 20 Meldungen pro Sekunde). `audioMeters()`
+abonniert `InputVolumeMeters` (Bit `1<<16`; etwa 20 Meldungen pro Sekunde) **nur, solange der Ton-Bereich zu sehen ist**:
+`audioMeterSubscribe()` schaltet das Bit über `channel.obs.subscribe()` (obs-websocket `Reidentify`, op 3) an und aus –
+beim Öffnen/Schließen des Bereichs, Reiterwechsel und `visibilitychange`. Grundabo in `01-core.js` ohne Pegel. `audioMeters()`
 merkt sich die Werte und zeichnet höchstens einmal je Bild (`requestAnimationFrame`) und nur, wenn der Bereich zu sehen
 ist – über `transform` (Deckel `scaleX`, Spitze `translateX`), ohne DOM-Neuaufbau. Skala −60 … 0 dB.
 
@@ -595,6 +597,15 @@ kommen aus `tools/build.py` – wer sie ändert, muss `asset_suffix()` anpassen.
   - nur neu zeichnen, was sich geändert hat (`newNeeded` in `cast.js`)
   - keine Endlos-Animationen im Leerlauf
   - keine Filter auf großen Flächen
+  - teure Messungen nur bei Änderung: `fit()` (Namen kürzen) merkt sich Text, Theme-Schrift und Breite und misst sonst
+    nicht neu; Spielstand und Serie schreiben nur, wenn sich der Text ändert; Live-Stats zeichnen die Teams nur bei
+    geänderten Werten neu
+* **Leistung der Steuerseite und des Servers:**
+  - `/control.js` wird einmal verbunden und erst neu gebaut, wenn sich eine Datei in `web/control/` ändert
+    (`control_script()`, Stempel aus den Änderungszeiten)
+  - `video_info.py` merkt sich die Angaben je Datei (Pfad, Größe, Änderungszeit) – FFprobe läuft nur einmal je Video
+  - Status der Unterseiten (`subStatusDraw`) rechnet nur sichtbare Gruppen und das Turnier einmal je Durchlauf (`subMemo`)
+  - HTML nur setzen, wenn es sich ändert (`setHtml`); laufender Status (Werbung) wird als Text nachgetragen, ohne die Liste neu zu bauen
 * **Keine Bedien-Hinweise im Stream:** Hinweise für den Bediener nur in der Vorschau (`body.idle`).
 * **Overlays ändern sich nicht durch die Desktop-App:** Desktop-Besonderheiten liegen in `casting_app/desktop/` oder
   hinter `window.castApp`.

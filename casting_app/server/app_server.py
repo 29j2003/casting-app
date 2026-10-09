@@ -895,10 +895,15 @@ def control_script() -> bytes:
     Humans edit the numbered files; the browser gets one script, so a function may be used before the file that
     declares it (as if it were one big file). A marker line in front of each part shows where it came from.
     """
-    parts = []
-    for file in sorted((WEB_DIR / "control").glob("*.js")):
-        parts.append(f"\n// ===== control/{file.name} =====\n" + file.read_text(encoding="utf-8"))
-    return "".join(parts).encode("utf-8")
+    files = sorted((WEB_DIR / "control").glob("*.js"))
+    stamp = tuple((file.name, file.stat().st_mtime_ns) for file in files)    # rebuilt only when a part changed
+    if _control_cache.get("stamp") != stamp:
+        parts = [f"\n// ===== control/{file.name} =====\n" + file.read_text(encoding="utf-8") for file in files]
+        _control_cache.update(stamp=stamp, body="".join(parts).encode("utf-8"))
+    return _control_cache["body"]
+
+
+_control_cache: dict = {}
 
 
 class _IPv6Server(ExclusiveHTTPServer):

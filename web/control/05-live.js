@@ -419,7 +419,7 @@ function liveShow() {
       `<div class="gz small"><span>Spieler</span><span>K</span><span>D</span><span>ADR</span></div>` +
       (l.map(p => `<div class="gz"><span>${esc(p.name)}</span><span>${p.k}</span><span>${p.d}</span><span>${p.adr}</span></div>`).join("") || `<span class="small">–</span>`) + `</div>`;
   };
-  $("gsiTable").innerHTML = d ? team("a", d.sideA) + team("b", sideB) : "";
+  setHtml($("gsiTable"), d ? team("a", d.sideA) + team("b", sideB) : "");     // bis zu 2×/s – nur bei Änderung
   // Head-to-Head-Auswahl
   ["a", "b"].forEach(k => {
     const s = $(k === "a" ? "h2hA" : "h2hB"), side = !d ? "" : k === "a" ? d.sideA : sideB;

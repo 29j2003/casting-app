@@ -353,7 +353,7 @@ def test_a_state_python_cannot_read_is_refused(server):
     """A session nested deeper than Python's json reads (imported file) must not reach state.json – the next start
     would fail on it."""
     before = server._state_text
-    deep = '{"revision": 99999999999999, "x": ' + "[" * 5000 + "]" * 5000 + "}"
+    deep = '{"revision": 99999999999999, "x": ' + "[" * 200_000 + "]" * 200_000 + "}"   # too deep for every Python 3.11+
     assert request("POST", "/api/state", deep.encode())[0] == 400
     assert server._state_text == before
 

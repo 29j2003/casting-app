@@ -1,0 +1,2 @@
+# Inputs for requirements/build.txt (tools/update_requirements.py) – the app's own dependencies come from pyproject.toml
+setuptools>=69

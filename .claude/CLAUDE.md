@@ -70,6 +70,8 @@ Aufbau und Rezepte für Änderungen: `docs/ENTWICKLUNG.md` (bei neuen Bausteinen
 - Einrichten: `pip install -e ".[test]"` (Python 3.11+); bauen zusätzlich `pip install -e ".[build]"`
 - Starten: `python -m casting_app` (Desktop-App) · `python -m casting_app --no-window` (nur Server)
 - Bauen: `python tools/build.py` → `dist/` (für das laufende System; PyInstaller, Windows-Installer `tools/installer.nsi`)
+- Vor jedem Release: `python tools/update_requirements.py` (braucht `pip install uv`) – die CI baut nur mit den festen
+  Versionen und Prüfsummen aus `requirements/build.txt`
 - Tests: `xvfb-run -a python -m pytest` · Skripte gegen die laufende App (`python -m casting_app --debug`,
   als root zusätzlich `QTWEBENGINE_DISABLE_SANDBOX=1`): `tests/live/` (`transitions.py`, `flicker.py`, `fast_switching.py`, `memory.py`)
 - Szenen neu erzeugen: `python3 tools/generate_scenes.py`

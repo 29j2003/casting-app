@@ -575,7 +575,10 @@ deinstallieren).
   sich verschieben, ein SHA nicht). `appimagetool` und die AppImage-Laufzeit kommen in fester Version mit SHA-256
   (`tools/build.py`, `download_checked`) – neue Version: Datei laden, `sha256sum`, beides eintragen. Checkout ohne
   gespeicherte Zugangsdaten (`persist-credentials: false`). Ein schon veröffentlichtes Release wird nie überschrieben
-  (der Release-Job bricht ab – erst die Version erhöhen).
+  (der Release-Job bricht ab – erst die Version erhöhen). Python-Pakete des Baus: feste Versionen mit Prüfsummen in
+  `requirements/build.txt` (`pip install --require-hashes`; Eingaben: `pyproject.toml` und `requirements/build.in`;
+  auffrischen mit `tools/update_requirements.py`, siehe „Version und Release“). Dependabot (`.github/dependabot.yml`)
+  schlägt einmal im Monat neue Versionen der Actions als PR vor.
 * **Lizenzen** mitgelieferter Teile in `LICENSES/` (FFmpeg, Qt/PySide6, alle Schriften) – neue Schrift oder Bibliothek
   → Lizenztext dazulegen (ohne E-Mail-Adressen der Urheber, `check_privacy.py` prüft auch diese Dateien).
 
@@ -608,8 +611,10 @@ kommen aus `tools/build.py` – wer sie ändert, muss `asset_suffix()` anpassen.
    - `web/cast-core.js` (`VERSION`)
 
    `tools/build.py` prüft das. Overlays mit einer anderen Version laden sich beim Verbinden neu.
-2. Auf `main` mergen.
-3. GitHub → Actions → **Bauen** → „Run workflow“ auf `main` mit „Release erstellen“. Der Workflow baut alles,
+2. Python-Pakete auffrischen: `pip install uv` (einmal), dann `python tools/update_requirements.py` – schreibt
+   `requirements/build.txt` mit den neuesten Versionen und ihren Prüfsummen neu; die Änderung mit in den PR nehmen.
+3. Auf `main` mergen.
+4. GitHub → Actions → **Bauen** → „Run workflow“ auf `main` mit „Release erstellen“. Der Workflow baut alles,
    testet, legt den Tag `v<Version>` an und lädt die Dateien hoch (Setup.exe, portable Zip, AppImage, dmg/zip).
 
 ## Fehlersuche

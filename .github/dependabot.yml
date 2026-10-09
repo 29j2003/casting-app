@@ -1,0 +1,10 @@
+# Hält die fest gepinnten GitHub Actions (Commit-SHA statt Tag, siehe workflows/build.yml) aktuell:
+# einmal im Monat ein PR mit allen neuen Versionen; die CI testet ihn wie jeden anderen.
+# Die Python-Pakete (requirements/build.txt) frischt tools/update_requirements.py vor jedem Release auf.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+    groups:
+      actions: { patterns: ["*"] }

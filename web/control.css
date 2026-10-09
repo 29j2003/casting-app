@@ -185,12 +185,6 @@ textarea { min-height: 80px; resize: vertical; }
 .image-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .image-row select { flex: 1 1 100%; }
 /* Unterteilte Bereiche (z. B. Theme anpassen): eine Gruppe je Thema, Kopf schlicht, nur die gewählten offen */
-.sub-group { border-top: 1px solid var(--line); }
-.sub-group:first-child { border-top: 0; }
-.sub-group > summary { cursor: pointer; list-style: none; padding: 10px 0; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-.sub-group > summary::-webkit-details-marker { display: none; }
-.sub-group > summary::before { content: "›"; display: inline-block; width: 12px; color: var(--muted); transition: transform .15s; }
-.sub-group[open] > summary::before { transform: rotate(90deg); }
 .sub-group > .sub-body { display: grid; gap: 10px; padding: 0 0 14px 20px; }
 .theme-reset { justify-self: start; margin-top: 6px; }
 /* lange Hilfetexte: eine Zeile mit „…“ – Klick zeigt den ganzen Text (weniger Text auf jeder Seite) */
@@ -906,10 +900,23 @@ body { background: radial-gradient(1200px 600px at 75% -10%, rgba(139, 92, 255, 
 .vid-row .vid-theme-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .vid-theme { justify-content: space-between; }
 
-/* Unter-Gruppen in einem Bereich (Theme anpassen, „Läuft in“): schlichte Zeile statt Karten-Kopf */
-.page details.sub-group > summary, .page details.bg-scenes-pick > summary {
+/* Unterbereiche in einer Karte (Theme anpassen, „Weitere Personen“, „Läuft in“ …): schlichte Klapp-Zeile statt
+   eigener Karte – eine Karte je Thema, darin nur noch Zeilen */
+.page details .content details:not(.facts) { background: none; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
+.page details .content details:not(.facts) > summary {
   all: unset; display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 9px 0; font-size: 13px; font-weight: 600; color: var(--text); }
-.page details.bg-scenes-pick > summary { font-weight: 400; padding: 4px 0; }
-.page details.sub-group > summary::after, .page details.bg-scenes-pick > summary::after { content: none; }
-.page details.sub-group > summary:hover, .page details.bg-scenes-pick > summary:hover { color: var(--accent); }
+.page details .content details:not(.facts) > summary::after { content: none; }
+.page details .content details:not(.facts) > summary::before { content: "›"; display: inline-block; width: 12px; color: var(--muted); transition: transform .15s; }
+.page details .content details:not(.facts)[open] > summary::before { transform: rotate(90deg); }
+.page details .content details:not(.facts) > summary:hover { color: var(--accent); }
+.page details .content details.bg-scenes-pick > summary { font-weight: 400; padding: 4px 0; }
+.page details .content details.bg-scenes-pick > summary::before { content: none; }
 .vid-row:has(> .vid-theme-chip) { grid-template-columns: 22px 1fr auto; }
+.page details .content details.sub-group { border-top: 1px solid var(--line); }
+.page details .content details.sub-group:first-child { border-top: 0; }
+.scene-pick-flat { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; }
+/* Map-Pool: Karten außerhalb des Pools nur mit Bild, Name und Schalter */
+.pool-card.off .pool-bar select, .pool-card.off details.facts { display: none; }
+/* Sprecher-Anzeige: Schwelle und Hinweis nur, wenn sie an ist */
+label.toggleSwitch:has(input[data-field="speaker.on"]:not(:checked)) + .speaker-more { display: none; }
+.speaker-more { display: grid; gap: 6px; }

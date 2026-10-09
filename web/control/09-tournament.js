@@ -47,6 +47,8 @@ function tournamentDraw() {
 }
 function tournamentTreeDraw() {
   const T = tour(), B = K.tournamentBuild(T, CastI18n.language), box = $("tourTree"); box.innerHTML = "";
+  $("tourTeamsClear").disabled = !T.teams.length;
+  $("tourGamesClear").hidden = !(T.games || []).length;                // eigene/FACEIT-Spielpläne; Baum-Formate: „Ergebnisse löschen“
   const linked = T.gamesSource === "faceit" || T.teams.some(t => t.faceitId);       // Ergebnisse können von FACEIT kommen
   const sourceDraw = () => { const n = Object.values(T.res).filter(e => e && e.fixed).length;
     $("tourSource").textContent = linked ? `Quelle: FACEIT${n ? ` · ${n} korrigiert` : ""}` : "Quelle: selbst eingetragen"; };
@@ -136,6 +138,22 @@ $("tourReset").onclick = async () => {
   if (!await confirmDialog({ title: "Alle Ergebnisse löschen?", text: "Teams und Format bleiben, alle Spielstände (und Swiss-Runden) werden geleert.", button: "Löschen" })) return;
   const T = tour(); T.res = {}; T.swiss.rounds = []; tournamentTreeDraw(); send();
 };
+// alles auf einmal leeren – Teams (samt ihren Spielen) oder nur die Spiele; „Rückgängig“ stellt den Stand wieder her
+async function tourClear(teams) {
+  const T = tour();
+  if (!await confirmDialog(teams
+    ? { title: "Alle Teams löschen?", text: `${T.teams.length} Teams und alle Spiele und Ergebnisse des Turniers werden gelöscht. Name und Format bleiben.`, button: "Alle löschen" }
+    : { title: "Alle Spiele löschen?", text: "Spielplan, Ergebnisse und Swiss-Runden werden gelöscht. Teams, Name und Format bleiben.", button: "Alle löschen" })) return;
+  const before = JSON.parse(JSON.stringify(T));
+  if (teams) { T.teams = []; T.focused = ""; }
+  T.games = []; T.res = {}; if (T.swiss) T.swiss.rounds = []; delete T.gamesSource;
+  tournamentDraw(); send();
+  undo(teams ? "Alle Teams gelöscht" : "Alle Spiele gelöscht", () => {
+    Object.keys(T).forEach(k => delete T[k]); Object.assign(T, before); tournamentDraw(); send();   // im selben Objekt (siehe ensure)
+  });
+}
+$("tourTeamsClear").onclick = () => tourClear(true);
+$("tourGamesClear").onclick = () => tourClear(false);
 // FACEIT: Teams eines Turniers, Team-Statistiken, Ergebnisse
 const tournamentId = s => (String(s || "").match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i) || [])[0] || "";
 async function faceitJson(path) { const r = await fetch("/api/faceit/" + path); if (!r.ok) throw new Error(r.status === 401 ? "kein FACEIT-Schlüssel gespeichert (⚙ App-Einstellungen → Verbindungen & Zugänge)" : "FACEIT antwortet mit " + r.status); return r.json(); }

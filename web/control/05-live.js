@@ -258,13 +258,15 @@ function sponsorsDraw() {
     away.onclick = () => remove(list, i, `Sponsor „${s.name || "?"}“`, () => { sponsorsDraw(); scenesDraw(); });
     box.appendChild(z);
   });
-  const scenesBox = $("sponsorScenes"); scenesBox.innerHTML = `<span class="small">Sponsor-Kasten zeigen in:</span>`;
-  const r = document.createElement("div"); r.className = "line";
+  // Szenen mit Sponsor-Kasten: Kacheln wie bei „Szenen & OBS“ (statt einer Reihe Schalter)
+  const scenesBox = $("sponsorScenes"); scenesBox.innerHTML = "";
+  const r = document.createElement("div"); r.className = "scene-pick-flat";
   SPONSOR_SCENES.forEach(([k, n]) => {
-    const l = document.createElement("label"); l.className = "toggleSwitch"; l.style.flex = "0 0 auto";
-    const c = document.createElement("input"); c.type = "checkbox"; c.checked = (Z.sponsors.sceneList || {})[k] !== false;
-    c.onchange = () => { Z.sponsors.sceneList = Z.sponsors.sceneList || {}; Z.sponsors.sceneList[k] = c.checked; send(); };
-    l.append(c, n); r.appendChild(l);
+    const b = document.createElement("button"); b.type = "button"; b.className = "scene-pick-chip"; b.dataset.scene = k;
+    const on = () => (Z.sponsors.sceneList || {})[k] !== false;
+    b.setAttribute("aria-pressed", on()); b.innerHTML = `${icon("check")}<span>${esc(n)}</span>`;
+    b.onclick = () => { Z.sponsors.sceneList = Object.assign({}, Z.sponsors.sceneList, { [k]: !on() }); b.setAttribute("aria-pressed", on()); send(); };
+    r.appendChild(b);
   });
   scenesBox.appendChild(r);
 }

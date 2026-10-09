@@ -480,6 +480,37 @@ def test_corrected_faceit_results_stay(server, browser):
     assert errors == []
 
 
+def test_tournament_delete_all_teams_or_games_with_undo(server, browser):
+    """Tournament: „Alle Spiele löschen“ empties schedule and results but keeps the teams; „Alle Teams löschen“ also
+    empties the teams. „Rückgängig“ brings back the whole state."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("""window.confirmDialog = async () => true; const T = tour(); T.name = 'Liga'; T.format = 'table'; T.groupsCount = 1;
+      T.teams = ['A', 'B', 'C'].map((n, i) => ({ id: 't' + i, name: n, short: n, logo: '', players: [], faceitId: '' }));
+      T.games = [{ id: 'g1', round: 1, group: 0, a: 't0', b: 't1' }, { id: 'g2', round: 1, group: 0, a: 't1', b: 't2' }];
+      T.res = { g1: { a: 13, b: 7 } }; tabs('tournament'); tournamentDraw(); send();""")
+    page.wait_for_timeout(300)
+    assert page.evaluate("[$('tourTeamsClear').disabled, $('tourGamesClear').hidden]") == [False, False]
+    page.evaluate("$('tourGamesClear').click()")
+    page.wait_for_timeout(300)
+    assert page.evaluate("[tour().teams.length, tour().games.length, Object.keys(tour().res).length, tour().name]") == [3, 0, 0, "Liga"]
+    assert page.evaluate("$('tourGamesClear').hidden") is True
+    page.evaluate("$('toastBack').click()")
+    page.wait_for_timeout(200)
+    assert page.evaluate("[tour().teams.length, tour().games.length, tour().res.g1.a]") == [3, 2, 13]
+    page.evaluate("$('tourTeamsClear').click()")
+    page.wait_for_timeout(300)
+    assert page.evaluate("[tour().teams.length, tour().games.length, tour().name, tour().format]") == [0, 0, "Liga", "table"]
+    assert page.evaluate("$('tourTeamsClear').disabled") is True
+    page.evaluate("$('toastBack').click()")
+    page.wait_for_timeout(200)
+    assert page.evaluate("[tour().teams.length, tour().games.length]") == [3, 2]
+    page.evaluate("const T = tour(); T.teams = []; T.games = []; T.res = {}; T.format = 'se'; tournamentDraw(); send();")
+    assert errors == []
+
+
 def test_team_intro_slides_switch_and_take_values_from_the_tournament(server, browser):
     """Teams scene: values come from the tournament; the slides switch by hand and run on automatically."""
     control, overlay = browser.new_page(), browser.new_page(viewport={"width": 1920, "height": 1080})

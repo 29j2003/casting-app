@@ -169,6 +169,17 @@ Die Dateien `web/<scene>.html` werden erzeugt – nie von Hand ändern.
 5. Übersetzungen in `web/lang-en.js`. `tests/test_control_page.py` prüft die neue Art im Overlay automatisch mit,
    sobald eine Einblendung dieser Art im Standardzustand steht.
 
+### Schrift und Aufräumen der Steuerseite
+
+* Schrift der Oberfläche: **Inter** (`web/fonts/Inter-*.woff2`, Latin-Teilmenge mit Umlauten, Lizenz `LICENSES/Inter-OFL.txt`) –
+  Barlow zeigte unter Windows das „i“ wie ein „l“. Überschriften der Karten bleiben `--title-font` (Rajdhani/Barlow).
+* Unterbereiche in einer Karte: `<details class="sub-group"><summary>…</summary><div class="sub-body">…</div></details>` –
+  jedes verschachtelte `details` in `.content` wird automatisch zur schlichten Klapp-Zeile (keine Karte in der Karte).
+* Lange feste Hilfetexte (`p.small` ohne id, ab 110 Zeichen) zeigt `helpTextsShorten()` (13-app.js) einzeilig mit „…“;
+  ein Klick zeigt den ganzen Text. Statusmeldungen haben eine id und bleiben ganz.
+* Auswahl vieler Szenen: Kacheln `.scene-pick-chip` (`aria-pressed`) statt Schalter-Reihen (Szenen & OBS, Sponsoren);
+  große Matrizen (Szenen-Panels) mit `.cell-check`.
+
 ### Icons in der Steuerseite
 
 Knöpfe zeigen SVG-Icons, keine Zeichen wie 🔓 ⧉ ⏻ – die hängen von den Schriften des Systems ab und sahen unter Linux

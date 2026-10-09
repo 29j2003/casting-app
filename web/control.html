@@ -455,8 +455,10 @@
           ein <b>Bild</b> – oder <b>leer</b>, wenn du in OBS eine eigene Quelle darüberlegst.</p>
         <div class="line"><button class="button" id="devicesSearch">Geräte suchen</button><span class="small" id="devicesStatus"></span></div>
         <label class="toggleSwitch"><input type="checkbox" data-field="speaker.on" data-kind="bool"> Sprecher-Anzeige: Schild leuchtet, wenn jemand spricht</label>
-        <label>Schwelle (niedriger = empfindlicher)<input type="range" min="0.02" max="0.4" step="0.01" data-field="speaker.threshold" data-kind="number"></label>
-        <p class="small">Funktioniert bei „Gerät" (Mikrofon) und bei VDO.Ninja-Links.</p>
+        <div class="speaker-more">
+          <label>Schwelle (niedriger = empfindlicher)<input type="range" min="0.02" max="0.4" step="0.01" data-field="speaker.threshold" data-kind="number"></label>
+          <p class="small">Funktioniert bei „Gerät" (Mikrofon) und bei VDO.Ninja-Links.</p>
+        </div>
         <div id="sources" class="list"></div>
       </div>
     </details>
@@ -513,7 +515,7 @@
       <div class="content">
         <span class="small">Teams – Reihenfolge = Setzliste (bis 32). Spieler mit Komma trennen.</span>
         <div id="tourTeams" class="list"></div>
-        <div class="line"><button class="button" id="tourNewTeam">+ Team</button><button class="button" id="tourStats">Team-Statistiken von FACEIT laden</button></div>
+        <div class="line"><button class="button" id="tourNewTeam">+ Team</button><button class="button" id="tourStats">Team-Statistiken von FACEIT laden</button><span style="flex:1"></span><button class="button danger" id="tourTeamsClear">Alle Teams löschen</button></div>
         <div class="line" style="align-items:end">
           <label style="flex:2">FACEIT-Turnier (Link oder ID)<input type="text" id="tourFaceit" placeholder="https://www.faceit.com/…/championship/…"></label>
           <button class="button main" id="tourFaceitAll">Turnier übernehmen</button><button class="button" id="tourFaceitResult">Ergebnisse aktualisieren</button>
@@ -529,7 +531,7 @@
           Von Hand geänderte FACEIT-Ergebnisse sind <b>korrigiert</b> und bleiben beim Aktualisieren stehen.</span>
         <div id="tourTree" class="tour-tree"></div>
         <p class="small" id="tourSource"></p>
-        <div class="line"><button class="button" id="tourReset">Alle Ergebnisse löschen</button></div>
+        <div class="line"><button class="button" id="tourReset">Alle Ergebnisse löschen</button><button class="button danger" id="tourGamesClear">Alle Spiele löschen</button></div>
       </div>
     </details>
 
@@ -625,27 +627,31 @@
       <summary>Sponsoren</summary>
       <div class="content">
         <label class="toggleSwitch"><input type="checkbox" data-field="sponsors.on" data-kind="bool"> Sponsoren anzeigen</label>
-        <div class="line">
-          <label>Wechsel alle … Sekunden<input type="number" min="3" data-field="sponsors.seconds" data-kind="number"></label>
-          <label>Überschrift<input type="text" data-field="texts.sponsorLabel"></label>
-        </div>
-        <label class="toggleSwitch"><input type="checkbox" data-field="sponsors.inTicker" data-kind="bool"> Sponsoren zusätzlich im Lauftext nennen</label>
-        <label class="toggleSwitch"><input type="checkbox" data-field="sponsors.bar" data-kind="bool"> Restzeit-Balken unter dem Logo (zeigt, wann der nächste Sponsor kommt)</label>
-        <label>Platz des Sponsor-Kastens<select data-field="sponsors.spot"><option value="bar">In der unteren Leiste (gleich hoch, Leiste mittig)</option><option value="top">Oben rechts (wie vor 3.0)</option></select></label>
-        <div class="line">
-          <label>Lauftext-Einleitung<input type="text" data-field="texts.sponsorTicker"></label>
-          <label>Titel der Sponsoren-Szene<input type="text" data-field="texts.sponsorsTitle"></label>
-        </div>
         <div id="sponsorEntries" class="list"></div>
         <div class="line"><button class="button" id="sponsorPlus">+ Sponsor</button><label>Große Einblendung (Sekunden)<input type="number" id="sponsorDuration" value="10" min="3"></label></div>
-        <div id="sponsorScenes" class="list"></div>
         <p class="small">Logos am besten als PNG mit durchsichtigem Hintergrund. Die Liste gilt für das gewählte Theme – jede Liga hat ihre eigenen Sponsoren.</p>
-        <h4 class="pool-title">Werbung <span class="small">· Videos für die Szene „Werbung“ – in Live „Alle“ oder einzeln abspielen</span></h4>
-        <div id="adVideos" class="list"></div>
-        <div class="line">
-          <label class="toggleSwitch"><input type="checkbox" data-field="ads.badge" data-kind="bool"> Schild „Werbung“ einblenden (Kennzeichnung)</label>
-          <label>Danach zurück zur vorigen Szene nach … s (0 = bleibt)<input type="number" min="0" max="600" data-field="ads.back" data-kind="number"></label>
-        </div>
+        <details class="sub-group"><summary>Szenen mit Sponsor-Kasten</summary><div class="sub-body"><div id="sponsorScenes"></div></div></details>
+        <details class="sub-group"><summary>Anzeige &amp; Texte</summary><div class="sub-body">
+          <div class="line">
+            <label>Wechsel alle … Sekunden<input type="number" min="3" data-field="sponsors.seconds" data-kind="number"></label>
+            <label>Überschrift<input type="text" data-field="texts.sponsorLabel"></label>
+          </div>
+          <label>Platz des Sponsor-Kastens<select data-field="sponsors.spot"><option value="bar">In der unteren Leiste (gleich hoch, Leiste mittig)</option><option value="top">Oben rechts (wie vor 3.0)</option></select></label>
+          <label class="toggleSwitch"><input type="checkbox" data-field="sponsors.bar" data-kind="bool"> Restzeit-Balken unter dem Logo (zeigt, wann der nächste Sponsor kommt)</label>
+          <label class="toggleSwitch"><input type="checkbox" data-field="sponsors.inTicker" data-kind="bool"> Sponsoren zusätzlich im Lauftext nennen</label>
+          <div class="line">
+            <label>Lauftext-Einleitung<input type="text" data-field="texts.sponsorTicker"></label>
+            <label>Titel der Sponsoren-Szene<input type="text" data-field="texts.sponsorsTitle"></label>
+          </div>
+        </div></details>
+        <details class="sub-group" open><summary>Werbung</summary><div class="sub-body">
+          <span class="small">Videos für die Szene „Werbung“ – in Live „Alle“ oder einzeln abspielen</span>
+          <div id="adVideos" class="list"></div>
+          <div class="line">
+            <label class="toggleSwitch"><input type="checkbox" data-field="ads.badge" data-kind="bool"> Schild „Werbung“ einblenden (Kennzeichnung)</label>
+            <label>Danach zurück zur vorigen Szene nach … s (0 = bleibt)<input type="number" min="0" max="600" data-field="ads.back" data-kind="number"></label>
+          </div>
+        </div></details>
       </div>
     </details>
     <details data-area="map-pool">
@@ -917,8 +923,7 @@
         <label>FACEIT API-Key (Server side, von developers.faceit.com)
           <input type="text" id="faceitKey" autocomplete="off" spellcheck="false" placeholder="Schlüssel einfügen …" style="-webkit-text-security: disc"></label>
         <div class="line"><button class="button" id="faceitKeySave">Schlüssel speichern</button><button class="button" id="faceitKeyDelete">Schlüssel löschen</button></div>
-        <p class="small" id="faceitKeyStatus">Der Schlüssel wird im Schlüsselbund des Systems gespeichert und nie wieder angezeigt –
-          weder hier noch in Sicherungen, Sitzungen, Exporten oder im Log. Die App setzt ihn nur intern für FACEIT-Abfragen ein.</p>
+        <p class="small" id="faceitKeyStatus"></p>
 </div>
 <div class="set-card" id="setDach"><div class="set-head"><b>DACH CS – Offiziell</b><span class="state" id="setDachState">–</span></div>
           <div class="line" style="align-items:end">
@@ -926,7 +931,7 @@
             <label style="flex:1">Key<input type="text" id="dachKey" autocomplete="off" spellcheck="false" placeholder="Key einfügen …" style="-webkit-text-security: disc"></label>
             <button class="button" id="dachSave">Speichern</button><button class="button" id="dachDelete">Löschen</button>
           </div>
-          <p class="small" id="dachStatus">ID und Key findest du im DACH-CS-Nutzerbereich unter Casting → Browserquellen. Beide werden im Schlüsselbund des Systems gespeichert und nie wieder angezeigt.</p>
+          <p class="small" id="dachStatus">ID und Key: DACH-CS-Nutzerbereich → Casting → Browserquellen.</p>
 </div>
 <div class="set-card" id="setMusic"><div class="set-head"><b>Musik · Spotify über Tuna</b><span class="state" id="setMusicState">–</span></div>
         <label class="toggleSwitch"><input type="checkbox" data-field="music.displayed" data-kind="bool"> In Intro, Pause und Ende anzeigen</label>

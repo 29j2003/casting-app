@@ -49,6 +49,7 @@ async function scenesLoad() {
 }
 function overGameQuit() { if (Z.broadcast.overGame) Z.broadcast.overGame = null; }
 async function sceneSwitch(k) {
+  if (/^dach-/.test(k) && dachMode()) return dachSwitch(k);            // DACH-Seite (z. B. zurück nach der Werbung)
   overGameQuit(); if (k !== "ingame") Z.broadcast.clean = false;
   const c = sceneCfg(), e = c.list[k];
   if (onSource()) {                                                   // alles in overlay.html

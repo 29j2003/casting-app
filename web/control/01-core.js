@@ -130,6 +130,8 @@ const ICONS = {
   left: '<path d="M19 12H5M12 5l-7 7 7 7"/>',
   right: '<path d="M5 12h14M12 5l7 7-7 7"/>',
   chevron: '<path d="M6 9l6 6 6-6"/>',
+  volume: '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
+  "volume-off": '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/>',
   headphones: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="5" height="7" rx="2"/><rect x="16" y="14" width="5" height="7" rx="2"/>'
 };
 const icon = name => `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ""}</svg>`;
@@ -217,7 +219,7 @@ channel = K.channel({
     if (s !== "connected") broadcastStatus(null);
     setTimeout(() => { try { scenesDraw(); } catch (err) {} }, 0);   // erst nach dem Laden der Seite
   },
-  onOpen() { sentImages.clear(); send(); sourcesCheck(); scenesLoad(); bgFilterReady = false; setTimeout(() => obsBackgroundVisible(0, 0), 1000); setTimeout(overlaysPill, 1500); setTimeout(accessCheck, 2000); },
+  onOpen() { sentImages.clear(); send(); sourcesCheck(); scenesLoad(); bgFilterReady = false; bgAudioSent = ""; setTimeout(() => { obsBackgroundVisible(0, 0); obsBackgroundAudio(); }, 1000); setTimeout(overlaysPill, 1500); setTimeout(accessCheck, 2000); },
   onAnswer(type, ok, hint, data) {
     if (type === "CallVendorRequest") broadcastStatus(ok, hint);
     if (type === "GetInputList") {

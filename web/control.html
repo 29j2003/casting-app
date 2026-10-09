@@ -455,8 +455,10 @@
           ein <b>Bild</b> – oder <b>leer</b>, wenn du in OBS eine eigene Quelle darüberlegst.</p>
         <div class="line"><button class="button" id="devicesSearch">Geräte suchen</button><span class="small" id="devicesStatus"></span></div>
         <label class="toggleSwitch"><input type="checkbox" data-field="speaker.on" data-kind="bool"> Sprecher-Anzeige: Schild leuchtet, wenn jemand spricht</label>
-        <label>Schwelle (niedriger = empfindlicher)<input type="range" min="0.02" max="0.4" step="0.01" data-field="speaker.threshold" data-kind="number"></label>
-        <p class="small">Funktioniert bei „Gerät" (Mikrofon) und bei VDO.Ninja-Links.</p>
+        <div class="speaker-more">
+          <label>Schwelle (niedriger = empfindlicher)<input type="range" min="0.02" max="0.4" step="0.01" data-field="speaker.threshold" data-kind="number"></label>
+          <p class="small">Funktioniert bei „Gerät" (Mikrofon) und bei VDO.Ninja-Links.</p>
+        </div>
         <div id="sources" class="list"></div>
       </div>
     </details>
@@ -513,7 +515,7 @@
       <div class="content">
         <span class="small">Teams – Reihenfolge = Setzliste (bis 32). Spieler mit Komma trennen.</span>
         <div id="tourTeams" class="list"></div>
-        <div class="line"><button class="button" id="tourNewTeam">+ Team</button><button class="button" id="tourStats">Team-Statistiken von FACEIT laden</button></div>
+        <div class="line"><button class="button" id="tourNewTeam">+ Team</button><button class="button" id="tourStats">Team-Statistiken von FACEIT laden</button><span style="flex:1"></span><button class="button danger" id="tourTeamsClear">Alle Teams löschen</button></div>
         <div class="line" style="align-items:end">
           <label style="flex:2">FACEIT-Turnier (Link oder ID)<input type="text" id="tourFaceit" placeholder="https://www.faceit.com/…/championship/…"></label>
           <button class="button main" id="tourFaceitAll">Turnier übernehmen</button><button class="button" id="tourFaceitResult">Ergebnisse aktualisieren</button>
@@ -529,7 +531,7 @@
           Von Hand geänderte FACEIT-Ergebnisse sind <b>korrigiert</b> und bleiben beim Aktualisieren stehen.</span>
         <div id="tourTree" class="tour-tree"></div>
         <p class="small" id="tourSource"></p>
-        <div class="line"><button class="button" id="tourReset">Alle Ergebnisse löschen</button></div>
+        <div class="line"><button class="button" id="tourReset">Alle Ergebnisse löschen</button><button class="button danger" id="tourGamesClear">Alle Spiele löschen</button></div>
       </div>
     </details>
 
@@ -572,7 +574,7 @@
           <button class="button" id="themeDelete">Löschen</button>
           <input type="file" id="themeFile" accept=".json,.casting-theme,application/json" hidden>
         </div>
-        <p class="small" id="themeStatus">Eigene Themes speichern sich automatisch. „Exportieren" erzeugt eine Datei mit allen Farben, Logos und Bildern – zum Teilen oder als Sicherung.</p>
+        <p class="small" id="themeStatus"></p>
       </div>
     </details>
 
@@ -625,27 +627,31 @@
       <summary>Sponsoren</summary>
       <div class="content">
         <label class="toggleSwitch"><input type="checkbox" data-field="sponsors.on" data-kind="bool"> Sponsoren anzeigen</label>
-        <div class="line">
-          <label>Wechsel alle … Sekunden<input type="number" min="3" data-field="sponsors.seconds" data-kind="number"></label>
-          <label>Überschrift<input type="text" data-field="texts.sponsorLabel"></label>
-        </div>
-        <label class="toggleSwitch"><input type="checkbox" data-field="sponsors.inTicker" data-kind="bool"> Sponsoren zusätzlich im Lauftext nennen</label>
-        <label class="toggleSwitch"><input type="checkbox" data-field="sponsors.bar" data-kind="bool"> Restzeit-Balken unter dem Logo (zeigt, wann der nächste Sponsor kommt)</label>
-        <label>Platz des Sponsor-Kastens<select data-field="sponsors.spot"><option value="bar">In der unteren Leiste (gleich hoch, Leiste mittig)</option><option value="top">Oben rechts (wie vor 3.0)</option></select></label>
-        <div class="line">
-          <label>Lauftext-Einleitung<input type="text" data-field="texts.sponsorTicker"></label>
-          <label>Titel der Sponsoren-Szene<input type="text" data-field="texts.sponsorsTitle"></label>
-        </div>
         <div id="sponsorEntries" class="list"></div>
         <div class="line"><button class="button" id="sponsorPlus">+ Sponsor</button><label>Große Einblendung (Sekunden)<input type="number" id="sponsorDuration" value="10" min="3"></label></div>
-        <div id="sponsorScenes" class="list"></div>
         <p class="small">Logos am besten als PNG mit durchsichtigem Hintergrund. Die Liste gilt für das gewählte Theme – jede Liga hat ihre eigenen Sponsoren.</p>
-        <h4 class="pool-title">Werbung <span class="small">· Videos für die Szene „Werbung“ – in Live „Alle“ oder einzeln abspielen</span></h4>
-        <div id="adVideos" class="list"></div>
-        <div class="line">
-          <label class="toggleSwitch"><input type="checkbox" data-field="ads.badge" data-kind="bool"> Schild „Werbung“ einblenden (Kennzeichnung)</label>
-          <label>Danach zurück zur vorigen Szene nach … s (0 = bleibt)<input type="number" min="0" max="600" data-field="ads.back" data-kind="number"></label>
-        </div>
+        <details class="sub-group"><summary>Szenen mit Sponsor-Kasten</summary><div class="sub-body"><div id="sponsorScenes"></div></div></details>
+        <details class="sub-group"><summary>Anzeige &amp; Texte</summary><div class="sub-body">
+          <div class="line">
+            <label>Wechsel alle … Sekunden<input type="number" min="3" data-field="sponsors.seconds" data-kind="number"></label>
+            <label>Überschrift<input type="text" data-field="texts.sponsorLabel"></label>
+          </div>
+          <label>Platz des Sponsor-Kastens<select data-field="sponsors.spot"><option value="bar">In der unteren Leiste (gleich hoch, Leiste mittig)</option><option value="top">Oben rechts (wie vor 3.0)</option></select></label>
+          <label class="toggleSwitch"><input type="checkbox" data-field="sponsors.bar" data-kind="bool"> Restzeit-Balken unter dem Logo (zeigt, wann der nächste Sponsor kommt)</label>
+          <label class="toggleSwitch"><input type="checkbox" data-field="sponsors.inTicker" data-kind="bool"> Sponsoren zusätzlich im Lauftext nennen</label>
+          <div class="line">
+            <label>Lauftext-Einleitung<input type="text" data-field="texts.sponsorTicker"></label>
+            <label>Titel der Sponsoren-Szene<input type="text" data-field="texts.sponsorsTitle"></label>
+          </div>
+        </div></details>
+        <details class="sub-group" open><summary>Werbung</summary><div class="sub-body">
+          <span class="small">Videos für die Szene „Werbung“ – in Live „Alle“ oder einzeln abspielen</span>
+          <div id="adVideos" class="list"></div>
+          <div class="line">
+            <label class="toggleSwitch"><input type="checkbox" data-field="ads.badge" data-kind="bool"> Schild „Werbung“ einblenden (Kennzeichnung)</label>
+            <label>Danach zurück zur vorigen Szene nach … s (0 = bleibt)<input type="number" min="0" max="600" data-field="ads.back" data-kind="number"></label>
+          </div>
+        </div></details>
       </div>
     </details>
     <details data-area="map-pool">
@@ -683,15 +689,14 @@
             <b class="small">PLAYLISTEN</b>
             <div id="bgLists" class="list"></div>
             <button class="button" id="bgListNew">+ Playlist</button>
-            <p class="small">Blau = in diesen Szenen läuft sie von selbst. Clips laufen nur, wenn du sie in Live startest.</p>
           </div>
           <div class="bg-edit" id="bgEdit">
             <div class="line" style="align-items:end"><label style="flex:1">Name<input type="text" id="bgName"></label><button class="button danger" id="bgListDelete">Playlist löschen</button></div>
             <span class="small">Art</span>
             <div class="bg-kinds" id="bgKinds">
-              <button data-kind="loop"><b>Ein Video · Dauerschleife</b><span class="small">Läuft endlos, nahtlos verbunden.</span></button>
-              <button data-kind="list"><b>Mehrere Videos</b><span class="small">Nacheinander oder zufällig, dann von vorn.</span></button>
-              <button data-kind="clips"><b>Clips</b><span class="small">Einmal durch, mit Ton – danach wieder der Hintergrund.</span></button>
+              <button data-kind="loop" title="Läuft endlos, nahtlos verbunden."><b>Ein Video · Dauerschleife</b></button>
+              <button data-kind="list" title="Nacheinander oder zufällig, dann von vorn."><b>Mehrere Videos</b></button>
+              <button data-kind="clips" title="Einmal durch, mit Ton – danach wieder der Hintergrund. Start in Live."><b>Clips</b></button>
             </div>
             <span class="small" id="bgVideosHead">Videos – Reihenfolge mit ↑ ↓</span>
             <div id="bgVideos" class="list"></div>
@@ -700,9 +705,9 @@
               <label>Dauer (Sek.)<input type="number" id="bgFade" min="0" max="4" step="0.1" style="width:80px"></label>
               <div><span class="small">Reihenfolge</span><div class="segment" id="bgOrder"><button data-v="seq">Nacheinander</button><button data-v="shuffle">Zufällig</button></div></div>
             </div>
-            <label class="toggleSwitch" id="bgAudioLine"><input type="checkbox" id="bgAudio"> Ton der Videos abspielen</label>
-            <p class="small" id="bgAudioHint">Standard für die Szenen dieser Playlist – in Live unter der Vorschau je Szene umschaltbar („Ton an/aus“).</p>
-            <div id="bgScenesLine"><span class="small">Läuft von selbst in (Ingame nie – dort liegt das Spielbild)</span><div class="bg-scenes" id="bgScenes"></div></div>
+            <label class="toggleSwitch" id="bgAudioLine" title="Standard für die Szenen dieser Playlist – in Live unter der Vorschau je Szene umschaltbar („Ton an/aus“)."><input type="checkbox" id="bgAudio"> Ton der Videos abspielen</label>
+            <details id="bgScenesLine" class="bg-scenes-pick"><summary><span class="small">Läuft in</span> <b id="bgScenesSum"></b> <span class="link-button">Ändern</span></summary>
+              <div class="bg-scenes" id="bgScenes"></div><p class="small">Ingame nie – dort liegt das Spielbild.</p></details>
           </div>
         </div>
         <b class="small">BIBLIOTHEK – alle Videos im Videos-Ordner · Haken = in der gewählten Playlist</b>
@@ -720,7 +725,7 @@
     <details open data-area="scene-panels">
       <summary>Szenen-Panels</summary>
       <div class="content">
-        <p class="small">Welche Felder jede Szene in Live im <b>Panel der Szene</b> mitbringt. Grün = Feld ist dabei. Lila Name = angepasst, sonst Vorgabe.</p>
+        <p class="small">Welche Felder das Panel einer Szene in Live zeigt. Farbiger Name = angepasst.</p>
         <label class="toggleSwitch"><input type="checkbox" id="panelAutoSetup"> Panel öffnet sich beim Szenenwechsel</label>
         <div class="panel-table-wrap"><table class="panel-table" id="panelTable"></table></div>
       </div>
@@ -730,12 +735,9 @@
       <summary>Szenen einrichten</summary>
       <div class="content">
         <label class="toggleSwitch"><input type="checkbox" data-field="broadcast.active" data-kind="bool" id="onSource"> <b>Eine Browserquelle für alles</b> (empfohlen)</label>
-        <p class="small" id="onSourceText">In OBS gibt es dann nur <b>eine</b> Szene mit <b>einer</b> Browserquelle (<code>overlay.html</code>). Die Szenen wechselst du hier im Reiter Live –
-          mit eigenem Übergang (Blende, Schieben, Wischen, Stinger in Theme-Farben). Kameras kommen dafür am besten per VDO.Ninja oder als Gerät (Kameras &amp; Quellen).</p>
-        <p class="small" id="sceneOneText"><b>So geht's:</b> 1. „Szene ‚Cast – Sendung' in OBS anlegen" klicken. 2. Unten die Szenen abhaken, die du benutzt – nur die erscheinen im Reiter <b>Live</b> als Knopf.</p>
-        <p class="small" id="sceneManyText"><b>So geht's:</b> Häkchen = Szene erscheint im Reiter <b>Live</b> als Knopf.
-          Mit <b>„In OBS anlegen"</b> erstellt die Steuerseite fehlende Szenen in OBS gleich mit der passenden Browserquelle – du musst dann nur noch Kameras &amp; Co. hineinlegen.
-          Hast du schon eigene Szenen, wählst du sie einfach in der Liste aus.</p>
+        <p class="small" id="onSourceText">In OBS nur eine Szene mit einer Browserquelle – die Szenen wechselst du in Live.</p>
+        <p class="small" id="sceneOneText" hidden></p>
+        <p class="small" id="sceneManyText">„In OBS anlegen“ erstellt fehlende Szenen gleich mit Browserquelle; eigene Szenen wählst du in der Liste.</p>
         <div class="line">
           <button class="button main" id="sceneCreate">In OBS anlegen</button>
           <button class="button" id="overlayAddressCopy" title="Für eine Browserquelle, die du selbst in OBS anlegst (1920 × 1080)">Overlay-Adresse kopieren</button>
@@ -775,7 +777,7 @@
             <div class="line"><button class="button main" id="gsiCfgLoad">Datei für den Observer-PC herunterladen</button></div>
             <p class="small">Die Datei auf dem Observer-PC in dessen CS2-Ordner <code>…\game\csgo\cfg</code> legen. Beim ersten Empfang fragt Windows auf
               <b>diesem</b> PC nach der Firewall: „Private Netzwerke“ erlauben (oder Port 8788 freigeben). Angenommen werden nur Daten mit deinem Schlüssel.</p></li>
-          <li><b>CS2 neu starten</b> und das Match als <b>Zuschauer</b> öffnen (GOTV oder Observer-Slot) – nur dann liefert CS2 alle 10 Spieler.</li>
+          <li><span><b>CS2 neu starten</b> und das Match als <b>Zuschauer</b> öffnen (GOTV oder Observer-Slot) – nur dann liefert CS2 alle 10 Spieler.</span></li>
           <li><b>Teams zuordnen</b>
             <div class="line" style="align-items:center"><span class="small">Team A spielt gerade</span>
               <div class="segment" id="gsiSide"><button data-side="CT">CT</button><button data-side="T">T</button></div></div>
@@ -921,8 +923,7 @@
         <label>FACEIT API-Key (Server side, von developers.faceit.com)
           <input type="text" id="faceitKey" autocomplete="off" spellcheck="false" placeholder="Schlüssel einfügen …" style="-webkit-text-security: disc"></label>
         <div class="line"><button class="button" id="faceitKeySave">Schlüssel speichern</button><button class="button" id="faceitKeyDelete">Schlüssel löschen</button></div>
-        <p class="small" id="faceitKeyStatus">Der Schlüssel wird im Schlüsselbund des Systems gespeichert und nie wieder angezeigt –
-          weder hier noch in Sicherungen, Sitzungen, Exporten oder im Log. Die App setzt ihn nur intern für FACEIT-Abfragen ein.</p>
+        <p class="small" id="faceitKeyStatus"></p>
 </div>
 <div class="set-card" id="setDach"><div class="set-head"><b>DACH CS – Offiziell</b><span class="state" id="setDachState">–</span></div>
           <div class="line" style="align-items:end">
@@ -930,7 +931,7 @@
             <label style="flex:1">Key<input type="text" id="dachKey" autocomplete="off" spellcheck="false" placeholder="Key einfügen …" style="-webkit-text-security: disc"></label>
             <button class="button" id="dachSave">Speichern</button><button class="button" id="dachDelete">Löschen</button>
           </div>
-          <p class="small" id="dachStatus">ID und Key findest du im DACH-CS-Nutzerbereich unter Casting → Browserquellen. Beide werden im Schlüsselbund des Systems gespeichert und nie wieder angezeigt.</p>
+          <p class="small" id="dachStatus">ID und Key: DACH-CS-Nutzerbereich → Casting → Browserquellen.</p>
 </div>
 <div class="set-card" id="setMusic"><div class="set-head"><b>Musik · Spotify über Tuna</b><span class="state" id="setMusicState">–</span></div>
         <label class="toggleSwitch"><input type="checkbox" data-field="music.displayed" data-kind="bool"> In Intro, Pause und Ende anzeigen</label>

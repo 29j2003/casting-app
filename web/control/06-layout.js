@@ -527,9 +527,11 @@ if (!ui.zoom3) { if (!ui.zoom || ui.zoom === 1) ui.zoom = "auto"; ui.zoom3 = tru
 dockRemember(); widths(); zoomSet(ui.zoom || "auto"); designSet(ui.design || "dark"); placementSet(); lockDraw();
 // Start: alles in den Reitern zu; angedockte Bereiche so, wie du sie zuletzt hattest („Erste Schritte“ nur beim allerersten Start offen)
 ui.isOpen = ui.isOpen || {};
+// die Szenen-Liste (2.21: Standard links) merkt sich ihren Zustand auch in der linken Spalte – sie ist das Wichtigste in Live
+const remembersOpen = d => placeFrom(d) !== "left" || d.dataset.area === "sceneList";
 areas.forEach(d => {
-  d.open = placeFrom(d) !== "left" && d.id !== "firstSteps" ? ui.isOpen[d.dataset.area] !== false : d.id === "firstSteps" && !ui.stepsSeen;
-  d.addEventListener("toggle", () => { if (placeFrom(d) !== "left") { ui.isOpen[d.dataset.area] = d.open; uiSave(); } });
+  d.open = remembersOpen(d) && d.id !== "firstSteps" ? ui.isOpen[d.dataset.area] !== false : d.id === "firstSteps" && !ui.stepsSeen;
+  d.addEventListener("toggle", () => { if (remembersOpen(d)) { ui.isOpen[d.dataset.area] = d.open; uiSave(); } });
 });
 if (!ui.stepsSeen) { ui.stepsSeen = true; uiSave(); }
 // Erklärtexte (2.16): lange, feste Hinweise am Anfang eines Bereichs stehen hinter „?“ am Titel – ein Klick zeigt sie.

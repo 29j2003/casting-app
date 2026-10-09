@@ -233,7 +233,14 @@ def test_dach_pages_keep_running_when_app_audio_changes(server, browser):
         z.broadcast.scene = 'dach-singlecast'; z.broadcast.active = true; z.revision = Date.now();
         fetch('/api/state', { method: 'POST', body: JSON.stringify(z) });            // the server's state wins in the overlay
         document.getElementById('p').contentWindow.postMessage({ cast: 'state', z }, location.origin); })()""")
-    page.wait_for_timeout(1500)
+    # wait until the scene stands (pages and camera frames) – slow runners need longer than a fixed pause
+    for _ in range(60):                       # (the page's CSP forbids wait_for_function with a string)
+        if page.evaluate("""(() => { const d = document.getElementById('p').contentDocument;
+                return d.querySelectorAll('.dach-cam').length > 0
+                    && [...d.querySelectorAll('.dach-page')].some(f => (f.getAttribute('src') || '').includes('/dach/singlecast')); })()"""):
+            break
+        page.wait_for_timeout(250)
+    page.wait_for_timeout(500)
     before = page.evaluate("""(() => { const d = document.getElementById('p').contentDocument;
         const pages = [...d.querySelectorAll('.dach-page')];
         // a reload by the overlay means writing src again (even the same value) or a new frame – not a late first load
@@ -477,6 +484,37 @@ def test_corrected_faceit_results_stay(server, browser):
     page.click("#tourTree .tour-fixed")                                          # back to FACEIT's value
     page.evaluate(f"faceitResults(tour(), {faceit})")
     assert page.evaluate("[tour().res.Fm1.a, tour().res.Fm1.b]") == [1, 0]
+    assert errors == []
+
+
+def test_tournament_delete_all_teams_or_games_with_undo(server, browser):
+    """Tournament: „Alle Spiele löschen“ empties schedule and results but keeps the teams; „Alle Teams löschen“ also
+    empties the teams. „Rückgängig“ brings back the whole state."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("""window.confirmDialog = async () => true; const T = tour(); T.name = 'Liga'; T.format = 'table'; T.groupsCount = 1;
+      T.teams = ['A', 'B', 'C'].map((n, i) => ({ id: 't' + i, name: n, short: n, logo: '', players: [], faceitId: '' }));
+      T.games = [{ id: 'g1', round: 1, group: 0, a: 't0', b: 't1' }, { id: 'g2', round: 1, group: 0, a: 't1', b: 't2' }];
+      T.res = { g1: { a: 13, b: 7 } }; tabs('tournament'); tournamentDraw(); send();""")
+    page.wait_for_timeout(300)
+    assert page.evaluate("[$('tourTeamsClear').disabled, $('tourGamesClear').hidden]") == [False, False]
+    page.evaluate("$('tourGamesClear').click()")
+    page.wait_for_timeout(300)
+    assert page.evaluate("[tour().teams.length, tour().games.length, Object.keys(tour().res).length, tour().name]") == [3, 0, 0, "Liga"]
+    assert page.evaluate("$('tourGamesClear').hidden") is True
+    page.evaluate("$('toastBack').click()")
+    page.wait_for_timeout(200)
+    assert page.evaluate("[tour().teams.length, tour().games.length, tour().res.g1.a]") == [3, 2, 13]
+    page.evaluate("$('tourTeamsClear').click()")
+    page.wait_for_timeout(300)
+    assert page.evaluate("[tour().teams.length, tour().games.length, tour().name, tour().format]") == [0, 0, "Liga", "table"]
+    assert page.evaluate("$('tourTeamsClear').disabled") is True
+    page.evaluate("$('toastBack').click()")
+    page.wait_for_timeout(200)
+    assert page.evaluate("[tour().teams.length, tour().games.length]") == [3, 2]
+    page.evaluate("const T = tour(); T.teams = []; T.games = []; T.res = {}; T.format = 'se'; tournamentDraw(); send();")
     assert errors == []
 
 

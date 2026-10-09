@@ -17,7 +17,7 @@ An experiment to see how far you can get with Claude. The app was built entirely
 I'm not a caster either; I help with the production of casts, and that's what the app is made for.
 Use it, change it, pass it on: everything is allowed, no need to ask.
 
-License: [The Unlicense](LICENSE). Bundled FFmpeg: GPL, see [LICENSES/FFmpeg.txt](LICENSES/FFmpeg.txt).
+License: [The Unlicense](LICENSE). Bundled FFmpeg: GPL, see [LICENSES/FFmpeg.txt](LICENSES/FFmpeg.txt); interface font Inter: SIL OFL, see [LICENSES/Inter-OFL.txt](LICENSES/Inter-OFL.txt).
 
 ## Getting started
 
@@ -85,9 +85,11 @@ In Match and Tournament, **“Next: …”** and **“← …”** below each su
 
 Top left you choose the workspace: *Beginner*, *Operator*, *Caster – big buttons*, *Laptop / next to OBS*, *Preparation*
 or your own (“Save current arrangement as …”). A workspace remembers docks, sizes, positions, locks and button size.
-* *Beginner* (used on first start) shows only preview, scenes and the scene panel; everything else is ready, collapsed.
-* *Operator*: scenes, scene tools and graphics are open; audio, match bar and tournament are collapsed (click the title to
-  open them; the state is remembered).
+* Both default workspaces have the same arrangement: **scenes on the left**, **audio in the middle below the preview**,
+  **everything else on the right** (scene panel, graphics, match bar, tournament live).
+* *Beginner* (used on first start): on the right only the scene panel is open; graphics, match bar and tournament are
+  collapsed (click the title to open them; the state is remembered).
+* *Operator*: scene panel and graphics are open on the right; match bar and tournament are collapsed.
 
 ### Edit layout
 
@@ -289,8 +291,10 @@ Four sub-pages with status: **Setup** (name, format, points rule) · **Teams & F
   values for win 2:0, win 2:1, loss 1:2, loss 0:2 and draw. On equal points the head-to-head counts first, then the round
   difference (RD, fetched from FACEIT), then the wins.
 * **Group in the overlay:** all groups or just one – the tables fit the space (one group large, several side by side).
-  Faster in Live: while the bracket runs, the scene panel has buttons **All · Group A · Group B …** – the scene stays,
-  only the group changes (also for GSL).
+  Faster in Live: **Tournament live** has the drop-down for the group (any time), and while the bracket runs the scene panel
+  has buttons **All · Group A · Group B …** – the scene stays, only the group changes (also for GSL).
+* **Delete all:** “Delete all teams” (teams with their games and results) and “Delete all games” (schedule, results and
+  Swiss rounds; teams stay) – both ask first and can be undone.
 * **Click a team** in the bracket to highlight it in the overlay and show its profile.
 * **Visibility:** everything, **reveal round by round** (up to round X), **only from round X**, hide results (only who advances).
 
@@ -361,8 +365,8 @@ graphic “Map fact”.
 
 ### Scenes & OBS
 
-“Create the scene ‘Cast – Sendung’ in OBS”, “Copy overlay address”, the cleanfeed scene and which scenes appear in Live
-(e.g. the variants *Trio – large host* and *Viewer cams*). The people scenes share the style of the cast scenes, with the
+“Create the scene ‘Cast – Sendung’ in OBS”, “Copy overlay address”, the cleanfeed scene and which scenes appear in Live –
+one tile per scene, grouped like in Live (e.g. switch on the variants *Trio – large host* and *Viewer cams*). The people scenes share the style of the cast scenes, with the
 sponsor in the bar: **Cast trio** (three casters side by side) · **Trio – large host** (caster 1 large, two smaller on
 the right) · **4 people** (2 × 2 grid) · **Viewers + casters** (four viewer tiles, casters on the right) · **Viewer cams**
 (wall with six tiles and a header). Under **Scene panels** you choose which fields the scene panel shows per scene.

@@ -234,7 +234,7 @@ function bgDraw() {
   document.querySelectorAll("#bgOrder button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === (p.order || "seq")));
   $("bgFade").value = ((p.fade ?? 1200) / 1000).toFixed(1);
   $("bgAudio").checked = p.kind === "clips" ? p.audio !== false : !!p.audio;
-  $("bgPassageLine").hidden = p.kind !== "list"; $("bgScenesLine").hidden = $("bgAudioHint").hidden = p.kind === "clips";
+  $("bgPassageLine").hidden = p.kind !== "list"; $("bgScenesLine").hidden = p.kind === "clips";
   $("bgVideosHead").textContent = p.kind === "loop" ? "Video – es läuft das erste" : "Videos – Reihenfolge mit ↑ ↓";
   const vids = $("bgVideos"); vids.innerHTML = p.videos.length ? "" : `<p class="small">Noch keine Videos – unten in der Bibliothek anhaken.</p>`;
   p.videos.forEach((v, i) => {
@@ -249,6 +249,9 @@ function bgDraw() {
     vids.appendChild(z);
   });
   const sc = $("bgScenes"); sc.innerHTML = "";
+  const own = OVERLAY_SCENES.filter(([k]) => k !== "ingame" && (p.scenes || []).includes(k)), every = OVERLAY_SCENES.length - 1;
+  $("bgScenesSum").textContent = !own.length ? "keiner Szene" : own.length >= every ? "allen Szenen" : own.length > 3 ? `${own.length} Szenen`
+    : own.map(([, n]) => n).join(", ");
   OVERLAY_SCENES.filter(([k]) => k !== "ingame").forEach(([k]) => {
     const on = (p.scenes || []).includes(k), b = document.createElement("button"); b.type = "button";
     b.className = "bg-scene" + (on ? " on" : ""); b.textContent = (on ? "✓ " : "+ ") + audioSceneTitle(k);

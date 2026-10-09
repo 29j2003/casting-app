@@ -394,6 +394,11 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
 
 Der Ton für OBS (obs-websocket: Lautstärke, Stumm, Verzögerung, Abhören) ist davon unabhängig.
 
+**Ton in OBS** (`web/control/11-audio.js`): eine kompakte Zeile je Quelle wie im OBS-Mixer. **Pegel:** die Steuerseite
+abonniert `InputVolumeMeters` (Bit `1<<16` in `events`, `01-core.js`; etwa 20 Meldungen pro Sekunde). `audioMeters()`
+merkt sich die Werte und zeichnet höchstens einmal je Bild (`requestAnimationFrame`) und nur, wenn der Bereich zu sehen
+ist – über `transform` (Deckel `scaleX`, Spitze `translateX`), ohne DOM-Neuaufbau. Skala −60 … 0 dB.
+
 ### Geheimnisse
 
 FACEIT-Key, DACH-CS-Nutzer-ID und -Key und das OBS-Passwort liegen **nur im Schlüsselbund des Systems** (Paket `keyring`:

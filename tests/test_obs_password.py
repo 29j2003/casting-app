@@ -174,6 +174,7 @@ def test_monitoring_dropdown_and_volume_per_scene(server):
         page.wait_for_function("() => typeof channel !== 'undefined' && channel.obs && channel.obs.isOpen", timeout=15_000)
         page.evaluate("document.querySelector('#audioList').closest('details').open = true")
         page.wait_for_selector(row, timeout=10_000)
+        page.click(f"{row} .gfx-more")                       # Abhören sits under „Mehr“ (compact rows)
         page.select_option(f"{row} .audio-monitor-choice", "OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT")
         page.wait_for_timeout(300)
         assert obs.monitor["Cast – Overlay"] == "OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT"

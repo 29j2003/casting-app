@@ -63,17 +63,22 @@ function audioDraw() {
     const T = audioRevision[name]; if (!T) return;
     const title = titles[name] || name;
     const sceneOwn = audioPerScene() && name in ((((Z.audio || {}).sceneVolumes) || {})[audioScene()] || {});
-    const z = document.createElement("div"); z.className = "audio-z";
-    z.innerHTML = `<div class="audio-head"><div class="tname"><b>${esc(title)}</b><span>${esc(name)}</span></div>
+    // kompakt wie im OBS-Mixer: Kopfzeile (Name · Prozent · Abhören · Stumm · Mehr), darunter Pegel und Regler
+    const z = document.createElement("div"); z.className = "audio-z" + (T.mute ? " muted" : "");
+    z.innerHTML = `<div class="audio-head"><div class="tname"><b title="${esc(name)}">${esc(title)}</b>${title !== name ? `<span>${esc(name)}</span>` : ""}</div>
+        ${sceneOwn ? `<span class="audio-scene-own" title="Diese Lautstärke gilt nur in der Szene „${esc(audioSceneTitle(audioScene()))}“">Szene</span>` : ""}
+        ${T.monitor && T.monitor !== "OBS_MONITORING_TYPE_NONE" ? `<span class="audio-listen" title="${esc((MONITOR.find(([v]) => v === T.monitor) || [, ""])[1])}: ${esc(MONITOR_HINT[T.monitor] || "")}">${icon("headphones")}</span>` : ""}
+        <b class="audio-vol${T.vol > 100 ? " loud" : ""}">${T.vol} %</b>
         <button class="audio-mute${T.mute ? " off" : ""}" aria-pressed="${T.mute}">${T.mute ? "STUMM" : "Stumm"}</button>
         <button class="gfx-more" aria-label="Mehr Einstellungen">${icon("more")}</button></div>
-      <div class="audio-slider"><input type="range" min="0" max="300" step="5" value="${Math.min(300, T.vol)}" aria-label="Lautstärke ${esc(title)}"><b class="${T.vol > 100 ? "loud" : ""}">${T.vol} %</b></div>
-      <div class="audio-monitoring"><label>Abhören<select class="audio-monitor-choice" aria-label="Abhören ${esc(title)}">${MONITOR.map(([v, n]) => `<option value="${v}"${T.monitor === v ? " selected" : ""}>${n}</option>`).join("")}</select></label>
-        <span class="small">${esc(MONITOR_HINT[T.monitor] || "")}</span>${sceneOwn ? `<span class="audio-scene-own" title="Diese Lautstärke gilt nur in der Szene „${esc(audioSceneTitle(audioScene()))}“">eigene Lautstärke in dieser Szene</span>` : ""}</div>
+      <div class="audio-meter" data-name="${esc(name)}"><i></i><i class="pk"></i></div>
+      <div class="audio-slider"><input type="range" min="0" max="300" step="5" value="${Math.min(300, T.vol)}" aria-label="Lautstärke ${esc(title)}"></div>
       <div class="audio-more"${audioOffen2.has(name) ? "" : " hidden"}>
+        <label>Abhören<select class="audio-monitor-choice" aria-label="Abhören ${esc(title)}">${MONITOR.map(([v, n]) => `<option value="${v}"${T.monitor === v ? " selected" : ""}>${n}</option>`).join("")}</select></label>
         <label>Verzögerung (ms)<input type="number" min="-950" max="20000" step="10" value="${T.delay}"></label>
+        <span class="small">${esc(MONITOR_HINT[T.monitor] || "")}</span>
       </div>`;
-    const slider = z.querySelector("input[type=range]"), display = z.querySelector(".audio-slider b");
+    const slider = z.querySelector("input[type=range]"), display = z.querySelector(".audio-vol");
     let timerHandle = null;
     slider.oninput = () => { sceneVolumeRemember(name, T.vol, +slider.value); T.vol = +slider.value; display.textContent = T.vol + " %"; display.classList.toggle("loud", T.vol > 100);
       clearTimeout(timerHandle); timerHandle = setTimeout(() => audioSet(name, "SetInputVolume", { inputVolumeMul: T.vol / 100 }), 40); };       // live, wie der OBS-Regler
@@ -94,6 +99,27 @@ function audioDraw() {
     box.appendChild(z);
   });
   if (box.children.length <= 1) box.innerHTML = `<p class="small">In OBS gibt es noch keine Quelle mit Ton – Setup → Szenen &amp; OBS → „In OBS anlegen“.</p>`;
+}
+/* ---------- Pegel wie im OBS-Mixer ----------
+   OBS schickt etwa 20-mal pro Sekunde InputVolumeMeters (Abo 1<<16, 01-core.js). Gezeichnet wird nur, solange der
+   Bereich Ton zu sehen ist – über transform (kein Neuaufbau, kein Layout). Skala wie OBS: −60 dB … 0 dB. */
+let audioLevels = {}, audioMeterFrame = 0;
+const audioDb = v => v > 0 ? Math.max(0, Math.min(1, (20 * Math.log10(v) + 60) / 60)) : 0;
+function audioMeters(inputs) {
+  (inputs || []).forEach(x => {
+    const ch = x.inputLevelsMul || [];
+    audioLevels[x.inputName] = [Math.max(0, ...ch.map(c => +c[0] || 0)), Math.max(0, ...ch.map(c => +c[1] || 0))];
+  });
+  if (audioMeterFrame || document.hidden) return;
+  audioMeterFrame = requestAnimationFrame(() => {
+    audioMeterFrame = 0;
+    const box = $("audioList"); if (!box || !box.offsetParent) return;
+    box.querySelectorAll(".audio-meter[data-name]").forEach(m => {
+      const [level, peak] = audioLevels[m.dataset.name] || [0, 0];
+      m.firstChild.style.transform = `scaleX(${(1 - audioDb(level)).toFixed(3)})`;   // deckt den unbeleuchteten Teil ab
+      m.lastChild.style.transform = `translateX(${(audioDb(peak) * 100).toFixed(1)}%)`;
+    });
+  });
 }
 /* ---------- Lautstärke je Szene ----------
    An: Wer in einer Szene einen Regler bewegt, speichert die Lautstärke dieser Quelle für diese Szene

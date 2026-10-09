@@ -184,6 +184,25 @@ textarea { min-height: 80px; resize: vertical; }
 .color input { width: 40px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; }
 .image-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .image-row select { flex: 1 1 100%; }
+/* Unterteilte Bereiche (z. B. Theme anpassen): eine Gruppe je Thema, Kopf schlicht, nur die gewählten offen */
+.sub-group > .sub-body { display: grid; gap: 10px; padding: 0 0 14px 20px; }
+.theme-reset { justify-self: start; margin-top: 6px; }
+/* lange Hilfetexte: eine Zeile mit „…“ – Klick zeigt den ganzen Text (weniger Text auf jeder Seite) */
+p.small.help { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+p.small.help.open { white-space: normal; cursor: default; }
+/* Setup → Szenen & OBS (eine Browserquelle): Kacheln je Gruppe statt langer Zeilen */
+.scene-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; align-items: start; }
+.scene-pick-group { display: grid; gap: 5px; }
+.scene-pick-group > b { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 0 2px 2px; }
+.scene-pick-chip { display: flex; align-items: center; gap: 7px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--f1); color: var(--muted); cursor: pointer; text-align: left; font-size: 13px; }
+.scene-pick-chip .icon { width: 14px; height: 14px; opacity: 0; flex: none; }
+.scene-pick-chip[aria-pressed="true"] { color: var(--text); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: var(--accent-soft); }
+.scene-pick-chip[aria-pressed="true"] .icon { opacity: 1; color: var(--accent); }
+.scene-pick-chip:hover { border-color: var(--accent); }
+.logo-scenes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 14px; }
+.logo-scenes > .small { grid-column: 1 / -1; }
+.logo-scene { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
+.logo-scene select { width: 120px; flex: none; }
 .image-preview { height: 44px; min-width: 44px; max-width: 180px; border-radius: 6px; background: #0e0f11 center / contain no-repeat; border: 1px solid var(--line); }
 .tabs { position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: 1fr 1.3fr 1fr .6fr; gap: 4px; padding: 6px; margin: 0 -2px;
   background: var(--bg); border-bottom: 1px solid var(--line); }
@@ -274,14 +293,18 @@ details.facts textarea { min-height: 70px; width: 100%; }
 @font-face { font-family: "Barlow"; src: url("fonts/Barlow-Medium.ttf"); font-weight: 500; }
 @font-face { font-family: "Barlow"; src: url("fonts/Barlow-SemiBold.ttf"); font-weight: 600 800; }
 @font-face { font-family: "Rajdhani"; src: url("fonts/Rajdhani-Bold.ttf"); font-weight: 700; }
+/* Inter: Schrift der Oberfläche – für kleine Größen gebaut, klar auf jedem System (Barlow zeigte unter Windows das „i“
+   wie ein „l“). Barlow/Rajdhani bleiben für Überschriften. Lizenz: LICENSES/Inter-OFL.txt */
+@font-face { font-family: "Inter"; src: url("fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; }
+@font-face { font-family: "Inter"; src: url("fonts/Inter-Medium.woff2") format("woff2"); font-weight: 500; }
+@font-face { font-family: "Inter"; src: url("fonts/Inter-SemiBold.woff2") format("woff2"); font-weight: 600; }
+@font-face { font-family: "Inter"; src: url("fonts/Inter-Bold.woff2") format("woff2"); font-weight: 700 800; }
 :root { --bg: #0E0F12; --f1: #16171C; --f2: #1C1D23; --head: #1A1B21; --line: #262832; --text: #E8E9EF; --muted: #9A9DAA;
         --accent: #8B6CFF; --accent-soft: rgba(139, 108, 255, .16); --ok: #3DD68C; --warn: #FFB35C; --red: #FF5D6C; }
 :root[data-design=light] { --bg: #EEEFF3; --f1: #FFFFFF; --f2: #F3F4F7; --head: #F7F7FA; --line: #DADCE3; --text: #1A1C22; --muted: #5F6472;
         --accent: #6C4DF2; --accent-soft: rgba(108, 77, 242, .12); --ok: #1F9D55; --warn: #B86A00; --red: #D64545; }
-body { font-family: Barlow, "Segoe UI", system-ui, sans-serif; display: flex; flex-direction: column; height: calc(100vh / var(--zoom, 1)); overflow: hidden; }
-/* Barlow steht unter Windows/macOS (Glyphen auf Bruchteile von Pixeln gesetzt) sehr eng – v. a. das „i“ klebt am
-   Nachbarn. Etwas Luft (≈ 0,2 px bei 14 px). Linux rundet auf ganze Pixel, dort sähe derselbe Wert ungleichmäßig aus. */
-:root:not([data-os=linux]) body { letter-spacing: .015em; }
+body { font-family: Inter, "Segoe UI", system-ui, sans-serif; font-size: 13px; display: flex; flex-direction: column; height: calc(100vh / var(--zoom, 1)); overflow: hidden; }
+input, select, textarea, button { font-family: inherit; }
 .page { flex: 1 1 auto; height: auto !important; min-height: 0; }
 .topbar { height: 56px; flex: none; display: flex; align-items: center; gap: 14px; padding: 0 14px; background: var(--f1); border-bottom: 1px solid var(--line); }
 .bracket-brand { display: flex; align-items: center; gap: 10px; min-width: 210px; font-size: 16px; }
@@ -291,7 +314,7 @@ body { font-family: Barlow, "Segoe UI", system-ui, sans-serif; display: flex; fl
 .topbar .statusbar { margin: 0; flex-wrap: nowrap; }
 .bracket-search { height: 34px; min-width: 230px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--f2); color: var(--muted); cursor: pointer; }
 .bracket-search span { flex: 1; text-align: left; }
-kbd { font: 600 11px Barlow, sans-serif; padding: 2px 6px; border-radius: 4px; background: var(--head); border: 1px solid var(--line); color: var(--muted); }
+kbd { font: 600 11px Inter, sans-serif; padding: 2px 6px; border-radius: 4px; background: var(--head); border: 1px solid var(--line); color: var(--muted); }
 .topbar .tools { display: flex; gap: 4px; }
 .rail { width: 64px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 10px; background: var(--bg); border-right: 1px solid var(--line); }
 .rail button { width: 52px; height: 54px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 600; cursor: pointer; }
@@ -713,8 +736,11 @@ summary .handle .icon, summary .pin .icon { width: 14px; height: 14px; }
 .bg-video b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bg-num { color: var(--muted); font-weight: 700; text-align: right; }
 .bg-scenes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.bg-scenes-pick > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 6px; padding: 4px 0; }
+.bg-scenes-pick > summary::-webkit-details-marker { display: none; }
+.bg-scenes-pick[open] .link-button { display: none; }
 .bg-scene { padding: 5px 9px; border-radius: 6px; border: 1px solid var(--line); background: var(--f1); color: var(--muted); font-weight: 600; font-size: 13px; cursor: pointer; }
-.bg-scene.on { border-color: color-mix(in srgb, var(--ok) 55%, transparent); background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--text); }
+.bg-scene.on { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: var(--accent-soft); color: var(--text); }
 .bg-corner { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 12px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--f2); }
 .bg-corner[hidden] { display: none; }
 .bg-corner > .small { font-weight: 800; letter-spacing: .1em; }
@@ -723,8 +749,14 @@ summary .handle .icon, summary .pin .icon { width: 14px; height: 14px; }
 /* Setup → Szenen-Panels: Tabelle Szene × Feld */
 .panel-table-wrap { overflow-x: auto; }
 .panel-table { border-collapse: collapse; width: 100%; font-size: 13px; }
-.panel-table th, .panel-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: center; white-space: nowrap; }
-.panel-table thead th { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.panel-table th, .panel-table td { padding: 3px 6px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); text-align: center; white-space: nowrap; height: 30px; }
+.panel-table thead th { font-size: 11px; font-weight: 600; color: var(--muted); white-space: normal; line-height: 1.2; vertical-align: bottom; padding-bottom: 6px; }
+.panel-table tbody tr:hover { background: var(--f2); }
+/* kleines Häkchen-Feld statt Schalter: 11 Spalten × 30 Szenen bleiben lesbar */
+.cell-check { appearance: none; width: 18px; height: 18px; margin: 0; border: 1.5px solid var(--line); border-radius: 5px; background: var(--f1); cursor: pointer; display: inline-grid; place-items: center; }
+.cell-check:checked { background: var(--accent); border-color: var(--accent); }
+.cell-check:checked::after { content: ""; width: 9px; height: 5px; border: 2px solid #fff; border-top: 0; border-right: 0; transform: translateY(-1px) rotate(-45deg); }
+.cell-check:hover { border-color: var(--accent); }
 .panel-table tbody th { text-align: left; font-weight: 600; }
 .panel-table tbody th.changed { color: var(--accent); }
 .panel-table .toggleSwitch { justify-content: center; }
@@ -867,3 +899,24 @@ body { background: radial-gradient(1200px 600px at 75% -10%, rgba(139, 92, 255, 
   background: var(--f1); color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer; }
 .vid-row .vid-theme-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .vid-theme { justify-content: space-between; }
+
+/* Unterbereiche in einer Karte (Theme anpassen, „Weitere Personen“, „Läuft in“ …): schlichte Klapp-Zeile statt
+   eigener Karte – eine Karte je Thema, darin nur noch Zeilen */
+.page details .content details:not(.facts) { background: none; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
+.page details .content details:not(.facts) > summary {
+  all: unset; display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 9px 0; font-size: 13px; font-weight: 600; color: var(--text); }
+.page details .content details:not(.facts) > summary::after { content: none; }
+.page details .content details:not(.facts) > summary::before { content: "›"; display: inline-block; width: 12px; color: var(--muted); transition: transform .15s; }
+.page details .content details:not(.facts)[open] > summary::before { transform: rotate(90deg); }
+.page details .content details:not(.facts) > summary:hover { color: var(--accent); }
+.page details .content details.bg-scenes-pick > summary { font-weight: 400; padding: 4px 0; }
+.page details .content details.bg-scenes-pick > summary::before { content: none; }
+.vid-row:has(> .vid-theme-chip) { grid-template-columns: 22px 1fr auto; }
+.page details .content details.sub-group { border-top: 1px solid var(--line); }
+.page details .content details.sub-group:first-child { border-top: 0; }
+.scene-pick-flat { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; }
+/* Map-Pool: Karten außerhalb des Pools nur mit Bild, Name und Schalter */
+.pool-card.off .pool-bar select, .pool-card.off details.facts { display: none; }
+/* Sprecher-Anzeige: Schwelle und Hinweis nur, wenn sie an ist */
+label.toggleSwitch:has(input[data-field="speaker.on"]:not(:checked)) + .speaker-more { display: none; }
+.speaker-more { display: grid; gap: 6px; }

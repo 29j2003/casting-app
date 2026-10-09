@@ -258,13 +258,15 @@ function sponsorsDraw() {
     away.onclick = () => remove(list, i, `Sponsor „${s.name || "?"}“`, () => { sponsorsDraw(); scenesDraw(); });
     box.appendChild(z);
   });
-  const scenesBox = $("sponsorScenes"); scenesBox.innerHTML = `<span class="small">Sponsor-Kasten zeigen in:</span>`;
-  const r = document.createElement("div"); r.className = "line";
+  // Szenen mit Sponsor-Kasten: Kacheln wie bei „Szenen & OBS“ (statt einer Reihe Schalter)
+  const scenesBox = $("sponsorScenes"); scenesBox.innerHTML = "";
+  const r = document.createElement("div"); r.className = "scene-pick-flat";
   SPONSOR_SCENES.forEach(([k, n]) => {
-    const l = document.createElement("label"); l.className = "toggleSwitch"; l.style.flex = "0 0 auto";
-    const c = document.createElement("input"); c.type = "checkbox"; c.checked = (Z.sponsors.sceneList || {})[k] !== false;
-    c.onchange = () => { Z.sponsors.sceneList = Z.sponsors.sceneList || {}; Z.sponsors.sceneList[k] = c.checked; send(); };
-    l.append(c, n); r.appendChild(l);
+    const b = document.createElement("button"); b.type = "button"; b.className = "scene-pick-chip"; b.dataset.scene = k;
+    const on = () => (Z.sponsors.sceneList || {})[k] !== false;
+    b.setAttribute("aria-pressed", on()); b.innerHTML = `${icon("check")}<span>${esc(n)}</span>`;
+    b.onclick = () => { Z.sponsors.sceneList = Object.assign({}, Z.sponsors.sceneList, { [k]: !on() }); b.setAttribute("aria-pressed", on()); send(); };
+    r.appendChild(b);
   });
   scenesBox.appendChild(r);
 }
@@ -859,8 +861,8 @@ function panelTableDraw() {
   OVERLAY_SCENES.forEach(([k]) => {
     const list = panelList(k), tr = document.createElement("tr");
     tr.innerHTML = `<th class="${panelChanged(k) ? "changed" : ""}">${esc(audioSceneTitle(k))}</th>` +
-      PANEL_FIELDS.map(([f, n]) => `<td><label class="toggleSwitch" title="${esc(n)}"><input type="checkbox" data-f="${f}"${list.includes(f) ? " checked" : ""} aria-label="${esc(n)}"></label></td>`).join("") +
-      `<td><button class="button link" ${panelChanged(k) ? "" : "disabled"}>Auf Vorgabe</button></td>`;
+      PANEL_FIELDS.map(([f, n]) => `<td><input type="checkbox" class="cell-check" data-f="${f}"${list.includes(f) ? " checked" : ""} title="${esc(n)}" aria-label="${esc(n)}"></td>`).join("") +
+      `<td><button class="tool" title="Auf Vorgabe" aria-label="Auf Vorgabe"${panelChanged(k) ? "" : " hidden"}>${icon("undo")}</button></td>`;
     tr.querySelectorAll("[data-f]").forEach(c => c.onchange = () => {
       const now = panelList(k).filter(f => f !== c.dataset.f); if (c.checked) now.push(c.dataset.f);
       ui.panels = Object.assign({}, ui.panels, { [k]: PANEL_FIELDS.map(([f]) => f).filter(f => now.includes(f)) });

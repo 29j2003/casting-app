@@ -191,7 +191,9 @@ function poolCard(m, i) {
   const image = z.querySelector(".vb"), name = z.querySelector(".pool-name"), mode = z.querySelector(".pool-bar select"),
         x = z.querySelector(".x"), file = z.querySelector("input[type=file]");
   previewImage(image, m);
-  z.querySelector(".hint").textContent = imageHint(m, TARGET.map);
+  // Bildgröße als Tooltip am Bild; als Text nur, wenn das Bild zu klein ist (weniger Text in jeder Karte)
+  const hint = imageHint(m, TARGET.map); image.title = "Bild wählen · " + hint;
+  z.querySelector(".hint").textContent = hint.includes("⚠") ? hint : ""; z.querySelector(".hint").hidden = !hint.includes("⚠");
   name.value = m.name;
   name.onclick = ev => ev.stopPropagation();
   name.oninput = () => { m.name = name.value; vetoDraw(); laterSend(); };

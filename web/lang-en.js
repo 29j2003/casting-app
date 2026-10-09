@@ -1327,5 +1327,19 @@ window.CastLanguages.en = {
  "Einmal durch, mit Ton – danach wieder der Hintergrund. Start in Live.": "Once through, with sound – then back to the background. Start in Live.",
  "„Theme“ an einem Video beschränkt die Auswahl dieses Themes (Playlisten, Werbung, Quelle „Video“) auf die markierten.": "“Theme” on a video limits this theme's choice (playlists, ads, source “Video”) to the marked ones.",
  "Theme „{}“: {} Video(s) zur Auswahl": "Theme “{}”: {} video(s) to choose from",
- "Theme „{}“: alle Videos zur Auswahl": "Theme “{}”: all videos to choose from"
+ "Theme „{}“: alle Videos zur Auswahl": "Theme “{}”: all videos to choose from",
+ "Alle Teams löschen": "Delete all teams",
+ "Alle Spiele löschen": "Delete all games",
+ "Alle Teams löschen?": "Delete all teams?",
+ "Alle Spiele löschen?": "Delete all games?",
+ "{} Teams und alle Spiele und Ergebnisse des Turniers werden gelöscht. Name und Format bleiben.": "{} teams and all games and results of the tournament are deleted. Name and format stay.",
+ "Spielplan, Ergebnisse und Swiss-Runden werden gelöscht. Teams, Name und Format bleiben.": "Schedule, results and Swiss rounds are deleted. Teams, name and format stay.",
+ "Alle löschen": "Delete all",
+ "Alle Teams gelöscht": "All teams deleted",
+ "Alle Spiele gelöscht": "All games deleted",
+ "Szenen mit Sponsor-Kasten": "Scenes with sponsor box",
+ "Anzeige & Texte": "Display & texts",
+ "Videos für die Szene „Werbung“ – in Live „Alle“ oder einzeln abspielen": "Videos for the scene “Ads” – play “All” or one by one in Live",
+ "ID und Key: DACH-CS-Nutzerbereich → Casting → Browserquellen.": "ID and key: DACH CS user area → Casting → Browser sources.",
+ "Bild wählen · {}": "Choose image · {}"
 };

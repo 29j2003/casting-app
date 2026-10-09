@@ -859,8 +859,8 @@ function panelTableDraw() {
   OVERLAY_SCENES.forEach(([k]) => {
     const list = panelList(k), tr = document.createElement("tr");
     tr.innerHTML = `<th class="${panelChanged(k) ? "changed" : ""}">${esc(audioSceneTitle(k))}</th>` +
-      PANEL_FIELDS.map(([f, n]) => `<td><label class="toggleSwitch" title="${esc(n)}"><input type="checkbox" data-f="${f}"${list.includes(f) ? " checked" : ""} aria-label="${esc(n)}"></label></td>`).join("") +
-      `<td><button class="button link" ${panelChanged(k) ? "" : "disabled"}>Auf Vorgabe</button></td>`;
+      PANEL_FIELDS.map(([f, n]) => `<td><input type="checkbox" class="cell-check" data-f="${f}"${list.includes(f) ? " checked" : ""} title="${esc(n)}" aria-label="${esc(n)}"></td>`).join("") +
+      `<td><button class="tool" title="Auf Vorgabe" aria-label="Auf Vorgabe"${panelChanged(k) ? "" : " hidden"}>${icon("undo")}</button></td>`;
     tr.querySelectorAll("[data-f]").forEach(c => c.onchange = () => {
       const now = panelList(k).filter(f => f !== c.dataset.f); if (c.checked) now.push(c.dataset.f);
       ui.panels = Object.assign({}, ui.panels, { [k]: PANEL_FIELDS.map(([f]) => f).filter(f => now.includes(f)) });

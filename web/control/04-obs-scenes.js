@@ -183,20 +183,36 @@ function scenesSetupDraw() {
   const c = sceneCfg(), box = $("sceneSetup"); box.innerHTML = "";
   const single = onSource();
   $("sceneCreate").textContent = single ? "Szene „Cast – Sendung“ in OBS anlegen" : "In OBS anlegen";
-  $("sceneOneText").hidden = !single; $("sceneManyText").hidden = single; $("sceneDefaultField").hidden = single;
+  $("sceneOneText").hidden = true; $("sceneManyText").hidden = single; $("sceneDefaultField").hidden = single;
   $("onSourceText").hidden = false;
   const opt = (list, value, empty) => `<option value="">${empty}</option>` + list.map(x => `<option value="${esc(x)}"${x === value ? " selected" : ""}>${esc(x)}</option>`).join("")
     + (value && !list.includes(value) ? `<option value="${esc(value)}" selected>${esc(value)} (fehlt in OBS)</option>` : "");
   $("sceneDefault").innerHTML = opt(transitions, c.defaultChoice, obsTransition ? `wie in OBS (${esc(obsTransition)})` : "wie in OBS");
   $("sceneDefault").onchange = () => { c.defaultChoice = $("sceneDefault").value; send(); };
-  box.insertAdjacentHTML("beforeend", `<div class="row scene-row small" style="background:none"><span></span><b>Szene</b><b>${single ? "" : "OBS-Szene"}</b><b>${single ? "" : "Übergang"}</b></div>`);
+  if (single) {
+    // eine Browserquelle: nur „in Live zeigen“ – kompakte Kacheln je Gruppe (wie in Live)
+    box.insertAdjacentHTML("beforeend", `<p class="small">Angehakte Szenen erscheinen in Live als Knopf.</p>`);
+    const grid = document.createElement("div"); grid.className = "scene-pick";
+    let column = null;
+    scenesRow().forEach(([k, n]) => {
+      if (SCENE_GROUPS[k]) { column = document.createElement("div"); column.className = "scene-pick-group"; column.innerHTML = `<b>${esc(n)}</b>`; grid.appendChild(column); return; }
+      const e = c.list[k]; if (!e) return;
+      if (!column) { column = document.createElement("div"); column.className = "scene-pick-group"; grid.appendChild(column); }
+      const b = document.createElement("button"); b.type = "button"; b.className = "scene-pick-chip"; b.dataset.scene = k;
+      b.setAttribute("aria-pressed", !!e.on); b.innerHTML = `${icon("check")}<span>${esc(n)}</span>`;
+      b.onclick = () => { e.on = !e.on; scenesDraw(); scenesSetupDraw(); send(); };
+      column.appendChild(b);
+    });
+    box.appendChild(grid);
+    return;
+  }
+  box.insertAdjacentHTML("beforeend", `<div class="row scene-row small" style="background:none"><span></span><b>Szene</b><b>OBS-Szene</b><b>Übergang</b></div>`);
   OVERLAY_SCENES.forEach(([k, n]) => {
     const e = c.list[k], z = document.createElement("div"); z.className = "row scene-row";
     z.innerHTML = `<input type="checkbox" title="Im Reiter Live anzeigen"><span>${esc(n)}</span>
       <select>${opt(obsScenes, e.obs, "– nicht zugeordnet –")}</select>
       <select>${opt(transitions, e.transition, "Standard")}</select>`;
     const cb = z.querySelector("input"), [obs, transitionTo] = z.querySelectorAll("select");
-    if (single) { obs.style.visibility = "hidden"; transitionTo.style.visibility = "hidden"; }
     cb.checked = !!e.on;
     cb.onchange = () => { e.on = cb.checked; scenesDraw(); send(); };
     obs.onchange = () => { e.obs = obs.value; scenesDraw(); send(); };

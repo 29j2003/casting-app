@@ -103,7 +103,6 @@ function setHtml(el, html) { if (el && el._h !== html) { el._h = html; el.innerH
 /* ---------- Icons ----------
    Knöpfe zeigen SVG statt Zeichen wie 🔓 ⧉ ⏻ – Zeichen hängen von den Schriften des Systems ab
    (Linux/Windows sahen unterschiedlich aus). icon("lock") → <svg>; im HTML: data-icon="lock" (wird beim Laden vorangestellt). */
-document.documentElement.dataset.os = /Win/i.test(navigator.platform) ? "windows" : /Mac/i.test(navigator.platform) ? "mac" : "linux";   // Schriftabstand (control.css)
 const ICONS = {
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   unlock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.6-1.8"/>',

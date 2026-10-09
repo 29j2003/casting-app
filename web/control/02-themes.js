@@ -130,9 +130,18 @@ function imageShrink(file, max, jpeg) {
     r.onerror = error; r.readAsDataURL(file);
   });
 }
+// Theme anpassen: in Gruppen, nur „Name & Farben“ offen – welche offen sind, bleibt beim Neuzeichnen
+const themeAdjustOpen = new Set(["colors"]);
 function themeAdjust() {
-  const box = $("themeAdjust"); box.innerHTML = "";
+  const root = $("themeAdjust"); root.innerHTML = "";
   const fresh = () => { themesDraw(); send(); };
+  let box = root;
+  const group = (key, title) => {
+    const d = document.createElement("details"); d.className = "sub-group"; d.open = themeAdjustOpen.has(key);
+    d.innerHTML = `<summary>${esc(title)}</summary><div class="sub-body"></div>`;
+    d.ontoggle = () => { if (d.open) themeAdjustOpen.add(key); else themeAdjustOpen.delete(key); };
+    root.appendChild(d); box = d.querySelector(".sub-body");
+  };
   const text = (p, label, list) => {
     const l = document.createElement("label"); l.textContent = label;
     const i = document.createElement("input"); i.type = "text"; i.value = tw(p) || "";
@@ -140,6 +149,7 @@ function themeAdjust() {
     i.oninput = () => { td()[p] = i.value; clearTimeout(i._t); i._t = setTimeout(fresh, 200); };
     l.appendChild(i); return l;
   };
+  group("colors", "Name & Farben");
   box.appendChild(text("name", "Name des Themes"));
   const f = document.createElement("div"); f.className = "colors";
   [["dark", "Balken"], ["light", "Felder"], ["textDark", "Schrift auf Feldern"], ["accent", "Akzent"], ["headText", "Schrift in Balken"], ["iconDisk", "Logo-Feld"]].forEach(([p, n]) => {
@@ -162,6 +172,7 @@ function themeAdjust() {
     });
     box.appendChild(v);
   }
+  group("boxes", "Kästen");
   const cornerChoice = document.createElement("label"); cornerChoice.textContent = "Ecken der Kästen";
   const cornerSel = document.createElement("select");
   [["outside", "Außen gespiegelt (empfohlen)"], ["straight", "Gerade"], ["all", "Alle oben rechts"]].forEach(([v, n]) => cornerSel.appendChild(new Option(n, v, false, (tw("corners") || "outside") === v)));
@@ -186,9 +197,9 @@ function themeAdjust() {
   const image = (p, label, max, jpeg) => {
     const w = document.createElement("div"); w.style.cssText = "display:grid;gap:4px";
     w.innerHTML = `<span class="small">${label}</span><div class="image-row"><div class="image-preview"></div>
-      <button class="button">Bild wählen …</button><button class="button">Entfernen</button><button class="button">Standard</button>
+      <button class="button">Bild wählen …</button><button class="tool" title="Entfernen" aria-label="Entfernen">${icon("close")}</button><button class="tool" title="Standard" aria-label="Standard">${icon("undo")}</button>
       <input type="file" accept="image/*" hidden></div>`;
-    const v = w.querySelector(".image-preview"), [choice, away, std] = w.querySelectorAll(".button"), inp = w.querySelector("input");
+    const v = w.querySelector(".image-preview"), [choice, away, std] = w.querySelectorAll(".button, .tool"), inp = w.querySelector("input");
     const value = tw(p); if (value) v.style.backgroundImage = K.cssUrl(value); else v.textContent = "";
     choice.onclick = () => inp.click();
     inp.onchange = async () => { if (!inp.files[0]) return; td()[p] = await imageShrink(inp.files[0], max, jpeg); themeAdjust(); fresh(); };
@@ -204,6 +215,7 @@ function themeAdjust() {
     std.onclick = () => { delete td()[p]; themeAdjust(); fresh(); };
     return w;
   };
+  group("brand", "Logo & Schriftzug");
   box.appendChild(image("brandImage", "Komplettes Logo oben links (ersetzt Quadrat + Schriftzug)", 1400));
   const mb = document.createElement("label"); mb.className = "toggleSwitch";
   const mbc = document.createElement("input"); mbc.type = "checkbox"; mbc.checked = !!tw("brandBox");
@@ -226,6 +238,7 @@ function themeAdjust() {
   zp.append(plChoice, zt); box.appendChild(zp);
   box.appendChild(image("fontImage", "Oder Schriftzug als Bild (ersetzt die zwei Zeilen)", 900));
 
+  group("look", "Hintergrund & Schrift");
   box.appendChild(image("backgroundImage", "Hintergrund, wenn keine Videos laufen", 1920, true));
   box.appendChild(text("font", "Schriftart (auf dem PC installiert)", true));
   const sd = document.createElement("div"); sd.style.cssText = "display:grid;gap:4px";
@@ -241,18 +254,20 @@ function themeAdjust() {
   openButton.onclick = () => openFolder("fonts");
   box.appendChild(sd);
 
-  const lw = document.createElement("div"); lw.style.cssText = "display:grid;gap:6px";
-  lw.innerHTML = `<span class="small">Logo in den Szenen (gilt für alle Themes) – „Auto" zeigt nur das Icon, wenn das ganze Logo nicht passt</span>`;
+  group("logos", "Logo je Szene");
+  const lw = document.createElement("div"); lw.className = "logo-scenes";
+  lw.innerHTML = `<span class="small">Gilt für alle Themes – „Auto" zeigt nur das Icon, wenn das ganze Logo nicht passt</span>`;
   [...$("scene").options].forEach(o => {
-    const z = document.createElement("div"); z.className = "line"; z.style.alignItems = "center";
+    const z = document.createElement("label"); z.className = "logo-scene";
     const s = document.createElement("select");
     [["auto", "Auto"], ["full", "Ganzes Logo"], ["icon", "Nur Icon"]].forEach(([v, n]) => s.appendChild(new Option(n, v, false, ((Z.logoMode || {})[o.value] || "auto") === v)));
     s.onchange = () => { Z.logoMode = Z.logoMode || {}; Z.logoMode[o.value] = s.value; send(); };
-    const l = document.createElement("span"); l.textContent = o.textContent; l.style.cssText = "flex:1;font-size:13px";
-    s.style.flex = "0 0 150px"; z.append(l, s); lw.appendChild(z);
+    const l = document.createElement("span"); l.textContent = o.textContent;
+    z.append(l, s); lw.appendChild(z);
   });
   box.appendChild(lw);
-  const r = document.createElement("button"); r.className = "button"; r.textContent = "Dieses Theme auf Standard zurücksetzen";
+  box = root;
+  const r = document.createElement("button"); r.className = "button theme-reset"; r.textContent = "Dieses Theme auf Standard zurücksetzen";
   r.onclick = async () => { if (await confirmDialog({ title: "Theme zurücksetzen?", text: "Alle Anpassungen an diesem Theme (Farben, Logos, Schrift) gehen verloren.", button: "Zurücksetzen" })) { delete Z.themeData[Z.theme]; themeAdjust(); fresh(); } };
   box.appendChild(r);
 }

@@ -79,8 +79,8 @@ async function videoInfoDraw() {
   // Videos je Theme: nur die des Themes zeigen – „Zuordnen“ zeigt alle mit Schalter je Video
   const T = themeVideoNames(), assign = !!ui.videosAssign || !T, themeName = themeFull(Z.theme).name || Z.theme;
   const head = document.createElement("div"); head.className = "line vid-theme"; head.style.alignItems = "center";
-  head.innerHTML = `<span class="small">${T ? `Theme „${esc(themeName)}“: ${T.length} Video(s) zur Auswahl (Playlisten, Werbung, Quelle „Video“)`
-    : `Theme „${esc(themeName)}“: alle Videos zur Auswahl – „Theme“ an einem Video beschränkt die Auswahl auf die markierten`}</span>
+  head.innerHTML = `<span class="small" title="„Theme“ an einem Video beschränkt die Auswahl dieses Themes (Playlisten, Werbung, Quelle „Video“) auf die markierten.">${T ? `Theme „${esc(themeName)}“: ${T.length} Video(s) zur Auswahl`
+    : `Theme „${esc(themeName)}“: alle Videos zur Auswahl`}</span>
     ${T ? `<button class="button">${ui.videosAssign ? "Fertig" : "Zuordnen"}</button>` : ""}`;
   const assignButton = head.querySelector("button");
   if (assignButton) assignButton.onclick = () => { ui.videosAssign = !ui.videosAssign; uiSave(); videoInfoDraw(); };
@@ -345,6 +345,15 @@ tabs((() => { try { return localStorage.getItem("cast-tabs") || "live"; } catch 
 
 setTimeout(audioFetch, 1500);
 // alles neu zeichnen – jedes Teil für sich: ein Fehler (z. B. aus einer importierten Datei) legt nicht die ganze Seite lahm
+// lange feste Hilfetexte (ohne id – Statusmeldungen bleiben ganz): einzeilig, ein Klick zeigt alles
+function helpTextsShorten() {
+  document.querySelectorAll("p.small:not([id]):not(.help)").forEach(p => {
+    if (p.textContent.trim().length < 110) return;
+    p.classList.add("help"); p.title = "Klicken für den ganzen Text";
+    p.addEventListener("click", () => { if (!p.classList.contains("open")) { p.classList.add("open"); p.removeAttribute("title"); } });
+  });
+}
+setTimeout(helpTextsShorten, 0);
 function everything() {
   const parts = [bgApply, bgDraw, timerEndDraw, languageDraw, () => { if (typeof dachCardShow === "function") { dachCardShow(); dframeDraw(); } },
     audioDraw, cleanDraw, mbarDraw, tournamentDraw, mdDraw, bgSourceDraw, graphicsDraw, poolComplete, scenesDraw, scenesSetupDraw, sponsorsDraw,

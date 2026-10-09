@@ -103,6 +103,7 @@ function setHtml(el, html) { if (el && el._h !== html) { el._h = html; el.innerH
 /* ---------- Icons ----------
    Knöpfe zeigen SVG statt Zeichen wie 🔓 ⧉ ⏻ – Zeichen hängen von den Schriften des Systems ab
    (Linux/Windows sahen unterschiedlich aus). icon("lock") → <svg>; im HTML: data-icon="lock" (wird beim Laden vorangestellt). */
+document.documentElement.dataset.os = /Win/i.test(navigator.platform) ? "windows" : /Mac/i.test(navigator.platform) ? "mac" : "linux";   // Schriftabstand (control.css)
 const ICONS = {
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   unlock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.6-1.8"/>',
@@ -128,7 +129,8 @@ const ICONS = {
   down: '<path d="M12 5v14M5 12l7 7 7-7"/>',
   left: '<path d="M19 12H5M12 5l-7 7 7 7"/>',
   right: '<path d="M5 12h14M12 5l7 7-7 7"/>',
-  chevron: '<path d="M6 9l6 6 6-6"/>'
+  chevron: '<path d="M6 9l6 6 6-6"/>',
+  headphones: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="5" height="7" rx="2"/><rect x="16" y="14" width="5" height="7" rx="2"/>'
 };
 const icon = name => `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ""}</svg>`;
 document.querySelectorAll("[data-icon]").forEach(e => e.insertAdjacentHTML("afterbegin", icon(e.dataset.icon)));
@@ -202,9 +204,10 @@ channel = K.channel({
   onStale() { send(); },                 // der Server hatte einen neueren Stand: gleich mit höherer Nummer erneut
   onClients(list) { clientsList = list; overlaysPill(); },
   onLive(d) { liveReceived(d); },
-  events: 1 | 4 | 16,   // Allgemein, Szenen, Übergänge
+  events: 1 | 4 | 16 | 65536,   // Allgemein, Szenen, Übergänge, Pegel (InputVolumeMeters, Bereich Ton)
   onEvent(type, d) {
-    if (type === "CurrentProgramSceneChanged") { currentScene = d.sceneName; scenesDraw(); }
+    if (type === "InputVolumeMeters") audioMeters(d.inputs);
+    else if (type === "CurrentProgramSceneChanged") { currentScene = d.sceneName; scenesDraw(); }
     else if (/^Scene(ListChanged|Created|Removed|NameChanged)$|^SceneTransition(Created|Removed|NameChanged)$|^CurrentSceneTransitionChanged$/.test(type)) scenesLoad();
   },
   settings: connection,

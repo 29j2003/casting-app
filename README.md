@@ -188,9 +188,10 @@ move up/down and delete (with undo). Types:
 
 ### Audio (controlled directly in OBS)
 
-Like the OBS mixer: **all sources with audio in OBS** (also microphone, desktop audio, game), the app's own first. The app
-controls them live via OBS – **volume** (up to 300 %), **mute**, **sync offset** (−950 to 20 000 ms, under “More” – three
-dots) and **monitoring**, as a choice like in OBS:
+Like the OBS mixer: **all sources with audio in OBS** (also microphone, desktop audio, game), the app's own first – one
+compact row each with a **live level meter** (green/yellow/red from −60 to 0 dB, with the peak as a line). The app controls
+them live via OBS – **volume** (up to 300 %), **mute**, and under “More” (three dots) **monitoring** and **sync offset**
+(−950 to 20 000 ms). A headphones icon in the row shows that monitoring is on. Monitoring, as a choice like in OBS:
 
 * *Monitor Off* – only in the stream/recording, not in your headphones
 * *Monitor Only (mute output)* – only in your headphones, not in the stream

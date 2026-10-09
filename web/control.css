@@ -279,6 +279,9 @@ details.facts textarea { min-height: 70px; width: 100%; }
 :root[data-design=light] { --bg: #EEEFF3; --f1: #FFFFFF; --f2: #F3F4F7; --head: #F7F7FA; --line: #DADCE3; --text: #1A1C22; --muted: #5F6472;
         --accent: #6C4DF2; --accent-soft: rgba(108, 77, 242, .12); --ok: #1F9D55; --warn: #B86A00; --red: #D64545; }
 body { font-family: Barlow, "Segoe UI", system-ui, sans-serif; display: flex; flex-direction: column; height: calc(100vh / var(--zoom, 1)); overflow: hidden; }
+/* Barlow steht unter Windows/macOS (Glyphen auf Bruchteile von Pixeln gesetzt) sehr eng – v. a. das „i“ klebt am
+   Nachbarn. Etwas Luft (≈ 0,2 px bei 14 px). Linux rundet auf ganze Pixel, dort sähe derselbe Wert ungleichmäßig aus. */
+:root:not([data-os=linux]) body { letter-spacing: .015em; }
 .page { flex: 1 1 auto; height: auto !important; min-height: 0; }
 .topbar { height: 56px; flex: none; display: flex; align-items: center; gap: 14px; padding: 0 14px; background: var(--f1); border-bottom: 1px solid var(--line); }
 .bracket-brand { display: flex; align-items: center; gap: 10px; min-width: 210px; font-size: 16px; }
@@ -518,17 +521,27 @@ body:not(.layout-edit) details[data-area=sceneList] .scene-head { display: none 
 .audio-monitor { display: flex; align-items: center; gap: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
 .audio-monitor > span:first-child { font-weight: 600; } .audio-monitor .segment button { font-size: 12px; padding: 0 9px; }
 #frame { background: #0b0c10; } .audio-monitor input { flex: 1; } .audio-monitor b { width: 44px; text-align: right; font-size: 12px; }
-.audio-z { display: grid; gap: 6px; padding: 8px 10px; border-radius: 8px; background: var(--f2); }
-.audio-head { display: flex; align-items: center; gap: 8px; } .audio-head .tname { flex: 1; min-width: 0; } .audio-head .tname b { display: block; font-size: 14px; } .audio-head .tname span { font-size: 11px; color: var(--muted); }
-.audio-mute { height: 30px; min-width: 64px; border-radius: 7px; border: 1px solid var(--line); background: var(--f1); cursor: pointer; font-weight: 700; font-size: 12px; color: var(--text); }
+.audio-z { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 6px 10px 8px; border-radius: 8px; background: var(--f2); }
+.audio-head { display: flex; align-items: center; gap: 6px; min-height: 30px; } .audio-head .tname { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; overflow: hidden; }
+.audio-head .tname b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .audio-head .tname span { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.audio-vol { width: 46px; text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; } .audio-vol.loud { color: var(--warn); }
+.audio-listen { display: inline-flex; color: var(--accent); } .audio-listen .icon { width: 15px; height: 15px; }
+.audio-more .small { grid-column: 1 / -1; margin: 0; } .audio-more label { display: grid; gap: 3px; font-size: 12px; }
+.audio-mute { height: 28px; min-width: 58px; border-radius: 7px; border: 1px solid var(--line); background: var(--f1); cursor: pointer; font-weight: 700; font-size: 12px; color: var(--text); }
 .audio-mute.off { background: var(--red); border-color: var(--red); color: #fff; }
-.audio-slider { display: flex; align-items: center; gap: 8px; } .audio-slider input { flex: 1; } .audio-slider b { width: 48px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
-.audio-slider b.loud { color: var(--warn); }
-.audio-monitoring { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
-.audio-monitoring label { display: flex; align-items: center; gap: 8px; font-size: 12px; } .audio-monitoring select { width: auto; min-width: 220px; }
-.audio-scene-own { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--accent); color: #151515; font-weight: 700; }
+.audio-head .gfx-more { height: 28px; width: 28px; }
+.audio-slider { display: flex; align-items: center; } .audio-slider input { flex: 1; margin: 0; }
+.audio-scene-own { font-size: 10px; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: #151515; font-weight: 700; }
+.audio-more { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; } .audio-more select, .audio-more input { width: 100%; min-width: 0; box-sizing: border-box; } .audio-more .segment button { font-size: 12px; padding: 0 8px; }
+/* Pegel: Verlauf grün → gelb → rot (−60 … 0 dB, Grenzen wie OBS bei −20 und −9 dB), der dunkle Deckel schrumpft mit dem Pegel */
+.audio-meter { position: relative; height: 6px; border-radius: 3px; overflow: hidden;
+  background: linear-gradient(90deg, #2FBF71 0%, #2FBF71 66.6%, #E8C547 66.6%, #E8C547 85%, #E5484D 85%); }
+.audio-meter i { position: absolute; inset: 0; background: rgba(20, 21, 30, .82); transform: scaleX(1); transform-origin: right; will-change: transform; }
+:root[data-design=light] .audio-meter i { background: rgba(225, 222, 214, .9); }
+.audio-meter i.pk { background: none; border-left: 2px solid #fff; transform: translateX(0); transform-origin: left; }   /* Spitze: volle Breite, Linie links – translateX in % der Pegelbreite */
+:root[data-design=light] .audio-meter i.pk { background: none; border-left-color: #1E1B16; }
+.audio-z.muted .audio-meter { filter: grayscale(1); opacity: .5; }
 .audio-per-scene { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 4px 2px; }
-.audio-more { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .audio-more .segment button { font-size: 12px; padding: 0 8px; }
 .clean-button.on { background: var(--red) !important; border-color: var(--red) !important; color: #fff !important; }
 /* Erste Schritte: schwebende Checkliste unten links statt eigener Spalte */
 /* Erste Schritte (2.16): klappt unter dem Knopf in der Kopfzeile auf, zu = unsichtbar (nichts schwebt mehr über dem Inhalt) */

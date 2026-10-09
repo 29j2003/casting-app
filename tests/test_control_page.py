@@ -930,3 +930,27 @@ def test_background_video_runs_in_step_with_obs(server, browser):
     assert 2.8 < page.evaluate(position) < 4.5, page.evaluate(position)
     page.evaluate("Z.background.source = 'overlay'; Z.background.playlists = []; bgApply('intro'); send()")
     assert errors == []
+
+
+def test_audio_rows_show_live_levels_from_obs(server, browser):
+    """Audio like the OBS mixer: compact rows, a level meter fed by InputVolumeMeters (−60 … 0 dB), monitoring under „More“."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("""tabs('live'); document.querySelectorAll('[data-area=audio]').forEach(x => x.open = true);
+      channel.obs = { isOpen: true, request: () => true, send: () => true, onBrowsersources: () => true,
+        question: async (t, d) => t === 'GetInputList' ? { inputs: [{ inputName: 'Mikrofon' }] }
+          : t === 'GetInputVolume' ? { inputVolumeMul: 1 } : t === 'GetInputMute' ? { inputMuted: false }
+          : t === 'GetInputAudioSyncOffset' ? { inputAudioSyncOffset: 0 }
+          : t === 'GetInputAudioMonitorType' ? { monitorType: 'OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT' } : {} };
+      audioInputs = []; audioFetch();""")
+    page.wait_for_timeout(800)
+    row = "#audioList .audio-z"
+    assert page.evaluate(f"!!document.querySelector('{row} .audio-listen')")             # monitoring on: headphones
+    assert not page.evaluate(f"document.querySelector('{row} .audio-monitor-choice').offsetParent")   # hidden until „More“
+    page.evaluate("audioMeters([{ inputName: 'Mikrofon', inputLevelsMul: [[0.1, 0.5, 0.5]] }])")      # −20 dB, peak −6 dB
+    page.wait_for_timeout(200)
+    cover, peak = page.evaluate(f"[...document.querySelectorAll('{row} .audio-meter i')].map(i => i.style.transform)")
+    assert cover == "scaleX(0.333)" and peak.startswith("translateX(90")
+    assert errors == []

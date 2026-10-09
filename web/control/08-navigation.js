@@ -4,11 +4,13 @@
 
 /* ---------- Arbeitsbereiche: Vorlagen + eigene gespeicherte Anordnungen ---------- */
 const TEMPLATES = {
-  // Einsteiger (2.16, Start für neue Nutzer): nur Vorschau, Szenen und das Panel der Szene – alles andere wartet eingeklappt
-  "Einsteiger": { dock: { bottom: ["sceneList"], right: ["scene-tools", { area: "graphics", open: false }] }, b2: 430, hU: 300, previewClose: false, tabs: "live", large: false },
+  // 2.21: links die Szenen, Mitte unter der Vorschau der Ton, rechts der Rest (Panel der Szene, Einblendungen, Match …)
+  // Einsteiger (Start für neue Nutzer): rechts nur das Panel offen – alles andere wartet eingeklappt
+  "Einsteiger": { dock: { bottom: ["audio"], right: ["scene-tools", { area: "graphics", open: false }, { area: "match", open: false }, { area: "tournament-live", open: false }] },
+    b1: 420, b2: 430, hU: 300, previewClose: false, tabs: "live", large: false },
   // { area, open: false } = beim Start eingeklappt (ein Klick öffnet) – Live soll aufgeräumt beginnen
-  "Operator": { dock: { bottom: ["sceneList", { area: "audio", open: false }], right: ["scene-tools", { area: "match", open: false }, "graphics", { area: "tournament-live", open: false }] },
-    b2: 450, hU: 320, previewClose: false, tabs: "live", large: false },
+  "Operator": { dock: { bottom: ["audio"], right: ["scene-tools", "graphics", { area: "match", open: false }, { area: "tournament-live", open: false }] },
+    b1: 420, b2: 450, hU: 300, previewClose: false, tabs: "live", large: false },
   "Caster – große Knöpfe": { dock: { bottom: ["sceneList"], right: ["scene-tools", "match", "graphics"] }, b2: 470, hU: 330, previewClose: false, tabs: "live", large: true },
   "Laptop / neben OBS": { dock: { bottom: [], right: [] }, previewClose: true, tabs: "live", large: false },
   "Vorbereitung": { dock: { bottom: [], right: [] }, previewClose: false, tabs: "match", large: false }
@@ -20,6 +22,8 @@ function arrangementNow() {
 function arrangementApply(A) {
   areas.forEach(d => { if (placeFrom(d) !== "left") afterHome(d); });
   for (const place of ["bottom", "right"]) ((A.dock || {})[place] || []).forEach(entry => dockEntryPlace(DOCKS[place], typeof entry === "string" ? { area: entry, open: true } : entry));
+  const scenes = areas.find(d => d.dataset.area === "sceneList");
+  if (scenes && placeFrom(scenes) === "left") { scenes.open = true; ui.isOpen = Object.assign({}, ui.isOpen, { sceneList: true }); }
   ["b1", "b2", "hU"].forEach(k => { ui[k] = A[k] ?? null; if (ui[k] == null) pageEl.style.removeProperty("--" + k); });
   ui.previewClose = !!A.previewClose; ui.placement = A.placement || null; ui.locked = Object.assign({}, A.locked);
   document.body.classList.toggle("large", !!A.large); ui.large = !!A.large;
@@ -75,9 +79,11 @@ if (!ui.workspaces) {
   uiSave();
 }
 document.body.classList.toggle("large", !!ui.large);
-if (!ui.konzept3) { ui.konzept3 = true; ui.compact214 = true; uiSave(); setTimeout(() => workspaceChoose(firstStart ? "Einsteiger" : "Operator"), 0); }
+if (!ui.konzept3) { ui.konzept3 = true; ui.compact214 = true; ui.layout221 = true; uiSave(); setTimeout(() => workspaceChoose(firstStart ? "Einsteiger" : "Operator"), 0); }
 // 2.14: Operator beginnt aufgeräumter (Ton, Match, Turnier live eingeklappt) – einmal anwenden, wer Operator nutzt
-else if (!ui.compact214) { ui.compact214 = true; uiSave(); if ((ui.workspace || "Operator") === "Operator") setTimeout(() => workspaceChoose("Operator"), 0); }
+else if (!ui.compact214) { ui.compact214 = true; ui.layout221 = true; uiSave(); if ((ui.workspace || "Operator") === "Operator") setTimeout(() => workspaceChoose("Operator"), 0); }
+// 2.21: neue Standard-Anordnung (Szenen links, Ton unten, Rest rechts) – einmal anwenden, wer eine der beiden Vorlagen nutzt
+else if (!ui.layout221) { ui.layout221 = true; uiSave(); const w = ui.workspace || "Operator"; if (w === "Operator" || w === "Einsteiger") setTimeout(() => workspaceChoose(w), 0); }
 // neue Karte „Zur Szene" (2.5): wer schon ein Layout mit rechtem Dock hat, bekommt sie dort oben dazu
 if (!ui.sceneTools) {
   ui.sceneTools = true; uiSave();

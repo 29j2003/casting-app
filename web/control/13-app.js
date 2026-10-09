@@ -348,7 +348,7 @@ setTimeout(audioFetch, 1500);
 function everything() {
   const parts = [bgApply, bgDraw, timerEndDraw, languageDraw, () => { if (typeof dachCardShow === "function") { dachCardShow(); dframeDraw(); } },
     audioDraw, cleanDraw, mbarDraw, tournamentDraw, mdDraw, bgSourceDraw, graphicsDraw, poolComplete, scenesDraw, scenesSetupDraw, sponsorsDraw,
-    seriesDraw, videoInfoDraw, sourcesDraw, themesDraw, themeAdjust, fieldsFill, () => teamDraw("a"), () => teamDraw("b"), timerShow, poolDraw,
+    seriesDraw, videoInfoDraw, adsSetupDraw, adsDraw, sourcesDraw, themesDraw, themeAdjust, fieldsFill, () => teamDraw("a"), () => teamDraw("b"), timerShow, poolDraw,
     vetoDraw, () => playersDraw("a"), () => playersDraw("b")];
   for (const part of parts) {
     try { part(); } catch (err) { console.error("Anzeige-Fehler", part.name || "Teil", err); }

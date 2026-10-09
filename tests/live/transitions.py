@@ -16,7 +16,7 @@ SWITCH_SECONDS = 1.15          # transitions take 0.5 s here; wait a little long
 
 SETTLED_STATE = """[document.body.dataset.currentscene,
   document.querySelectorAll('.layer').length,
-  [...document.querySelector('.layer').children].filter(e => parseFloat(getComputedStyle(e).opacity) < 0.99
+  [...(document.querySelector('.layer') || {children: []}).children].filter(e => parseFloat(getComputedStyle(e).opacity) < 0.99
      && !e.classList.contains('sponsor') && !e.classList.contains('music')).length,
   getComputedStyle(document.querySelector('.stinger')).visibility]"""
 

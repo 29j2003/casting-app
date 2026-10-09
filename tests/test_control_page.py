@@ -1015,17 +1015,123 @@ def test_ads_play_all_or_one_and_go_back_afterwards(server, browser):
         page.wait_for_timeout(250)
     assert page.evaluate("[Z.broadcast.scene, Z.ads.play]") == ["pause", None]
     # a single ad, then „Stay“: remains in the scene
-    page.evaluate("document.querySelector('#pAds [data-ads=\"1\"]').click()")
-    for _ in range(75):
-        if page.evaluate("!!document.querySelector('#pAds [data-ads-stay]')"):
-            break
-        page.wait_for_timeout(200)
-    page.evaluate("document.querySelector('#pAds [data-ads-stay]').click()")
-    page.wait_for_timeout(2500)
+    page.evaluate("Z.ads.back = 5; send(); document.querySelector('#pAds [data-ads=\"1\"]').click()")
+    # click „Stay“ inside the page as soon as it appears (a round trip per check could miss the countdown on a busy machine)
+    assert page.evaluate("""new Promise(done => {
+      const t = setInterval(() => { const b = document.querySelector('#pAds [data-ads-stay]'); if (b) { clearInterval(t); b.click(); done(true); } }, 50);
+      setTimeout(() => { clearInterval(t); done(false); }, 20000); })""")
+    page.wait_for_timeout(5500)
     assert page.evaluate("Z.broadcast.scene") == "ads"
     page.evaluate("document.querySelector('#pAds [data-ads-stop]').click()")
     assert page.evaluate("Z.broadcast.scene") == "pause"
     page.evaluate("Z.ads = { videos: [], badge: true, back: 10, play: null }; send()")
+    assert errors == []
+
+
+def test_ads_in_dach_style_lie_over_the_dach_page(server, browser):
+    """DACH CS – Offiziell has no ad page: the scene „Werbung“ is listed with the DACH scenes and in the panel of the
+    DACH pauses; the ads play full screen over the DACH page and afterwards the app goes back to that DACH page."""
+    import subprocess
+    from casting_app.server.media_converter import find_ffmpeg
+    if not (server.folders.videos / "ad-a.webm").is_file():
+        subprocess.run([find_ffmpeg(), "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=25", "-t", "1.5",
+                        "-c:v", "libvpx-vp9", "-b:v", "200k", "-deadline", "realtime", str(server.folders.videos / "ad-a.webm")], check=True)
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("""themeChoose('dachcs-official'); Z.broadcast.transition = 'cut'; dachSwitch('dach-pause');
+      Z.ads = { videos: ['media/videos/ad-a.webm'], badge: true, back: 1, play: null }; send(); tabs('live'); scenesDraw(); panelValues();""")
+    page.wait_for_timeout(1000)
+    assert page.evaluate("!!document.querySelector('[data-scene-def=\"ads\"]')")
+    assert page.evaluate("!document.querySelector('[data-panel=ads]').hidden")      # the DACH pause offers the ads
+    page.evaluate("document.querySelector('#pAds [data-ads=all]').click()")
+    page.wait_for_timeout(1200)
+    assert page.evaluate("[Z.broadcast.scene, Z.ads.play.from]") == ["ads", "dach-pause"]
+    frame = "$('frame').contentDocument"
+    assert page.evaluate(f"!!{frame}.querySelector('.dach-layer .dach-ads [data-part=ads] video')")
+    assert page.evaluate(f"{frame}.querySelector('.dach-ads .ads-label').textContent") == "WERBUNG"
+    for _ in range(100):                                       # 1.5 s video, then 1 s until going back – slow under load
+        if page.evaluate("Z.broadcast.scene") != "ads":
+            break
+        page.wait_for_timeout(250)
+    assert page.evaluate("[Z.broadcast.scene, Z.dach.scene, Z.ads.play]") == ["dach-pause", "dach-pause", None]
+    page.wait_for_timeout(500)
+    assert page.evaluate(f"!{frame}.querySelector('.dach-ads')")
+    # the scene button and the way back by a DACH button
+    page.evaluate("document.querySelector('[data-scene-def=\"ads\"]').click()")
+    page.wait_for_timeout(600)
+    assert page.evaluate("Z.broadcast.scene") == "ads" and page.evaluate(f"!!{frame}.querySelector('.dach-ads')")
+    page.evaluate("document.querySelector('[data-scene-def=\"dach-end\"]').click()")
+    for _ in range(40):                                        # the new DACH page loads under the ads, then they go
+        if page.evaluate(f"!{frame}.querySelector('.dach-ads')"):
+            break
+        page.wait_for_timeout(250)
+    assert page.evaluate("[Z.broadcast.scene, Z.dach.scene]") == ["dach-end", "dach-end"]
+    assert page.evaluate(f"!{frame}.querySelector('.dach-ads')")
+    page.evaluate("themeChoose('regular'); Z.ads = { videos: [], badge: true, back: 10, play: null }; send()")
+    assert errors == []
+
+
+def test_background_sound_follows_the_scene(server, browser):
+    """Background sound per scene: by default the tick of the scene's playlist („Ton der Videos abspielen“); in Live
+    the button below the preview changes it for the running scene only. When OBS plays the video, the app mutes or
+    unmutes „Cast – Hintergrund“ in OBS on each scene switch."""
+    import subprocess
+    from casting_app.server.media_converter import find_ffmpeg
+    video = server.folders.videos / "bg-sound.webm"
+    if not video.is_file():
+        subprocess.run([find_ffmpeg(), "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=25", "-t", "6",
+                        "-c:v", "libvpx-vp9", "-b:v", "200k", "-deadline", "realtime", str(video)], check=True)
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1200)
+    page.evaluate("""Z.theme = 'regular'; Z.background.source = 'overlay'; Z.broadcast.transition = 'cut'; Z.background.sceneAudio = {};
+      Z.background.playlists = [
+        { id: 'pa', name: 'Mit Ton', kind: 'loop', videos: ['media/videos/bg-sound.webm'], order: 'seq', transition: 'cut', fade: 0, audio: true, scenes: ['intro'] },
+        { id: 'pb', name: 'Ohne Ton', kind: 'loop', videos: ['media/videos/bg-sound.webm'], order: 'seq', transition: 'cut', fade: 0, audio: false, scenes: ['pause', 'cast-duo'] }];
+      everything(); tabs('live'); sceneSwitch('intro');""")
+    muted = "(() => { const v = $('frame').contentDocument.querySelector('.backdrop video.on'); return v ? v.muted : null; })()"
+    state = "[Z.background.play.audio, $('bgCornerAudio').getAttribute('aria-pressed')]"
+
+    def settle(expected):
+        for _ in range(30):
+            if page.evaluate(muted) is expected:
+                return
+            page.wait_for_timeout(200)
+
+    settle(False)
+    assert page.evaluate(state) == [True, "true"] and page.evaluate(muted) is False
+    page.evaluate("sceneSwitch('pause')")
+    settle(True)
+    assert page.evaluate(state) == [False, "false"] and page.evaluate(muted) is True
+    # Live: sound on for this scene only
+    page.evaluate("$('bgCornerAudio').click()")
+    settle(False)
+    assert page.evaluate("Z.background.sceneAudio") == {"pause": True}
+    assert page.evaluate(state) == [True, "true"] and page.evaluate(muted) is False
+    page.evaluate("sceneSwitch('cast-duo')")                    # same playlist, other scene: its default (no sound)
+    page.wait_for_timeout(400)
+    assert page.evaluate(state) == [False, "false"]
+    page.evaluate("sceneSwitch('pause')")
+    page.wait_for_timeout(400)
+    assert page.evaluate(state) == [True, "true"]
+    page.evaluate("$('bgCornerAudio').click()")                  # back to the playlist default: no own choice left
+    page.wait_for_timeout(300)
+    assert page.evaluate("Z.background.sceneAudio") == {} and page.evaluate(state) == [False, "false"]
+    # OBS plays the video: „Cast – Hintergrund“ is muted/unmuted per scene
+    mutes = "obsCalls.filter(c => c[0] === 'SetInputMute').map(c => [c[1].inputName, c[1].inputMuted])"
+    page.evaluate(FAKE_OBS + "Z.background.source = 'obs'; bgAudioSent = ''; sceneSwitch('intro');")
+    page.wait_for_timeout(500)
+    assert page.evaluate(mutes) == [["Cast – Hintergrund", False]]
+    page.evaluate("obsCalls.length = 0; sceneSwitch('pause');")
+    page.wait_for_timeout(500)
+    assert page.evaluate(mutes) == [["Cast – Hintergrund", True]]
+    page.evaluate("obsCalls.length = 0; sceneSwitch('cast-duo');")   # still without sound: nothing to send
+    page.wait_for_timeout(500)
+    assert page.evaluate(mutes) == []
+    page.evaluate("Z.background.source = 'overlay'; Z.background.sceneAudio = {}; send()")
     assert errors == []
 
 

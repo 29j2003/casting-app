@@ -668,7 +668,9 @@
     if (audioAudioctx.state === "suspended") audioAudioctx.resume().catch(() => {});
     return audioAudioctx;
   }
-  function audioSettings(key) { return Object.assign({ vol: 100, mute: key === "background", delay: 0, monitor: "both" }, ((Z.audio || {})[key]) || {}); }
+  // Hintergrund (Playlisten, Clips, Quellen-Art „Video“): ob Ton läuft, entscheidet die Steuerseite je Szene bzw. Clip –
+  // hier keine eigene Stummschaltung (ältere Stände hatten background.mute fest an)
+  function audioSettings(key) { const T = { vol: 100, mute: false, delay: 0, monitor: "both" }; return key === "background" ? T : Object.assign(T, ((Z.audio || {})[key]) || {}); }
   function audioLevel(key) {
     const T = audioSettings(key);
     if (T.mute) return 0;
@@ -682,8 +684,8 @@
     const t = { d, g, key, alive }; audioChains.add(t); audioApply(); return t;
   }
   function audioApply() {
-    const bgOn = !audioSettings("background").mute;
-    $$(".backdrop video").forEach(v => audioForVideo(v, bgOn));
+    const H = Z.background || {}, bgOn = (H.play || {}).audio === true, clipOn = (H.clip || {}).audio !== false;
+    $$(".backdrop video").forEach(v => audioForVideo(v, v.classList.contains("bg-clip") ? clipOn : bgOn));
     audioChains.forEach(t => {
       if (!t.alive()) { try { t.g.disconnect(); } catch (e) {} audioChains.delete(t); return; }
       t.g.gain.value = audioLevel(t.key); t.d.delayTime.value = Math.min(5, Math.max(0, (+audioSettings(t.key).delay || 0) / 1000));
@@ -967,7 +969,7 @@
     if (!shown && !empty.classList.contains("gone")) showTheme();
     else if (!shown) setTimeout(() => { if (valid() && !backdrop.classList.contains("video-running")) showTheme(); }, 1500);
 
-    const bgAudio = !audioSettings("background").mute;
+    const bgAudio = (H.play || {}).audio === true;                  // Ton je Szene (Steuerseite: bgAudioFor)
     const make = () => {
       const v = document.createElement("video"); setTimeout(() => audioForVideo(v, bgAudio), 0);
       ["muted", "autoplay", "playsinline"].forEach(a => v.setAttribute(a, ""));
@@ -993,7 +995,10 @@
         const time = setTimeout(() => end(false, v.readyState < 2 ? "lädt nicht" : "kein Bild – Format wird hier nicht dekodiert"), 12000);
         const progress = () => { if (v.currentTime > 0.15 && v.videoWidth > 0) end(true); };
         v.onerror = () => end(false, v.error ? `Fehler ${v.error.code}${v.error.message ? ": " + v.error.message : ""}` : "Fehler");
-        v.oncanplay = () => { v.oncanplay = null; v.play().catch(e => end(false, "Abspielen abgelehnt: " + (e && e.name))); };
+        v.oncanplay = () => { v.oncanplay = null; v.play().catch(e => {
+          // Ton blockiert (Browser ohne Autoplay mit Ton): wenigstens das Bild – stumm weiter
+          if (e && e.name === "NotAllowedError" && !v.muted) { v.muted = true; v.play().catch(e2 => end(false, "Abspielen abgelehnt: " + (e2 && e2.name))); }
+          else end(false, "Abspielen abgelehnt: " + (e && e.name)); }); };
         v.addEventListener("timeupdate", progress);
         v.loop = list.length === 1;
         v.src = /^(https?:|file:|data:|blob:)/i.test(file) ? file : file.split("/").map(encodeURIComponent).join("/");

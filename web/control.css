@@ -719,6 +719,7 @@ summary .handle .icon, summary .pin .icon { width: 14px; height: 14px; }
 .bg-corner[hidden] { display: none; }
 .bg-corner > .small { font-weight: 800; letter-spacing: .1em; }
 .bg-corner select { max-width: 220px; }
+.bg-corner-audio[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--text, inherit); }
 /* Setup → Szenen-Panels: Tabelle Szene × Feld */
 .panel-table-wrap { overflow-x: auto; }
 .panel-table { border-collapse: collapse; width: 100%; font-size: 13px; }

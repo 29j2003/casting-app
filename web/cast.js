@@ -802,7 +802,7 @@
       k._source = keyName;
       const oldSource = k.querySelector(".cam-source");
       if (oldSource) { if (oldSource._stream) oldSource._stream.getTracks().forEach(t => t.stop()); oldSource.remove(); }
-      const active = Q.type && Q.type !== "empty" && (Q.type !== "link" || Q.url) && (Q.type !== "image" || Q.image);
+      const active = Q.type && Q.type !== "empty" && (Q.type !== "link" || Q.url) && (Q.type !== "image" || Q.image) && (Q.type !== "video" || Q.video);
       k.classList.toggle("filled", !!active);
       if (!active) return;
       const box = document.createElement("div");
@@ -824,6 +824,16 @@
       } else if (Q.type === "image") {
         // in OBS kommen große Bilder als /api/image/<id> (siehe K.resolve)
         const i = document.createElement("img"); if (/^(data:image\/|https?:|\/api\/image\/[a-z0-9]+$|media\/|medien\/)/i.test(Q.image)) i.src = Q.image; box.appendChild(i);
+      } else if (Q.type === "video") {
+        // eigenes Video aus dem Videos-Ordner (z. B. DACH: eigene Contentpause) – nur eigene Dateien
+        if (!/^media\/videos\/[^/]+$/.test(Q.video)) return;
+        const v = document.createElement("video");
+        ["autoplay", "playsinline", "muted"].forEach(a => v.setAttribute(a, ""));
+        v.muted = true; v.loop = Q.loop !== false; v.preload = "auto"; v.disablePictureInPicture = true;
+        v.src = Q.video.split("/").map(encodeURIComponent).join("/");
+        box.appendChild(v);
+        if (Q.audio) setTimeout(() => audioForVideo(v, true), 0);
+        v.play().catch(() => {});
       } else if (Q.type === "device") deviceStart(box, Q);
     });
   }
@@ -1075,6 +1085,39 @@
     next();
   }
 
+  /* ---------- Werbung (Szene „Werbung“) ----------
+     Z.ads.play = { id, list: [Videos] } – die Steuerseite startet „Alle“ oder einzelne Werbe-Videos. Sie laufen
+     nacheinander bildfüllend mit Ton; danach bleibt das letzte Bild stehen (die Steuerseite wechselt zurück).
+     Die Vorschau in der App meldet Fortschritt und Ende an die Steuerseite (ads-progress / ads-ended). */
+  function ads() {
+    const stage = document.querySelector('[data-part="ads"]'); if (!stage) return;
+    const A = Z.ads || {}, P = A.play || null, label = stage.querySelector(".ads-label");
+    if (label) { label.textContent = K.word(Z, "ad"); label.hidden = A.badge === false || !(P && (P.list || []).length); }   // nur während Werbung läuft
+    const key = P && P.id ? String(P.id) : "";
+    if (stage._key === key) return;
+    stage._key = key;
+    stage.querySelectorAll("video").forEach(v => { videoUnload(v); v.remove(); });
+    const list = ((P || {}).list || []).filter(f => /^media\/videos\/[^/]+$/.test(f));
+    if (!list.length) return;
+    const report = d => { if (PREVIEW && window.parent !== window) try { window.parent.postMessage(Object.assign({ id: P.id }, d), location.origin); } catch (e) {} };
+    let n = 0, lastReport = 0;
+    const next = () => {
+      if (stage._key !== key) return;
+      if (n >= list.length) { report({ cast: "ads-ended" }); return; }   // letztes Bild bleibt stehen
+      const index = n, v = document.createElement("video");
+      v.className = "ads-video"; v.playsInline = true; v.preload = "auto"; v.disablePictureInPicture = true;
+      v.src = list[n++].split("/").map(encodeURIComponent).join("/");
+      stage.insertBefore(v, label);
+      v.ontimeupdate = () => { const t = Date.now(); if (t - lastReport > 900) { lastReport = t; report({ cast: "ads-progress", index, count: list.length, t: v.currentTime, d: v.duration }); } };
+      // nächstes Video legt sich darüber, das alte geht kurz danach; das letzte bleibt mit seinem letzten Bild stehen
+      v.onended = () => { const more = n < list.length; next(); if (more) setTimeout(() => { videoUnload(v); v.remove(); }, 400); };
+      v.onerror = () => { message("Werbung lässt sich nicht abspielen: " + v.getAttribute("src")); v.remove(); next(); };
+      v.muted = false;                                          // Werbung mit Ton – blockiert der Browser das, wenigstens das Bild
+      v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });
+    };
+    next();
+  }
+
   /* ---------- Musik (Tuna) ---------- */
   let musicData = null;
   function musicBox(box) {
@@ -1151,7 +1194,7 @@
     });
   }
   // jedes Teil für sich: ein Fehler in einem Teil (z. B. unerwartete Daten) hält weder die anderen noch den Szenenwechsel auf
-  const DRAW_PARTS = [diagnose, theme, graphics, veto, series, players, teamIntro, texts, teams, fit, timer, ticker, background, clips, sources, sponsors,
+  const DRAW_PARTS = [diagnose, theme, graphics, veto, series, players, teamIntro, texts, teams, fit, timer, ticker, background, clips, ads, sources, sponsors,
     () => { if (!(Z.speaker || {}).on) $$(".cam.speaks").forEach(k => k.classList.remove("speaks")); },
     () => { $$(".music").forEach(m => m.classList.toggle("off", (Z.music || {}).displayed === false)); if (musicData && $$(".music").some(b => !b._music)) musicShow(musicData); },
     liveDraw, tournamentDraw, audioApply,

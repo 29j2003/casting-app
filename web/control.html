@@ -143,6 +143,10 @@
             <label>Großer Titel<input type="text" data-field="texts.title"></label>
             <label>Lauftext – eine Meldung pro Zeile<textarea data-field="texts.ticker" data-kind="list" rows="3"></textarea></label>
           </section>
+          <section class="panel-field" data-panel="ads" hidden>
+            <h4>Werbung</h4>
+            <div id="pAds"></div>
+          </section>
           <section class="panel-field" data-panel="sponsor" hidden>
             <h4>Sponsoren</h4>
             <div class="map-buttons" id="pSponsors"></div>
@@ -636,6 +640,12 @@
         <div class="line"><button class="button" id="sponsorPlus">+ Sponsor</button><label>Große Einblendung (Sekunden)<input type="number" id="sponsorDuration" value="10" min="3"></label></div>
         <div id="sponsorScenes" class="list"></div>
         <p class="small">Logos am besten als PNG mit durchsichtigem Hintergrund. Die Liste gilt für das gewählte Theme – jede Liga hat ihre eigenen Sponsoren.</p>
+        <h4 class="pool-title">Werbung <span class="small">· Videos für die Szene „Werbung“ – in Live „Alle“ oder einzeln abspielen</span></h4>
+        <div id="adVideos" class="list"></div>
+        <div class="line">
+          <label class="toggleSwitch"><input type="checkbox" data-field="ads.badge" data-kind="bool"> Schild „Werbung“ einblenden (Kennzeichnung)</label>
+          <label>Danach zurück zur vorigen Szene nach … s (0 = bleibt)<input type="number" min="0" max="600" data-field="ads.back" data-kind="number"></label>
+        </div>
       </div>
     </details>
     <details data-area="map-pool">

@@ -609,3 +609,10 @@ body[data-sponsorspot=top] .music:not(.on) ~ .sponsor.in-bar:not(.gliding) { top
 .ti-tape { display: grid; grid-template-columns: 1fr 320px 1fr; }
 .ti-tape > div { height: 92px; display: grid; place-items: center; font-size: 40px; font-weight: 800; border-bottom: 2px solid rgba(0, 0, 0, .08); }
 .ti-tape > .lab { background: var(--dark); color: #fff; font-size: 22px; letter-spacing: .14em; }
+
+/* Werbung: Videos bildfüllend, Schild „WERBUNG“ oben links (Kennzeichnung) */
+.ads-stage { overflow: hidden; }
+.ads-stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+.ads-label { position: absolute; left: 30px; top: 26px; z-index: 2; padding: 4px 12px; background: rgba(0, 0, 0, .55); color: #fff;
+  font: 700 20px Rajdhani, Barlow, sans-serif; letter-spacing: .12em; border-radius: 3px; }
+.ads-label[hidden] { display: none; }

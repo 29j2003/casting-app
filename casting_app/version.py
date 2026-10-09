@@ -5,7 +5,7 @@ Overlays compare their own version with the server's and reload when they differ
 tools/build.py refuses to build when the three disagree.
 """
 
-VERSION = "2.17.1"
+VERSION = "2.18.0"
 APP_NAME = "Casting-App"
 
 

@@ -73,7 +73,7 @@ function tournamentTreeDraw() {
     const fix = changes => { T.res[m.id] = Object.assign({}, T.res[m.id], changes, linked ? { fixed: true } : {}); if (linked) { chip(); sourceDraw(); } };
     d.querySelectorAll("input[data-s]").forEach(f => f.oninput = () => { fix({ [f.dataset.s]: f.value === "" ? "" : +f.value }); laterSend(); });
     d.querySelector("input[type=checkbox]").onchange = ev => { fix({ done: ev.target.checked }); tournamentTreeDraw(); send(); };
-    d.querySelectorAll("button[data-team]").forEach(b => b.onclick = () => { T.focused = T.focused === b.dataset.team ? "" : b.dataset.team; tournamentTreeDraw(); send(); });
+    d.querySelectorAll("button[data-team]").forEach(b => b.onclick = () => { tourFocus(T.focused === b.dataset.team ? "" : b.dataset.team); tournamentTreeDraw(); send(); });
     return d;
   };
   const column = (title, matches, addition) => { const s = document.createElement("div"); s.className = "tour-round"; s.innerHTML = `<div class="tour-title">${esc(title)}</div>`; matches.forEach(m => s.appendChild(card(m, addition && addition(m)))); box.appendChild(s); };
@@ -114,7 +114,7 @@ $("tourPointsTemplate").onchange = () => {
   pointsDraw(); if (v === "own") $("tourPointsOwn").hidden = false; send();
 };
 document.querySelectorAll("#tourPointsOwn [data-p]").forEach(f => f.onchange = () => { const T = tour(); T.points = Object.assign({}, POINTS_DEFAULT, T.points || {}, { [f.dataset.p]: Math.max(0, +f.value || 0) }); send(); });
-$("tourShowGroup").onchange = () => { tour().showGroup = $("tourShowGroup").value; send(); };
+$("tourShowGroup").onchange = () => { tourGroup($("tourShowGroup").value); tournamentTreeDraw(); send(); };
 $("tourNext").onchange = () => { tour().nextPlaces = Math.max(0, +$("tourNext").value || 0); send(); };
 $("tourGamesShow").onchange = () => { tour().gamesShow = $("tourGamesShow").checked; send(); };
 $("tourWins").onchange = () => { tour().swiss.wins = +$("tourWins").value || 3; tournamentTreeDraw(); send(); };
@@ -133,7 +133,30 @@ $("tourNewTeam").onclick = () => {
 ["tourMode", "tourRound", "tourResultOff"].forEach(id => $(id).onchange = () => {
   const S = tour().visible; S.mode = $("tourMode").value; S.round = +$("tourRound").value || 1; S.resultsOff = $("tourResultOff").checked; send();
 });
-$("tourFocusOff").onclick = () => { tour().focused = ""; tournamentTreeDraw(); send(); };
+$("tourFocusOff").onclick = () => { tourFocus(""); tournamentTreeDraw(); send(); };
+// Team hervorheben: zeigt das Overlay gerade nur eine Gruppe und steht das Team in einer anderen, springt die Anzeige
+// auf dessen Gruppe – sonst wäre im Overlay weder die Markierung noch das Profil zu sehen
+function tourFocus(id) {
+  const T = tour(); T.focused = id || "";
+  if (!id || T.showGroup === undefined || T.showGroup === "") return;
+  const groups = K.tournamentBuild(T, CastI18n.language).groups || [];
+  const has = g => (g.table || []).some(r => r.id === id) || (g.matches || []).some(m => m.a === id || m.b === id);
+  if (groups[+T.showGroup] && has(groups[+T.showGroup])) return;
+  const i = groups.findIndex(has);
+  if (i >= 0) { T.showGroup = String(i); if ($("tourShowGroup")) $("tourShowGroup").value = T.showGroup; }
+}
+// andere Gruppe zeigen: ein hervorgehobenes Team, das dort nicht steht, ist nicht mehr hervorgehoben
+function tourGroup(value) {
+  const T = tour(); T.showGroup = value;
+  if (T.focused && !tourFocusOptions().includes(`value="${esc(T.focused)}"`)) T.focused = "";
+}
+// Teams zur Auswahl „hervorheben": bei gewählter Gruppe nur deren Teams
+function tourFocusOptions() {
+  const T = tour(), groups = K.tournamentBuild(T, CastI18n.language).groups || [], g = T.showGroup === undefined || T.showGroup === "" ? null : groups[+T.showGroup];
+  const inGroup = id => !g || (g.table || []).some(r => r.id === id) || (g.matches || []).some(m => m.a === id || m.b === id);
+  return `<option value="">Kein Team hervorheben</option>` + (T.teams || []).filter(t => inGroup(t.id))
+    .map(t => `<option value="${esc(t.id)}"${t.id === T.focused ? " selected" : ""}>${esc(t.name || "?")}</option>`).join("");
+}
 $("tourReset").onclick = async () => {
   if (!await confirmDialog({ title: "Alle Ergebnisse löschen?", text: "Teams und Format bleiben, alle Spielstände (und Swiss-Runden) werden geleert.", button: "Löschen" })) return;
   const T = tour(); T.res = {}; T.swiss.rounds = []; tournamentTreeDraw(); send();

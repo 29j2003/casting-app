@@ -645,7 +645,7 @@ document.querySelectorAll("[data-gfx-new]").forEach(b => b.onclick = () => {
    gemerkt in ui.panels (diese Oberfläche, nicht Teil der Sendung). Die Felder bedienen dieselben Daten wie
    Match und Setup (Z.veto, Z.teams, Z.timer, Z.texts) – jede Änderung zeichnet beide Stellen neu. */
 const PANEL_FIELDS = [["veto", "Map-Veto"], ["over", "Über dem Spiel"], ["score", "Spielstand"], ["timer", "Timer"], ["series", "Serie"],
-  ["texts", "Texte im Overlay"], ["sponsor", "Sponsoren"], ["ads", "Werbung"], ["slides", "Folien"], ["group", "Gruppe"], ["note", "Notiz"]];
+  ["texts", "Texte im Overlay"], ["sponsor", "Sponsoren"], ["ads", "Werbung"], ["slides", "Folien"], ["group", "Turnier"], ["note", "Notiz"]];
 const PANEL_DEFAULTS = {
   "intro": ["timer", "texts", "sponsor"], "cast-duo": ["timer", "texts", "note"], "cast-solo": ["timer", "texts", "note"],
   "cast-duo-clips": ["note"], "cast-solo-clips": ["note"], "cast-duo-interview": ["series", "texts", "note"], "cast-solo-interview": ["series", "texts", "note"],
@@ -655,8 +655,25 @@ const PANEL_DEFAULTS = {
   "scoreboard": ["score", "series"], "team-a": ["score", "series"], "team-b": ["score", "series"], "h2h": ["score", "series"], "bracket": ["group", "note"],
   "dach-pause": ["ads", "note"], "dach-content": ["ads", "note"], "dach-owncontent": ["ads", "note"]
 };
+// welche Felder bei welcher Szene überhaupt Sinn ergeben (das „Felder"-Menü bietet nur diese an)
+const CAST_SCENES = ["cast-duo", "cast-solo", "cast-duo-clips", "cast-solo-clips", "cast-duo-interview", "cast-solo-interview",
+  "cast-trio", "cast-trio-host", "cast-quad", "viewers", "viewers-cast"];
+const PANEL_SCENES = {
+  veto: ["map-veto", "series", ...CAST_SCENES],
+  over: ["ingame"],
+  score: ["ingame", "series", "end", "pause", ...LIVE_SCENES, ...CAST_SCENES],
+  timer: ["intro", "pause", ...CAST_SCENES],
+  series: ["map-veto", "series", "end", "ingame", "pause", "players", "teams", ...LIVE_SCENES, ...CAST_SCENES],
+  texts: ["intro", "map-veto", "players", "teams", "series", "sponsors", "pause", "end", ...CAST_SCENES],
+  sponsor: ["intro", "cast-duo", "cast-solo", "cast-duo-interview", "cast-solo-interview", "cast-trio", "cast-trio-host", "cast-quad",
+    "sponsors", "ingame", "pause", "end"],
+  ads: ["intro", "sponsors", "ads", "pause", "end", "dach-*"],
+  slides: ["teams"], group: ["bracket"], note: ["*"]
+};
+const panelAllowed = (k, f) => (PANEL_SCENES[f] || []).some(x => x === "*" || x === k || (x.endsWith("*") && k.startsWith(x.slice(0, -1))));
+const panelFieldsFor = k => PANEL_FIELDS.filter(([f]) => panelAllowed(k, f));
 let sceneToolsShown = "";
-const panelList = k => (ui.panels && ui.panels[k]) || PANEL_DEFAULTS[k] || [];
+const panelList = k => ((ui.panels && ui.panels[k]) || PANEL_DEFAULTS[k] || []).filter(f => panelAllowed(k, f));
 const panelChanged = k => !!(ui.panels && ui.panels[k]);
 function sceneNow() {
   if (onSource()) return (Z.broadcast || {}).scene || "";
@@ -693,17 +710,21 @@ function panelValues() {
   $("pSponsorsEmpty").hidden = !!names.length;
   slidesDraw(); overDraw(); groupDraw(); adsDraw();
 }
-/* ---------- Gruppe (Turnierbaum): nur eine Gruppe zeigen – Tabelle oder GSL, in derselben Szene ---------- */
+/* ---------- Turnier (Turnierbaum): Gruppe zeigen (Tabelle oder GSL) und Team hervorheben, in derselben Szene ---------- */
+$("pFocus").onchange = () => { tourFocus($("pFocus").value); if (typeof tournamentTreeDraw === "function") tournamentTreeDraw(); send(); groupDraw(); mbarDraw(); };
 function groupDraw() {
   if (!$("pGroup")) return;
   const T = Z.tournament || {}, B = K.tournamentBuild(T, CastI18n.language), groups = B.groups || [], cur = String(T.showGroup ?? "");
-  const html = !groups.length ? `<p class="small">Gruppen gibt es nur bei Tabelle oder GSL (Turnier → Format).</p>`
+  $("pGroupLine").hidden = !groups.length;
+  const focus = tourFocusOptions();
+  if ($("pFocus")._h !== focus) { $("pFocus")._h = focus; $("pFocus").innerHTML = focus; }
+  const html = !groups.length ? ""
     : [["", "Alle"], ...groups.map((g, i) => [String(i), g.name])].map(([v, n]) =>
       `<button class="button${v === cur ? " main" : ""}" data-group="${v}" aria-pressed="${v === cur}">${esc(n)}</button>`).join("");
   if ($("pGroup")._h === html) return;
   $("pGroup")._h = html; $("pGroup").innerHTML = html;
   $("pGroup").querySelectorAll("[data-group]").forEach(b => b.onclick = () => {
-    tour().showGroup = b.dataset.group; send(); groupDraw(); mbarDraw();
+    tourGroup(b.dataset.group); send(); groupDraw(); mbarDraw();
     if ($("tourShowGroup")) $("tourShowGroup").value = b.dataset.group;
   });
 }
@@ -847,7 +868,7 @@ $("pNote").oninput = () => { const k = sceneNow(); if (!k) return; ui.notes = Ob
 function panelMenuDraw() {
   const k = sceneNow(), list = panelList(k), m = $("panelMenu");
   m.innerHTML = `<div class="small">Felder für „${esc(audioSceneTitle(k))}“</div>` +
-    PANEL_FIELDS.map(([f, n]) => `<label class="toggleSwitch"><input type="checkbox" data-f="${f}"${list.includes(f) ? " checked" : ""}> ${esc(n)}</label>`).join("") +
+    panelFieldsFor(k).map(([f, n]) => `<label class="toggleSwitch"><input type="checkbox" data-f="${f}"${list.includes(f) ? " checked" : ""}> ${esc(n)}</label>`).join("") +
     `<label class="toggleSwitch"><input type="checkbox" id="panelAuto"${ui.panelAuto !== false ? " checked" : ""}> Panel öffnet sich beim Szenenwechsel</label>` +
     `<button class="button" id="panelDefault"${panelChanged(k) ? "" : " disabled"}>Auf Vorgabe zurück</button>`;
   m.querySelectorAll("[data-f]").forEach(c => c.onchange = () => {
@@ -868,7 +889,7 @@ function panelTableDraw() {
   OVERLAY_SCENES.forEach(([k]) => {
     const list = panelList(k), tr = document.createElement("tr");
     tr.innerHTML = `<th class="${panelChanged(k) ? "changed" : ""}">${esc(audioSceneTitle(k))}</th>` +
-      PANEL_FIELDS.map(([f, n]) => `<td><input type="checkbox" class="cell-check" data-f="${f}"${list.includes(f) ? " checked" : ""} title="${esc(n)}" aria-label="${esc(n)}"></td>`).join("") +
+      PANEL_FIELDS.map(([f, n]) => panelAllowed(k, f) ? `<td><input type="checkbox" class="cell-check" data-f="${f}"${list.includes(f) ? " checked" : ""} title="${esc(n)}" aria-label="${esc(n)}"></td>` : `<td></td>`).join("") +
       `<td><button class="tool" title="Auf Vorgabe" aria-label="Auf Vorgabe"${panelChanged(k) ? "" : " hidden"}>${icon("undo")}</button></td>`;
     tr.querySelectorAll("[data-f]").forEach(c => c.onchange = () => {
       const now = panelList(k).filter(f => f !== c.dataset.f); if (c.checked) now.push(c.dataset.f);

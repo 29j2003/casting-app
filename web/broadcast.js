@@ -196,6 +196,7 @@
         const o = opacity(w.el), ghost = w.el.cloneNode(true);
         ghost.removeAttribute("data-part"); ghost.classList.add("gliding"); Object.assign(ghost.style, w.from);
         previous.appendChild(ghost);                 // geht mit der alten Schicht
+        (window.__lastSwitch.jump = window.__lastSwitch.jump || []).push(w.el.dataset.part);   // für tests/live/flicker.py
         jobs.push(anim(ghost, out(o), duration * .55));
         jobs.push(anim(w.el, enter(o), duration * .6, { delay: duration * .4 }));
         return;

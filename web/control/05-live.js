@@ -659,7 +659,7 @@ const PANEL_DEFAULTS = {
 const CAST_SCENES = ["cast-duo", "cast-solo", "cast-duo-clips", "cast-solo-clips", "cast-duo-interview", "cast-solo-interview",
   "cast-trio", "cast-trio-host", "cast-quad", "viewers", "viewers-cast"];
 const PANEL_SCENES = {
-  veto: ["map-veto", "series", ...CAST_SCENES],
+  veto: ["map-veto", "series", "intro", "pause", ...CAST_SCENES],
   over: ["ingame"],
   score: ["ingame", "series", "end", "pause", ...LIVE_SCENES, ...CAST_SCENES],
   timer: ["intro", "pause", ...CAST_SCENES],

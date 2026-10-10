@@ -209,9 +209,11 @@
       const far = Math.abs(parseFloat(va.top) - parseFloat(vn.top)) > LONG_JUMP;   // weit weg: an Ort und Stelle überblenden
       const keys = far ? [] : Object.keys(vn).filter(k => k in va && va[k] !== vn[k]);
       const ga = {}, gn = {}; keys.forEach(k => { ga[k] = va[k]; gn[k] = vn[k]; });
-      const oa = opacity(a), on = opacity(n);
-      jobs.push(anim(a, [Object.assign({ opacity: oa }, ga), Object.assign({ opacity: 0 }, gn)], duration));
-      jobs.push(anim(n, [Object.assign({ opacity: 0 }, ga), Object.assign({ opacity: on }, gn)], duration));
+      // nacheinander statt gleichzeitig: erst geht der alte Inhalt (erste Hälfte), dann kommt der neue – zwei halb
+      // durchsichtige Texte übereinander („PAUSE“ über „DANKE FÜRS ZUSCHAUEN“) sahen unruhig aus. Die Lage gleitet dabei durch.
+      const [oFrom, oTo] = out(opacity(a)), [nFrom, nTo] = enter(opacity(n));
+      jobs.push(anim(a, [Object.assign({}, oFrom, ga, { offset: 0 }), Object.assign({}, oTo, { offset: .5 }), Object.assign({}, oTo, gn, { offset: 1 })], duration));
+      jobs.push(anim(n, [Object.assign({}, nFrom, ga, { offset: 0 }), Object.assign({}, nFrom, { offset: .45 }), Object.assign({}, nTo, gn, { offset: 1 })], duration));
     });
     // 3) was wegfällt, geht – was neu ist, kommt (leicht versetzt); Unsichtbares bleibt unsichtbar
     go.forEach((e, i) => { const o = opacity(e); if (o > .02) jobs.push(anim(e, out(o), duration * .55, { delay: i * 25 })); else e.classList.add("pending"); });

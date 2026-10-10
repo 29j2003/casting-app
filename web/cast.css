@@ -461,7 +461,8 @@ body[data-scene="ingame"] { background: transparent; }
 .gfx-player-stats div { display: flex; flex-direction: column; align-items: center; } .gfx-player-stats b { font-size: 34px; } .gfx-player-stats span { font-size: 14px; letter-spacing: .16em; opacity: .55; }
 
 /* ===== Turnierbaum ===== */
-.tournament-tree { overflow: hidden; }
+.tournament-tree { overflow: hidden; display: flex; gap: 40px; align-items: flex-start; }
+.bracket-main { position: relative; flex: 1; align-self: stretch; min-width: 0; overflow: hidden; }
 .bracket-inner { transform-origin: 0 0; display: flex; gap: 40px; align-items: flex-start; width: max-content; }
 .bracket-row { display: flex; gap: 34px; align-items: stretch; }
 .bracket-de { display: flex; flex-direction: column; gap: 30px; }
@@ -476,7 +477,10 @@ body[data-scene="ingame"] { background: transparent; }
 .bracket-team span { padding: 0 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bracket-team b { text-align: center; font-size: 24px; height: 100%; display: grid; place-items: center; background: rgba(0,0,0,.06); }
 .bracket-team.winner b { background: var(--accent); color: var(--dark); }
-.bracket-team.open, .bracket-team.free { opacity: .45; } .bracket-team.focused span { color: var(--accent-readable); }
+.bracket-team.open, .bracket-team.free { opacity: .45; }
+/* hervorgehobenes Team: Zeile in Akzentfarbe getönt, Balken links */
+.bracket-team.focused, .bracket-tz.focused { background-image: linear-gradient(rgba(var(--accent-rgb), .28), rgba(var(--accent-rgb), .28));
+  box-shadow: inset 6px 0 0 var(--accent); }
 .bracket-match.done .bracket-team:not(.winner) { opacity: .55; }
 .bracket-logo { width: 52px; height: 52px; background: var(--dark); color: var(--accent); display: grid; place-items: center; font-size: 15px; letter-spacing: .04em; }
 .bracket-logo img { max-width: 80%; max-height: 80%; }
@@ -486,7 +490,7 @@ body[data-scene="ingame"] { background: transparent; }
 .bracket-gm > span { display: block; font-size: 14px; font-weight: 700; letter-spacing: .16em; color: rgba(255,255,255,.75); margin: 4px 0; }
 .bracket-swiss { display: flex; flex-direction: column; gap: 6px; width: 320px; }
 .bracket-sw { background: var(--light); } .bracket-sw.proceed { box-shadow: inset 6px 0 0 var(--accent); } .bracket-sw.out { opacity: .5; }
-.bracket-profile { position: absolute; right: 0; bottom: 0; width: 520px; }
+.bracket-profile { flex: none; width: 460px; }        /* neben dem Turnier (.bracket-main wird schmaler), nie darüber */
 .bracket-profile .box-field { flex-direction: column; gap: 14px; padding: 18px; height: auto; }
 .bracket-players { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; } .bracket-players span { font-size: 22px; font-weight: 600; padding: 2px 10px; background: rgba(0,0,0,.06); }
 .bracket-stats { display: flex; gap: 34px; justify-content: center; } .bracket-stats div { display: flex; flex-direction: column; align-items: center; }
@@ -501,7 +505,7 @@ body[data-scene="ingame"] { background: transparent; }
   font-size: 24px; font-weight: 700; border-bottom: 1px solid rgba(0,0,0,.07); font-variant-numeric: tabular-nums; }
 .bracket-tz > span, .bracket-tz > b { text-align: center; } .bracket-tz .bracket-tname { text-align: left; padding: 0 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bracket-tz.head { height: 40px; font-size: 16px; letter-spacing: .14em; color: rgba(0,0,0,.45); }
-.bracket-tz.proceed { box-shadow: inset 6px 0 0 var(--accent); } .bracket-tz.focused .bracket-tname { color: var(--accent-readable); }
+.bracket-tz.proceed { box-shadow: inset 6px 0 0 var(--accent); }
 .bracket-tz b { font-size: 28px; }
 .bracket-tspiele { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
 
@@ -596,12 +600,16 @@ body[data-sponsorspot=top] .music:not(.on) ~ .sponsor.in-bar:not(.gliding) { top
 
 /* Teams-Vorstellung: Folien Team A · Team B · Vergleich (data-tislide an der Szene, cast.js) */
 .ti-slides { inset: 0; pointer-events: none; }
-.ti-slide { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .5s var(--soft), visibility 0s .5s; }
+/* Wechsel: die alte Folie blendet schnell aus (.3 s), die neue ist sofort da, ihre Kästen kommen aber erst danach
+   nacheinander herein (.ti-in, wie beim Einblenden einer Szene) – nie zwei halb durchsichtige Folien übereinander */
+.ti-slide { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .3s var(--soft), visibility 0s .3s; }
 .ti-slide > * { position: absolute; }
 [data-tislide="a"] .ti-slide[data-slide="a"], [data-tislide="b"] .ti-slide[data-slide="b"], [data-tislide="compare"] .ti-slide[data-slide="compare"] {
-  opacity: 1; visibility: visible; transition: opacity .5s var(--soft), visibility 0s; }
+  opacity: 1; visibility: visible; transition: none; }
+.ti-slide.ti-in > *, .idle .ti-slide.ti-in > * { animation: enter .75s var(--soft) both; animation-delay: calc(var(--d, 0s) + .05s) !important; }
 [data-only] { display: none; }
-[data-tislide="a"] [data-only="a"], [data-tislide="b"] [data-only="b"], [data-tislide="compare"] [data-only="compare"] { display: inline; }
+[data-tislide="a"] [data-only="a"], [data-tislide="b"] [data-only="b"], [data-tislide="compare"] [data-only="compare"] { display: inline; animation: fade-in .45s var(--soft) .15s both; }
+@keyframes fade-in { from { opacity: 0; } }
 .ti-logo .box-field { height: 78px; font-size: 40px; }
 .ti-players .players-card { width: auto; flex: 1; }
 .ti-value { font-size: 44px; }

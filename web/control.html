@@ -157,8 +157,9 @@
             <div class="map-buttons" id="pOver"></div>
           </section>
           <section class="panel-field" data-panel="group" hidden>
-            <h4>Gruppe <span class="small">im Overlay – dieselbe Szene, nur diese Gruppe</span></h4>
-            <div class="map-buttons" id="pGroup"></div>
+            <h4>Turnier <span class="small">im Overlay – ändert sich sofort, ohne Szenenwechsel</span></h4>
+            <div id="pGroupLine" style="display:grid;gap:6px"><span class="small">Gruppe</span><div class="map-buttons" id="pGroup"></div></div>
+            <label>Team hervorheben<select id="pFocus" aria-label="Team hervorheben"></select></label>
           </section>
           <section class="panel-field" data-panel="slides" hidden>
             <h4>Folien</h4>
@@ -175,7 +176,7 @@
     </details>
 
     <details open data-area="tournament-live">
-      <summary>Turnier live</summary>
+      <summary>Turnier im Overlay</summary>
       <div class="content mbar">
         <div class="mbar-row" style="border-top:0;padding-top:0"><select id="mbarGroup" aria-label="Gruppe im Overlay"></select><select id="mbarFocus" aria-label="Team hervorheben"></select>
           <button class="button main" id="mbarTournament">Tabelle zeigen</button></div>

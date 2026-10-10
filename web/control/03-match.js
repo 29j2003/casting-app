@@ -44,7 +44,7 @@ function mbarDraw() {
   const groups = `<option value="">Alle Gruppen</option>` + (B.groups || []).map((g, i) => `<option value="${i}"${String(T.showGroup ?? "") === String(i) ? " selected" : ""}>${esc(g.name)}</option>`).join("");
   if ($("mbarGroup")._h !== groups) { $("mbarGroup").innerHTML = groups; $("mbarGroup")._h = groups; }
   $("mbarGroup").hidden = !(B.groups || []).length;
-  const focused = `<option value="">Kein Team hervorheben</option>` + (T.teams || []).map(t => `<option value="${esc(t.id)}"${t.id === T.focused ? " selected" : ""}>${esc(t.name || "?")}</option>`).join("");
+  const focused = tourFocusOptions();
   if ($("mbarFocus")._h !== focused) { $("mbarFocus").innerHTML = focused; $("mbarFocus")._h = focused; }
 }
 const mbarPoint = (k, d) => { const t = Z.teams[k]; t.score = Math.max(0, (t.score || 0) + d); teamDraw(k); mbarDraw(); send(); };
@@ -52,8 +52,8 @@ $("mbarPlusA").onclick = () => mbarPoint("a", 1); $("mbarMinusA").onclick = () =
 $("mbarPlusB").onclick = () => mbarPoint("b", 1); $("mbarMinusB").onclick = () => mbarPoint("b", -1);
 $("mbarStart").onclick = () => { $(Z.timer.running ? "tPause" : "tStart").click(); mbarDraw(); };
 $("mbarPlus1").onclick = () => { $("tPlus").click(); mbarDraw(); }; $("mbarMinus1").onclick = () => { $("tMinus").click(); mbarDraw(); };
-$("mbarGroup").onchange = () => { tour().showGroup = $("mbarGroup").value; send(); };
-$("mbarFocus").onchange = () => { tour().focused = $("mbarFocus").value; if (typeof tournamentTreeDraw === "function") tournamentTreeDraw(); send(); };
+$("mbarGroup").onchange = () => { tourGroup($("mbarGroup").value); mbarDraw(); send(); };
+$("mbarFocus").onchange = () => { tourFocus($("mbarFocus").value); if (typeof tournamentTreeDraw === "function") tournamentTreeDraw(); mbarDraw(); send(); };
 $("mbarTournament").onclick = () => sceneSwitch("bracket");
 setInterval(mbarDraw, 3000);
 setInterval(() => setText($("mbarTimer"), K.time(K.timerRest(Z.timer))), 250);

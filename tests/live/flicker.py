@@ -4,7 +4,9 @@
 
 For pairs of scenes the overlay records the visibility of every part (data-part) on each animation
 frame while the switch runs. Rules:
-  * a part in both scenes stays visible all the time (it may glide, but never vanish)
+  * a part in both scenes stays visible all the time (it may glide, but never vanish) – except a part that jumps far
+    (bar at the top in clips scenes ↔ at the bottom in cast scenes, broadcast.js LONG_JUMP): it fades out at the old
+    place and in at the new one, so it may dip once, but must end fully visible
   * a part that leaves only fades out, one that arrives only fades in (no jumps back)
   * sponsor and music must not flash up
   * no frame between start and end may be completely empty
@@ -44,14 +46,14 @@ const visibility = e => { let o = 1; for (let x = e; x && x !== document.body; x
 """ % FRAMES
 
 
-def problems_in(samples: list[dict]) -> list[str]:
+def problems_in(samples: list[dict], jumped: tuple = ()) -> list[str]:
     """Check the recorded frames against the rules in the module docstring."""
     problems = []
     leaks = sorted({k[5:] for frame in samples for k in frame if k.startswith("leak:")})
     for key in {k for frame in samples for k in frame if k.startswith("pos:")}:
         track = [frame[key] for frame in samples if key in frame]
-        if len(track) < len(samples):
-            continue                                   # only parts that stay the whole time
+        if len(track) < len(samples) or key.split(":")[2] in jumped:
+            continue                                   # only parts that stay (and glide) the whole time
         for axis in (0, 1):
             steps = [b[axis] - a[axis] for a, b in zip(track, track[1:]) if abs(b[axis] - a[axis]) > 2]
             if any(x > 0 for x in steps) and any(x < 0 for x in steps):
@@ -68,7 +70,11 @@ def problems_in(samples: list[dict]) -> list[str]:
                 problems.append(f"{part} flashes up ({max(present):.2f})")
             continue
         at_start, at_end = values[0] is not None, values[-1] is not None
-        if at_start and at_end and min(present) < 0.9:
+        if at_start and at_end and part in jumped:
+            dips = sum(1 for a, b in zip(present, present[1:]) if a >= 0.5 > b)   # out at the old place, in at the new one
+            if dips > 1 or present[-1] < 0.9:
+                problems.append(f"{part} (jumps) flickers: {dips} dips, ends at {present[-1]:.2f}")
+        elif at_start and at_end and min(present) < 0.9:
             problems.append(f"{part} (stays) disappears briefly: min {min(present):.2f}")
         if at_start and not at_end and any(b > a + 0.1 for a, b in zip(present, present[1:])):
             problems.append(f"{part} (leaves) flashes up")
@@ -92,8 +98,9 @@ async def main() -> None:
             await overlay.wait_for_timeout(100)
             await switch_scene(control, target, transition)
             await overlay.wait_for_timeout(3300)
-            problems = problems_in(await overlay.evaluate("window.__samples"))
-            if "brand" in ((await overlay.evaluate("window.__lastSwitch || {}")).get("cross") or []):
+            last = await overlay.evaluate("window.__lastSwitch || {}")
+            problems = problems_in(await overlay.evaluate("window.__samples"), tuple(last.get("jump") or ()))
+            if "brand" in (last.get("cross") or []):
                 problems.append("brand is cross-faded instead of staying")
             total += len(problems)
             print(f"{start:>20} → {target:<20}", "ok" if not problems else problems)

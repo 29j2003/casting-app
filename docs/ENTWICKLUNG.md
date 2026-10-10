@@ -269,6 +269,24 @@ Eine Szene mit drei Folien (`.ti-slide[data-slide=a|b|compare]` in `.ti-slides`)
 Werte (`data-ti="a.winrate"` …) und den Vergleich (`data-ti-tape`). Welche Folie läuft, rechnen Overlay und Steuerseite gleich:
 von Hand `Z.teamIntro.slide`, automatisch aus `auto` (Sekunden) und `started` (`teamIntroSlide()` / `tiCurrent()`).
 Neue Folie: Markup in `tools/generate_scenes.py` (`ti_*`), Schlüssel in `slides`, CSS-Regel für `[data-tislide=…]`, `tiSlides()` in `05-live.js`.
+**Folienwechsel** wie ein Szenenwechsel: die alte Folie blendet in .3 s aus, die neue bekommt `.ti-in` (Neustart der Animation
+in `teamIntro()`), ihre Kästen kommen mit der `enter`-Animation nacheinander (Verzögerung `--d` aus der Vorlage); der Teamname
+in der Kopfzeile blendet ein (`fade-in`).
+
+### Felder im Szenen-Panel (`PANEL_SCENES`, `web/control/05-live.js`)
+
+`PANEL_DEFAULTS` sind die Vorgaben je Szene, `PANEL_SCENES` legt fest, bei welchen Szenen ein Feld überhaupt angeboten wird
+(`"*"` = überall, `"dach-*"` = alle DACH-Seiten). Das „Felder“-Menü, die Tabelle unter Setup und `panelList()` filtern danach –
+auch früher gespeicherte Auswahlen (`ui.panels`). Neues Feld → in `PANEL_FIELDS`, `PANEL_SCENES` und ggf. `PANEL_DEFAULTS`.
+
+### Turnier im Overlay: Gruppe und hervorgehobenes Team
+
+Bereich „Turnier im Overlay“ (Live) und das Panel-Feld „Turnier“ (Szene Turnierbaum) zeigen Gruppe und „Team hervorheben“.
+`tourFocus(id)` (`09-tournament.js`) springt bei gewählter Gruppe auf die Gruppe des Teams; `tourGroup(v)` hebt die
+Hervorhebung auf, wenn das Team in der neuen Gruppe nicht steht; `tourFocusOptions()` listet nur Teams der gewählten Gruppe.
+Im Overlay (`cast.js`, `tournamentDraw`) gilt die Hervorhebung nur, wenn das Team zu sehen ist (`teamShown`); dann ist seine
+Zeile in der Akzentfarbe getönt und sein Profil steht **neben** dem Turnier (`.tournament-tree` als Flex-Zeile:
+`.bracket-main` wird schmaler, das Einpassen rechnet mit dessen Fläche) – nie darüber.
 
 ### Korrigierte Turnier-Ergebnisse
 
@@ -366,6 +384,14 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
   echten Ziel-Lage – CSS-Regeln mit `!important` (Leiste rückt ohne Sponsor auf, `cast.css`) gelten mit; solange ein Teil
   gleitet, trägt es `.gliding`, und diese Regeln haben `:not(.gliding)`, sonst könnte die Animation sie nicht übersteuern.
   Neue Regeln dieser Art brauchen ebenfalls `:not(.gliding)`; `tests/live/flicker.py` meldet Hin-und-her-Sprünge.
+  - **Wischen** schneidet mit Rand (`WIPE_EDGE`, −140 px): Rahmen (`box-shadow`), goldene Kante (`::before`), Namensschild
+    und Reiter ragen über den Kasten hinaus – mit `inset(0 …)` wurden sie während des Wischens abgeschnitten und sprangen
+    am Ende ins Bild.
+  - **Weite Sprünge** (mehr als `LONG_JUMP` = 300 px nach oben/unten, z. B. Leiste oben bei Clips ↔ unten bei Cast): ein
+    *bleibt*-Teil gleitet nicht quer übers Bild, sondern blendet an der alten Stelle aus (Kopie in der alten Schicht) und an
+    der neuen ein; ein *Überblendung*-Paar blendet an Ort und Stelle. Kameras gleiten immer (ihr Bild läuft weiter).
+  - **Überblendung** (gleicher Teil, anderer Inhalt) läuft nacheinander: der alte Inhalt geht in der ersten Hälfte, der
+    neue kommt ab 45 % – nie zwei halb durchsichtige Texte übereinander. Gilt für alle Übergangsarten (`OUT`/`IN`).
 * **Logo kleiner statt Raster verschieben:** Ein Szenen-Logo mit `data-max` (Breite in px, z. B. „4 Personen“ über
   `max_brand` in `tools/generate_scenes.py`) wird über `--brand-scale` verkleinert (`cast.js`, Theme); erst wenn es dabei
   unter 55 % fiele, steht nur das Icon. Die CSS-Regel `.brand { scale: var(--brand-scale, 1) }` gleitet beim Wechsel mit.

@@ -870,7 +870,6 @@ window.CastLanguages.en = {
  "Tuna-Adresse": "Tuna address",
  "Turnier": "Tournament",
  "Turnier aus FACEIT übernehmen?": "Import the tournament from FACEIT?",
- "Turnier live": "Tournament live",
  "Turnier übernehmen": "Import tournament",
  "Turnierbaum": "Bracket",
  "und": "and",
@@ -1210,8 +1209,6 @@ window.CastLanguages.en = {
  "ÜBER DEM SPIEL": "OVER THE GAME",
  "bleibt stehen": "stays",
  "Gruppe": "Group",
- "im Overlay – dieselbe Szene, nur diese Gruppe": "in the overlay – same scene, only this group",
- "Gruppen gibt es nur bei Tabelle oder GSL (Turnier → Format).": "Groups only exist with table or GSL (Tournament → format).",
  "✓ „{}“ steht unter „Weitere Maps“ – zum Aktivieren dort einschalten.": "✓ “{}” is under “More maps” – switch it on there to activate it.",
  "Darüber: „{}“": "Above: “{}”",
  "Darunter: „{}“": "Below: “{}”",
@@ -1320,5 +1317,7 @@ window.CastLanguages.en = {
  "Die Datei lädt Inhalte von: {}. Nur übernehmen, wenn die Datei von dir oder jemandem stammt, dem du vertraust.": "The file loads content from: {}. Only take it over if the file comes from you or someone you trust.",
  "Ohne diese Adressen": "Without these addresses",
  "ungültige FACEIT-ID": "invalid FACEIT ID",
- "Datei konnte nicht geladen werden.": "The file could not be loaded."
+ "Datei konnte nicht geladen werden.": "The file could not be loaded.",
+ "Turnier im Overlay": "Tournament in overlay",
+ "im Overlay – ändert sich sofort, ohne Szenenwechsel": "in the overlay – changes at once, without a scene change"
 };

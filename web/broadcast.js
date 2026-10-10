@@ -59,15 +59,19 @@
   // Deckkraft, die ein Teil gerade von sich aus hat (Musik ohne Song, Sponsor ohne Logos … sind 0).
   // Übergänge gehen immer von bzw. zu diesem Wert – so blitzt nichts auf, was gar nicht zu sehen ist.
   const opacity = e => { const cs = getComputedStyle(e); return cs.display === "none" ? 0 : parseFloat(cs.opacity) || 0; };
+  // Wischen schneidet mit Rand: Rahmen, Schatten, Namensschild und Reiter ragen über den Kasten hinaus und würden
+  // sonst während des Wischens abgeschnitten – erst am Ende sprangen Rahmen und Schild ins Bild (2.23)
+  const WIPE_EDGE = "-140px";
+  const LONG_JUMP = 300;                             // px nach oben/unten: ab hier blendet ein Teil, statt zu gleiten
   const OUT = {
     fade: o => [{ opacity: o }, { opacity: 0 }],
     slide: o => [{ opacity: o, translate: "0 0" }, { opacity: 0, translate: "-80px 0" }],
-    wipe: () => [{ clipPath: "inset(0 0 0 0)" }, { clipPath: "inset(0 0 0 100%)" }]
+    wipe: () => [{ clipPath: `inset(${WIPE_EDGE})` }, { clipPath: `inset(${WIPE_EDGE} ${WIPE_EDGE} ${WIPE_EDGE} calc(100% + ${WIPE_EDGE}))` }]
   };
   const IN = {
     fade: o => [{ opacity: 0 }, { opacity: o }],
     slide: o => [{ opacity: 0, translate: "80px 0" }, { opacity: o, translate: "0 0" }],
-    wipe: () => [{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0 0 0)" }]
+    wipe: () => [{ clipPath: `inset(${WIPE_EDGE} calc(100% + ${WIPE_EDGE}) ${WIPE_EDGE} ${WIPE_EDGE})` }, { clipPath: `inset(${WIPE_EDGE})` }]
   };
   function logo() {
     const Z = C().Z;
@@ -186,13 +190,24 @@
       restyle(w); w.el.classList.remove("gliding");
       const post = where(w.el);
       if (["left", "top", "width", "height"].every(k => w.from[k] === post[k])) return;
+      // weiter Sprung (Leiste oben bei Clips ↔ unten bei Cast): nicht quer durchs Bild und über die Kameras gleiten,
+      // sondern an der alten Stelle aus- und an der neuen einblenden. Kameras gleiten immer (ihr Bild läuft weiter).
+      if (!w.el.classList.contains("cam") && Math.abs(parseFloat(post.top) - parseFloat(w.from.top)) > LONG_JUMP) {
+        const o = opacity(w.el), ghost = w.el.cloneNode(true);
+        ghost.removeAttribute("data-part"); ghost.classList.add("gliding"); Object.assign(ghost.style, w.from);
+        previous.appendChild(ghost);                 // geht mit der alten Schicht
+        jobs.push(anim(ghost, out(o), duration * .55));
+        jobs.push(anim(w.el, enter(o), duration * .6, { delay: duration * .4 }));
+        return;
+      }
       w.el.classList.add("gliding");
       jobs.push(anim(w.el, [w.from, post], duration));
     });
     // 2) Teile mit anderem Inhalt: an der Stelle überblenden (und dabei mitgleiten)
     cross.forEach(([a, n]) => {
       const va = placement(a.getAttribute("style")), vn = placement(n.getAttribute("style"));
-      const keys = Object.keys(vn).filter(k => k in va && va[k] !== vn[k]);
+      const far = Math.abs(parseFloat(va.top) - parseFloat(vn.top)) > LONG_JUMP;   // weit weg: an Ort und Stelle überblenden
+      const keys = far ? [] : Object.keys(vn).filter(k => k in va && va[k] !== vn[k]);
       const ga = {}, gn = {}; keys.forEach(k => { ga[k] = va[k]; gn[k] = vn[k]; });
       const oa = opacity(a), on = opacity(n);
       jobs.push(anim(a, [Object.assign({ opacity: oa }, ga), Object.assign({ opacity: 0 }, gn)], duration));

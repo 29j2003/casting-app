@@ -398,16 +398,17 @@
     const T = Z.tournament || {}, B = K.tournamentBuild(T, Z.overlayLanguage), S = T.visible || {};
     const W = key => esc(K.word(Z, key));            // feste Wörter in der Sprache der Overlays
     const teamFrom = id => (T.teams || []).find(t => t.id === id);
+    const focus = T.focused && teamShown(B, T, T.focused) ? T.focused : "";
     const row = (id, points, winner, hidden) => {
       if (id === "BYE") return `<div class="bracket-team free"><div class="bracket-logo"></div><span>${esc(K.word(Z, "bye"))}</span><b></b></div>`;
       const t = teamFrom(id);
       if (!t || hidden) return `<div class="bracket-team open"><div class="bracket-logo"></div><span>${hidden ? "?" : "–"}</span><b></b></div>`;
       const logo = t.logo ? `<img src="${esc(t.logo)}" alt="">` : esc((t.short || t.name || "?").slice(0, 3));
-      return `<div class="bracket-team${winner ? " winner" : ""}${T.focused === id ? " focused" : ""}"><div class="bracket-logo">${logo}</div><span>${esc(t.name || "")}</span><b>${S.resultsOff || points == null || points === "" ? "" : esc(points)}</b></div>`;
+      return `<div class="bracket-team${winner ? " winner" : ""}${focus === id ? " focused" : ""}"><div class="bracket-logo">${logo}</div><span>${esc(t.name || "")}</span><b>${S.resultsOff || points == null || points === "" ? "" : esc(points)}</b></div>`;
     };
     // Sichtbarkeit: „aufdecken“ = nur bis Runde X, „ab“ = erst ab Runde X, sonst alles
     const show = num => S.mode === "reveal" ? num <= (+S.round || 1) : S.mode === "fromRound" ? num >= (+S.round || 1) : true;
-    const card = (m, hidden) => `<div class="bracket-match${m.done ? " done" : ""}${T.focused && (m.a === T.focused || m.b === T.focused) ? " in-focus" : ""}">` +
+    const card = (m, hidden) => `<div class="bracket-match${m.done ? " done" : ""}${focus && (m.a === focus || m.b === focus) ? " in-focus" : ""}">` +
       row(m.a, m.sa, m.winner && m.winner === m.a, hidden) + row(m.b, m.sb, m.winner && m.winner === m.b, hidden) + `</div>`;
     const columns = (rounds, start) => rounds.map((r, i) => !show(start + i) && S.mode === "fromRound" ? "" :
       `<div class="bracket-round"><div class="bracket-title">${esc(r.title)}</div><div class="bracket-games">${r.matches.map(m => card(m, !show(start + i))).join("")}</div></div>`).join("");
@@ -420,7 +421,7 @@
       h = `<div class="bracket-tables" style="grid-template-columns:repeat(${columns}, 860px)">${shown.map(g => `<div class="bracket-tab"><div class="bracket-title">${esc(g.name)}</div>
         <div class="bracket-tz head"><span>#</span><span></span><span>${W("tableTeam")}</span><span>${W("tableGames")}</span><span>${W("tableWins")}</span><span>${W("tableLosses")}</span><span>${g.withRounds ? "RD" : "+/−"}</span><span>${W("tablePoints")}</span></div>` +
         g.table.map((r, i) => { const t = teamFrom(r.id) || {};
-          return `<div class="bracket-tz${i < (+T.nextPlaces || 0) ? " proceed" : ""}${T.focused === r.id ? " focused" : ""}"><span>${i + 1}</span><div class="bracket-logo">${t.logo ? `<img src="${esc(t.logo)}" alt="">` : esc((t.short || t.name || "?").slice(0, 3))}</div>` +
+          return `<div class="bracket-tz${i < (+T.nextPlaces || 0) ? " proceed" : ""}${focus === r.id ? " focused" : ""}"><span>${i + 1}</span><div class="bracket-logo">${t.logo ? `<img src="${esc(t.logo)}" alt="">` : esc((t.short || t.name || "?").slice(0, 3))}</div>` +
             `<span class="bracket-tname">${esc(t.name || "")}</span><span>${esc(r.played)}</span><span>${esc(r.wins)}</span><span>${esc(r.losses)}</span><span>${r.tiebreak > 0 ? "+" : ""}${esc(r.tiebreak)}</span><b>${esc(r.pts)}</b></div>`; }).join("") +
         (T.gamesShow ? `<div class="bracket-tspiele">${g.matches.filter(m => !m.done).slice(0, 4).map(m => card(m, false)).join("")}</div>` : "") + `</div>`).join("")}</div>`;
     }
@@ -431,8 +432,9 @@
       if (B.bottom.length) h = `<div class="bracket-de"><div class="bracket-row">${columns(B.rounds, 1)}</div><div class="bracket-row bottom">${columns(B.bottom, 1)}</div></div>` +
         (B.finale ? `<div class="bracket-round bracket-gf"><div class="bracket-title">GRAND FINAL</div><div class="bracket-games">${card(B.finale, !show(B.rounds.length + 1))}</div></div>` : "");
     }
-    // Profil des hervorgehobenen Teams (Klick in der App)
-    const f = T.focused && teamFrom(T.focused);
+    // Profil des hervorgehobenen Teams (Klick in der App) – nur, wenn das Team gerade zu sehen ist (eine andere Gruppe:
+    // weder Profil noch Markierung). Es steht neben dem Turnier, nie darüber.
+    const f = T.focused && teamShown(B, T, T.focused) && teamFrom(T.focused);
     let profile = "";
     if (f) {
       const st = f.stats || {};
@@ -445,13 +447,21 @@
     $$(".tournament-name").forEach(e => { const n = T.name || Z.texts.title || ""; if (e.textContent !== n) e.textContent = n; });
     boxes.forEach(box => {
       if (!newNeeded(box, h + profile)) return;
-      box.innerHTML = `<div class="bracket-inner">${h}</div>${profile}`;
-      // auf die verfügbare Fläche einpassen
-      requestAnimationFrame(() => { const i = box.querySelector(".bracket-inner"); if (!i) return; i.style.transform = "";
-        const s = Math.min(1.6, box.clientWidth / i.scrollWidth, box.clientHeight / i.scrollHeight);
-        const x = Math.max(0, (box.clientWidth - i.scrollWidth * s) / 2);
+      box.innerHTML = `<div class="bracket-main"><div class="bracket-inner">${h}</div></div>${profile}`;
+      box.classList.toggle("with-profile", !!profile);
+      // auf die verfügbare Fläche einpassen (neben dem Profil entsprechend schmaler)
+      requestAnimationFrame(() => { const m = box.querySelector(".bracket-main"), i = box.querySelector(".bracket-inner"); if (!m || !i) return; i.style.transform = "";
+        const s = Math.min(1.6, m.clientWidth / i.scrollWidth, m.clientHeight / i.scrollHeight);
+        const x = Math.max(0, (m.clientWidth - i.scrollWidth * s) / 2);
         i.style.transform = `translateX(${x}px) scale(${s})`; });
     });
+  }
+  // Ist das Team im Overlay gerade zu sehen? Bei Tabelle/GSL mit gewählter Gruppe nur die Teams dieser Gruppe
+  function teamShown(B, T, id) {
+    if (!(B.groups || []).length || T.showGroup === undefined || T.showGroup === "") return true;
+    const g = B.groups[+T.showGroup];
+    if (!g) return true;
+    return (g.table || []).some(r => r.id === id) || (g.matches || []).some(m => m.a === id || m.b === id);
   }
 
   /* ---------- CS2-Livedaten ---------- */
@@ -622,7 +632,15 @@
     const boxes = $$(".ti-slides");
     if (!boxes.length) return;
     const I = Z.teamIntro || {}, S = I.stats || {}, W = key => esc(K.word(Z, key)), slide = teamIntroSlide();
-    boxes.forEach(b => { const root = b.parentElement; if (root.dataset.tislide !== slide) root.dataset.tislide = slide; });
+    boxes.forEach(b => {
+      const root = b.parentElement; if (root.dataset.tislide === slide) return;
+      const first = !root.dataset.tislide;
+      root.dataset.tislide = slide;
+      if (first) return;
+      // Folienwechsel wie ein Szenenwechsel: die alte Folie blendet aus, die Kästen der neuen kommen nacheinander
+      const s = b.querySelector(`.ti-slide[data-slide="${slide}"]`);
+      if (s) { s.classList.remove("ti-in"); void s.offsetWidth; s.classList.add("ti-in"); }
+    });
     const keyName = JSON.stringify([I.stats, I.rows, I.h2h, Z.players, Z.overlayLanguage]);
     const fresh = boxes.filter(b => newNeeded(b, keyName));
     if (!fresh.length) return;

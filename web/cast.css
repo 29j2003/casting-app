@@ -606,10 +606,13 @@ body[data-sponsorspot=top] .music:not(.on) ~ .sponsor.in-bar:not(.gliding) { top
 .ti-slide > * { position: absolute; }
 [data-tislide="a"] .ti-slide[data-slide="a"], [data-tislide="b"] .ti-slide[data-slide="b"], [data-tislide="compare"] .ti-slide[data-slide="compare"] {
   opacity: 1; visibility: visible; transition: none; }
-.ti-slide.ti-in > *, .idle .ti-slide.ti-in > * { animation: enter .75s var(--soft) both; animation-delay: calc(var(--d, 0s) + .05s) !important; }
+.ti-slide.ti-in > *, .idle .ti-slide.ti-in > * { animation: ti-enter .75s var(--soft) both; animation-delay: calc(var(--d, 0s) + .05s) !important; }
 [data-only] { display: none; }
 [data-tislide="a"] [data-only="a"], [data-tislide="b"] [data-only="b"], [data-tislide="compare"] [data-only="compare"] { display: inline; animation: fade-in .45s var(--soft) .15s both; }
 @keyframes fade-in { from { opacity: 0; } }
+/* eigener Name: bei gleichem Namen wie „enter“ (Kästen mit .enter – OBS-Szenen-Quellen, Vorschau, erste Szene) startet
+   die Animation beim Folienwechsel nicht neu, die neue Folie war einfach da */
+@keyframes ti-enter { from { opacity: 0; transform: translateY(28px); } }
 .ti-logo .box-field { height: 78px; font-size: 40px; }
 .ti-players .players-card { width: auto; flex: 1; }
 .ti-value { font-size: 44px; }

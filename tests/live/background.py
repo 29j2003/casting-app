@@ -35,7 +35,8 @@ window.__samples = [];
   const video = Math.min(1, shown.reduce((sum, v) => sum + o(v), 0)) * o(b);
   const empty = b.querySelector('.bg-empty');
   const theme = (getComputedStyle(empty).display === 'none' ? 0 : o(empty)) * o(b);
-  window.__samples.push({ video, theme, t: performance.now() });
+  // animation clock, not performance.now(): on a busy machine it advances with the late frame, so a late frame is no jump
+  window.__samples.push({ video, theme, t: document.timeline.currentTime });
   if (window.__samples.length < %d) requestAnimationFrame(sample); })();
 """ % FRAMES
 

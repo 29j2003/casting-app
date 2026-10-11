@@ -197,6 +197,9 @@
       if (!w.el.classList.contains("cam") && Math.abs(parseFloat(post.top) - parseFloat(w.from.top)) > LONG_JUMP) {
         const o = opacity(w.el), ghost = w.el.cloneNode(true);
         ghost.removeAttribute("data-part"); ghost.classList.add("gliding"); Object.assign(ghost.style, w.from);
+        // Lauftext: cloneNode kopiert keine Animationen – das Band stünde sonst am Anfang still und spränge zurück
+        const bands = w.el.querySelectorAll(".ticker-band");
+        ghost.querySelectorAll(".ticker-band").forEach((g, i) => { if (bands[i]) g.style.transform = getComputedStyle(bands[i]).transform; });
         previous.appendChild(ghost);                 // geht mit der alten Schicht
         (window.__lastSwitch.jump = window.__lastSwitch.jump || []).push(w.el.dataset.part);   // für tests/live/flicker.py
         jobs.push(anim(ghost, out(o), duration * .55));

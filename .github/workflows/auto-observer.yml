@@ -21,6 +21,8 @@ jobs:
         with: { python-version: "3.12", cache: pip }
       # feste Versionen mit Prüfsummen wie beim Bau der Casting-App (requirements/build.txt)
       - run: pip install --require-hashes -r requirements/build.txt
+      # echte Windows-Befehle (tasklist) einmal ausprobieren – CS2 läuft hier nicht
+      - run: python -c "from auto_observer.launcher import cs2_running; r = cs2_running(); print('cs2_running:', r); assert r is False"
       - run: python tools/build_auto_observer.py
       - name: Starten und antworten lassen
         shell: pwsh

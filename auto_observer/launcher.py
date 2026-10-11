@@ -47,12 +47,14 @@ def cs2_running() -> bool | None:
     """True/False if CS2's process runs; None if this can't be checked here."""
     try:
         if sys.platform == "win32":
-            result = subprocess.run(["tasklist", "/FI", "IMAGENAME eq cs2.exe", "/NH"], capture_output=True, text=True,
+            # tasklist answers in the console code page of the system language (e.g. umlauts on German Windows):
+            # read raw bytes, only the ASCII name matters
+            result = subprocess.run(["tasklist", "/FI", "IMAGENAME eq cs2.exe", "/NH"], capture_output=True,
                                     timeout=5, creationflags=subprocess.CREATE_NO_WINDOW)
-            return "cs2.exe" in result.stdout.lower()
+            return b"cs2.exe" in (result.stdout or b"").lower()
         result = subprocess.run(["pgrep", "-x", "cs2"], capture_output=True, timeout=5)
         return result.returncode == 0
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError, ValueError):
         return None
 
 

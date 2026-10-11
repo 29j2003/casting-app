@@ -87,6 +87,16 @@ def make_handler(engine: Engine, port: int):
             return self._answer(404)
 
         def do_POST(self):
+            try:
+                self._post()
+            except Exception as error:                       # answer instead of leaving the page waiting
+                engine.log(f"Fehler bei {self.path}: {error!r}", "warn")
+                try:
+                    self._json(500, {"ok": False, "message": f"Interner Fehler: {error}"})
+                except OSError:
+                    pass
+
+        def _post(self):
             if not self._host_ok():
                 return self._answer(403)
             path = self.path.split("?", 1)[0]

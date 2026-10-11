@@ -463,3 +463,28 @@ def test_auto_setup_and_launch(engine, tmp_path, monkeypatch):
     monkeypatch.setattr(engine_module.launcher, "cs2_running", lambda: True)
     ok, message = engine.launch_cs2()               # running without console port: must be closed first
     assert not ok and "beenden" in message and len(started) == 1
+
+
+def test_cs2_running_survives_any_console_encoding(monkeypatch):
+    from auto_observer import launcher
+    monkeypatch.setattr(launcher.sys, "platform", "win32")
+    monkeypatch.setattr(launcher.subprocess, "CREATE_NO_WINDOW", 0x08000000, raising=False)
+    answers = {"out": "Informationen: Es werden keine Aufgaben mit den angegebenen Kriterien ausgef\x81hrt.".encode("latin-1")}
+
+    def run(*args, **kwargs):
+        return launcher.subprocess.CompletedProcess(args, 0, answers["out"], b"")
+
+    monkeypatch.setattr(launcher.subprocess, "run", run)
+    assert launcher.cs2_running() is False
+    answers["out"] = b"cs2.exe                      12345 Console                    1  2.000.000 K"
+    assert launcher.cs2_running() is True
+    answers["out"] = None
+    assert launcher.cs2_running() is False
+
+
+def test_server_answers_even_when_something_breaks(server, engine, monkeypatch):
+    def broken():
+        raise AttributeError("kaputt")
+    monkeypatch.setattr(engine, "launch_cs2", broken)
+    status, body = request(server, "POST", "/api/launch", {}, {"X-Auto-Observer": "1"})
+    assert status == 500 and not json.loads(body)["ok"]

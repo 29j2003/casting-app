@@ -98,8 +98,14 @@ def test_state_is_kept_and_older_states_are_ignored(server):
     status, _, body = request("GET", "/api/state?after=1")
     assert status == 200 and json.loads(body)["theme"] == "new"
     assert request("GET", f"/api/state?after={newer}")[0] == 204
-    time.sleep(0.6)                                          # saving is bundled
-    assert json.loads((server.folders.data / "state.json").read_text())["theme"] == "new"
+    # saving is bundled (STATE_SAVE_DELAY) – wait for it instead of a fixed pause: on slow Windows runners
+    # 0.6 s was not always enough and the file still held the state of an earlier test
+    file = server.folders.data / "state.json"
+    saved = lambda: json.loads(file.read_text()).get("theme") if file.exists() else None
+    deadline = time.time() + 10
+    while saved() != "new" and time.time() < deadline:
+        time.sleep(0.1)
+    assert saved() == "new"
 
 
 def test_pages_of_version_2_1_still_work(server):

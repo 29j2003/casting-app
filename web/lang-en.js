@@ -837,7 +837,6 @@ window.CastLanguages.en = {
  "Szenen per Klick wechseln": "Switch scenes with a click",
  "Szenen, Einblendungen, Bereiche und Befehle finden": "Find scenes, graphics, areas and commands",
  "Tabelle": "Table",
- "Tabelle zeigen": "Show table",
  "Team A spielt gerade": "Team A is currently playing",
  "Team hervorheben": "Highlight team",
  "Team-Statistiken von FACEIT laden": "Load team statistics from FACEIT",
@@ -1318,6 +1317,5 @@ window.CastLanguages.en = {
  "Ohne diese Adressen": "Without these addresses",
  "ungültige FACEIT-ID": "invalid FACEIT ID",
  "Datei konnte nicht geladen werden.": "The file could not be loaded.",
- "Turnier im Overlay": "Tournament in overlay",
  "im Overlay – ändert sich sofort, ohne Szenenwechsel": "in the overlay – changes at once, without a scene change"
 };

@@ -692,7 +692,18 @@ function sceneToolsDraw() {
   if (list.includes("veto")) vetoDraw();
   panelValues();
   $("pNote").value = (ui.notes || {})[k] || "";
+  matchDedupe();
 }
+// Was das offene Panel der Szene schon zeigt (Timer, Spielstand, Serie), steht nicht noch einmal im Bereich „Match“.
+// Ist das Panel zu oder nicht im Layout, zeigt „Match“ wieder alles.
+function matchDedupe() {
+  const d = document.querySelector('[data-area="scene-tools"]'), list = panelList(sceneNow());
+  const panel = f => !!d && d.open && !d.hidden && !!d.offsetParent && list.includes(f);
+  $("mbarTimerRow").hidden = panel("timer");
+  $("mbarScoreLine").hidden = panel("score");
+  $("mbarSeries").hidden = panel("series");
+}
+document.querySelector('[data-area="scene-tools"]').addEventListener("toggle", matchDedupe);
 // Werte der Felder: Spielstand, Timer, Serie, Sponsoren (aufgerufen von mbarDraw und beim Szenenwechsel)
 function panelValues() {
   if (!$("pNameA")) return;

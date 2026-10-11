@@ -811,6 +811,36 @@ def test_a_workshop_map_lands_under_more_maps(server, browser):
     assert errors == []
 
 
+def test_highlighted_team_fills_the_free_cell_and_group_changes_are_smooth(server, browser):
+    """2.24: five groups in three columns leave a free cell – the profile of a highlighted team goes there and the tables
+    keep their place and size. Changing the group fades over (two views for a moment), never stacks up afterwards."""
+    control, overlay = browser.new_page(viewport={"width": 1600, "height": 1000}), browser.new_page(viewport={"width": 1920, "height": 1080})
+    errors = watch(control) + watch(overlay)
+    control.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    overlay.goto(f"{BASE_URL}/overlay.html?access={server.access_key}")
+    control.wait_for_timeout(1200)
+    control.evaluate("""Z.theme = 'regular'; Z.broadcast.active = true; Z.broadcast.transition = 'cut';
+      Z.tournament = { format: 'table', groupsCount: 5, showGroup: '', focused: '',
+        teams: Array.from({ length: 30 }, (_, i) => ({ id: 't' + i, name: 'Team ' + i, players: ['a', 'b'] })) };
+      send(); sceneSwitch('bracket')""")
+    first = "(() => { const r = document.querySelector('.layer:last-child .bracket-stage:not(.leaving) .bracket-tab').getBoundingClientRect(); return [r.left, r.top, r.width]; })()"
+    overlay.wait_for_timeout(1500)
+    before = overlay.evaluate(first)
+    control.evaluate("Z.tournament.focused = 't4'; send()")
+    overlay.wait_for_timeout(1200)
+    assert overlay.evaluate("document.querySelectorAll('.layer:last-child .bracket-cell .bracket-profile').length") == 1
+    assert overlay.evaluate(first) == before
+    control.evaluate("Z.tournament.focused = ''; Z.tournament.showGroup = '1'; send()")
+    overlay.wait_for_function("document.querySelectorAll('.layer:last-child .bracket-stage').length === 2", timeout=3000)   # mid-fade
+    overlay.wait_for_timeout(1200)
+    assert overlay.evaluate("document.querySelectorAll('.layer:last-child .bracket-stage').length") == 1
+    assert overlay.evaluate("document.querySelectorAll('.layer:last-child .bracket-tab').length") == 1
+    control.evaluate("Z.tournament = {}; sceneSwitch('intro')")      # leave the server as the next test expects it
+    control.wait_for_timeout(500)
+    assert errors == []
+    control.close(); overlay.close()
+
+
 def test_one_group_of_the_table_from_the_scene_panel(server, browser):
     """2.15: with groups (table), the panel of the Bracket scene offers All · Group A · Group B – the scene stays and the
     overlay shows only that group. DACH CS – Official: scenes that need a match say so until „match entered“ is on."""

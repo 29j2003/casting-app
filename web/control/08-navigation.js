@@ -6,10 +6,10 @@
 const TEMPLATES = {
   // 2.21: links die Szenen, Mitte unter der Vorschau der Ton, rechts der Rest (Panel der Szene, Einblendungen, Match …)
   // Einsteiger (Start für neue Nutzer): rechts nur das Panel offen – alles andere wartet eingeklappt
-  "Einsteiger": { dock: { bottom: ["audio"], right: ["scene-tools", { area: "graphics", open: false }, { area: "match", open: false }, { area: "tournament-live", open: false }] },
+  "Einsteiger": { dock: { bottom: ["audio"], right: ["scene-tools", { area: "graphics", open: false }, { area: "match", open: false }] },
     b1: 420, b2: 430, hU: 300, previewClose: false, tabs: "live", large: false },
   // { area, open: false } = beim Start eingeklappt (ein Klick öffnet) – Live soll aufgeräumt beginnen
-  "Operator": { dock: { bottom: ["audio"], right: ["scene-tools", "graphics", { area: "match", open: false }, { area: "tournament-live", open: false }] },
+  "Operator": { dock: { bottom: ["audio"], right: ["scene-tools", "graphics", { area: "match", open: false }] },
     b1: 420, b2: 450, hU: 300, previewClose: false, tabs: "live", large: false },
   "Caster – große Knöpfe": { dock: { bottom: ["sceneList"], right: ["scene-tools", "match", "graphics"] }, b2: 470, hU: 330, previewClose: false, tabs: "live", large: true },
   "Laptop / neben OBS": { dock: { bottom: [], right: [] }, previewClose: true, tabs: "live", large: false },

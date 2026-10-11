@@ -461,7 +461,9 @@ body[data-scene="ingame"] { background: transparent; }
 .gfx-player-stats div { display: flex; flex-direction: column; align-items: center; } .gfx-player-stats b { font-size: 34px; } .gfx-player-stats span { font-size: 14px; letter-spacing: .16em; opacity: .55; }
 
 /* ===== Turnierbaum ===== */
-.tournament-tree { overflow: hidden; display: flex; gap: 40px; align-items: flex-start; }
+.tournament-tree { overflow: hidden; }
+/* eine Ansicht des Turniers; beim Wechsel liegen kurz zwei übereinander (cast.js bracketChange) */
+.bracket-stage { position: absolute; inset: 0; display: flex; gap: 40px; align-items: flex-start; }
 .bracket-main { position: relative; flex: 1; align-self: stretch; min-width: 0; overflow: hidden; }
 .bracket-inner { transform-origin: 0 0; display: flex; gap: 40px; align-items: flex-start; width: max-content; }
 .bracket-row { display: flex; gap: 34px; align-items: stretch; }
@@ -491,6 +493,9 @@ body[data-scene="ingame"] { background: transparent; }
 .bracket-swiss { display: flex; flex-direction: column; gap: 6px; width: 320px; }
 .bracket-sw { background: var(--light); } .bracket-sw.proceed { box-shadow: inset 6px 0 0 var(--accent); } .bracket-sw.out { opacity: .5; }
 .bracket-profile { flex: none; width: 460px; }        /* neben dem Turnier (.bracket-main wird schmaler), nie darüber */
+/* im freien Feld des Gruppen-Rasters: so groß wie eine Tabelle, ohne die Zeile höher zu machen (die Tabellen bleiben stehen) */
+.bracket-cell { position: relative; align-self: stretch; }
+.bracket-cell .bracket-profile { position: absolute; top: 0; left: 0; width: calc(860px / 1.4); zoom: 1.4; }
 .bracket-profile .box-field { flex-direction: column; gap: 14px; padding: 18px; height: auto; }
 .bracket-players { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; } .bracket-players span { font-size: 22px; font-weight: 600; padding: 2px 10px; background: rgba(0,0,0,.06); }
 .bracket-stats { display: flex; gap: 34px; justify-content: center; } .bracket-stats div { display: flex; flex-direction: column; align-items: center; }

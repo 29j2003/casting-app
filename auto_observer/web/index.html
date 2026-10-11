@@ -91,6 +91,29 @@
     </div>
   </details>
 
+  <details class="card demo" id="demo">
+    <summary>Demo → Rohdaten <span id="demo-summary" class="reason"></span></summary>
+    <p class="hint">Demo von HLTV (.rar), FACEIT (.dem.zst) oder eine .dem auswählen oder hierher ziehen. Pro Map entsteht
+      eine Rohdaten-Datei (im Ordner „demos“) – die kannst du weitergeben, eine Runde als Text kopieren oder die Regie
+      darüber laufen lassen.</p>
+    <div id="demo-drop" class="drop">
+      <button id="demo-choose" type="button">Demo auswählen</button>
+      <span>oder Dateien hierher ziehen</span>
+      <button id="demo-open" type="button">Ordner öffnen</button>
+    </div>
+    <div class="faceit">
+      FACEIT-Match <input id="faceit-link" class="wide" placeholder="https://www.faceit.com/…/room/1-…">
+      <input id="faceit-key" class="key" type="password" placeholder="FACEIT-Key" hidden>
+      <button id="faceit-load" type="button">Demo laden</button>
+    </div>
+    <ul id="demo-log" class="log short"></ul>
+    <table id="demo-results" class="results"></table>
+    <div id="demo-output-box" hidden>
+      <button id="demo-copy" type="button">Text kopieren</button> <span id="demo-copied" class="ok"></span>
+      <pre id="demo-output"></pre>
+    </div>
+  </details>
+
   <section class="card">
     <h2>Log</h2>
     <ul id="log" class="log"></ul>

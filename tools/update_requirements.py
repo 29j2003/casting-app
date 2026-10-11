@@ -1,4 +1,5 @@
-"""Pin the build's Python packages: writes requirements/build.txt (exact versions plus SHA-256 of every file).
+"""Pin the build's Python packages: writes requirements/build.txt and requirements/auto-observer.txt (exact
+versions plus SHA-256 of every file).
 
     pip install uv
     python tools/update_requirements.py
@@ -7,7 +8,8 @@ The CI builds the release with `pip install --require-hashes -r requirements/bui
 poisoned) version of a package on PyPI never ends up in the app by itself; only a deliberate run of this script
 moves to newer versions. Run it before each release (newest fixes), then let the CI test the result.
 The list covers Windows, Linux and macOS and Python 3.11+ at once (uv --universal); the app's own dependencies
-come from pyproject.toml, build-only tools from requirements/build.in.
+come from pyproject.toml, build-only tools from requirements/build.in. requirements/auto-observer.txt is the same for
+the Auto-Observer test app (requirements/auto-observer.in, Python 3.12 like its build).
 """
 
 import shutil
@@ -25,7 +27,11 @@ def main() -> None:
     subprocess.run([uv, "pip", "compile", "pyproject.toml", "requirements/build.in", "--extra", "build", "--universal",
                     "--python-version", "3.11", "--generate-hashes", "--no-header", "--upgrade",
                     "-o", "requirements/build.txt"], cwd=ROOT, check=True)
-    print("✓ requirements/build.txt neu geschrieben – Unterschiede mit git diff prüfen, dann über die CI testen")
+    subprocess.run([uv, "pip", "compile", "requirements/auto-observer.in", "--universal", "--python-version", "3.12",
+                    "--generate-hashes", "--no-header", "--upgrade", "-o", "requirements/auto-observer.txt"],
+                   cwd=ROOT, check=True)
+    print("✓ requirements/build.txt und requirements/auto-observer.txt neu geschrieben – Unterschiede mit git diff "
+          "prüfen, dann über die CI testen")
 
 
 if __name__ == "__main__":

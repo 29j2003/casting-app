@@ -9,6 +9,7 @@ import json
 import os
 import subprocess
 import sys
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -29,7 +30,7 @@ def open_folder(path: Path) -> None:
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def make_handler(engine: Engine, port: int):
+def make_handler(engine: Engine, port: int, demos=None):
     allowed_hosts = {f"127.0.0.1:{port}", f"localhost:{port}"}
 
     class Handler(BaseHTTPRequestHandler):
@@ -73,7 +74,10 @@ def make_handler(engine: Engine, port: int):
                 return self._answer(403)
             path = self.path.split("?", 1)[0]
             if path == "/api/state":
-                return self._json(200, engine.state())
+                state = engine.state()
+                if demos is not None:
+                    state["demo"] = demos.state()
+                return self._json(200, state)
             if path == "/favicon.ico":
                 return self._answer(204)
             if path == "/api/ping":
@@ -104,6 +108,15 @@ def make_handler(engine: Engine, port: int):
                 return self._answer(engine.on_gsi(self._body()))
             if not path.startswith("/api/") or self.headers.get("X-Auto-Observer") != "1":
                 return self._answer(403)
+            if path == "/api/demo/upload" and demos is not None:
+                query = urllib.parse.parse_qs(self.path.partition("?")[2])
+                try:
+                    length = int(self.headers.get("Content-Length") or 0)
+                    saved = demos.upload(query.get("name", ["demo.dem"])[0], self.rfile, length)
+                except (ValueError, OSError) as error:
+                    self.close_connection = True
+                    return self._json(400, {"ok": False, "message": str(error)})
+                return self._json(200, {"ok": True, "file": saved.name})
             body = self._body()
             body = body if isinstance(body, dict) else {}
             if path == "/api/settings":
@@ -134,6 +147,31 @@ def make_handler(engine: Engine, port: int):
                 except OSError as error:
                     return self._json(500, {"ok": False, "message": str(error)})
                 return self._json(200, {"ok": True})
+            if path.startswith("/api/demo/") and demos is not None:
+                return self._demo(path, body)
+            return self._answer(404)
+
+        def _demo(self, path: str, body: dict):
+            if path == "/api/demo/choose":
+                return self._json(200, {"ok": True, "added": demos.choose()})
+            if path == "/api/demo/open":
+                open_folder(demos.folder)
+                return self._json(200, {"ok": True})
+            if path == "/api/demo/faceit":
+                if isinstance(body.get("key"), str) and body["key"].strip():
+                    demos.faceit_key = body["key"].strip()[:200]
+                ok, message = demos.faceit(str(body.get("link") or ""))
+                return self._json(200 if ok else 409, {"ok": ok, "message": message})
+            try:
+                if path == "/api/demo/round":
+                    number = body.get("round")
+                    if not isinstance(number, int) or isinstance(number, bool):
+                        raise ValueError("Rundennummer fehlt")
+                    return self._json(200, {"ok": True, "text": demos.round_text(str(body.get("file") or ""), number)})
+                if path == "/api/demo/evaluate":
+                    return self._json(200, {"ok": True, "text": demos.evaluate(str(body.get("file") or ""))})
+            except (ValueError, OSError) as error:
+                return self._json(400, {"ok": False, "message": str(error)})
             return self._answer(404)
 
     return Handler
@@ -145,5 +183,5 @@ class Server(ThreadingHTTPServer):
     allow_reuse_address = sys.platform != "win32"
 
 
-def make_server(engine: Engine, port: int) -> ThreadingHTTPServer:
-    return Server(("127.0.0.1", port), make_handler(engine, port))
+def make_server(engine: Engine, port: int, demos=None) -> ThreadingHTTPServer:
+    return Server(("127.0.0.1", port), make_handler(engine, port, demos))

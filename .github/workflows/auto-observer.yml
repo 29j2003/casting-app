@@ -6,7 +6,8 @@ name: Auto-Observer
 on:
   push:
     branches: ["**"]
-    paths: ["auto_observer/**", "tools/build_auto_observer.py", ".github/workflows/auto-observer.yml"]
+    paths: ["auto_observer/**", "tools/build_auto_observer.py", "requirements/auto-observer.txt",
+            ".github/workflows/auto-observer.yml"]
   workflow_dispatch:
 
 permissions: { contents: read }
@@ -19,8 +20,8 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with: { python-version: "3.12", cache: pip }
-      # feste Versionen mit Prüfsummen wie beim Bau der Casting-App (requirements/build.txt)
-      - run: pip install --require-hashes -r requirements/build.txt
+      # feste Versionen mit Prüfsummen wie beim Bau der Casting-App (requirements/auto-observer.txt, tools/update_requirements.py)
+      - run: pip install --require-hashes -r requirements/auto-observer.txt
       # echte Windows-Befehle (tasklist) einmal ausprobieren – CS2 läuft hier nicht
       - run: python -c "from auto_observer.launcher import cs2_running; r = cs2_running(); print('cs2_running:', r); assert r is False"
       - run: python tools/build_auto_observer.py
@@ -37,5 +38,21 @@ jobs:
           Stop-Process $app -ErrorAction SilentlyContinue
           if (-not $ok) { throw "Auto-Observer.exe antwortet nicht" }
           Write-Host "Auto-Observer.exe läuft"
+      # Demo-Export in der fertigen .exe: Testdemo von demoparser (fester Stand, Prüfsumme) als Zip wie von HLTV
+      - name: Demo-Export mit der .exe
+        shell: pwsh
+        run: |
+          $demo = "$env:RUNNER_TEMP\test_demo.dem"
+          Invoke-WebRequest https://raw.githubusercontent.com/LaihoE/demoparser/45ca85aeac8fb0de9d385124d2c7fe0e7b8ff0c8/src/parser/test_demo.dem -OutFile $demo
+          if ((Get-FileHash $demo -Algorithm SHA256).Hash -ne "84A1A4191302BDD2A3BBB5A727842093744B1FB1A228AEEC630369E44B622CB2") { throw "Testdemo hat eine andere Prüfsumme" }
+          Compress-Archive $demo "$env:RUNNER_TEMP\hltv.zip"
+          $env:AUTO_OBSERVER_DATA = "$env:RUNNER_TEMP\auto-observer-demo"
+          $app = Start-Process dist/Auto-Observer.exe -ArgumentList "--no-browser", "--port", "8795", "$env:RUNNER_TEMP\hltv.zip" -PassThru
+          $file = "$env:AUTO_OBSERVER_DATA\demos\test_demo.rohdaten.jsonl.gz"
+          for ($i = 0; $i -lt 120 -and -not (Test-Path $file); $i++) { Start-Sleep 1 }
+          Start-Sleep 2
+          Stop-Process $app -ErrorAction SilentlyContinue
+          if (-not (Test-Path $file)) { throw "keine Rohdaten aus der Demo" }
+          Write-Host "Rohdaten: $((Get-Item $file).Length) Bytes"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with: { name: Auto-Observer-windows, path: dist/Auto-Observer.exe, retention-days: 30 }

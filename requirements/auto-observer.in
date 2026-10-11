@@ -1,0 +1,7 @@
+# Inputs for requirements/auto-observer.txt (tools/update_requirements.py) – the Auto-Observer test app:
+# PyInstaller for the .exe, demoparser2 (+ its pandas/polars/pyarrow) for the demo export, zstandard for FACEIT
+# demos (.dem.zst), keyring to read the casting app's FACEIT key
+pyinstaller
+demoparser2
+zstandard
+keyring

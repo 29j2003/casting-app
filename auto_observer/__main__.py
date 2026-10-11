@@ -14,6 +14,7 @@ import webbrowser
 
 from . import VERSION
 from .camera import Camera
+from .demo_jobs import DemoJobs
 from .engine import Engine
 from .recorder import Recorder
 from .server import make_server
@@ -43,11 +44,14 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="auto_observer", description="Auto-Observer für CS2 (Test-App)")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--no-browser", action="store_true", help="Steuerseite nicht automatisch öffnen")
+    parser.add_argument("files", nargs="*", help="Demos zum Exportieren (auch: Dateien auf die .exe ziehen)")
     args = parser.parse_args(argv)
     url = f"http://127.0.0.1:{args.port}/"
 
     if already_running(args.port):
         print(f"Auto-Observer läuft schon – öffne {url}")
+        if args.files:
+            print("Demos bitte in der laufenden App auswählen (Bereich Demo).")
         webbrowser.open(url)
         return 0
 
@@ -61,8 +65,9 @@ def main(argv: list[str] | None = None) -> int:
     camera = Camera(settings, log)
     engine = Engine(settings, camera, Recorder(settings.folder), args.port)
     engine.echo = lambda line: print(line, flush=True)
+    demos = DemoJobs(settings.folder, engine.log)
     try:
-        server = make_server(engine, args.port)
+        server = make_server(engine, args.port, demos)
     except OSError as error:
         print(f"Port {args.port} ist belegt ({error}). Mit --port einen anderen wählen.")
         return 1
@@ -75,6 +80,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Daten: {settings.folder}")
     print("Zum Beenden dieses Fenster schließen oder Strg+C drücken.\n")
     engine.auto_setup()
+    if args.files:
+        demos.add(args.files)
     if not args.no_browser:
         webbrowser.open(url)
     try:

@@ -471,6 +471,13 @@ an observer. It does not need the casting app and does not change it.
 5. Click a player to show them yourself – the automatic pauses and, with the timer on, takes over again after the set
    seconds (or with “Automatik übernimmt”). Switching in CS2 by hand pauses it too.
 
+**Demo → Rohdaten** (raw data): choose a demo – HLTV `.rar`/`.zip`, FACEIT `.dem.zst`/`.dem.gz` or a `.dem` – or drag
+it onto the page or onto `Auto-Observer.exe`. Each map becomes a file in the folder “demos” with every player's
+position, view, health, weapon and every shot, hit, kill and grenade. “Runde als Text” copies one round as text,
+“Regie prüfen” lets the director run over the map and shows how many kills it would have caught. A FACEIT match
+link works with the casting app's FACEIT key if FACEIT allows that key to download demos; otherwise the match room
+opens to download the demo there.
+
 Without the console port, the app presses the spectator keys 1–0 instead; a yellow band shows this mode, and CS2 must
 then be the window in front. **Mitschnitt** (recording, in the setup) saves the CS2 data of a match, which helps tune the director.
 

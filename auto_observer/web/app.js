@@ -313,6 +313,7 @@ function render() {
   $("record-status").textContent = state.recording.on ? `läuft (${state.recording.lines} Zeilen)` : state.recording.path ? `zuletzt: ${state.recording.path}` : "";
 
   renderTeams();
+  renderDemo(state.demo);
 
   const log = $("log");
   const atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight - 4;
@@ -325,6 +326,73 @@ function render() {
     return item;
   }));
   if (atBottom) log.scrollTop = log.scrollHeight;
+}
+
+// --- Demo → Rohdaten ---
+
+$("demo-choose").addEventListener("click", () => post("/api/demo/choose"));
+$("demo-open").addEventListener("click", () => post("/api/demo/open"));
+$("faceit-load").addEventListener("click", async () => {
+  const { ok, data } = await post("/api/demo/faceit", { link: $("faceit-link").value, key: $("faceit-key").value });
+  if (!ok) flash(data.message || "FACEIT-Demo nicht geladen");
+});
+// Dateien dürfen irgendwo auf die Seite fallen (sonst öffnet der Browser die Datei)
+const drop = $("demo-drop");
+for (const type of ["dragenter", "dragover"]) {
+  document.addEventListener(type, (e) => { e.preventDefault(); drop.classList.add("over"); $("demo").open = true; });
+}
+document.addEventListener("dragleave", (e) => { if (!e.relatedTarget) drop.classList.remove("over"); });
+document.addEventListener("drop", async (e) => {
+  e.preventDefault();
+  drop.classList.remove("over");
+  for (const file of e.dataTransfer.files) {
+    const response = await fetch(`/api/demo/upload?name=${encodeURIComponent(file.name)}`, {
+      method: "POST", headers: { "X-Auto-Observer": "1" }, body: file,
+    });
+    if (!response.ok) flash(`${file.name} nicht übernommen`);
+  }
+});
+$("demo-copy").addEventListener("click", async () => {
+  await navigator.clipboard.writeText($("demo-output").textContent);
+  $("demo-copied").textContent = "kopiert ✓";
+  setTimeout(() => { $("demo-copied").textContent = ""; }, 2000);
+});
+
+async function demoText(path, body) {
+  $("demo-output-box").hidden = false;
+  $("demo-output").textContent = "arbeite …";
+  const { ok, data } = await post(path, body);
+  $("demo-output").textContent = ok ? data.text : data.message || "Fehler";
+}
+
+let demoResultsKey = "";
+function renderDemo(demo) {
+  if (!demo) { $("demo").hidden = true; return; }
+  $("demo-summary").textContent = demo.running ? `– exportiert ${demo.current}${demo.queued ? ` (+${demo.queued})` : ""}`
+    : demo.results.length ? `– ${demo.results.length} Datei(en)` : "";
+  $("faceit-key").hidden = demo.faceit_key;
+  $("demo-log").replaceChildren(...demo.log.map((line) => Object.assign(document.createElement("li"), { textContent: line })));
+  const key = JSON.stringify(demo.results);
+  if (key === demoResultsKey) return;                    // Eingaben in der Tabelle nicht überschreiben
+  demoResultsKey = key;
+  const table = $("demo-results");
+  table.replaceChildren();
+  if (!demo.results.length) return;
+  const head = table.insertRow();
+  for (const title of ["Datei", "Map", "Runden", "Kills", "MB", ""]) head.append(Object.assign(document.createElement("th"), { textContent: title }));
+  for (const result of demo.results) {
+    const row = table.insertRow();
+    for (const value of [result.file, result.map || "", result.rounds ?? "", result.kills ?? "", (result.size / 1e6).toFixed(1)]) {
+      row.insertCell().textContent = value;
+    }
+    const actions = row.insertCell();
+    const round = Object.assign(document.createElement("input"), { type: "number", min: 1, value: 1, className: "round", title: "Runde" });
+    const asText = Object.assign(document.createElement("button"), { type: "button", textContent: "Runde als Text" });
+    asText.addEventListener("click", () => demoText("/api/demo/round", { file: result.file, round: Number(round.value) }));
+    const check = Object.assign(document.createElement("button"), { type: "button", textContent: "Regie prüfen" });
+    check.addEventListener("click", () => demoText("/api/demo/evaluate", { file: result.file }));
+    actions.append(round, " ", asText, " ", check);
+  }
 }
 
 async function poll() {

@@ -42,7 +42,7 @@ TUNING = {
     "action_fresh": 1.2, "action_quiet": 2.5,
     # grenades: the thrower is shown when nothing else happens
     "nade": {"smoke": 40.0, "flashbang": 45.0, "frag": 45.0, "firebomb": 45.0, "decoy": 10.0}, "nade_other": 30.0,
-    "nade_fresh": 1.0,
+    "nade_fresh": 1.0, "nade_min_since": 2.0,     # a throw only cuts after this long on the current player
     "half_life_fight": 5.0, "half_life_near": 3.0, "half_life_idle": 2.0,
     "clutch": 300.0, "clutch_per_enemy": 25.0,
     "duel": 120.0, "duel_cap": 200.0, "duel_angle": 35.0,
@@ -583,7 +583,7 @@ class Director:
             return Decision(action.steamid, action.reason, action.detail)
         throwing = [r for r in ratings if r.importance > 0 and r.steamid != current
                     and now - self.last_throw.get(r.steamid, -math.inf) <= t["nade_fresh"]]
-        if (since >= t["jump_min"] and throwing and not fighting
+        if (since >= t["nade_min_since"] and throwing and not fighting
                 and now - self.last_throw.get(current, -math.inf) > t["nade_fresh"] + 1.0):
             thrower = max(throwing, key=lambda r: r.score)
             return Decision(thrower.steamid, "nade", self._nade_of(thrower.steamid))

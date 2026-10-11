@@ -42,9 +42,11 @@ Aufbau und Rezepte für Änderungen: `docs/ENTWICKLUNG.md` (bei neuen Bausteinen
 - `web/connection.js` – Startwerte der OBS-Verbindung.
 - `web/i18n.js` + `web/lang-en.js` – Sprache der Steuerseite (übersetzt beim Anzeigen, Wörterbuch Deutsch → Englisch);
   `casting_app/texts.py` – Texte der Python-Seite (Tray, Dialoge) in beiden Sprachen.
-- `auto_observer/` – eigene Test-App „Auto-Observer“ (schaltet in CS2 automatisch auf Spieler), **getrennt** von der
-  Casting-App: nichts aus `casting_app` importieren, nur Standardbibliothek; Bau `tools/build_auto_observer.py`,
-  Workflow `auto-observer.yml`, Tests `tests/test_auto_observer.py`. Aufbau in `docs/ENTWICKLUNG.md` („Auto-Observer“).
+- `auto_observer/` – eigene Test-App „Auto-Observer“ (schaltet in CS2 automatisch auf Spieler; Demo → Rohdaten),
+  **getrennt** von der Casting-App: nichts aus `casting_app` importieren; Live-Teil nur Standardbibliothek, der
+  Demo-Export lädt demoparser2 erst bei Bedarf; Pakete `requirements/auto-observer.txt`, Bau
+  `tools/build_auto_observer.py`, Workflow `auto-observer.yml`, Tests `tests/test_auto_observer.py`. Aufbau in
+  `docs/ENTWICKLUNG.md` („Auto-Observer“).
 - `web/<scene>.html` – Szenen-Vorlagen, **erzeugt** von `tools/generate_scenes.py` (dort ändern, dann ausführen).
 
 ## Regeln

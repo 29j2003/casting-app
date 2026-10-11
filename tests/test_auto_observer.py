@@ -772,3 +772,105 @@ def test_roles_learned_and_set_by_hand(engine):
     engine.tick()
     players = {p["steamid"]: p for team in engine.state()["teams"] for p in team["players"]}
     assert players[sid(3)]["role"] == "lurker" and players[sid(3)]["role_used"] == "lurker" and players[sid(4)]["role"] == ""
+
+
+# --- demo export (without a real demo: synthetic raw data) ---
+
+def write_raw(path):
+    """A tiny raw data file: one round, CT P0 and T P5 face each other, P5 shoots and kills P0."""
+    import gzip
+    from auto_observer.demo_export import FRAME_FIELDS
+    meta = {"type": "meta", "version": 1, "map": "de_test", "tickrate": 64, "every": 8, "source": "test.dem",
+            "players": {sid(0): "Alpha", sid(5): "Bravo", sid(1): "Charlie"}, "frame_fields": FRAME_FIELDS,
+            "rounds": 1, "kills": 1}
+    rows = [{"type": "e", "tick": 0, "t": 0.0, "round": 1, "name": "round_freeze_end"}]
+    for n in range(0, 40):
+        tick = 8 * n
+        t = tick / 64
+        dead = t > 3.5
+        ammo = 30 if t < 2.0 else 24
+        rows.append({"type": "f", "tick": tick, "t": t, "round": 1, "freeze": False, "planted": False, "p": [
+            [sid(0), "CT", 0, 0, 0, 0.0, 0.0, 0 if dead else 100, 100, True, not dead, "M4A4", 30, 0.0, False, False, 0.0,
+             800, 4100, False, False, "Mid", [sid(5)], ["knife", "USP-S", "M4A4"]],
+            [sid(5), "T", 800, 0, 0, 180.0, 0.0, 100, 100, True, True, "AK-47", ammo, 0.0, False, False, 0.0,
+             800, 3700, False, False, "Connector", [sid(0)], ["knife_t", "Glock-18", "AK-47", "Flashbang"]],
+            [sid(1), "CT", 0, 9000, 0, 90.0, 0.0, 100, 100, True, True, "AWP", 5, 0.0, False, False, 0.0,
+             800, 5700, False, False, "Window", [], ["knife", "USP-S", "AWP"]],
+        ]})
+        if tick == 128:
+            rows.append({"type": "e", "tick": tick, "t": t, "round": 1, "name": "weapon_fire", "player": sid(5), "weapon": "weapon_ak47"})
+    rows.append({"type": "e", "tick": 228, "t": 228 / 64, "round": 1, "name": "player_hurt", "attacker": sid(5),
+                 "victim": sid(0), "dmg": 100, "hitgroup": "head", "weapon": "ak47"})
+    rows.append({"type": "e", "tick": 228, "t": 228 / 64, "round": 1, "name": "player_death", "attacker": sid(5),
+                 "victim": sid(0), "weapon": "ak47", "headshot": True})
+    rows.sort(key=lambda r: (r["tick"], r["type"] != "f"))
+    with gzip.open(path, "wt", encoding="utf-8") as out:
+        for row in [meta] + rows:
+            out.write(json.dumps(row) + "\n")
+
+
+def test_demo_replay_measures_the_director(tmp_path):
+    from auto_observer.demo_replay import evaluate, report
+    path = tmp_path / "x.rohdaten.jsonl.gz"
+    write_raw(path)
+    result = evaluate(str(path))
+    assert result["kills"] == 1 and result["map"] == "de_test"
+    assert result["seen"] == 1                      # a real duel at 800 units: the camera must be on it
+    text = report(result)
+    assert "1 Kills" in text and "gesehen" in text
+
+
+def test_round_text_is_short_and_readable(tmp_path):
+    from auto_observer.demo_export import round_text
+    path = tmp_path / "x.rohdaten.jsonl.gz"
+    write_raw(path)
+    text = round_text(path, 1)
+    assert "Bravo T 800,0" in text and "player_death attacker=Bravo victim=Alpha" in text and "[Bravo]" in text
+    assert "nicht gefunden" in round_text(path, 7)
+
+
+def test_unpack_downloads(tmp_path):
+    import gzip as gz
+    import zipfile
+    from auto_observer.demo_export import unpack
+    demo = tmp_path / "a.dem"
+    demo.write_bytes(b"PBDEMS2\x00" + b"x" * 100)
+    with zipfile.ZipFile(tmp_path / "hltv.zip", "w") as archive:
+        archive.write(demo, "match/de_mirage.dem")
+        archive.writestr("readme.txt", "nope")
+    with gz.open(tmp_path / "b.dem.gz", "wb") as packed:
+        packed.write(demo.read_bytes())
+    work = tmp_path / "work"
+    work.mkdir()
+    found = unpack(tmp_path / "hltv.zip", work, lambda *a: None)
+    assert [p.name for p in found] == ["de_mirage.dem"] and found[0].read_bytes() == demo.read_bytes()
+    assert unpack(tmp_path / "b.dem.gz", work, lambda *a: None)[0].read_bytes() == demo.read_bytes()
+    assert unpack(demo, work, lambda *a: None) == [demo]
+    with pytest.raises(ValueError):
+        unpack(tmp_path / "readme.txt", work, lambda *a: None)
+
+
+def test_demo_area_on_the_server(engine, tmp_path):
+    from auto_observer.demo_jobs import DemoJobs
+    demos = DemoJobs(tmp_path, lambda *a: None)
+    demos.folder.mkdir(parents=True)
+    write_raw(demos.folder / "x.rohdaten.jsonl.gz")
+    srv = make_server(engine, 0, demos)
+    port = srv.server_address[1]
+    srv.RequestHandlerClass = __import__("auto_observer.server", fromlist=["make_handler"]).make_handler(engine, port, demos)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        header = {"X-Auto-Observer": "1"}
+        status, body = request(port, "POST", "/api/demo/round", {"file": "x.rohdaten.jsonl.gz", "round": 1}, header)
+        assert status == 200 and "Bravo" in json.loads(body)["text"]
+        status, body = request(port, "POST", "/api/demo/evaluate", {"file": "x.rohdaten.jsonl.gz"}, header)
+        assert status == 200 and "de_test" in json.loads(body)["text"]
+        for name in ("../settings.json", "x.rohdaten.jsonl.gz/../../settings.json", ""):
+            assert request(port, "POST", "/api/demo/round", {"file": name, "round": 1}, header)[0] == 400
+        status, body = request(port, "GET", "/api/state")
+        assert json.loads(body)["demo"]["results"][0]["file"] == "x.rohdaten.jsonl.gz"
+        status, _ = request(port, "POST", "/api/demo/faceit", {"link": "keine id"}, header)
+        assert status == 409
+    finally:
+        srv.shutdown()
+        srv.server_close()

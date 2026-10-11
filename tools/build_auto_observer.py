@@ -2,7 +2,8 @@
 
     python tools/build_auto_observer.py      →  dist/Auto-Observer.exe (Windows) or dist/Auto-Observer
 
-Needs PyInstaller (`pip install --require-hashes -r requirements/build.txt`). The CI builds the Windows file in
+Needs the packages of `requirements/auto-observer.txt` (`pip install --require-hashes -r requirements/auto-observer.txt`):
+PyInstaller and, for the demo export, demoparser2 with pandas/polars/pyarrow – that makes the file large. The CI builds the Windows file in
 .github/workflows/auto-observer.yml and offers it as the artifact "Auto-Observer-windows".
 """
 
@@ -26,9 +27,11 @@ def main() -> int:
         "--name", "Auto-Observer", "--distpath", str(DIST), "--workpath", str(BUILD / "work"), "--specpath", str(BUILD),
         "--paths", str(ROOT),
         "--add-data", f"{ROOT / 'auto_observer' / 'web'}{separator}auto_observer/web",
-        # the test app uses the standard library only – keep everything else out
-        "--exclude-module", "casting_app", "--exclude-module", "PySide6", "--exclude-module", "tkinter",
-        "--exclude-module", "keyring", "--exclude-module", "cryptography",
+        # demoparser2 imports its table libraries from compiled code – PyInstaller can't see that by itself
+        "--collect-all", "demoparser2", "--hidden-import", "pandas", "--hidden-import", "pyarrow",
+        "--hidden-import", "polars", "--hidden-import", "zstandard", "--hidden-import", "keyring",
+        # nothing of the casting app
+        "--exclude-module", "casting_app", "--exclude-module", "PySide6",
         str(launcher),
     ]
     result = subprocess.run(command, cwd=ROOT)

@@ -89,6 +89,19 @@ code { background: #10151b; padding: 2px 6px; border-radius: 4px; }
 .ok { color: var(--ok); }
 .bad { color: var(--bad); }
 
+.drop { border: 2px dashed var(--line); border-radius: 8px; padding: 14px; display: flex; gap: 12px; align-items: center;
+  margin: 10px 0; color: var(--muted); }
+.drop.over { border-color: var(--accent); background: #18283a; }
+.faceit { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.faceit .wide { width: min(480px, 100%); }
+.key { width: 200px; }
+.log.short { max-height: 130px; margin: 6px 0; }
+.results { border-collapse: collapse; margin: 6px 0; }
+.results td, .results th { padding: 4px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+.results th { color: var(--muted); font-weight: normal; }
+.results .round { width: 56px; }
+#demo-output { max-height: 360px; overflow: auto; background: #10151b; padding: 10px; border-radius: 6px;
+  font: 12px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; }
 .log { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; font: 12px/1.5 ui-monospace, Consolas, monospace; }
 .log .warn { color: var(--warn); }
 .log .ok { color: #8fe0a9; }

@@ -663,7 +663,8 @@ kommen aus `tools/build.py` – wer sie ändert, muss `asset_suffix()` anpassen.
 ## Auto-Observer (Test-App)
 
 Eigene kleine App in `auto_observer/`, die in CS2 automatisch auf den passenden Spieler schaltet. Sie ist bewusst
-**getrennt von der Casting-App**: kein Import aus `casting_app`, nur Python-Standardbibliothek, eigene `.exe`, eigener
+**getrennt von der Casting-App**: kein Import aus `casting_app`, der Live-Teil nutzt nur die Python-Standardbibliothek
+(der Demo-Export lädt demoparser2 erst, wenn eine Demo gelesen wird), eigene `.exe`, eigener
 Datenordner (`%APPDATA%\Auto-Observer`), eigener Port (8790) und eigene GSI-Datei
 (`gamestate_integration_autoobserver.cfg` – CS2 schickt die Daten an beide Apps). Die Casting-App verpackt den Ordner
 nicht mit (`pyproject.toml` nimmt nur `casting_app*`). Läuft die Regie gut, kann sie später in die Casting-App umziehen
@@ -680,6 +681,9 @@ nicht mit (`pyproject.toml` nimmt nur `casting_app*`). Läuft die Regie gut, kan
 | `cs2_cfg.py` | Steam (Registry/übliche Orte) und CS2 in allen Steam-Bibliotheken finden, GSI-Datei schreiben (mit `allplayers_position` und `allgrenades`) – beim Start ohne Nachfrage |
 | `launcher.py` | „CS2 starten“: `steam -applaunch 730 -netconport <port> -insecure <weitere Optionen>`, losgelöst von der App; läuft CS2 schon ohne Fernkonsole, kommt ein Hinweis |
 | `recorder.py`, `replay.py` | Mitschnitt eines Matches (`recordings/*.jsonl`) und Abspielen ohne CS2 |
+| `demo_export.py`, `weapons.py` | Demo (.dem, HLTV-.rar/.zip, FACEIT-.dem.zst/.gz) → `demos/<name>.rohdaten.jsonl.gz`: alle Spieler alle 8 Ticks (Position, Blick, HP, Waffe, Kugeln, Callout, wer ihn sieht, Inventar …) und alle Ereignisse (Schüsse, Treffer, Kills, Granaten, Bombe, Runden); `round_text()` = eine Runde als Text zum Einfügen; RAR über das `tar` von Windows 11 oder 7-Zip |
+| `demo_replay.py` | Rohdaten → GSI-Posts, Regie darüber laufen lassen und messen (Kills gesehen, Vorlauf, Wechsel pro Minute, verpasste Kills): `python -m auto_observer.demo_replay <datei>` |
+| `demo_jobs.py` | Bereich „Demo“ der Steuerseite: Dateiauswahl (Tk-Dialog), Hochladen per Ziehen, Dateien auf die .exe ziehen, FACEIT-Link (Key aus dem Schlüsselbund der Casting-App; Download nur mit freigeschalteter Downloads-API, sonst Matchroom öffnen) |
 | `server.py`, `web/` | Steuerseite (nur Deutsch) und ihre API; POST nur mit Kopfzeile `X-Auto-Observer: 1`, nur Host 127.0.0.1/localhost |
 
 **Bewertung** (`director.py`): Punkte = (Grundwert + abklingende Ereignis-Punkte + Lage-Punkte) × Wichtigkeit.
@@ -708,6 +712,10 @@ bleibt die Kamera dort (ein Kill woanders darf fehlen). Granaten (neue Einträge
 und Decoy): der Werfer wird gezeigt, wenn sonst nichts passiert.
 Die Ideen (Abklingen, Flanke, Sniper-Reichweite, Vorsprung + Mindestzeit) stammen aus dem „Smart Auto Observer“ von
 [AlexNB01/cs2-observer-toolkit](https://github.com/AlexNB01/cs2-observer-toolkit) (MIT); der Code ist neu geschrieben.
+
+**Abstimmen mit Demos:** Bereich „Demo“ → Demo auswählen → „Regie prüfen“ zeigt den Bericht; die Rohdaten-Datei
+lässt sich weitergeben und hier mit `python -m auto_observer.demo_replay` auswerten (auch mit geänderten `TUNING`-Werten,
+`evaluate(pfad, {"dwell": 1.5})`).
 
 **Abstimmen mit einem Mitschnitt:** In der Einrichtung „Mitschnitt starten“, ein Match laufen lassen, Datei aus dem
 Ordner `recordings` holen. Dann `python -m auto_observer.replay <datei>.jsonl` – zeigt jeden Wechsel mit Grund und wie

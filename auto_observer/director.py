@@ -43,6 +43,7 @@ TUNING = {
     # grenades: the thrower is shown when nothing else happens
     "nade": {"smoke": 40.0, "flashbang": 45.0, "frag": 45.0, "firebomb": 45.0, "decoy": 10.0}, "nade_other": 30.0,
     "nade_fresh": 1.0, "nade_min_since": 2.0,     # a throw only cuts after this long on the current player
+    "nade_enemy_range": 0.0,     # > 0: only throws by players this close to an enemy (utility into a fight) cut
     "half_life_fight": 5.0, "half_life_near": 3.0, "half_life_idle": 2.0,
     "clutch": 300.0, "clutch_per_enemy": 25.0,
     "duel": 120.0, "duel_cap": 200.0, "duel_angle": 35.0,
@@ -582,7 +583,8 @@ class Director:
             action = max(fighting, key=lambda r: r.score)
             return Decision(action.steamid, action.reason, action.detail)
         throwing = [r for r in ratings if r.importance > 0 and r.steamid != current
-                    and now - self.last_throw.get(r.steamid, -math.inf) <= t["nade_fresh"]]
+                    and now - self.last_throw.get(r.steamid, -math.inf) <= t["nade_fresh"]
+                    and self._near_enemy(match.players.get(r.steamid), match, t["nade_enemy_range"])]
         if (since >= t["nade_min_since"] and throwing and not fighting
                 and now - self.last_throw.get(current, -math.inf) > t["nade_fresh"] + 1.0):
             thrower = max(throwing, key=lambda r: r.score)
@@ -598,6 +600,15 @@ class Director:
             if pick:
                 return Decision(pick, "rotation")
         return None
+
+    @staticmethod
+    def _near_enemy(player, match: Match, reach: float) -> bool:
+        """True if `reach` is 0 (no limit) or an enemy is within `reach` of the player."""
+        if reach <= 0:
+            return True
+        if not player or not player.position:
+            return False
+        return any(e.position and distance(player.position, e.position) <= reach for e in match.enemies(player))
 
     def _nade_of(self, steamid: str) -> str:
         boosts = [b for b in self.event_scores.get(steamid, []) if b[2] == "nade"]

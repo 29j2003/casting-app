@@ -12,7 +12,10 @@ Each player's rating = (base + decaying event score + situational score) × impo
 
 Switching rules keep the picture calm: a minimum time on a player that depends on the pace of the round
 (long in a quiet 1v1, short when kills come fast), a clear margin before cutting, an immediate cut for a
-much bigger moment, and an immediate cut when the shown player dies.
+much bigger moment, at least ~1 s on a player who just killed, and an immediate cut when the shown player
+dies (to the killer if known). Two players only looking at each other – often through a wall – lose value
+after a few seconds without shots or hits ("standoff"), so a real fight elsewhere wins. In buy time and quiet
+moments the camera changes now and then: the other side and players not shown for a while first.
 
 The scoring ideas (event decay, flank and sniper ranges, margin + dwell) follow the "Smart Auto Observer" of
 AlexNB01/cs2-observer-toolkit (MIT License, Copyright (c) 2026 AlexNB01); the code here is written anew.
@@ -29,20 +32,27 @@ TUNING = {
     "kill": 100.0, "headshot": 15.0, "multi_kill": 25.0, "trade": 30.0, "trade_window": 5.0,
     "clutch_kill": 40.0, "clutch_kill_per_enemy": 20.0,
     "damage_taken": 50.0,
-    "shot": 10.0, "shot_aimed": 15.0, "shot_cap": 45.0,
+    "shooter_hit": 45.0, "shooter_angle": 35.0,   # enemy looking at a player who just got hit: probably the shooter
+    "shot": 12.0, "shot_aimed": 20.0, "shot_cap": 60.0,
     "half_life_fight": 5.0, "half_life_near": 3.0, "half_life_idle": 2.0,
     "clutch": 300.0, "clutch_per_enemy": 25.0,
     "duel": 120.0, "duel_cap": 200.0, "duel_angle": 35.0,
     "flank": 45.0, "proximity": 10.0, "proximity_range": 1200.0,
+    # standoff: two players only "looking" at each other (often through a wall) lose value without shots or hits
+    "standoff_grace": 2.5, "standoff_half_life": 2.0, "standoff_floor": 0.15,
     "angle_hold": 260.0, "angle_hold_degrees": 10.0,   # beats the clutcher by a "jump": cut before he peeks
     "plant": 150.0, "defuse": 200.0, "stop_defuse": 260.0, "stop_defuse_range": 2500.0,
     "push": 30.0, "push_carrier": 80.0, "push_radius": 700.0, "push_speed": 130.0,
     "flashed_factor": 0.4,       # a flashed player's view is white – show someone else
     "dwell": 2.5, "dwell_fast": 1.4, "dwell_calm": 4.0,
     "margin_factor": 1.25, "margin": 25.0,
-    "jump": 250.0, "jump_min": 0.8,
-    "dead_switch_gap": 0.4,      # wait this long between commands while the camera is on a dead player
-    "freezetime_dwell": 2.0,
+    "jump": 250.0, "jump_min": 1.0,
+    "kill_hold": 1.2,            # the shown player just killed: stay at least this long
+    "dead_switch_gap": 0.15,     # wait this long between commands while the camera is on a dead player
+    "killer_window": 1.5,        # shown player died: cut to whoever killed within this time
+    # variety when nothing happens (buy time, quiet moments): other side and players not shown for a while first
+    "rotate_freezetime": 5.0, "rotate_quiet": 7.0, "quiet_score": 15.0,
+    "other_side_bonus": 1.3, "stale_seconds": 20.0,
 }
 
 PRE_ROUND = ("freezetime",)
@@ -59,6 +69,7 @@ class Rating:
     reason: str                  # code of the biggest part: kill, clutch, duel, flank, angle, defuse, ...
     detail: str = ""             # e.g. "1v2" or an opponent's name
     parts: dict = field(default_factory=dict)
+    raw: float = 0.0             # score before importance
 
 
 @dataclass
@@ -108,9 +119,16 @@ class Director:
         self.last_switch = -math.inf
         self.last_target = ""
         self.ratings: list[Rating] = []
+        self.last_action: dict[str, float] = {}           # steamid → time of the last shot, hit or kill
+        self.pair_since: dict[tuple[str, str], float] = {}  # duel pair → since when they face each other
+        self.shown_at: dict[str, float] = {}               # steamid → when the camera last went there
+        self._pairs_seen: set[tuple[str, str]] = set()
 
     def reset(self) -> None:
         self.event_scores.clear()
+        self.last_action.clear()
+        self.pair_since.clear()
+        self.shown_at.clear()
         self.last_switch, self.last_target, self.ratings = -math.inf, "", []
 
     # --- events ---
@@ -123,6 +141,8 @@ class Director:
             if not player:
                 continue
             boosts = self.event_scores.setdefault(event.steamid, [])
+            if event.kind in ("kill", "shot", "damage"):
+                self.last_action[event.steamid] = event.time
             if event.kind == "kill":
                 amount = t["kill"] * event.amount + (t["headshot"] if event.headshot else 0)
                 if player.round_kills >= 2:
@@ -139,6 +159,11 @@ class Director:
                 boosts.append((event.time, amount, code, str(player.round_kills)))
             elif event.kind == "damage":
                 boosts.append((event.time, t["damage_taken"], "fight", ""))
+                for enemy in match.enemies(player):
+                    if (player.position and enemy.position and facing(enemy, player, t["shooter_angle"])
+                            and distance(player.position, enemy.position) <= enemy.engage_range):
+                        self.event_scores.setdefault(enemy.steamid, []).append((event.time, t["shooter_hit"], "fight", player.name))
+                        self.last_action[enemy.steamid] = event.time
             elif event.kind == "shot":
                 aimed = any(facing(player, enemy, 20) and distance(player.position, enemy.position) <= player.engage_range
                             for enemy in match.enemies(player) if player.position and enemy.position)
@@ -174,7 +199,19 @@ class Director:
 
     # --- situation ---
 
-    def _situation(self, player: Player, match: Match, forms: dict[str, float]) -> dict[str, tuple[float, str]]:
+    def _standoff(self, player: Player, enemy: Player, now: float) -> float:
+        """1.0 while a duel is fresh or someone shoots/gets hit; falls off while they only look at each other."""
+        t = self.tuning
+        pair = (min(player.steamid, enemy.steamid), max(player.steamid, enemy.steamid))
+        self._pairs_seen.add(pair)
+        start = self.pair_since.setdefault(pair, now)
+        latest = max(start, self.last_action.get(player.steamid, -math.inf), self.last_action.get(enemy.steamid, -math.inf))
+        quiet = now - latest - t["standoff_grace"]
+        if quiet <= 0:
+            return 1.0
+        return max(t["standoff_floor"], 0.5 ** (quiet / t["standoff_half_life"]))
+
+    def _situation(self, player: Player, match: Match, forms: dict[str, float], now: float) -> dict[str, tuple[float, str]]:
         """Points from what is true right now (code → (points, detail))."""
         t = self.tuning
         parts: dict[str, tuple[float, str]] = {}
@@ -206,6 +243,7 @@ class Director:
             seen = facing(enemy, player, t["duel_angle"])
             closeness = 1 - gap / reach
             if sees or seen:
+                closeness *= self._standoff(player, enemy, now)
                 chance = duel_chance(player, enemy, forms.get(player.steamid, 1.0), forms.get(enemy.steamid, 1.0), sees, seen)
                 points = t["duel"] * closeness * chance
                 duel_points += points
@@ -251,12 +289,13 @@ class Director:
         """Ratings of all alive players, best first. `importance(player)` gives the producer's weight (0..2)."""
         t = self.tuning
         forms = {p.steamid: form(p, match) for p in match.players.values()}
+        self._pairs_seen = set()
         ratings = []
         for player in match.alive():
             if not player.team:
                 continue
             parts = self._event_score(player, match, now)
-            for code, (points, detail) in self._situation(player, match, forms).items():
+            for code, (points, detail) in self._situation(player, match, forms, now).items():
                 old, old_detail = parts.get(code, (0.0, ""))
                 parts[code] = (old + points, detail or old_detail)
             weight = importance(player) * forms[player.steamid] ** data_mix
@@ -268,7 +307,9 @@ class Director:
             else:
                 reason, detail = "importance", ""
             ratings.append(Rating(player.steamid, player.name, raw * weight, weight, reason, detail,
-                                  {code: round(points, 1) for code, (points, _) in parts.items()}))
+                                  {code: round(points, 1) for code, (points, _) in parts.items()}, raw))
+        for pair in [pair for pair in self.pair_since if pair not in self._pairs_seen]:
+            del self.pair_since[pair]            # no longer facing each other: a new duel starts fresh
         ratings.sort(key=lambda r: r.score, reverse=True)
         self.ratings = ratings
         return ratings
@@ -294,24 +335,63 @@ class Director:
         best = ratings[0]
 
         if match.round_phase in PRE_ROUND:
-            # before the round: the most important player, once
-            top = max(ratings, key=lambda r: (r.importance, r.steamid == current))
-            if shown and top.steamid != current and top.importance > shown.importance and since >= t["freezetime_dwell"]:
-                return Decision(top.steamid, "importance")
-            if not shown and since >= t["dead_switch_gap"]:
-                return Decision(top.steamid, "importance")
+            # buy time: the most important players, changing now and then (other side and not shown for a while first)
+            if (shown is None and since >= t["dead_switch_gap"]) or since >= t["rotate_freezetime"]:
+                pick = self._rotation_pick(ratings, current, match, now)
+                if pick:
+                    return Decision(pick, "rotation")
             return None
         if shown is None:
-            # dead, left or free camera: cut away at once
-            return Decision(best.steamid, best.reason, best.detail) if since >= t["dead_switch_gap"] else None
-        if match.round_phase in ROUND_OVER or best.steamid == current:
+            # dead, left or free camera: cut away at once – to the killer if there is one
+            if since < t["dead_switch_gap"]:
+                return None
+            killer = self._killer_of(current, match, now, by_id)
+            if killer:
+                return Decision(killer, "killer", match.players[current].name if current in match.players else "")
+            return Decision(best.steamid, best.reason, best.detail)
+        if any(e.steamid == current for e in match.recent_events("kill", now - t["kill_hold"])):
+            return None                          # let the kill sink in
+        if match.round_phase in ROUND_OVER:
             return None
-        if best.score >= shown.score + t["jump"] and since >= t["jump_min"]:
-            return Decision(best.steamid, best.reason, best.detail)
-        if since >= self.dwell(match, now) and best.score > shown.score * t["margin_factor"] + t["margin"]:
-            return Decision(best.steamid, best.reason, best.detail)
+        if best.steamid != current:
+            if best.score >= shown.score + t["jump"] and since >= t["jump_min"]:
+                return Decision(best.steamid, best.reason, best.detail)
+            if since >= self.dwell(match, now) and best.score > shown.score * t["margin_factor"] + t["margin"]:
+                return Decision(best.steamid, best.reason, best.detail)
+        if (match.round_phase == "live" and since >= t["rotate_quiet"]
+                and best.raw < t["quiet_score"] and shown.raw < t["quiet_score"]):
+            pick = self._rotation_pick(ratings, current, match, now)
+            if pick:
+                return Decision(pick, "rotation")
         return None
+
+    def _rotation_pick(self, ratings: list[Rating], current: str, match: Match, now: float) -> str | None:
+        """For quiet moments: important players, the other side and those not shown for a while first."""
+        t = self.tuning
+        current_team = match.players[current].team if current in match.players else ""
+
+        def value(rating: Rating) -> float:
+            player = match.players[rating.steamid]
+            stale = min(1.0, (now - self.shown_at.get(rating.steamid, -math.inf)) / t["stale_seconds"])
+            side = t["other_side_bonus"] if current_team and player.team != current_team else 1.0
+            return rating.importance * (0.2 + stale) * side
+
+        candidates = [r for r in ratings if r.steamid != current and r.importance > 0]
+        return max(candidates, key=value).steamid if candidates else None
+
+    def _killer_of(self, victim_id: str, match: Match, now: float, alive: dict) -> str | None:
+        """Who just killed the shown player (an enemy with a fresh kill; the nearest one if several)."""
+        victim = match.players.get(victim_id)
+        killers = {e.steamid for e in match.recent_events("kill", now - self.tuning["killer_window"])
+                   if e.steamid in alive and (victim is None or match.players[e.steamid].team != victim.team)}
+        if not killers:
+            return None
+        if victim and victim.position:
+            return min(killers, key=lambda k: distance(victim.position, match.players[k].position)
+                       if match.players[k].position else math.inf)
+        return next(iter(killers))
 
     def switched(self, steamid: str, now: float) -> None:
         """The camera was told to go to `steamid`."""
         self.last_switch, self.last_target = now, steamid
+        self.shown_at[steamid] = now

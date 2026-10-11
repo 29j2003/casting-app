@@ -688,7 +688,11 @@ Lage: Clutch, Duelle mit geschätzter Gewinnchance (Leben, Rüstung, Waffe, Form
 „hält den Winkel“ auf einen Clutcher, der auf ihn zuläuft, Bombe legen/entschärfen (und der T, der das Entschärfen
 stoppen kann), Pushes. Wichtigkeit = Regler Spieler × Regler Team × Form^Einfluss (Form aus K/D/ADR, ab Runde 8 voll).
 Wechsel: Mindestzeit je nach Tempo (1,4 s bei schnellen Kills, 4 s im ruhigen Rundenende), deutlicher Vorsprung nötig,
-sofort bei viel größerem Moment oder wenn der gezeigte Spieler stirbt; in der Kaufphase der wichtigste Spieler.
+sofort bei viel größerem Moment; nach einem Kill des gezeigten Spielers mindestens 1,2 s bleiben; stirbt der gezeigte
+Spieler, sofort (schon beim Eintreffen der Daten) auf den Schützen. „Patt“: zwei Spieler, die sich nur ansehen (oft
+durch eine Wand), verlieren nach 2,5 s ohne Schuss oder Treffer an Wert; wer getroffen wird, macht den Gegner, der in
+seine Richtung schaut, interessant (wahrscheinlich der Schütze). Kaufphase und ruhige Momente: Abwechslung, andere Seite
+und länger nicht gezeigte Spieler zuerst, die wichtigsten bevorzugt.
 Die Ideen (Abklingen, Flanke, Sniper-Reichweite, Vorsprung + Mindestzeit) stammen aus dem „Smart Auto Observer“ von
 [AlexNB01/cs2-observer-toolkit](https://github.com/AlexNB01/cs2-observer-toolkit) (MIT); der Code ist neu geschrieben.
 

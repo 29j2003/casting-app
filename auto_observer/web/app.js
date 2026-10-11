@@ -7,7 +7,7 @@ const REASONS = {
   clutch: (d) => `Clutch ${d}`, duel: (d) => `Duell gegen ${d}`, flank: (d) => `Flanke auf ${d}`,
   angle: (d) => `Hält den Winkel auf ${d}`, plant: () => "Legt die Bombe", defuse: () => "Entschärft",
   stop_defuse: () => "Kann das Entschärfen stoppen", push: () => "Push", proximity: () => "Gegner in der Nähe",
-  importance: () => "Wichtigkeit",
+  importance: () => "Wichtigkeit", killer: (d) => `Hat ${d} getötet`, rotation: () => "Abwechslung",
 };
 const reasonText = (code, detail) => (REASONS[code] ? REASONS[code](detail || "") : code || "");
 

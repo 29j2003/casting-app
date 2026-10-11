@@ -488,3 +488,72 @@ def test_server_answers_even_when_something_breaks(server, engine, monkeypatch):
     monkeypatch.setattr(engine, "launch_cs2", broken)
     status, body = request(server, "POST", "/api/launch", {}, {"X-Auto-Observer": "1"})
     assert status == 500 and not json.loads(body)["ok"]
+
+
+# --- feedback from the first real test: kill hold, faster cut on death, standoff, variety ---
+
+def test_stays_on_killer_for_a_moment():
+    match, director = Match(), Director()
+    match.update(post(lineup(), observed=0), 0.0)
+    director.switched(sid(0), -10.0)
+    dead = {f"p{i}": {"hp": 0} for i in range(1, 5)}                 # big moment elsewhere: P5 clutch-like
+    match.update(post(lineup(p0={"kills": 1, "round_kills": 1}, **dead), observed=0), 0.5)
+    director.feed(match.recent_events("kill", 0), match)
+    _, ratings = rate(match, 0.9, director=director)
+    assert director.decide(match, ratings, sid(0), 0.9) is None      # 0.4 s after his kill: stay
+
+
+def test_cuts_to_the_killer_when_shown_player_dies():
+    players = lineup(p0={"pos": (0, 0, 0)}, p5={"pos": (900, 0, 0)}, p6={"pos": (0, 9000, 0)})
+    match, director = Match(), Director()
+    match.update(post(players, observed=0), 0.0)
+    director.switched(sid(0), 0.0)
+    players = lineup(p0={"pos": (0, 0, 0), "hp": 0}, p5={"pos": (900, 0, 0), "kills": 1, "round_kills": 1},
+                     p6={"pos": (0, 9000, 0)})
+    director.feed(match.update(post(players, observed=0), 0.3), match)
+    _, ratings = rate(match, 0.3, director=director)
+    decision = director.decide(match, ratings, sid(0), 0.3)
+    assert decision and decision.steamid == sid(5) and decision.reason == "killer"
+
+
+def test_standoff_loses_against_a_real_fight():
+    # P0/P5 look at each other (through a wall?) for long; P1/P6 just started shooting
+    players = lineup(p0={"pos": (0, 0, 0), "fwd": (1, 0, 0)}, p5={"pos": (800, 0, 0), "fwd": (-1, 0, 0)},
+                     p1={"pos": (0, 40000, 0), "fwd": (1, 0, 0)}, p6={"pos": (1500, 40000, 0), "fwd": (0, 1, 0)})
+    match, director = Match(), Director()
+    match.update(post(players), 0.0)
+    rate(match, 0.0, director=director)
+    for step in range(1, 81):
+        now = step * 0.1
+        if step == 75:
+            players[sid(1)]["weapons"]["weapon_1"]["ammo_clip"] = 24          # P1 starts shooting
+        director.feed(match.update(post(players), now), match)
+        _, ratings = rate(match, now, director=director)
+    scores = {r.steamid: r for r in ratings}
+    assert scores[sid(1)].score > scores[sid(0)].score
+
+
+def test_variety_in_buy_time():
+    match, director = Match(), Director()
+    match.update(post(lineup(), phase="freezetime", observed=0), 0.0)
+    director.switched(sid(0), 0.0)
+    _, ratings = rate(match, 2.0, director=director)
+    assert director.decide(match, ratings, sid(0), 2.0) is None
+    _, ratings = rate(match, 5.5, director=director)
+    decision = director.decide(match, ratings, sid(0), 5.5)
+    assert decision and match.players[decision.steamid].team == "T"
+    director.switched(decision.steamid, 5.5)
+    _, ratings = rate(match, 11.0, director=director)
+    again = director.decide(match, ratings, decision.steamid, 11.0)
+    assert again and match.players[again.steamid].team == "CT" and again.steamid != sid(0)   # not shown yet
+
+
+def test_engine_cuts_at_once_when_shown_player_dies(engine):
+    engine.apply_settings({"enabled": True})
+    engine.on_gsi(post(lineup(), observed=0))
+    engine.clock_.now += 3
+    engine.on_gsi(post(lineup(), observed=0))
+    sent = len(engine.camera.sent)
+    engine.clock_.now += 0.1
+    engine.on_gsi(post(lineup(p0={"hp": 0}), observed=0))     # no tick in between
+    assert len(engine.camera.sent) == sent + 1 and engine.camera.sent[-1] != sid(0)

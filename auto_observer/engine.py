@@ -83,6 +83,9 @@ class Engine:
                 return 400                      # not what CS2 sends
             self.director.feed(events, self.match)
             self._check_manual_switch(now)
+            current = self._current(now)
+            if any(e.kind == "death" and e.steamid == current for e in events):
+                self._direct(now)               # shown player died: cut now, not at the next tick
             self.recorder.write({"gsi": without_token(post)})
         return 200
 
@@ -148,12 +151,15 @@ class Engine:
                     self.receiving = False
                     self.log("Keine CS2-Daten mehr", "warn")
                 return
-            ratings = self.director.rate(self.match, self._importance, now, self.settings["data_mix"])
-            if not self.settings["enabled"] or self.paused:
-                return
-            decision = self.director.decide(self.match, ratings, self._current(now), now)
-            if not decision:
-                return
+            self._direct(now)
+
+    def _direct(self, now: float) -> None:
+        """Rate the players and, if the automatic runs, switch the camera when the director says so."""
+        ratings = self.director.rate(self.match, self._importance, now, self.settings["data_mix"])
+        if not self.settings["enabled"] or self.paused:
+            return
+        decision = self.director.decide(self.match, ratings, self._current(now), now)
+        if decision:
             player = self.match.players.get(decision.steamid)
             if player and self._send(player):
                 self.director.switched(player.steamid, now)

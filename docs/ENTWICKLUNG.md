@@ -16,6 +16,7 @@ JSON-Felder). Texte, die Nutzer sehen, sind deutsch und bekommen eine englische 
 - [Technische Details](#technische-details)
 - [Bauen und signieren](#bauen-und-signieren)
 - [Version und Release](#version-und-release)
+- [Auto-Observer (Test-App)](#auto-observer-test-app)
 - [Fehlersuche](#fehlersuche)
 - [Worauf man achten muss](#worauf-man-achten-muss)
 
@@ -658,6 +659,49 @@ kommen aus `tools/build.py` – wer sie ändert, muss `asset_suffix()` anpassen.
 3. Auf `main` mergen.
 4. GitHub → Actions → **Bauen** → „Run workflow“ auf `main` mit „Release erstellen“. Der Workflow baut alles,
    testet, legt den Tag `v<Version>` an und lädt die Dateien hoch (Setup.exe, portable Zip, AppImage, dmg/zip).
+
+## Auto-Observer (Test-App)
+
+Eigene kleine App in `auto_observer/`, die in CS2 automatisch auf den passenden Spieler schaltet. Sie ist bewusst
+**getrennt von der Casting-App**: kein Import aus `casting_app`, nur Python-Standardbibliothek, eigene `.exe`, eigener
+Datenordner (`%APPDATA%\Auto-Observer`), eigener Port (8790) und eigene GSI-Datei
+(`gamestate_integration_autoobserver.cfg` – CS2 schickt die Daten an beide Apps). Die Casting-App verpackt den Ordner
+nicht mit (`pyproject.toml` nimmt nur `casting_app*`). Läuft die Regie gut, kann sie später in die Casting-App umziehen
+(`director.py` und `game.py` haben keine Oberfläche).
+
+| Datei | Aufgabe |
+|---|---|
+| `__main__.py` | Start: Server auf 127.0.0.1:8790, Regie-Schleife (10× pro Sekunde), Steuerseite im Browser |
+| `game.py` | GSI-Posts → Spieler, Positionen, Blickrichtung; Ereignisse (Kill, Tod, Schaden, Schüsse) aus dem Vergleich zweier Posts |
+| `director.py` | Bewertung jedes lebenden Spielers und Entscheidung (alle Werte in `TUNING`) |
+| `engine.py` | verbindet alles: Token prüfen, Übernehmen von Hand + Rückkehr-Timer, Eingriff in CS2 erkennen, Zustand für die Seite |
+| `camera.py` | Fernkonsole (`-netconport`, `spec_player "Name"` / `spec_player_by_accountid`, `spec_show_xray`); Rückfall Tasten 1–0 per `SendInput` (nur Windows, CS2 im Vordergrund) |
+| `settings.py` | `settings.json` (Schalter, Regler je Spieler/Team, Fernkonsole); jede Änderung wird geprüft |
+| `cs2_cfg.py` | cfg-Ordner finden, GSI-Datei schreiben (mit `allplayers_position` und `allgrenades`) |
+| `recorder.py`, `replay.py` | Mitschnitt eines Matches (`recordings/*.jsonl`) und Abspielen ohne CS2 |
+| `server.py`, `web/` | Steuerseite (nur Deutsch) und ihre API; POST nur mit Kopfzeile `X-Auto-Observer: 1`, nur Host 127.0.0.1/localhost |
+
+**Bewertung** (`director.py`): Punkte = (Grundwert + abklingende Ereignis-Punkte + Lage-Punkte) × Wichtigkeit.
+Ereignisse: Kill, Multi-Kill, Trade, Clutch-Kill, Schaden bekommen, Schüsse (mehr, wenn auf einen Gegner gezielt).
+Lage: Clutch, Duelle mit geschätzter Gewinnchance (Leben, Rüstung, Waffe, Form, wer wen im Blick hat), Flanke,
+„hält den Winkel“ auf einen Clutcher, der auf ihn zuläuft, Bombe legen/entschärfen (und der T, der das Entschärfen
+stoppen kann), Pushes. Wichtigkeit = Regler Spieler × Regler Team × Form^Einfluss (Form aus K/D/ADR, ab Runde 8 voll).
+Wechsel: Mindestzeit je nach Tempo (1,4 s bei schnellen Kills, 4 s im ruhigen Rundenende), deutlicher Vorsprung nötig,
+sofort bei viel größerem Moment oder wenn der gezeigte Spieler stirbt; in der Kaufphase der wichtigste Spieler.
+Die Ideen (Abklingen, Flanke, Sniper-Reichweite, Vorsprung + Mindestzeit) stammen aus dem „Smart Auto Observer“ von
+[AlexNB01/cs2-observer-toolkit](https://github.com/AlexNB01/cs2-observer-toolkit) (MIT); der Code ist neu geschrieben.
+
+**Abstimmen mit einem Mitschnitt:** In der Einrichtung „Mitschnitt starten“, ein Match laufen lassen, Datei aus dem
+Ordner `recordings` holen. Dann `python -m auto_observer.replay <datei>.jsonl` – zeigt jeden Wechsel mit Grund und wie
+oft die Regie mit der Kamera in der Aufnahme übereinstimmt (hat ein Mensch observt, ist das seine Wahl).
+
+**Starten und bauen:** `python -m auto_observer` (`--port`, `--no-browser`) · `python tools/build_auto_observer.py`
+→ `dist/Auto-Observer.exe`. Der Workflow `.github/workflows/auto-observer.yml` baut die Windows-Datei bei jeder
+Änderung in `auto_observer/` und startet sie einmal zur Probe (Artefakt „Auto-Observer-windows“). Tests:
+`tests/test_auto_observer.py`.
+
+**Geplant:** HOT-HLAE (Fork von HLAE, MIT) für sanfte Übergänge, Granaten und Kamerafahrten; HOT selbst darf wegen
+seiner Lizenz nicht mitgeliefert werden – nur ein Hinweis mit Link zu den Releases.
 
 ## Fehlersuche
 

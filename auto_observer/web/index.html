@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auto-Observer</title>
+<link rel="stylesheet" href="app.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<header>
+  <h1>Auto-Observer <small id="version">Test</small></h1>
+  <div class="lamps">
+    <span id="lamp-gsi" class="lamp">CS2-Daten</span>
+    <span id="lamp-camera" class="lamp">Kamera</span>
+    <span id="map" class="map"></span>
+  </div>
+</header>
+
+<div id="keys-band" class="band warn" hidden>
+  TASTEN-MODUS AKTIV – die App drückt die Tasten 1–0. CS2 muss dafür im Vordergrund sein.
+  <span id="keys-foreground"></span>
+</div>
+<div id="problem-band" class="band error" hidden></div>
+<div id="offline-band" class="band error" hidden>Keine Verbindung zur Auto-Observer-App – läuft sie noch?</div>
+
+<main>
+  <section class="card control">
+    <button id="enabled" class="big-toggle" type="button">Auto-Observer: AUS</button>
+    <label class="check"><input type="checkbox" id="xray"> X-Ray</label>
+
+    <div class="status">
+      <div>Jetzt: <b id="now-name">–</b> <span id="now-reason" class="reason"></span></div>
+      <div>Als Nächstes: <b id="next-name">–</b> <span id="next-reason" class="reason"></span></div>
+    </div>
+
+    <div id="pause-box" class="pause" hidden>
+      <div>Automatik pausiert <span id="pause-reason"></span> <b id="pause-seconds"></b></div>
+      <button id="resume" type="button">Automatik übernimmt</button>
+    </div>
+
+    <div class="options">
+      <label class="check"><input type="checkbox" id="return_timer"> Zurück zur Automatik nach</label>
+      <input type="number" id="return_seconds" min="1" max="600" class="seconds"> s
+      <label class="check"><input type="checkbox" id="pause_on_manual"> Wechsel in CS2 von Hand pausiert die Automatik</label>
+      <label class="mix">Einfluss der Matchdaten
+        <input type="range" id="data_mix" min="0" max="100" step="5"> <span id="data_mix_value"></span>
+      </label>
+    </div>
+    <p class="hint">Spieler anklicken = Kamera auf diesen Spieler, die Automatik pausiert. Regler = wie wichtig ein Spieler oder Team ist (100 % normal).</p>
+  </section>
+
+  <section id="teams" class="teams"></section>
+
+  <details class="card setup" id="setup">
+    <summary>Einrichtung</summary>
+    <ol>
+      <li>
+        <b>CS2-Daten (GSI-Datei)</b> <span id="cfg-installed"></span><br>
+        <input id="cfg_folder" class="wide" placeholder="…\steamapps\common\Counter-Strike Global Offensive\game\csgo\cfg">
+        <button id="cfg-find" type="button">Ordner suchen</button>
+        <button id="cfg-write" type="button">GSI-Datei schreiben</button>
+        <span id="cfg-status"></span>
+        <ul id="cfg-list" class="choices"></ul>
+        <small>Danach CS2 neu starten. Die Datei der Casting-App bleibt, beide bekommen die Daten.</small>
+      </li>
+      <li>
+        <b>Startoptionen in Steam</b> (CS2 → Eigenschaften → Startoptionen):
+        <code id="launch">-netconport 54545 -insecure</code>
+        <button id="copy-launch" type="button">Kopieren</button><br>
+        <small>Ohne <code>-insecure</code> nimmt CS2 über die Fernkonsole keine Befehle an (VAC ist dann aus).</small>
+      </li>
+      <li>
+        <b>Fernkonsole</b>
+        Host <input id="netcon_host" class="host"> Port <input id="netcon_port" type="number" min="1" max="65535" class="port">
+        <label>Kamera-Weg
+          <select id="camera_mode">
+            <option value="auto">Automatisch (Fernkonsole, sonst Tasten)</option>
+            <option value="netcon">Nur Fernkonsole</option>
+            <option value="keys">Nur Tasten (CS2 im Vordergrund)</option>
+          </select>
+        </label>
+        <label>Befehl
+          <select id="spec_command">
+            <option value="name">spec_player "Name"</option>
+            <option value="accountid">spec_player_by_accountid</option>
+          </select>
+        </label>
+      </li>
+      <li>
+        <b>Mitschnitt</b> (für die Abstimmung der Regie)
+        <button id="record" type="button">Mitschnitt starten</button>
+        <button id="open-recordings" type="button">Ordner öffnen</button>
+        <span id="record-status"></span>
+      </li>
+    </ol>
+  </details>
+
+  <section class="card">
+    <h2>Log</h2>
+    <ul id="log" class="log"></ul>
+  </section>
+</main>
+</body>
+</html>

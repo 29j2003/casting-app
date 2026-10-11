@@ -1,0 +1,39 @@
+# Baut die Test-App Auto-Observer (auto_observer/) als eine Windows-Datei – getrennt von der Casting-App.
+# Herunterladen: Actions → „Auto-Observer“ → letzter Lauf → Artefakt „Auto-Observer-windows“ (enthält Auto-Observer.exe).
+# Läuft, wenn sich auto_observer/ oder der Bau ändert, oder von Hand (Run workflow). Die Tests laufen im Workflow „Bauen“ mit.
+name: Auto-Observer
+
+on:
+  push:
+    branches: ["**"]
+    paths: ["auto_observer/**", "tools/build_auto_observer.py", ".github/workflows/auto-observer.yml"]
+  workflow_dispatch:
+
+permissions: { contents: read }
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with: { python-version: "3.12", cache: pip }
+      # feste Versionen mit Prüfsummen wie beim Bau der Casting-App (requirements/build.txt)
+      - run: pip install --require-hashes -r requirements/build.txt
+      - run: python tools/build_auto_observer.py
+      - name: Starten und antworten lassen
+        shell: pwsh
+        run: |
+          $env:AUTO_OBSERVER_DATA = "$env:RUNNER_TEMP\auto-observer"
+          $app = Start-Process dist/Auto-Observer.exe -ArgumentList "--no-browser" -PassThru
+          $ok = $false
+          for ($i = 0; $i -lt 30 -and -not $ok; $i++) {
+            Start-Sleep 1
+            try { $ok = (Invoke-RestMethod http://127.0.0.1:8790/api/ping).service -eq "auto-observer" } catch {}
+          }
+          Stop-Process $app -ErrorAction SilentlyContinue
+          if (-not $ok) { throw "Auto-Observer.exe antwortet nicht" }
+          Write-Host "Auto-Observer.exe läuft"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with: { name: Auto-Observer-windows, path: dist/Auto-Observer.exe, retention-days: 30 }

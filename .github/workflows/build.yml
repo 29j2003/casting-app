@@ -144,11 +144,11 @@ jobs:
         run: python3 tools/check_privacy.py
       - name: Syntax von Python und JavaScript
         run: |
-          python3 -m compileall -q casting_app tools tests
-          for f in web/*.js casting_app/desktop/scripts/*.js; do node --check "$f"; done
+          python3 -m compileall -q casting_app auto_observer tools tests
+          for f in web/*.js casting_app/desktop/scripts/*.js auto_observer/web/*.js; do node --check "$f"; done
           cat web/control/*.js > "$RUNNER_TEMP/control.js" && node --check "$RUNNER_TEMP/control.js"
       - name: Ungenutzte Importe und Namen in Python (pyflakes)
-        run: pipx run pyflakes casting_app tools tests
+        run: pipx run pyflakes casting_app auto_observer tools tests
       - name: Szenen passen zu tools/generate_scenes.py (nie von Hand ändern)
         run: python3 tools/generate_scenes.py && git diff --exit-code -- web/
 

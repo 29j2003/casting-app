@@ -627,3 +627,52 @@ def test_one_fight_in_focus_kill_elsewhere_does_not_pull():
     for now in (3.1, 4.0, 5.0):
         _, ratings = rate(match, now, director=director)
         assert director.decide(match, ratings, sid(0), now) is None
+
+
+# --- duel details: bullets, reloading, secondary, distance, helmet, grenades; looking ahead ---
+
+def armed(steamid, team, *weapons, health=100, armor=100, helmet=True):
+    from auto_observer.game import Weapon
+    player = Player(steamid, team=team, health=health, armor=armor, helmet=helmet)
+    player.weapons = [Weapon(*w) for w in weapons]
+    active = next((w for w in player.weapons if w.state in ("active", "reloading")), None)
+    if active:
+        player.weapon, player.weapon_type, player.clip = active.name, active.type, active.clip
+    return player
+
+
+def test_duel_chance_uses_ammo_secondary_distance_and_gear():
+    ak = ("weapon_ak47", "Rifle", 30, 30, "active")
+    full = armed("a", "T", ak)
+    empty = armed("b", "CT", ("weapon_m4a1", "Rifle", 0, 25, "active"))
+    reloading = armed("c", "CT", ("weapon_m4a1", "Rifle", 5, 25, "reloading"))
+    with_pistol = armed("d", "CT", ("weapon_m4a1", "Rifle", 0, 25, "holstered"), ("weapon_usp_silencer", "Pistol", 12, 12, "active"))
+    assert duel_chance(full, empty, 1, 1, True, True) > 0.8
+    assert duel_chance(full, reloading, 1, 1, True, True) > 0.7
+    assert 0.5 < duel_chance(full, with_pistol, 1, 1, True, True) < duel_chance(full, empty, 1, 1, True, True)
+    awp = armed("e", "CT", ("weapon_awp", "SniperRifle", 5, 5, "active"))
+    assert duel_chance(awp, full, 1, 1, True, True, gap=2000) > duel_chance(awp, full, 1, 1, True, True, gap=300)
+    shotgun = armed("f", "CT", ("weapon_nova", "Shotgun", 8, 8, "active"))
+    assert duel_chance(shotgun, full, 1, 1, True, True, gap=200) > duel_chance(shotgun, full, 1, 1, True, True, gap=1000)
+    no_helmet = armed("g", "CT", ("weapon_m4a1", "Rifle", 25, 25, "active"), helmet=False)
+    helmet = armed("h", "CT", ("weapon_m4a1", "Rifle", 25, 25, "active"))
+    assert duel_chance(helmet, full, 1, 1, True, True) > duel_chance(no_helmet, full, 1, 1, True, True)
+    nades = armed("i", "CT", ("weapon_m4a1", "Rifle", 25, 25, "active"), ("weapon_flashbang", "Grenade", -1, -1, "holstered"),
+                  ("weapon_hegrenade", "Grenade", -1, -1, "holstered"))
+    assert duel_chance(nades, full, 1, 1, True, True) > duel_chance(helmet, full, 1, 1, True, True)
+
+
+def test_players_running_into_each_other_count_before_they_see_each_other():
+    match, director = Match(), Director()
+    # P0 runs east, P5 runs west, 1700 apart, both looking north (not at each other)
+    for step in range(6):
+        now = step * 0.1
+        players = lineup(p0={"pos": (step * 25, 0, 0), "fwd": (0, 1, 0)}, p5={"pos": (1700 - step * 25, 0, 0), "fwd": (0, 1, 0)})
+        director.feed(match.update(post(players), now), match)
+    _, ratings = rate(match, 0.5, director=director)
+    parts = {r.steamid: r.parts for r in ratings}
+    assert "contact" in parts[sid(0)] and "contact" in parts[sid(5)]
+    still = Match()
+    still.update(post(lineup(p0={"pos": (0, 0, 0), "fwd": (0, 1, 0)}, p5={"pos": (1500, 0, 0), "fwd": (0, 1, 0)})), 0.0)
+    _, ratings = rate(still, 0.1)
+    assert all("contact" not in r.parts for r in ratings)

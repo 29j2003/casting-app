@@ -5,7 +5,8 @@ Each player's rating = (base + decaying event score + situational score) × impo
 * Event score: things that just happened (kill, multi-kill, trade, clutch kill, damage taken, shots). Each adds
   a boost that fades with a half-life – slowly while the player is still in a fight, fast otherwise.
 * Situational score: recomputed every tick from what is true right now – clutch, duels (with an estimate of
-  who wins: health, armor, weapon, form, who has whom in view), flanks, an enemy holding the angle a clutcher
+  who wins: weapons at this distance, bullets left, reloading, secondary, health, armor, helmet, grenades,
+  flashed, running, form, who has whom in view), players running into each other (looking 0.5 s ahead), flanks, an enemy holding the angle a clutcher
   walks into, plant/defuse, pushes.
 * Importance: the producer's slider per player and per team (0–200 %) times the form from the match data;
   how much the form counts is a setting ("data_mix").
@@ -26,7 +27,7 @@ AlexNB01/cs2-observer-toolkit (MIT License, Copyright (c) 2026 AlexNB01); the co
 import math
 from dataclasses import dataclass, field
 
-from .game import Event, Match, Player, approaching, distance, facing
+from .game import STRONG_PISTOLS, WEAPON_STRENGTH, Event, Match, Player, approaching, distance, facing
 
 # All tuning values in one place (game units, seconds, points).
 TUNING = {
@@ -45,6 +46,8 @@ TUNING = {
     "half_life_fight": 5.0, "half_life_near": 3.0, "half_life_idle": 2.0,
     "clutch": 300.0, "clutch_per_enemy": 25.0,
     "duel": 120.0, "duel_cap": 200.0, "duel_angle": 35.0,
+    # looking ahead: where players will be in a moment – cut a bit before contact, not at the first shot
+    "lookahead": 0.5, "closing_min": 40.0, "contact": 0.6, "contact_cap": 120.0,
     "flank": 45.0, "proximity": 10.0, "proximity_range": 1200.0,
     # standoff: two players only "looking" at each other (often through a wall) lose value without shots or hits
     "standoff_grace": 2.5, "standoff_half_life": 2.0, "standoff_floor": 0.15,
@@ -52,8 +55,8 @@ TUNING = {
     "plant": 150.0, "defuse": 200.0, "stop_defuse": 260.0, "stop_defuse_range": 2500.0,
     "push": 30.0, "push_carrier": 80.0, "push_radius": 700.0, "push_speed": 130.0,
     "flashed_factor": 0.4,       # a flashed player's view is white – show someone else
-    "dwell": 2.5, "dwell_fast": 1.4, "dwell_calm": 4.0,
-    "margin_factor": 1.25, "margin": 25.0,
+    "dwell": 2.0, "dwell_fast": 1.4, "dwell_calm": 3.5,
+    "margin_factor": 1.2, "margin": 20.0,
     "jump": 250.0, "jump_min": 1.0,
     "kill_hold": 1.2,            # the shown player just killed: stay at least this long
     "dead_switch_gap": 0.15,     # wait this long between commands while the camera is on a dead player
@@ -101,20 +104,63 @@ def form(player: Player, match: Match) -> float:
     return max(0.75, min(1.3, 1 + (rating - 1) * 0.5 * confidence))
 
 
-def duel_chance(a: Player, b: Player, form_a: float, form_b: float, a_sees_b: bool, b_sees_a: bool) -> float:
-    """Rough chance that `a` wins a duel against `b` (0..1): health, armor, weapon, form, who has whom in view."""
-    def strength(p: Player, p_form: float, sees: bool, seen: bool) -> float:
-        armor = 1.0 if p.armor > 0 else 0.85
-        if p.helmet:
-            armor += 0.05
-        value = p.weapon_strength * (max(1, p.health) / 100) ** 0.6 * armor * p_form
+DUEL_GRENADES = {"weapon_flashbang", "weapon_hegrenade", "weapon_molotov", "weapon_incgrenade"}
+ONE_TAP = {"Rifle", "SniperRifle"}          # without a helmet one shot to the head is enough
+
+
+def weapon_power(name: str, kind: str, gap: float) -> float:
+    """How good a weapon is at this distance (AWP far, shotgun and SMG close)."""
+    value = STRONG_PISTOLS.get(name, WEAPON_STRENGTH.get(kind, 0.5))
+    if kind == "SniperRifle":
+        value *= 0.7 if gap < 400 else 1.1 if gap > 1200 else 1.0
+    elif kind == "Submachine Gun":
+        value *= 1.2 if gap < 600 else 0.8 if gap > 1300 else 1.0
+    elif kind == "Shotgun":
+        value *= 1.6 if gap < 350 else 0.5 if gap > 800 else 1.0
+    elif kind == "Pistol":
+        value *= 1.2 if gap < 400 else 0.8 if gap > 1200 else 1.0
+    return value
+
+
+def fighting_power(player: Player, gap: float) -> float:
+    """The best a player can shoot with right now: bullets left, reloading, or switching to the secondary."""
+    values = []
+    for weapon in player.guns():
+        active = weapon.state in ("active", "reloading")
+        value = weapon_power(weapon.name, weapon.type, gap)
+        if weapon.clip == 0:
+            value *= 0.15 if active else 0.0                 # empty magazine
+        elif weapon.clip_max > 5 and 0 < weapon.clip <= max(2, weapon.clip_max // 10):
+            value *= 0.6                                     # nearly empty
+        if weapon.state == "reloading":
+            value *= 0.3
+        if not active:
+            value *= 0.8                                     # needs a moment to switch
+        values.append(value)
+    if values:
+        return max(values)
+    return weapon_power(player.weapon, player.weapon_type, gap) if player.weapon_type else 0.3
+
+
+def duel_chance(a: Player, b: Player, form_a: float, form_b: float, a_sees_b: bool, b_sees_a: bool,
+                gap: float = 1000.0) -> float:
+    """Rough chance that `a` wins a duel against `b` (0..1): weapons at this distance, bullets left, reloading,
+    secondary, health, armor and helmet, grenades, flashed, running, form, and who has whom in view."""
+    def strength(p: Player, enemy: Player, p_form: float, sees: bool, seen: bool) -> float:
+        value = fighting_power(p, gap) * (max(1, p.health) / 100) ** 0.6 * p_form
+        value *= 1.0 if p.armor > 0 else 0.85
+        if not p.helmet and enemy.weapon_type in ONE_TAP:
+            value *= 0.9
+        value *= 1 + 0.04 * min(3, sum(1 for name in p.grenades if name in DUEL_GRENADES))
         if sees and not seen:
             value *= 1.8                   # behind or beside the enemy: big advantage
         if p.flashed > 150:
             value *= 0.3
+        if p.speed() > 210:
+            value *= 0.9                   # running: inaccurate
         return value
-    sa = strength(a, form_a, a_sees_b, b_sees_a)
-    sb = strength(b, form_b, b_sees_a, a_sees_b)
+    sa = strength(a, b, form_a, a_sees_b, b_sees_a)
+    sb = strength(b, a, form_b, b_sees_a, a_sees_b)
     return sa / (sa + sb) if sa + sb > 0 else 0.5
 
 
@@ -239,13 +285,15 @@ class Director:
 
     # --- situation ---
 
-    def _standoff(self, player: Player, enemy: Player, now: float) -> float:
-        """1.0 while a duel is fresh or someone shoots/gets hit; falls off while they only look at each other."""
+    def _standoff(self, player: Player, enemy: Player, now: float, closing: bool = False) -> float:
+        """1.0 while a duel is fresh, someone shoots/gets hit or they close in; falls off while they only look."""
         t = self.tuning
         pair = (min(player.steamid, enemy.steamid), max(player.steamid, enemy.steamid))
         self._pairs_seen.add(pair)
         start = self.pair_since.setdefault(pair, now)
         latest = max(start, self.last_action.get(player.steamid, -math.inf), self.last_action.get(enemy.steamid, -math.inf))
+        if closing:
+            self.pair_since[pair] = latest = now
         quiet = now - latest - t["standoff_grace"]
         if quiet <= 0:
             return 1.0
@@ -267,28 +315,39 @@ class Director:
         if len(team_alive) == 1 and enemies:
             add("clutch", t["clutch"] + t["clutch_per_enemy"] * len(enemies), f"1v{len(enemies)}")
 
-        duel_points = 0.0
-        duel_detail = ""
-        best_duel = 0.0
+        duel_points = contact_points = 0.0
+        duel_detail = contact_detail = ""
+        best_duel = best_contact = 0.0
         for enemy in enemies:
             if not (player.position and enemy.position):
                 continue
             gap = distance(player.position, enemy.position)
+            ahead = distance(player.position_in(t["lookahead"]), enemy.position_in(t["lookahead"]))
+            closing = gap - ahead >= t["closing_min"]
+            near = min(gap, ahead)               # moving towards each other: count the distance of a moment later
             reach = max(player.engage_range, enemy.engage_range)
-            if gap < t["proximity_range"]:
-                add("proximity", t["proximity"] * (1 - gap / t["proximity_range"]))
-            if gap > reach:
+            if near < t["proximity_range"]:
+                add("proximity", t["proximity"] * (1 - near / t["proximity_range"]))
+            if near > reach:
                 continue
             sees = facing(player, enemy, t["duel_angle"])
             seen = facing(enemy, player, t["duel_angle"])
-            closeness = 1 - gap / reach
-            if sees or seen:
-                closeness *= self._standoff(player, enemy, now)
-                chance = duel_chance(player, enemy, forms.get(player.steamid, 1.0), forms.get(enemy.steamid, 1.0), sees, seen)
+            closeness = 1 - near / reach
+            if sees or seen or closing:
+                closeness *= self._standoff(player, enemy, now, closing)
+                chance = duel_chance(player, enemy, forms.get(player.steamid, 1.0), forms.get(enemy.steamid, 1.0),
+                                     sees, seen, near)
                 points = t["duel"] * closeness * chance
-                duel_points += points
-                if points > best_duel:
-                    best_duel, duel_detail = points, enemy.name
+                label = f"{enemy.name} ({round(chance * 100)} %)"
+                if sees or seen:
+                    duel_points += points
+                    if points > best_duel:
+                        best_duel, duel_detail = points, label
+                else:                            # not in view yet, but running into each other
+                    points *= t["contact"]
+                    contact_points += points
+                    if points > best_contact:
+                        best_contact, contact_detail = points, label
             if sees and not seen and gap <= player.engage_range:
                 add("flank", t["flank"] * closeness, enemy.name)
             # an enemy clutcher walks into the angle this player holds
@@ -298,6 +357,8 @@ class Director:
                 add("angle", t["clutch"] + t["clutch_per_enemy"] * enemies_of_clutcher + t["angle_hold"], enemy.name)
         if duel_points:
             add("duel", min(t["duel_cap"], duel_points), duel_detail)
+        if contact_points:
+            add("contact", min(t["contact_cap"], contact_points), contact_detail)
 
         # bomb
         if match.bomb_state == "planting" and match.bomb_player == player.steamid:

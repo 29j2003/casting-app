@@ -63,6 +63,19 @@ class Event:
 
 
 @dataclass
+class Weapon:
+    """One weapon in a player's inventory."""
+    name: str                          # e.g. "weapon_ak47", "weapon_flashbang"
+    type: str                          # "Rifle", "SniperRifle", "Pistol", "Grenade", "Knife", "C4", ...
+    clip: int = -1                     # bullets in the magazine (-1: no magazine / unknown)
+    clip_max: int = -1
+    state: str = ""                    # "active", "holstered", "reloading"
+
+
+GUN_TYPES = {"SniperRifle", "Rifle", "Machine Gun", "Submachine Gun", "Shotgun", "Pistol"}
+
+
+@dataclass
 class Player:
     """One player as seen in the latest snapshot plus statistics summed over the map."""
     steamid: str
@@ -78,6 +91,9 @@ class Player:
     weapon: str = ""                   # active weapon, e.g. "weapon_ak47"
     weapon_type: str = ""              # "Rifle", "SniperRifle", "Pistol", ...
     clip: int = -1                     # bullets in the active weapon's magazine (-1: unknown)
+    clip_max: int = -1
+    reloading: bool = False
+    weapons: list = field(default_factory=list)   # all Weapon objects (primary, secondary, grenades, …)
     kills: int = 0
     deaths: int = 0
     assists: int = 0
@@ -100,6 +116,32 @@ class Player:
     @property
     def weapon_strength(self) -> float:
         return STRONG_PISTOLS.get(self.weapon, WEAPON_STRENGTH.get(self.weapon_type, 0.5))
+
+    @property
+    def grenades(self) -> list[str]:
+        return [w.name for w in self.weapons if w.type == "Grenade"]
+
+    def guns(self) -> list[Weapon]:
+        return [w for w in self.weapons if w.type in GUN_TYPES]
+
+    def velocity(self) -> Vector:
+        """Movement over the last ~0.5 s in units per second (0 if unknown)."""
+        if len(self.trail) < 2:
+            return (0.0, 0.0, 0.0)
+        end_time, end = self.trail[-1]
+        for start_time, start in self.trail:
+            if end_time - start_time <= 0.6:
+                elapsed = end_time - start_time
+                if elapsed < 0.05:
+                    return (0.0, 0.0, 0.0)
+                return tuple((e - s) / elapsed for e, s in zip(end, start))
+        return (0.0, 0.0, 0.0)
+
+    def position_in(self, seconds: float) -> Vector | None:
+        """Where the player will be in `seconds` if he keeps moving like now."""
+        if not self.position:
+            return None
+        return tuple(p + v * seconds for p, v in zip(self.position, self.velocity()))
 
     def speed(self) -> float:
         """Speed over the last ~0.5 s in units per second (0 if unknown)."""
@@ -234,13 +276,19 @@ class Match:
         player.assists = _int(stats.get("assists"))
         self._count_damage(player, _int(state.get("round_totaldmg")))
 
-        player.weapon, player.weapon_type, player.clip = "", "", -1
+        player.weapon, player.weapon_type, player.clip, player.clip_max, player.reloading = "", "", -1, -1, False
+        player.weapons = []
         weapons = data.get("weapons") if isinstance(data.get("weapons"), dict) else {}
         for weapon in weapons.values():
-            if isinstance(weapon, dict) and weapon.get("state") == "active":
-                player.weapon = str(weapon.get("name") or "")
-                player.weapon_type = str(weapon.get("type") or "")
-                player.clip = _int(weapon.get("ammo_clip"), -1)
+            if not isinstance(weapon, dict):
+                continue
+            item = Weapon(str(weapon.get("name") or "")[:40], str(weapon.get("type") or "")[:20],
+                          _int(weapon.get("ammo_clip"), -1), _int(weapon.get("ammo_clip_max"), -1),
+                          str(weapon.get("state") or "")[:20])
+            player.weapons.append(item)
+            if item.state in ("active", "reloading"):
+                player.weapon, player.weapon_type = item.name, item.type
+                player.clip, player.clip_max, player.reloading = item.clip, item.clip_max, item.state == "reloading"
 
         position = parse_vector(data.get("position"))
         player.position = position

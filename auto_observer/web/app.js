@@ -4,7 +4,7 @@
 const $ = (id) => document.getElementById(id);
 const REASONS = {
   kill: () => "Kill", multi_kill: (d) => `${d} Kills`, fight: (d) => (d ? `Im Gefecht mit ${d}` : "Im Gefecht"), shots: (d) => (d ? `Schießt auf ${d}` : "Schießt"),
-  clutch: (d) => `Clutch ${d}`, duel: (d) => `Duell gegen ${d}`, flank: (d) => `Flanke auf ${d}`,
+  clutch: (d) => `Clutch ${d}`, duel: (d) => `Duell gegen ${d}`, flank: (d) => `Flanke auf ${d}`, contact: (d) => `Läuft auf ${d} zu`,
   angle: (d) => `Hält den Winkel auf ${d}`, plant: () => "Legt die Bombe", defuse: () => "Entschärft",
   stop_defuse: () => "Kann das Entschärfen stoppen", push: () => "Push", proximity: () => "Gegner in der Nähe",
   nade: (d) => `Wirft ${NADES[d] || "eine Granate"}`,

@@ -684,10 +684,12 @@ nicht mit (`pyproject.toml` nimmt nur `casting_app*`). Läuft die Regie gut, kan
 
 **Bewertung** (`director.py`): Punkte = (Grundwert + abklingende Ereignis-Punkte + Lage-Punkte) × Wichtigkeit.
 Ereignisse: Kill, Multi-Kill, Trade, Clutch-Kill, Schaden bekommen, Schüsse (mehr, wenn auf einen Gegner gezielt).
-Lage: Clutch, Duelle mit geschätzter Gewinnchance (Leben, Rüstung, Waffe, Form, wer wen im Blick hat), Flanke,
+Lage: Clutch, Duelle mit geschätzter Gewinnchance (Waffe passend zur Entfernung – AWP weit, Schrotflinte/SMG nah –,
+Kugeln im Magazin, Nachladen, Zweitwaffe, Leben, Rüstung, Helm gegen Gewehre, Granaten, geblendet, Rennen, Form, wer
+wen im Blick hat), Spieler, die aufeinander zulaufen (0,5 s vorausgeschaut: „Läuft auf … zu“), Flanke,
 „hält den Winkel“ auf einen Clutcher, der auf ihn zuläuft, Bombe legen/entschärfen (und der T, der das Entschärfen
 stoppen kann), Pushes. Wichtigkeit = Regler Spieler × Regler Team × Form^Einfluss (Form aus K/D/ADR, ab Runde 8 voll).
-Wechsel: Mindestzeit je nach Tempo (1,4 s bei schnellen Kills, 4 s im ruhigen Rundenende), deutlicher Vorsprung nötig,
+Wechsel: Mindestzeit je nach Tempo (1,4 s bei schnellen Kills, 2 s normal, 3,5 s im ruhigen Rundenende), deutlicher Vorsprung nötig,
 sofort bei viel größerem Moment; nach einem Kill des gezeigten Spielers mindestens 1,2 s bleiben; stirbt der gezeigte
 Spieler, sofort (schon beim Eintreffen der Daten) auf den Schützen. „Patt“: zwei Spieler, die sich nur ansehen (oft
 durch eine Wand), verlieren nach 2,5 s ohne Schuss oder Treffer an Wert; wer getroffen wird, macht den Gegner, der in

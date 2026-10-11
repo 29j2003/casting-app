@@ -645,32 +645,63 @@ document.querySelectorAll("[data-gfx-new]").forEach(b => b.onclick = () => {
    gemerkt in ui.panels (diese Oberfläche, nicht Teil der Sendung). Die Felder bedienen dieselben Daten wie
    Match und Setup (Z.veto, Z.teams, Z.timer, Z.texts) – jede Änderung zeichnet beide Stellen neu. */
 const PANEL_FIELDS = [["veto", "Map-Veto"], ["over", "Über dem Spiel"], ["score", "Spielstand"], ["timer", "Timer"], ["series", "Serie"],
-  ["texts", "Texte im Overlay"], ["sponsor", "Sponsoren"], ["ads", "Werbung"], ["slides", "Folien"], ["group", "Turnier"], ["note", "Notiz"]];
+  ["texts", "Texte im Overlay"], ["people", "Personen im Bild"], ["sponsor", "Sponsoren"], ["ads", "Werbung"], ["slides", "Folien"], ["group", "Turnier"], ["note", "Notiz"]];
 const PANEL_DEFAULTS = {
-  "intro": ["timer", "texts", "sponsor"], "cast-duo": ["timer", "texts", "note"], "cast-solo": ["timer", "texts", "note"],
-  "cast-duo-clips": ["note"], "cast-solo-clips": ["note"], "cast-duo-interview": ["series", "texts", "note"], "cast-solo-interview": ["series", "texts", "note"],
-  "cast-trio": ["timer", "texts", "note"], "cast-trio-host": ["timer", "texts", "note"], "cast-quad": ["series", "texts", "note"], "viewers": ["texts", "note"], "viewers-cast": ["texts", "note"], "teams": ["slides", "note"],
-  "map-veto": ["veto", "series"], "players": ["series", "note"], "series": ["series", "score"], "sponsors": ["sponsor", "ads"], "ads": ["ads", "note"],
-  "ingame": ["over", "score", "series", "note"], "pause": ["timer", "texts", "sponsor", "ads"], "end": ["series", "texts", "sponsor"],
-  "scoreboard": ["score", "series"], "team-a": ["score", "series"], "team-b": ["score", "series"], "h2h": ["score", "series"], "bracket": ["group", "note"],
+  "intro": ["timer", "texts", "sponsor"], "cast-duo": ["texts", "note"], "cast-solo": ["texts", "note"],
+  "cast-duo-clips": ["note"], "cast-solo-clips": ["note"], "cast-duo-interview": ["series", "people", "note"], "cast-solo-interview": ["series", "people", "note"],
+  "cast-trio": ["texts", "note"], "cast-trio-host": ["texts", "note"], "cast-quad": ["series", "people", "note"], "viewers": ["people", "note"], "viewers-cast": ["people", "note"], "teams": ["slides", "note"],
+  "map-veto": ["veto", "series"], "players": ["series", "note"], "series": ["series"], "sponsors": ["sponsor", "ads"], "ads": ["ads", "note"],
+  "ingame": ["over", "series", "note"], "pause": ["timer", "texts", "sponsor", "ads"], "end": ["score", "series", "texts"],
+  "scoreboard": ["series", "note"], "team-a": ["series", "note"], "team-b": ["series", "note"], "h2h": ["series", "note"], "bracket": ["group", "note"],
   "dach-pause": ["ads", "note"], "dach-content": ["ads", "note"], "dach-owncontent": ["ads", "note"]
 };
-// welche Felder bei welcher Szene überhaupt Sinn ergeben (das „Felder"-Menü bietet nur diese an)
+// Welche Felder bei welcher Szene Sinn ergeben: nur, was die Szene wirklich zeigt. Die App liest dazu beim Start jede
+// Szenen-Vorlage (Teile data-part, Texte data-t) – Timer nur, wo ein Timer im Bild ist, Texte und Personen nur die der
+// Szene. Die offiziellen DACH-Seiten zeigen nichts davon aus der App (ihren Countdown stellt DACH CS selbst ein).
+// PANEL_SCENES gilt für Felder ohne Vorlagen-Bezug und solange die Vorlagen noch laden.
 const CAST_SCENES = ["cast-duo", "cast-solo", "cast-duo-clips", "cast-solo-clips", "cast-duo-interview", "cast-solo-interview",
   "cast-trio", "cast-trio-host", "cast-quad", "viewers", "viewers-cast"];
 const PANEL_SCENES = {
-  veto: ["map-veto", "series", "intro", "pause", ...CAST_SCENES],
+  veto: ["map-veto", "series"],
   over: ["ingame"],
-  score: ["ingame", "series", "end", "pause", ...LIVE_SCENES, ...CAST_SCENES],
-  timer: ["intro", "pause", ...CAST_SCENES],
+  score: ["end"],
+  timer: ["intro", "pause"],
   series: ["map-veto", "series", "end", "ingame", "pause", "players", "teams", ...LIVE_SCENES, ...CAST_SCENES],
   texts: ["intro", "map-veto", "players", "teams", "series", "sponsors", "pause", "end", ...CAST_SCENES],
+  people: CAST_SCENES,
   sponsor: ["intro", "cast-duo", "cast-solo", "cast-duo-interview", "cast-solo-interview", "cast-trio", "cast-trio-host", "cast-quad",
     "sponsors", "ingame", "pause", "end"],
   ads: ["intro", "sponsors", "ads", "pause", "end", "dach-*"],
   slides: ["teams"], group: ["bracket"], note: ["*"]
 };
-const panelAllowed = (k, f) => (PANEL_SCENES[f] || []).some(x => x === "*" || x === k || (x.endsWith("*") && k.startsWith(x.slice(0, -1))));
+// was jede Szene zeigt (aus ihrer Vorlage); die Felder unten fragen das ab
+const sceneShows = {};
+const PANEL_TEXTS = ["texts.title", "texts.pauseTitle", "texts.pauseBelow", "texts.endTitle", "texts.endBelow", "texts.sponsorsTitle", "texts.viewersTitle"];
+const PANEL_NEEDS = {
+  veto: s => s.parts.has("veto") || s.parts.has("series-cards"),
+  score: s => s.score || (s.parts.has("matchup") && !!Z.teams.result),        // Match-Up zeigt den Stand nur mit „Ergebnis statt VS“
+  timer: s => s.parts.has("timer"),
+  texts: s => PANEL_TEXTS.some(t => s.texts.has(t)),
+  people: s => [...s.texts].some(t => /^caster\.\w+\.name$/.test(t)),
+  sponsor: s => s.parts.has("sponsor") || s.parts.has("sponsor-grid"),
+  slides: s => s.parts.has("ti-slides"), group: s => s.parts.has("tournament")
+};
+async function sceneShowsLoad() {
+  await Promise.all(OVERLAY_SCENES.map(async ([k]) => {
+    try {
+      const r = await fetch(encodeURIComponent(k) + ".html", { cache: "no-cache" }); if (!r.ok) return;
+      const d = new DOMParser().parseFromString(await r.text(), "text/html");
+      sceneShows[k] = { parts: new Set([...d.querySelectorAll("[data-part]")].map(e => e.dataset.part)),
+        texts: new Set([...d.querySelectorAll("[data-t]")].map(e => e.dataset.t)), score: !!d.querySelector("[data-team-score]") };
+    } catch (err) {}
+  }));
+  sceneToolsDraw(); panelTableDraw();
+}
+const panelAllowed = (k, f) => {
+  const s = sceneShows[k];
+  if (s && PANEL_NEEDS[f]) return PANEL_NEEDS[f](s);
+  return (PANEL_SCENES[f] || []).some(x => x === "*" || x === k || (x.endsWith("*") && k.startsWith(x.slice(0, -1))));
+};
 const panelFieldsFor = k => PANEL_FIELDS.filter(([f]) => panelAllowed(k, f));
 let sceneToolsShown = "";
 const panelList = k => ((ui.panels && ui.panels[k]) || PANEL_DEFAULTS[k] || []).filter(f => panelAllowed(k, f));
@@ -690,6 +721,8 @@ function sceneToolsDraw() {
   PANEL_FIELDS.forEach(([f]) => { const e = box.querySelector(`[data-panel="${f}"]`); e.hidden = !list.includes(f); });
   list.forEach(f => { const e = box.querySelector(`[data-panel="${f}"]`); if (e) box.appendChild(e); });   // Reihenfolge wie gewählt
   if (list.includes("veto")) vetoDraw();
+  const shows = sceneShows[k];
+  box.querySelectorAll("[data-shows]").forEach(e => { e.hidden = shows ? !shows.texts.has(e.dataset.shows) : e.dataset.shows !== "texts.title"; });
   panelValues();
   $("pNote").value = (ui.notes || {})[k] || "";
   matchDedupe();
@@ -699,9 +732,12 @@ function sceneToolsDraw() {
 function matchDedupe() {
   const d = document.querySelector('[data-area="scene-tools"]'), list = panelList(sceneNow());
   const panel = f => !!d && d.open && !d.hidden && !!d.offsetParent && list.includes(f);
-  $("mbarTimerRow").hidden = panel("timer");
+  // der Timer nur, wo einer im Bild ist (DACH-Seiten: Countdown von DACH CS selbst)
+  const k = sceneNow(), shows = sceneShows[k];
+  $("mbarTimerRow").hidden = panel("timer") || k.startsWith("dach-") || (!!shows && !shows.parts.has("timer"));
   $("mbarScoreLine").hidden = panel("score");
   $("mbarSeries").hidden = panel("series");
+  $("mbarAllInPanel").hidden = !($("mbarScoreLine").hidden && $("mbarSeries").hidden && $("mbarTimerRow").hidden);
 }
 document.querySelector('[data-area="scene-tools"]').addEventListener("toggle", matchDedupe);
 // Werte der Felder: Spielstand, Timer, Serie, Sponsoren (aufgerufen von mbarDraw und beim Szenenwechsel)
@@ -943,3 +979,4 @@ setInterval(() => {                                           // jeder Weg zähl
   const before = JSON.stringify([Z.background.videos, Z.background.play]);
   bgApply(k); if (JSON.stringify([Z.background.videos, Z.background.play]) !== before) send();
 }, 250);
+sceneShowsLoad();

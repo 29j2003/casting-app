@@ -273,11 +273,19 @@ Neue Folie: Markup in `tools/generate_scenes.py` (`ti_*`), Schlüssel in `slides
 in `teamIntro()`), ihre Kästen kommen mit der `enter`-Animation nacheinander (Verzögerung `--d` aus der Vorlage); der Teamname
 in der Kopfzeile blendet ein (`fade-in`).
 
-### Felder im Szenen-Panel (`PANEL_SCENES`, `web/control/05-live.js`)
+### Felder im Szenen-Panel (`web/control/05-live.js`)
 
-`PANEL_DEFAULTS` sind die Vorgaben je Szene, `PANEL_SCENES` legt fest, bei welchen Szenen ein Feld überhaupt angeboten wird
-(`"*"` = überall, `"dach-*"` = alle DACH-Seiten). Das „Felder“-Menü, die Tabelle unter Setup und `panelList()` filtern danach –
-auch früher gespeicherte Auswahlen (`ui.panels`). Neues Feld → in `PANEL_FIELDS`, `PANEL_SCENES` und ggf. `PANEL_DEFAULTS`.
+Ein Feld steht nur bei Szenen, die zeigen, was es steuert. `sceneShowsLoad()` liest beim Start jede Szenen-Vorlage
+(`<scene>.html`): Teile (`data-part`), Texte (`data-t`) und ob ein Spielstand drin ist (`data-team-score`) → `sceneShows`.
+`PANEL_NEEDS` leitet daraus ab: Timer ↔ Teil `timer`, Texte ↔ Titel/Pause-/Ende-Texte, „Personen im Bild“ ↔
+`caster.<slot>.name`, Sponsoren ↔ `sponsor`/`sponsor-grid`, Veto ↔ `veto`/`series-cards`, Spielstand ↔ `data-team-score`
+oder Match-Up mit „Ergebnis statt VS“, Folien ↔ `ti-slides`, Turnier ↔ `tournament`. Innerhalb von Texte/Personen zeigt
+`[data-shows]` nur die Eingaben, deren Text die Szene hat. Felder ohne Vorlagen-Bezug (Serie, Werbung, Über dem Spiel,
+Notiz) und die DACH-Seiten (keine Vorlage; ihr Countdown kommt von DACH CS) stehen in `PANEL_SCENES` – das gilt auch,
+solange die Vorlagen noch laden. Der Bereich „Match“ zeigt den Timer ebenfalls nur bei Szenen mit Timer.
+`PANEL_DEFAULTS` sind die Vorgaben je Szene; das „Felder“-Menü, die Tabelle unter Setup und `panelList()` filtern nach
+`panelAllowed()` – auch früher gespeicherte Auswahlen (`ui.panels`). Neues Feld → `PANEL_FIELDS`, `PANEL_NEEDS` oder
+`PANEL_SCENES`, ggf. `PANEL_DEFAULTS`; neuer Text in einer Szene → Eingabe mit `data-shows` im Feld „Texte“.
 
 ### Turnier im Overlay: Gruppe und hervorgehobenes Team
 

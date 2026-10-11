@@ -178,6 +178,31 @@ def test_overlay_switches_scenes_without_errors(server, browser):
     assert control_errors == [] and overlay_errors == []
 
 
+def test_wipe_leaves_nothing_behind(server, browser):
+    """Wipe: the outgoing part is fully gone at the end and the incoming part fully hidden at the start.
+
+    2.23.0 clipped with calc(100% + -140px) – a 140 px strip of every box stayed on screen (video from 11.10.).
+    Probes hit testing, which follows clip-path, inside the box and in its frame/shadow margin."""
+    page = browser.new_page(viewport={"width": 1920, "height": 1080})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/overlay.html")
+    page.wait_for_timeout(800)
+    hits = page.evaluate("""() => {
+      const { OUT, IN } = window.__transitionFrames, box = document.createElement('div');
+      box.style.cssText = 'position:fixed;left:600px;top:400px;width:500px;height:150px;z-index:99999;pointer-events:auto';
+      box.innerHTML = '<i style="position:absolute;inset:-50px;pointer-events:auto"></i>';   // ragt hinaus wie Rahmen und Schild
+      document.body.appendChild(box);
+      const probe = clip => { box.style.clipPath = clip; let n = 0;
+        for (let x = 545; x <= 1155; x += 10) for (let y = 345; y <= 605; y += 10) if (box.contains(document.elementFromPoint(x, y))) n++;
+        return n; };
+      const r = { full: probe('none'), outEnd: probe(OUT.wipe(1).at(-1).clipPath), inStart: probe(IN.wipe(1)[0].clipPath),
+                  inEnd: probe(IN.wipe(1).at(-1).clipPath) };
+      box.remove(); return r; }""")
+    assert hits["full"] > 1000 and hits["inEnd"] == hits["full"]     # at rest: box with its frame margin fully visible
+    assert hits["outEnd"] == 0 and hits["inStart"] == 0
+    assert errors == []
+
+
 def test_overlay_language_is_independent_of_the_app_language(server, browser):
     """Overlay language English with a German app: fixed overlay texts switch, own texts stay."""
     control, overlay = browser.new_page(), browser.new_page(viewport={"width": 1920, "height": 1080})

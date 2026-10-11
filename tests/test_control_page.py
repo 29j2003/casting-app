@@ -366,10 +366,15 @@ def test_map_veto_is_played_from_live_while_its_scene_runs(server, browser):
     page.evaluate("sceneSwitch('intro')")
     page.wait_for_timeout(400)
     assert page.evaluate("$('sceneToolsVeto').hidden")
-    page.evaluate("$('panelFieldsButton').click()")                  # „Felder": Veto auch bei Intro zeigen
+    page.evaluate("$('panelFieldsButton').click()")                  # Intro shows no veto – the menu does not offer it
+    assert page.evaluate("!document.querySelector('#panelMenu [data-f=veto]')")
+    page.evaluate("$('panelFieldsButton').click(); sceneSwitch('series')")
+    page.wait_for_timeout(400)
+    assert page.evaluate("$('sceneToolsVeto').hidden")
+    page.evaluate("$('panelFieldsButton').click()")                  # „Felder": Veto auch bei Serie zeigen
     page.evaluate("document.querySelector('#panelMenu [data-f=veto]').click()")
     assert not page.evaluate("$('sceneToolsVeto').hidden")
-    assert page.evaluate("ui.panels.intro").count("veto") == 1
+    assert page.evaluate("ui.panels.series").count("veto") == 1
     page.evaluate("$('panelDefault').click()")                         # zurück auf die Vorgabe
     assert page.evaluate("$('sceneToolsVeto').hidden")
     assert errors == []
@@ -385,18 +390,21 @@ def test_scene_panel_shows_the_fields_of_each_scene(server, browser):
     shown = "[...document.querySelectorAll('#panelFields [data-panel]')].filter(e => !e.hidden).map(e => e.dataset.panel)"
     page.evaluate("tabs('live'); sceneSwitch('ingame')")
     page.wait_for_timeout(400)
-    assert page.evaluate(shown) == ["over", "score", "series", "note"]
+    assert page.evaluate(shown) == ["over", "series", "note"]
     # „Über dem Spiel“: Scoreboard über dem Spielbild ein und wieder aus, ohne die Szene zu wechseln
     page.evaluate("document.querySelector('#pOver [data-over=scoreboard]').click()")
     assert page.evaluate("[Z.broadcast.scene, Z.broadcast.overGame.scene]") == ["ingame", "scoreboard"]
     assert page.evaluate("document.querySelector('#pOver [data-over=scoreboard]').getAttribute('aria-pressed')") == "true"
     page.evaluate("document.querySelector('#pOver [data-over=scoreboard]').click()")
     assert page.evaluate("Z.broadcast.overGame") is None
+    page.fill("#pNote", "Timeout Team B noch 1x")
+    page.evaluate("sceneSwitch('end')")                                # the end scene shows the score
+    page.wait_for_timeout(400)
+    assert page.evaluate(shown) == ["score", "series", "texts"]
     before = page.evaluate("Z.teams.a.score || 0")
     page.evaluate("$('pPlusA').click()")
     assert page.evaluate("Z.teams.a.score") == before + 1
     assert page.text_content("#mbarScoreA") == page.inner_text("#pScoreA") == str(before + 1)
-    page.fill("#pNote", "Timeout Team B noch 1x")
     page.evaluate("sceneSwitch('intro')")
     page.wait_for_timeout(400)
     assert page.evaluate(shown) == ["timer", "texts", "sponsor"]
@@ -408,6 +416,36 @@ def test_scene_panel_shows_the_fields_of_each_scene(server, browser):
     page.wait_for_timeout(400)
     assert page.input_value("#pNote") == "Timeout Team B noch 1x"
     assert "Timeout" not in page.evaluate("JSON.stringify(Z)")
+    assert errors == []
+
+
+def test_panel_offers_only_what_the_scene_shows(server, browser):
+    """2.25: the fields follow the scene templates – no timer where none is in the picture (Cast Solo, 4 people), the
+    people of exactly that scene, the texts of exactly that scene (pause title only in Pause); the match bar hides its
+    timer there too."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_function("Object.keys(sceneShows).length >= 20", timeout=5000)
+    offered = "panelFieldsFor(sceneNow()).map(x => x[0])"
+    visible = "sel => [...document.querySelectorAll(sel)].filter(e => !e.hidden && !e.closest('[hidden]')).map(e => e.dataset.shows)"
+    page.evaluate("tabs('live'); Z.teams.result = false; ui.panels = {}; sceneSwitch('cast-solo')")
+    page.wait_for_timeout(400)
+    assert "timer" not in page.evaluate(offered) and "people" in page.evaluate(offered)
+    assert page.evaluate("$('mbarTimerRow').hidden")
+    page.evaluate("ui.panels = { 'cast-quad': ['people', 'texts'] }; sceneSwitch('cast-quad')")
+    page.wait_for_timeout(400)
+    assert page.evaluate(visible, "[data-panel=people] [data-shows]") == ["caster.c1.name", "caster.c2.name", "caster.p3.name", "caster.p4.name"]
+    assert page.evaluate(visible, "[data-panel=texts] [data-shows]") == ["texts.title", "texts.title"]
+    page.evaluate("ui.panels = {}; sceneSwitch('pause')")
+    page.wait_for_timeout(400)
+    assert "timer" in page.evaluate(offered)
+    assert page.evaluate(visible, "[data-panel=texts] [data-shows]") == ["texts.title", "texts.title", "texts.pauseTitle", "texts.pauseBelow"]
+    assert "score" not in page.evaluate(offered)
+    page.evaluate("$('result').checked = true; $('result').onchange()")    # „Ergebnis statt VS“: the match-up shows the score
+    assert "score" in page.evaluate(offered)
+    page.evaluate("$('result').checked = false; $('result').onchange(); sceneSwitch('intro')")
+    page.wait_for_timeout(300)
     assert errors == []
 
 

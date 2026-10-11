@@ -103,6 +103,7 @@
           <div class="mbar-side right"><b class="mbar-name" id="mbarNameB"></b><div class="mbar-logo" id="mbarLogoB">TB</div></div>
         </div>
         <div class="mbar-series" id="mbarSeries"></div>
+        <span class="small" id="mbarAllInPanel" hidden>Spielstand, Serie und Timer stehen gerade im Panel der Szene.</span>
         <div class="mbar-row" id="mbarTimerRow"><span class="small" id="mbarTimerText">Start in</span><b class="mbar-time" id="mbarTimer">10:00</b>
           <button class="button main" id="mbarStart">Start</button><button class="button" id="mbarMinus1">− 1</button><button class="button" id="mbarPlus1">+ 1</button></div>
       </div>
@@ -140,8 +141,29 @@
           </section>
           <section class="panel-field" data-panel="texts" hidden>
             <h4>Texte im Overlay</h4>
-            <label>Großer Titel<input type="text" data-field="texts.title"></label>
-            <label>Lauftext – eine Meldung pro Zeile<textarea data-field="texts.ticker" data-kind="list" rows="3"></textarea></label>
+            <label data-shows="texts.title">Großer Titel<input type="text" data-field="texts.title"></label>
+            <label data-shows="texts.title">Lauftext – eine Meldung pro Zeile<textarea data-field="texts.ticker" data-kind="list" rows="3"></textarea></label>
+            <label data-shows="texts.pauseTitle">Pause – Titel<input type="text" data-field="texts.pauseTitle"></label>
+            <label data-shows="texts.pauseBelow">Pause – Unterzeile<input type="text" data-field="texts.pauseBelow"></label>
+            <label data-shows="texts.endTitle">Ende – Titel<input type="text" data-field="texts.endTitle"></label>
+            <label data-shows="texts.endBelow">Ende – Unterzeile<input type="text" data-field="texts.endBelow"></label>
+            <label data-shows="texts.sponsorsTitle">Sponsoren – Überschrift<input type="text" data-field="texts.sponsorsTitle"></label>
+            <label data-shows="texts.viewersTitle">Zuschauer – Überschrift<input type="text" data-field="texts.viewersTitle"></label>
+          </section>
+          <section class="panel-field" data-panel="people" hidden>
+            <h4>Personen im Bild <span class="small">Name und Zusatz – wie im Bild</span></h4>
+            <div class="line" data-shows="caster.c1.name"><label>Caster 1<input type="text" data-field="caster.c1.name"></label><label>Zusatz<input type="text" data-field="caster.c1.addition"></label></div>
+            <div class="line" data-shows="caster.c2.name"><label>Caster 2<input type="text" data-field="caster.c2.name"></label><label>Zusatz<input type="text" data-field="caster.c2.addition"></label></div>
+            <div class="line" data-shows="caster.c3.name"><label>Caster 3<input type="text" data-field="caster.c3.name"></label><label>Zusatz<input type="text" data-field="caster.c3.addition"></label></div>
+            <div class="line" data-shows="caster.p3.name"><label>Person 3<input type="text" data-field="caster.p3.name"></label><label>Zusatz<input type="text" data-field="caster.p3.addition"></label></div>
+            <div class="line" data-shows="caster.p4.name"><label>Person 4<input type="text" data-field="caster.p4.name"></label><label>Zusatz<input type="text" data-field="caster.p4.addition"></label></div>
+            <div class="line" data-shows="caster.guest.name"><label>Interview-Gast<input type="text" data-field="caster.guest.name"></label><label>Zusatz<input type="text" data-field="caster.guest.addition"></label></div>
+            <div class="line" data-shows="caster.v1.name"><label>Zuschauer 1<input type="text" data-field="caster.v1.name"></label><label>Zusatz<input type="text" data-field="caster.v1.addition"></label></div>
+            <div class="line" data-shows="caster.v2.name"><label>Zuschauer 2<input type="text" data-field="caster.v2.name"></label><label>Zusatz<input type="text" data-field="caster.v2.addition"></label></div>
+            <div class="line" data-shows="caster.v3.name"><label>Zuschauer 3<input type="text" data-field="caster.v3.name"></label><label>Zusatz<input type="text" data-field="caster.v3.addition"></label></div>
+            <div class="line" data-shows="caster.v4.name"><label>Zuschauer 4<input type="text" data-field="caster.v4.name"></label><label>Zusatz<input type="text" data-field="caster.v4.addition"></label></div>
+            <div class="line" data-shows="caster.v5.name"><label>Zuschauer 5<input type="text" data-field="caster.v5.name"></label><label>Zusatz<input type="text" data-field="caster.v5.addition"></label></div>
+            <div class="line" data-shows="caster.v6.name"><label>Zuschauer 6<input type="text" data-field="caster.v6.name"></label><label>Zusatz<input type="text" data-field="caster.v6.addition"></label></div>
           </section>
           <section class="panel-field" data-panel="ads" hidden>
             <h4>Werbung</h4>

@@ -114,7 +114,7 @@ function teamDraw(k) {
   minus.onclick = () => { t.score = Math.max(0, (t.score || 0) - 1); teamDraw(k); send(); };
   plus.onclick = () => { t.score = (t.score || 0) + 1; teamDraw(k); send(); };
 }
-$("result").onchange = () => { Z.teams.result = $("result").checked; send(); };
+$("result").onchange = () => { Z.teams.result = $("result").checked; send(); sceneToolsDraw(); panelTableDraw(); };   // Spielstand im Panel, wo das Match-Up ihn jetzt zeigt
 // Teams tauschen: alles, was zu einem Team gehört, wandert mit (Spieler, Werte der Teams-Vorstellung, Head-to-Head, Veto und Serie)
 $("swap").onclick = () => {
   const flip = o => { if (o && typeof o === "object") [o.a, o.b] = [o.b, o.a]; };

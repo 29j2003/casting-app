@@ -131,17 +131,21 @@ In the **Ingame** scene all positions avoid the game HUD (minimap, scoreboard, k
 
 ### Scene panel
 
-The panel shows what the scene on program needs right now – it changes with every scene and opens by itself:
+The panel shows what the scene on program needs right now – it changes with every scene and opens by itself. It only
+offers what that scene really shows: a timer only where a timer is in the picture (Intro, Pause), the people and texts
+of exactly that scene, the score only where it is visible (End, or the match-up with “Show the result instead of “VS””
+switched on). The official DACH CS pages get no timer from the app – DACH CS sets their countdown itself.
 
 | Scene | Fields (default) |
 |---|---|
-| Intro, Pause | Timer, texts in the overlay (title, ticker), sponsors |
-| Cast Solo/Duo | Timer, texts in the overlay, note |
+| Intro, Pause | Timer, texts in the overlay (title, ticker; Pause also its title and subtitle), sponsors |
+| Cast Solo/Duo/Trio | Texts in the overlay, note |
+| 4 people, Interview, Viewer cams | People in the picture (name and extra line), series (not for viewers), note |
 | Map-Veto | Map veto, series |
-| Ingame | Score, series, note |
-| Scoreboard, Team A/B, Head-to-Head | Score, series |
-| Bracket | Group (All · Group A · Group B …), note |
-| Interview, End | Series, texts in the overlay (End: sponsors) |
+| Ingame | Over the game, series, note |
+| Scoreboard, Team A/B, Head-to-Head | Series, note |
+| Bracket | Tournament (All · Group A · Group B …, highlight team), note |
+| End | Score, series, texts in the overlay (title and subtitle of the end) |
 
 * **Fields** (top of the panel): one switch per field – applies to the scene on program and is remembered. “Back to
   default” restores them. There is also the switch **“Panel opens when the scene changes”**.

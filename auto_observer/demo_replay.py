@@ -185,32 +185,47 @@ class GsiBuilder:
         }
 
 
-def evaluate(path: str, tuning: dict | None = None, only_round: int | None = None, weights: dict | None = None) -> dict:
-    """Run the director over one raw data file; returns the measurements (see module doc)."""
+def timeline(path: str) -> tuple[dict, list[tuple]]:
+    """Raw data turned into what the director sees, once per file: ("frame", t, round, post) and
+    ("kill", t, round, attacker, victim, freeze_end). The camera is filled in per run (post["player"])."""
     meta, rows = load(path)
     builder = GsiBuilder(meta)
+    items = []
+    for row in rows:
+        if row["type"] == "e":
+            builder.event(row)
+            if row["name"] == "player_death" and row.get("attacker") and row.get("attacker") != row.get("victim"):
+                items.append(("kill", row["t"], row["round"], str(row["attacker"]), str(row.get("victim")),
+                              builder.freeze_end))
+        else:
+            items.append(("frame", row["t"], row["round"], builder.frame(row, "")))
+    return meta, items
+
+
+def evaluate(source, tuning: dict | None = None, only_round: int | None = None, weights: dict | None = None) -> dict:
+    """Run the director over one raw data file (path, or the result of timeline()); returns the measurements."""
+    meta, items = timeline(source) if isinstance(source, str) else source
     match, director = Match(), Director(tuning)
     weights = weights or {}
     camera, camera_since = "", 0.0
     segments: list[tuple[float, float, str, str]] = []           # (start, end, steamid, reason)
     reason = ""
     kills, live_time, last_t, live_switches = [], 0.0, None, 0
-    for row in rows:
-        if only_round is not None and row.get("round") != only_round:
+    for item in items:
+        if only_round is not None and item[2] != only_round:
             continue
-        if row["type"] == "e":
-            builder.event(row)
-            if row["name"] == "player_death" and row.get("attacker") and row.get("attacker") != row.get("victim"):
-                kills.append({"t": row["t"], "round": row["round"], "attacker": str(row["attacker"]),
-                              "victim": str(row.get("victim")), "camera": camera, "since": camera_since,
-                              "reason": reason, "freeze_end": builder.freeze_end})
+        if item[0] == "kill":
+            _, t, round_number, attacker, victim, freeze_end = item
+            kills.append({"t": t, "round": round_number, "attacker": attacker, "victim": victim, "camera": camera,
+                          "since": camera_since, "reason": reason, "freeze_end": freeze_end})
             continue
-        t = row["t"]
+        _, t, _, post = item
         live = match.round_phase == "live"
         if last_t is not None and live:
             live_time += t - last_t
         last_t = t
-        events = match.update(builder.frame(row, camera), t)
+        post["player"] = {"steamid": camera}
+        events = match.update(post, t)
         director.feed(events, match)
         ratings = director.rate(match, lambda p: weights.get(p.steamid, 1.0), t, 0.5)
         decision = director.decide(match, ratings, camera, t)

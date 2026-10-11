@@ -55,8 +55,8 @@ The app installs new versions itself (⚙ → Update, see below).
 
 ### Tabs
 
-* **Live** – only what you need on air: program preview, scenes, **scene panel**, **Match** (score, map, series, timer),
-  **Tournament in overlay** (group, highlight a team, “show table”), graphics and audio.
+* **Live** – only what you need on air: program preview, scenes, **scene panel**, **Match** (score, map, series, timer –
+  whatever the open scene panel already shows is not repeated there), graphics and audio.
 * **Match** – the current game. Sub-pages: Matchday & import · Teams & players · Map veto & series · Casters & cameras ·
   Timer & texts (and “All”).
 * **Tournament** – bracket, table and FACEIT sync.
@@ -86,10 +86,10 @@ In Match and Tournament, **“Next: …”** and **“← …”** below each su
 Top left you choose the workspace: *Beginner*, *Operator*, *Caster – big buttons*, *Laptop / next to OBS*, *Preparation*
 or your own (“Save current arrangement as …”). A workspace remembers docks, sizes, positions, locks and button size.
 * Both default workspaces have the same arrangement: **scenes on the left**, **audio in the middle below the preview**,
-  **everything else on the right** (scene panel, graphics, match bar, tournament in overlay).
-* *Beginner* (used on first start): on the right only the scene panel is open; graphics, match bar and tournament are
+  **everything else on the right** (scene panel, graphics, match bar).
+* *Beginner* (used on first start): on the right only the scene panel is open; graphics and match bar are
   collapsed (click the title to open them; the state is remembered).
-* *Operator*: scene panel and graphics are open on the right; match bar and tournament are collapsed.
+* *Operator*: scene panel and graphics are open on the right; the match bar is collapsed.
 
 ### Edit layout
 
@@ -291,13 +291,14 @@ Four sub-pages with status: **Setup** (name, format, points rule) · **Teams & F
   values for win 2:0, win 2:1, loss 1:2, loss 0:2 and draw. On equal points the head-to-head counts first, then the round
   difference (RD, fetched from FACEIT), then the wins.
 * **Group in the overlay:** all groups or just one – the tables fit the space (one group large, several side by side).
-  Faster in Live: **Tournament in overlay** has the drop-downs for group and highlighted team (any time), and while the
-  bracket runs, the scene panel field **Tournament** has buttons **All · Group A · Group B …** and “Highlight team” – the
-  scene stays, only the group or the highlight changes (also for GSL).
+  In Live, while the bracket runs, the scene panel field **Tournament** has buttons **All · Group A · Group B …** and
+  “Highlight team” – the scene stays, only the group or the highlight changes (also for GSL). Changes are smooth like a
+  scene switch: the old group fades out, then the new one comes in.
 * **Delete all:** “Delete all teams” (teams with their games and results) and “Delete all games” (schedule, results and
   Swiss rounds; teams stay) – both ask first and can be undone.
 * **Click a team** in the bracket to highlight it in the overlay: its row is tinted in the accent colour and its profile
-  appears next to the tournament (never on top of it). When only one group is shown, the list offers that group's teams;
+  appears in a free spot of the group grid (e.g. bottom right with five groups – the tables stay where they are),
+  otherwise next to the tournament (never on top of it). When only one group is shown, the list offers that group's teams;
   highlighting a team from another group switches to its group.
 * **Visibility:** everything, **reveal round by round** (up to round X), **only from round X**, hide results (only who advances).
 

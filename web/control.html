@@ -95,7 +95,7 @@
       <summary>Match</summary>
       <div class="content mbar">
         <div class="mbar-info"><span id="mbarMap" class="small"></span><span id="mbarCs2" class="small"></span></div>
-        <div class="mbar-line">
+        <div class="mbar-line" id="mbarScoreLine">
           <div class="mbar-side"><div class="mbar-logo" id="mbarLogoA">TA</div><b class="mbar-name" id="mbarNameA"></b></div>
           <div class="mbar-score"><button class="mbar-k" id="mbarMinusA" aria-label="Punkt abziehen Team A">−</button><button class="mbar-k main" id="mbarPlusA" aria-label="Punkt Team A">+</button>
             <b id="mbarScoreA">0</b><span class="mbar-dp">:</span><b id="mbarScoreB">0</b>
@@ -103,7 +103,7 @@
           <div class="mbar-side right"><b class="mbar-name" id="mbarNameB"></b><div class="mbar-logo" id="mbarLogoB">TB</div></div>
         </div>
         <div class="mbar-series" id="mbarSeries"></div>
-        <div class="mbar-row"><span class="small" id="mbarTimerText">Start in</span><b class="mbar-time" id="mbarTimer">10:00</b>
+        <div class="mbar-row" id="mbarTimerRow"><span class="small" id="mbarTimerText">Start in</span><b class="mbar-time" id="mbarTimer">10:00</b>
           <button class="button main" id="mbarStart">Start</button><button class="button" id="mbarMinus1">− 1</button><button class="button" id="mbarPlus1">+ 1</button></div>
       </div>
     </details>
@@ -172,14 +172,6 @@
           </section>
         </div>
         <div class="line" id="sceneToolsOther" hidden><button class="button" id="panelFieldsAdd">Felder für diese Szene wählen</button></div>
-      </div>
-    </details>
-
-    <details open data-area="tournament-live">
-      <summary>Turnier im Overlay</summary>
-      <div class="content mbar">
-        <div class="mbar-row" style="border-top:0;padding-top:0"><select id="mbarGroup" aria-label="Gruppe im Overlay"></select><select id="mbarFocus" aria-label="Team hervorheben"></select>
-          <button class="button main" id="mbarTournament">Tabelle zeigen</button></div>
       </div>
     </details>
 

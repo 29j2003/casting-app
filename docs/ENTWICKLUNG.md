@@ -281,12 +281,27 @@ auch früher gespeicherte Auswahlen (`ui.panels`). Neues Feld → in `PANEL_FIEL
 
 ### Turnier im Overlay: Gruppe und hervorgehobenes Team
 
-Bereich „Turnier im Overlay“ (Live) und das Panel-Feld „Turnier“ (Szene Turnierbaum) zeigen Gruppe und „Team hervorheben“.
-`tourFocus(id)` (`09-tournament.js`) springt bei gewählter Gruppe auf die Gruppe des Teams; `tourGroup(v)` hebt die
-Hervorhebung auf, wenn das Team in der neuen Gruppe nicht steht; `tourFocusOptions()` listet nur Teams der gewählten Gruppe.
+Das Panel-Feld „Turnier“ (Szene Turnierbaum) zeigt Gruppe und „Team hervorheben“ – nur dort (den früheren Bereich
+„Turnier im Overlay“ gibt es nicht mehr; gespeicherte Layouts überspringen unbekannte Bereiche). Auf der Seite Turnier
+gibt es dieselbe Wahl beim Einrichten. `tourFocus(id)` (`09-tournament.js`) springt bei gewählter Gruppe auf die Gruppe des
+Teams; `tourGroup(v)` hebt die Hervorhebung auf, wenn das Team in der neuen Gruppe nicht steht; `tourFocusOptions()` listet
+nur Teams der gewählten Gruppe.
+
 Im Overlay (`cast.js`, `tournamentDraw`) gilt die Hervorhebung nur, wenn das Team zu sehen ist (`teamShown`); dann ist seine
-Zeile in der Akzentfarbe getönt und sein Profil steht **neben** dem Turnier (`.tournament-tree` als Flex-Zeile:
-`.bracket-main` wird schmaler, das Einpassen rechnet mit dessen Fläche) – nie darüber.
+Zeile in der Akzentfarbe getönt. Das Profil steht nie über dem Turnier:
+- Gruppen-Raster mit freiem Feld (z. B. 5 Gruppen in 3 Spalten): als `.bracket-cell` im Raster, absolut gesetzt und mit
+  `zoom` auf Tabellengröße – die Zeile wird nicht höher, die Tabellen bleiben, wo sie sind.
+- sonst daneben (`.bracket-stage` als Flex-Zeile: `.bracket-main` wird schmaler, `bracketFit` rechnet mit dessen Fläche).
+
+Jede Ansicht ist eine `.bracket-stage`; ändert sich etwas, kommt eine neue, und `bracketChange` blendet über:
+`switch` (andere Gruppe/Ansicht: erst aus, dann ein – nie zwei Tabellen übereinander), `glide` (Profil daneben kommt/geht:
+das Turnier gleitet an seine neue Größe) oder `blend` (gleiche Ansicht: das Neue blendet über dem Alten ein, was gleich
+bleibt, steht still). Ein noch laufender Wechsel wird beim nächsten sofort beendet.
+
+### Felder im Bereich „Match“
+
+Was das offene Panel der Szene schon zeigt (Timer, Spielstand, Serie), blendet `matchDedupe()` (`05-live.js`) im Bereich
+„Match“ aus; ist das Panel zu oder nicht im Layout, zeigt „Match“ wieder alles.
 
 ### Korrigierte Turnier-Ergebnisse
 

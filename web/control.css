@@ -468,11 +468,10 @@ body.layout-edit .page details, body.layout-edit .tabgroup { outline: 2px dashed
 .mbar-k { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line); background: var(--f2); cursor: pointer; font-size: 18px; color: var(--text); }
 .mbar-k.main { background: var(--accent); border-color: var(--accent); color: #fff; }
 .mbar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
-.mbar-row select { flex: 1 1 140px; }
 /* leere Reiter-Spalte (alles angedockt) blendet sich aus – im Bearbeiten-Modus bleibt sie als Ablage sichtbar */
 .page.column-empty:not(.drags) .column, .page.column-empty:not(.drags) #divider1 { display: none; }
 body.layout-edit .page.column-empty .column, body.layout-edit .page.column-empty #divider1 { display: grid; }
-.mbar-row select { flex: 1; min-width: 0; } .mbar-time { font: 700 24px Rajdhani, sans-serif; flex: 1; }
+.mbar-time { font: 700 24px Rajdhani, sans-serif; flex: 1; }
 /* große Knöpfe (Arbeitsbereich „Caster“) */
 body.large .scenes-buttons { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)) !important; }
 body.large .scenes-buttons button { height: 64px !important; font-size: 18px !important; }

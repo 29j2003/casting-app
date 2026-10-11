@@ -52,6 +52,16 @@ TUNING = {
     # standoff: two players only "looking" at each other (often through a wall) lose value without shots or hits
     "standoff_grace": 2.5, "standoff_half_life": 2.0, "standoff_floor": 0.15,
     "angle_hold": 260.0, "angle_hold_degrees": 10.0,   # beats the clutcher by a "jump": cut before he peeks
+    # predictions from the situation
+    "trade_try": 90.0, "trade_try_window": 4.0, "trade_reach": 1.3,      # teammate of a fallen player goes for the refrag
+    "swing": 80.0,                     # swinging an enemy who reloads
+    "flash_peek": 100.0, "flash_blind": 150,   # peeking a flashed enemy
+    "sneak": 45.0, "sneak_speed": (40.0, 160.0),   # walking/crouching (silent) towards an enemy who doesn't look
+    "late_round": 25.0, "late_factor": 1.25,       # little time left: the Ts must go
+    "retake": 40.0, "save_factor": 0.5, "run_speed": 250.0,
+    "outnumbered": 0.1,               # per player fewer: the waiting side gets the contact
+    "execute": 35.0, "execute_window": 8.0, "execute_cluster": 700.0, "execute_reach": 1300.0,
+    "eco_equip": 2000, "full_equip": 3500, "eco_push": 1.5,
     "plant": 150.0, "defuse": 200.0, "stop_defuse": 260.0, "stop_defuse_range": 2500.0,
     "push": 30.0, "push_carrier": 80.0, "push_radius": 700.0, "push_speed": 130.0,
     "flashed_factor": 0.4,       # a flashed player's view is white – show someone else
@@ -102,6 +112,31 @@ def form(player: Player, match: Match) -> float:
     rating = (kpr / 0.68 + survival / 0.32 + adr / 78) / 3
     confidence = min(1.0, rounds / 8)
     return max(0.75, min(1.3, 1 + (rating - 1) * 0.5 * confidence))
+
+
+ROLES = ("entry", "awp", "lurker", "support", "anchor")
+# how a role changes the parts of the rating (learned from the match or set by hand)
+ROLE_EFFECTS = {
+    "entry": {"duel": 1.25, "contact": 1.25},          # until the opening kill of the round
+    "support": {"trade_try": 1.4},
+    "lurker": {"sneak": 1.5, "flank": 1.3},
+    "anchor": {"execute": 1.5},
+    "awp": {"duel": 1.1},
+}
+
+
+def learned_role(player: Player, match: Match) -> str:
+    """Role from this match: AWP in hand, most opening duels (entry), most trade kills (support)."""
+    if any(w.type == "SniperRifle" and w.name == "weapon_awp" for w in player.guns()):
+        return "awp"
+    team = [p for p in match.players.values() if p.team == player.team]
+    openings = {p.steamid: match.opening_kills.get(p.steamid, 0) + match.opening_deaths.get(p.steamid, 0) for p in team}
+    if openings.get(player.steamid, 0) >= 3 and openings[player.steamid] == max(openings.values()):
+        return "entry"
+    trades = {p.steamid: match.trade_kills.get(p.steamid, 0) for p in team}
+    if trades.get(player.steamid, 0) >= 2 and trades[player.steamid] == max(trades.values()):
+        return "support"
+    return ""
 
 
 DUEL_GRENADES = {"weapon_flashbang", "weapon_hegrenade", "weapon_molotov", "weapon_incgrenade"}
@@ -178,6 +213,7 @@ class Director:
         self.last_throw: dict[str, float] = {}            # steamid → time of the last grenade thrown
         self.pair_since: dict[tuple[str, str], float] = {}  # duel pair → since when they face each other
         self.shown_at: dict[str, float] = {}               # steamid → when the camera last went there
+        self.roles: dict[str, str] = {}                    # steamid → role used in the last rating
         self._pairs_seen: set[tuple[str, str]] = set()
 
     def reset(self) -> None:
@@ -299,7 +335,8 @@ class Director:
             return 1.0
         return max(t["standoff_floor"], 0.5 ** (quiet / t["standoff_half_life"]))
 
-    def _situation(self, player: Player, match: Match, forms: dict[str, float], now: float) -> dict[str, tuple[float, str]]:
+    def _situation(self, player: Player, match: Match, forms: dict[str, float], now: float,
+                   role: str = "", eco: dict | None = None) -> dict[str, tuple[float, str]]:
         """Points from what is true right now (code → (points, detail))."""
         t = self.tuning
         parts: dict[str, tuple[float, str]] = {}
@@ -355,10 +392,57 @@ class Director:
                     and facing(player, enemy, t["angle_hold_degrees"]) and approaching(enemy, player)):
                 enemies_of_clutcher = len(match.enemies(enemy))
                 add("angle", t["clutch"] + t["clutch_per_enemy"] * enemies_of_clutcher + t["angle_hold"], enemy.name)
+            if gap <= reach:
+                moving_in = closing or approaching(player, enemy)
+                if enemy.reloading and moving_in:
+                    add("swing", t["swing"] * closeness, enemy.name)
+                if enemy.flashed > t["flash_blind"] and (moving_in or facing(player, enemy, 45)):
+                    add("flash_peek", t["flash_peek"] * closeness, enemy.name)
+            low, high = t["sneak_speed"]
+            if (low <= player.speed() <= high and gap <= reach * 1.2 and approaching(player, enemy, minimum=25)
+                    and not facing(enemy, player, 60)):
+                add("sneak", t["sneak"] * max(0.0, 1 - gap / (reach * 1.2)), enemy.name)
         if duel_points:
             add("duel", min(t["duel_cap"], duel_points), duel_detail)
         if contact_points:
             add("contact", min(t["contact_cap"], contact_points), contact_detail)
+
+        # trades: a teammate just died – who goes for the refrag?
+        trade_skill = 1 + 0.15 * min(3, match.trade_kills.get(player.steamid, 0))
+        for moment, killer_id, victim_id, _spot in match.kill_spots:
+            killer = match.players.get(killer_id)
+            victim = match.players.get(victim_id)
+            if (now - moment > t["trade_try_window"] or not killer or not killer.alive or not victim
+                    or victim.team != player.team or not (player.position and killer.position)):
+                continue
+            gap = distance(player.position, killer.position)
+            reach = max(player.engage_range, killer.engage_range) * t["trade_reach"]
+            if gap <= reach and (approaching(player, killer) or facing(player, killer, 45)):
+                chance = duel_chance(player, killer, forms.get(player.steamid, 1.0), forms.get(killer.steamid, 1.0),
+                                     facing(player, killer, t["duel_angle"]), facing(killer, player, t["duel_angle"]), gap)
+                add("trade_try", t["trade_try"] * (1 - gap / reach) * chance * trade_skill, killer.name)
+
+        # smokes and fires of one team close together: an attack is coming there
+        for zone_team, center in self._execute_zones(match, now):
+            if not player.position:
+                continue
+            gap = distance(player.position, center)
+            if player.team != zone_team and gap <= t["execute_reach"]:
+                add("execute", t["execute"] * (1 - gap / t["execute_reach"]))
+            elif player.team == zone_team and gap <= t["execute_reach"] * 1.5 and player.speed() > 60:
+                add("execute", t["execute"] * (1 - gap / (t["execute_reach"] * 1.5)))
+
+        # bomb planted: CTs on the way to it (retake) – unless the time can't be enough any more (save)
+        factor = 1.0
+        if match.bomb_state in ("planted", "defusing") and match.bomb_position and player.position and player.team == "CT":
+            gap = distance(player.position, match.bomb_position)
+            if match.bomb_left is not None:
+                needed = gap / t["run_speed"] + (5 if player.defusekit else 10)
+                if match.bomb_left < needed - 0.5 and match.bomb_player != player.steamid:
+                    factor *= t["save_factor"]
+            earlier = player.position_ago(0.7)
+            if earlier and distance(earlier, match.bomb_position) - gap > 40 and gap < 3000:
+                add("retake", t["retake"])
 
         # bomb
         if match.bomb_state == "planting" and match.bomb_player == player.steamid:
@@ -381,22 +465,58 @@ class Director:
                         and distance(p.position, player.position) <= t["push_radius"] and p.speed() >= t["push_speed"]]
             if len(together) >= 2:
                 carrier = match.bomb_state == "carried" and match.bomb_player == player.steamid
-                add("push", t["push_carrier"] if carrier else t["push"])
-        return parts
+                add("push", (t["push_carrier"] if carrier else t["push"]) * (t["eco_push"] if (eco or {}).get(player.team) else 1))
+
+        # round state: little time left (the Ts must go), fewer players (they get the contact)
+        if (player.team == "T" and match.countdown_phase == "live" and match.phase_left is not None
+                and match.phase_left < t["late_round"] and match.bomb_state not in ("planted", "defusing")):
+            factor *= t["late_factor"]
+        fewer = len(enemies) - len(team_alive)
+        if fewer > 0 and len(team_alive) >= 2:
+            factor *= 1 + t["outnumbered"] * fewer
+        effects = ROLE_EFFECTS.get(role, {})
+        if role == "entry" and match.opening_done():
+            effects = {}
+        return {code: (points * factor * effects.get(code, 1.0), detail) for code, (points, detail) in parts.items()}
+
+    def _execute_zones(self, match: Match, now: float) -> list[tuple[str, tuple]]:
+        """Places where one team popped two or more smokes/fires close together in the last seconds."""
+        t = self.tuning
+        recent = [(kind, pos, team) for moment, kind, pos, team in match.utility if now - moment <= t["execute_window"]]
+        zones = []
+        for team in ("CT", "T"):
+            spots = [pos for _, pos, owner in recent if owner == team]
+            for spot in spots:
+                near = [other for other in spots if distance(spot, other) <= t["execute_cluster"]]
+                if len(near) >= 2:
+                    center = tuple(sum(c) / len(near) for c in zip(*near))
+                    if all(distance(center, z[1]) > t["execute_cluster"] for z in zones if z[0] == team):
+                        zones.append((team, center))
+        return zones
 
     # --- rating and deciding ---
 
-    def rate(self, match: Match, importance, now: float, data_mix: float) -> list[Rating]:
-        """Ratings of all alive players, best first. `importance(player)` gives the producer's weight (0..2)."""
+    def rate(self, match: Match, importance, now: float, data_mix: float, roles=None) -> list[Rating]:
+        """Ratings of all alive players, best first. `importance(player)` gives the producer's weight (0..2),
+        `roles(player)` the role set by hand ("" = learn it from the match)."""
         t = self.tuning
         forms = {p.steamid: form(p, match) for p in match.players.values()}
+        equip = {}
+        for side in ("CT", "T"):
+            values = [p.equip_value for p in match.players.values() if p.team == side and p.alive]
+            equip[side] = sum(values) / len(values) if values else 0
+        eco = {side: equip[side] < t["eco_equip"] and equip[other] > t["full_equip"]
+               for side, other in (("CT", "T"), ("T", "CT"))}
+        self.roles = {}
         self._pairs_seen = set()
         ratings = []
         for player in match.alive():
             if not player.team:
                 continue
             parts = self._event_score(player, match, now)
-            for code, (points, detail) in self._situation(player, match, forms, now).items():
+            role = (roles(player) if roles else "") or learned_role(player, match)
+            self.roles[player.steamid] = role
+            for code, (points, detail) in self._situation(player, match, forms, now, role, eco).items():
                 old, old_detail = parts.get(code, (0.0, ""))
                 parts[code] = (old + points, detail or old_detail)
             weight = importance(player) * forms[player.steamid] ** data_mix

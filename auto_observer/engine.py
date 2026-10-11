@@ -155,7 +155,8 @@ class Engine:
 
     def _direct(self, now: float) -> None:
         """Rate the players and, if the automatic runs, switch the camera when the director says so."""
-        ratings = self.director.rate(self.match, self._importance, now, self.settings["data_mix"])
+        ratings = self.director.rate(self.match, self._importance, now, self.settings["data_mix"],
+                                     lambda player: self.settings.player_role(player.steamid))
         if not self.settings["enabled"] or self.paused:
             return
         decision = self.director.decide(self.match, ratings, self._current(now), now)
@@ -301,7 +302,7 @@ class Engine:
                 "receiving": self.receiving, "posts": self.posts,
                 "camera": camera, "camera_name": CAMERA_NAMES.get(camera["mode"], camera["mode"]),
                 "camera_problem": self.camera_problem,
-                "settings": {k: settings[k] for k in DEFAULTS if k not in ("player_weights", "team_weights")},
+                "settings": {k: settings[k] for k in DEFAULTS if k not in ("player_weights", "team_weights", "player_roles")},
                 "map": match.map_name, "round": match.round + (1 if match.round_phase in ("live", "freezetime") else 0),
                 "phase": match.round_phase, "observed": current,
                 "paused": {"on": self.paused, "reason": self.pause_reason,
@@ -330,4 +331,5 @@ class Engine:
             "form": round(player_form, 2), "score": round(rating.score) if rating else 0,
             "reason": rating.reason if rating else "", "detail": rating.detail if rating else "",
             "observed": player.steamid == current, "kills": player.kills, "deaths": player.deaths,
+            "role": self.settings.player_role(player.steamid), "role_used": self.director.roles.get(player.steamid, ""),
         }

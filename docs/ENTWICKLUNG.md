@@ -686,9 +686,16 @@ nicht mit (`pyproject.toml` nimmt nur `casting_app*`). Läuft die Regie gut, kan
 Ereignisse: Kill, Multi-Kill, Trade, Clutch-Kill, Schaden bekommen, Schüsse (mehr, wenn auf einen Gegner gezielt).
 Lage: Clutch, Duelle mit geschätzter Gewinnchance (Waffe passend zur Entfernung – AWP weit, Schrotflinte/SMG nah –,
 Kugeln im Magazin, Nachladen, Zweitwaffe, Leben, Rüstung, Helm gegen Gewehre, Granaten, geblendet, Rennen, Form, wer
-wen im Blick hat), Spieler, die aufeinander zulaufen (0,5 s vorausgeschaut: „Läuft auf … zu“), Flanke,
+wen im Blick hat), Spieler, die aufeinander zulaufen (0,5 s vorausgeschaut: „Läuft auf … zu“), Trades (Teamkollege eines Gefallenen läuft
+auf den Schützen zu; wer im Match oft tradet, zählt mehr), Swing auf einen Nachladenden, Peek auf einen Geblendeten,
+Schleichen (langsam auf einen Gegner zu, der wegschaut), Angriff mit Smokes/Molotovs (zwei oder mehr einer Seite nah
+beieinander), Retake nach dem Plant (CTs, die die Bombe zeitlich nicht mehr schaffen, zählen weniger), Zeitdruck
+(T in den letzten 25 s), Unterzahl, Eco gegen volle Ausrüstung (Pushes zählen mehr), Flanke,
 „hält den Winkel“ auf einen Clutcher, der auf ihn zuläuft, Bombe legen/entschärfen (und der T, der das Entschärfen
 stoppen kann), Pushes. Wichtigkeit = Regler Spieler × Regler Team × Form^Einfluss (Form aus K/D/ADR, ab Runde 8 voll).
+Rollen (`ROLE_EFFECTS`): Entry (Duelle bis zum ersten Kill der Runde), AWP, Lurker (Schleichen, Flanke), Support
+(Trades), Anker (Angriff auf seinen Spot) – von Hand je Spieler oder aus dem Match gelernt (AWP in der Hand, meiste
+Eröffnungsduelle, meiste Trade-Kills).
 Wechsel: Mindestzeit je nach Tempo (1,4 s bei schnellen Kills, 2 s normal, 3,5 s im ruhigen Rundenende), deutlicher Vorsprung nötig,
 sofort bei viel größerem Moment; nach einem Kill des gezeigten Spielers mindestens 1,2 s bleiben; stirbt der gezeigte
 Spieler, sofort (schon beim Eintreffen der Daten) auf den Schützen. „Patt“: zwei Spieler, die sich nur ansehen (oft

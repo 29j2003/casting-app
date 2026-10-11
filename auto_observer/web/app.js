@@ -8,9 +8,13 @@ const REASONS = {
   angle: (d) => `Hält den Winkel auf ${d}`, plant: () => "Legt die Bombe", defuse: () => "Entschärft",
   stop_defuse: () => "Kann das Entschärfen stoppen", push: () => "Push", proximity: () => "Gegner in der Nähe",
   nade: (d) => `Wirft ${NADES[d] || "eine Granate"}`,
+  trade_try: (d) => `Will ${d} traden`, swing: (d) => `Swingt auf ${d} (lädt nach)`,
+  flash_peek: (d) => `Peekt den geblendeten ${d}`, sneak: (d) => `Schleicht auf ${d} zu`,
+  retake: () => "Retake", execute: () => "Angriff mit Smokes/Molotovs",
   importance: () => "Wichtigkeit", killer: (d) => `Hat ${d} getötet`, rotation: () => "Abwechslung",
 };
 const NADES = { smoke: "eine Smoke", flashbang: "eine Flash", frag: "eine HE", firebomb: "einen Molotov", decoy: "ein Decoy" };
+const ROLE_NAMES = { entry: "Entry", awp: "AWP", lurker: "Lurker", support: "Support", anchor: "Anker" };
 const reasonText = (code, detail) => (REASONS[code] ? REASONS[code](detail || "") : code || "");
 
 let state = null;
@@ -169,13 +173,19 @@ function playerRow(player) {
   const hp = Object.assign(document.createElement("span"), { className: "bar hp", title: "Leben" });
   hp.append(document.createElement("i"));
   const form = Object.assign(document.createElement("span"), { className: "form", title: "Form aus den Matchdaten (1,00 = Durchschnitt)" });
+  const role = Object.assign(document.createElement("select"), { className: "role", title: "Rolle – „auto“ lernt sie aus dem Match" });
+  role.append(new Option("auto", ""), ...Object.entries(ROLE_NAMES).map(([value, text]) => new Option(text, value)));
+  role.addEventListener("change", () => {
+    mark(role);
+    sendSettings({ player_roles: { [player.steamid]: { role: role.value, name: row.current.name } } });
+  });
   const kd = Object.assign(document.createElement("span"), { className: "form", title: "Kills / Tode" });
   const interest = Object.assign(document.createElement("span"), { className: "interest" });
   const bar = Object.assign(document.createElement("span"), { className: "bar" });
   bar.append(document.createElement("i"));
   const why = document.createElement("em");
   interest.append(bar, why);
-  row = { el, key, name, hp, form, kd, bar, why, current: player };
+  row = { el, key, name, role, hp, form, kd, bar, why, current: player };
   row.weight = weightControl("weight", (value) => later(`player-${player.steamid}`, () => sendSettings({
     player_weights: { [player.steamid]: { weight: value / 100, name: row.current.name } },
   })));
@@ -185,7 +195,7 @@ function playerRow(player) {
   };
   key.addEventListener("click", show);
   name.addEventListener("click", show);
-  el.append(key, name, hp, row.weight.box, form, kd, interest);
+  el.append(key, name, role, hp, row.weight.box, form, kd, interest);
   playerRows.set(player.steamid, row);
   return row;
 }
@@ -215,6 +225,8 @@ function renderTeams() {
       row.el.classList.toggle("dead", !player.alive);
       row.key.textContent = player.slot >= 0 ? String((player.slot + 1) % 10) : "–";
       row.name.textContent = player.name;
+      setValue(row.role, player.role);
+      row.role.options[0].text = !player.role && player.role_used ? `auto: ${ROLE_NAMES[player.role_used] || player.role_used}` : "auto";
       row.hp.firstChild.style.width = `${player.health}%`;
       row.weight.set(Math.round(player.weight * 100));
       row.form.textContent = player.form.toFixed(2).replace(".", ",");

@@ -676,3 +676,99 @@ def test_players_running_into_each_other_count_before_they_see_each_other():
     still.update(post(lineup(p0={"pos": (0, 0, 0), "fwd": (0, 1, 0)}, p5={"pos": (1500, 0, 0), "fwd": (0, 1, 0)})), 0.0)
     _, ratings = rate(still, 0.1)
     assert all("contact" not in r.parts for r in ratings)
+
+
+# --- predictions: trades, swing on reload, flash peek, sneaking, round time, bomb, utility, roles ---
+
+def feed_frames(frames, director=None, start=0.0, step=0.1):
+    """Feed a list of GSI posts (one every `step` seconds); returns match, director and the last ratings."""
+    match, director = Match(), director or Director()
+    now = start
+    for frame in frames:
+        director.feed(match.update(frame, now), match)
+        _, ratings = rate(match, now, director=director)
+        now += step
+    return match, director, {r.steamid: r for r in ratings}
+
+
+def moving(pid, start, end, frames, **extra):
+    """Positions of one player moving from start to end over `frames` posts."""
+    return [dict({"pos": tuple(s + (e - s) * i / max(1, frames - 1) for s, e in zip(start, end))}, **extra) for i in range(frames)]
+
+
+def test_teammate_going_for_the_trade():
+    frames = []
+    p1_path = moving(1, (0, 2000, 0), (0, 1700, 0), 8, fwd=(0, -1, 0))
+    for i in range(8):
+        dead = {"hp": 0} if i >= 2 else {}
+        kills = {"kills": 1, "round_kills": 1} if i >= 2 else {}
+        frames.append(post(lineup(p0=dict({"pos": (0, 0, 0)}, **dead), p5=dict({"pos": (0, 900, 0), "fwd": (0, -1, 0)}, **kills),
+                                  p1=p1_path[i])))
+    match, _, ratings = feed_frames(frames)
+    assert "trade_try" in ratings[sid(1)].parts and ratings[sid(1)].parts["trade_try"] > 0
+    assert match.opening_kills == {sid(5): 1} and match.opening_deaths == {sid(0): 1}
+
+
+def test_swing_on_reloader_and_flash_peek_and_sneak():
+    frames = []
+    path = moving(0, (0, 0, 0), (0, 300, 0), 8, fwd=(0, 1, 0))
+    for i in range(8):
+        players = lineup(p0=path[i], p5={"pos": (0, 1200, 0), "fwd": (1, 0, 0)})
+        players[sid(5)]["weapons"]["weapon_1"]["state"] = "reloading"
+        frames.append(post(players))
+    _, _, ratings = feed_frames(frames)
+    assert "swing" in ratings[sid(0)].parts
+
+    frames = [post(lineup(p0={"pos": (0, 0, 0), "fwd": (0, 1, 0)}, p5={"pos": (0, 1000, 0), "fwd": (1, 0, 0), "flashed": 255}))] * 3
+    _, _, ratings = feed_frames(frames)
+    assert "flash_peek" in ratings[sid(0)].parts
+
+    # P0 walks slowly (≈100 u/s) towards P5, who looks the other way
+    path = moving(0, (0, 0, 0), (0, 70, 0), 8, fwd=(0, 1, 0))
+    frames = [post(lineup(p0=path[i], p5={"pos": (0, 1300, 0), "fwd": (0, 1, 0)})) for i in range(8)]
+    _, _, ratings = feed_frames(frames)
+    assert "sneak" in ratings[sid(0)].parts
+
+
+def test_round_time_and_bomb():
+    setup = lineup(p0={"pos": (0, 0, 0), "fwd": (1, 0, 0)}, p5={"pos": (800, 0, 0), "fwd": (-1, 0, 0)})
+    early, late = post(setup), post(setup)
+    early["phase_countdowns"] = {"phase": "live", "phase_ends_in": "80.0"}
+    late["phase_countdowns"] = {"phase": "live", "phase_ends_in": "10.0"}
+    _, _, early_ratings = feed_frames([early])
+    _, _, late_ratings = feed_frames([late])
+    assert late_ratings[sid(5)].score > early_ratings[sid(5)].score            # T must go
+    assert late_ratings[sid(0)].score == pytest.approx(early_ratings[sid(0)].score)
+
+    # bomb planted at (0, 0): CT P1 near with time, CT P2 far away with 3 s left → P2 saves
+    bomb = {"state": "planted", "position": "0, 0, 0", "countdown": "3.0"}
+    players = lineup(p1={"pos": (0, 300, 0), "fwd": (1, 0, 0)}, p6={"pos": (900, 300, 0), "fwd": (-1, 0, 0)},
+                     p2={"pos": (0, 6000, 0), "fwd": (1, 0, 0)}, p7={"pos": (900, 6000, 0), "fwd": (-1, 0, 0)})
+    _, _, ratings = feed_frames([post(players, bomb=bomb)])
+    assert ratings[sid(2)].score < ratings[sid(7)].score
+
+
+def test_smokes_together_mean_an_attack():
+    smokes = {"1": {"owner": sid(5), "type": "smoke", "position": "0, 0, 0", "effecttime": "1.0"},
+              "2": {"owner": sid(6), "type": "smoke", "position": "300, 100, 0", "effecttime": "0.5"}}
+    first = post(lineup(p0={"pos": (100, 800, 0)}))
+    second = post(lineup(p0={"pos": (100, 800, 0)}))
+    second["grenades"] = smokes
+    _, _, ratings = feed_frames([first, second])
+    assert "execute" in ratings[sid(0)].parts
+
+
+def test_roles_learned_and_set_by_hand(engine):
+    from auto_observer.director import learned_role
+    match = Match()
+    match.update(post(lineup(p6={"weapon": ("weapon_awp", "SniperRifle", 5)})), 0.0)
+    match.opening_kills = {sid(0): 3}
+    match.trade_kills = {sid(1): 2}
+    assert learned_role(match.players[sid(0)], match) == "entry"
+    assert learned_role(match.players[sid(1)], match) == "support"
+    assert learned_role(match.players[sid(6)], match) == "awp"
+    assert engine.settings.apply({"player_roles": {sid(3): {"role": "lurker", "name": "P3"}, sid(4): {"role": "boss"}}}) == ["player_roles"]
+    engine.on_gsi(post(lineup()))
+    engine.tick()
+    players = {p["steamid"]: p for team in engine.state()["teams"] for p in team["players"]}
+    assert players[sid(3)]["role"] == "lurker" and players[sid(3)]["role_used"] == "lurker" and players[sid(4)]["role"] == ""

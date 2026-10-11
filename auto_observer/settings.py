@@ -13,6 +13,7 @@ import sys
 import threading
 from pathlib import Path
 
+from .director import ROLES
 from .launcher import clean_extra
 
 WEIGHT_MIN, WEIGHT_MAX = 0.0, 2.0
@@ -31,6 +32,7 @@ DEFAULTS = {
     "data_mix": 0.5,                     # 0 = only the sliders, 1 = the match form counts fully
     "player_weights": {},                # steamid → {"weight": float, "name": str}
     "team_weights": {},                  # team key → {"weight": float, "name": str}
+    "player_roles": {},                  # steamid → {"role": "entry"|"awp"|"lurker"|"support"|"anchor"|"", "name": str}
     "cfg_folder": "",                    # CS2's cfg folder (found by the app, can be changed)
     "steam_exe": "",                     # Steam program; empty = find it
     "launch_extra": "",                  # more CS2 launch options, e.g. "-novid -console"
@@ -107,7 +109,7 @@ class Settings:
                 new = self._check(key, value)
                 if new is None:
                     continue
-                if key in ("player_weights", "team_weights"):
+                if key in ("player_weights", "team_weights", "player_roles"):
                     merged = dict(self.values[key])
                     merged.update(new)
                     if len(merged) > MAX_WEIGHTS:
@@ -141,6 +143,15 @@ class Settings:
             return value.strip()[:1000] if isinstance(value, str) else None
         if key == "launch_extra":
             return clean_extra(value) if isinstance(value, str) else None
+        if key == "player_roles":
+            if not isinstance(value, dict):
+                return None
+            roles = {}
+            for steamid, item in value.items():
+                if (isinstance(steamid, str) and 0 < len(steamid) <= 200 and isinstance(item, dict)
+                        and item.get("role") in ("", *ROLES)):
+                    roles[steamid] = {"role": item["role"], "name": str(item.get("name") or "")[:40]}
+            return roles or None
         if key in ("player_weights", "team_weights"):
             if not isinstance(value, dict):
                 return None
@@ -159,6 +170,10 @@ class Settings:
     def player_weight(self, steamid: str) -> float:
         with self._lock:
             return self.values["player_weights"].get(steamid, {}).get("weight", 1.0)
+
+    def player_role(self, steamid: str) -> str:
+        with self._lock:
+            return self.values["player_roles"].get(steamid, {}).get("role", "")
 
     def team_weight(self, key: str) -> float:
         with self._lock:

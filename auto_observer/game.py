@@ -47,6 +47,14 @@ def _int(value, default: int = 0) -> int:
     return number
 
 
+def _float(value) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
+
+
 def distance(a: Vector, b: Vector) -> float:
     return math.dist(a, b)
 
@@ -97,6 +105,8 @@ class Player:
     kills: int = 0
     deaths: int = 0
     assists: int = 0
+    equip_value: int = 0
+    defusekit: bool = False
     round_kills: int = 0
     round_killhs: int = 0
     damage: int = 0                    # damage dealt in the finished rounds of this map
@@ -185,6 +195,17 @@ class Match:
         self.recent: deque[Event] = deque()
         self.grenades: set[str] = set()   # ids of the grenades in the last post ("allgrenades")
         self.grenades_known = False       # the first post only tells which grenades already fly
+        self.utility: list[tuple[float, str, Vector, str]] = []   # (time, kind, position, team): smokes/fires that went off
+        self._utility_ids: set[str] = set()
+        self.phase_left: float | None = None   # seconds left in the current phase (phase_countdowns)
+        self.countdown_phase = ""              # live, bomb, defuse, freezetime, over, timeout_t, …
+        self.bomb_left: float | None = None    # seconds until the planted bomb explodes
+        # learned in this match (for roles): opening kills/deaths and trade kills per player
+        self.opening_kills: dict[str, int] = {}
+        self.opening_deaths: dict[str, int] = {}
+        self.trade_kills: dict[str, int] = {}
+        self.kill_spots: deque = deque()       # (time, killer steamid, victim steamid, victim position)
+        self._round_had_kill = -1              # round number of the round's first kill (opening)
 
     # --- reading ---
 
@@ -204,6 +225,10 @@ class Match:
             return "name:" + name
         members = sorted(p.steamid for p in self.players.values() if p.team == side)
         return "roster:" + members[0] if members else "side:" + side
+
+    def opening_done(self) -> bool:
+        """True once the first kill of the running round has fallen."""
+        return self._round_had_kill == self.round
 
     def recent_events(self, kind: str, since: float) -> list[Event]:
         return [e for e in self.recent if e.kind == kind and e.time >= since]
@@ -225,6 +250,9 @@ class Match:
             self.players.clear()
             self.recent.clear()
             self.grenades, self.grenades_known = set(), False
+            self.utility, self._utility_ids = [], set()
+            self.opening_kills, self.opening_deaths, self.trade_kills = {}, {}, {}
+            self.kill_spots.clear()
         if map_name:
             self.map_name = map_name
         self.map_phase = str(game_map.get("phase") or self.map_phase)
@@ -237,6 +265,10 @@ class Match:
         self.bomb_state = str(bomb.get("state") or "")
         self.bomb_player = str(bomb.get("player") or "")
         self.bomb_position = parse_vector(bomb.get("position"))
+        self.bomb_left = _float(bomb.get("countdown")) if self.bomb_state in ("planted", "defusing") else None
+        countdowns = state.get("phase_countdowns") if isinstance(state.get("phase_countdowns"), dict) else {}
+        self.phase_left = _float(countdowns.get("phase_ends_in"))
+        self.countdown_phase = str(countdowns.get("phase") or "")
         self.observed = str(observed.get("steamid") or "")
         self.updated = now
 
@@ -247,6 +279,7 @@ class Match:
         for steamid in [s for s in self.players if s not in all_players]:
             del self.players[steamid]          # left the server
         events += self._update_grenades(state.get("grenades"), now)
+        self._learn(events, now)
 
         self.recent.extend(events)
         while self.recent and now - self.recent[0].time > RECENT_SECONDS:
@@ -272,6 +305,8 @@ class Match:
         player.round_kills = _int(state.get("round_kills"))
         player.round_killhs = _int(state.get("round_killhs"))
         player.kills = _int(stats.get("kills"))
+        player.equip_value = _int(state.get("equip_value"))
+        player.defusekit = bool(state.get("defusekit"))
         player.deaths = _int(stats.get("deaths"))
         player.assists = _int(stats.get("assists"))
         self._count_damage(player, _int(state.get("round_totaldmg")))
@@ -316,7 +351,10 @@ class Match:
         return events
 
     def _update_grenades(self, grenades, now: float) -> list[Event]:
-        """A grenade id that was not there before = its owner just threw it (fire on the ground does not count)."""
+        """A grenade id that was not there before = its owner just threw it (fire on the ground does not count).
+        Smokes that went off and fires are kept in `utility` (where a team is about to attack)."""
+        while self.utility and now - self.utility[0][0] > 15:
+            self.utility.pop(0)
         if not isinstance(grenades, dict):
             return []
         events = []
@@ -327,11 +365,47 @@ class Match:
             current.add(str(grenade_id))
             kind = str(grenade.get("type") or "")
             owner = str(grenade.get("owner") or "")
+            team = self.players[owner].team if owner in self.players else ""
+            popped = (kind == "smoke" and (_float(grenade.get("effecttime")) or 0) > 0) or kind == "inferno"
+            if popped and str(grenade_id) not in self._utility_ids and team:
+                position = parse_vector(grenade.get("position"))
+                if kind == "inferno" and isinstance(grenade.get("flames"), dict):
+                    flames = [v for v in (parse_vector(f) for f in grenade["flames"].values()) if v]
+                    position = tuple(sum(c) / len(flames) for c in zip(*flames)) if flames else position
+                if position:
+                    self._utility_ids.add(str(grenade_id))
+                    self.utility.append((now, kind, position, team))
             if (self.grenades_known and str(grenade_id) not in self.grenades and kind != "inferno"
                     and owner in self.players and self.players[owner].alive):
                 events.append(Event("throw", owner, now, detail=kind[:20]))
         self.grenades, self.grenades_known = current, True
         return events
+
+    def _learn(self, events: list[Event], now: float) -> None:
+        """Opening kills/deaths and trade kills of this match; where kills happened (for trades)."""
+        while self.kill_spots and now - self.kill_spots[0][0] > 6:
+            self.kill_spots.popleft()
+        kills = [e for e in events if e.kind == "kill"]
+        deaths = [e for e in events if e.kind == "death"] + [e for e in self.recent if e.kind == "death" and now - e.time <= 0.5]
+        for kill in kills:
+            killer = self.players.get(kill.steamid)
+            if not killer:
+                continue
+            victims = [self.players[d.steamid] for d in deaths
+                       if d.steamid in self.players and self.players[d.steamid].team != killer.team]
+            victim = min(victims, key=lambda v: distance(v.position, killer.position)
+                         if v.position and killer.position else math.inf, default=None)
+            if self._round_had_kill != self.round and self.round_phase == "live":
+                self._round_had_kill = self.round
+                self.opening_kills[killer.steamid] = self.opening_kills.get(killer.steamid, 0) + 1
+                if victim:
+                    self.opening_deaths[victim.steamid] = self.opening_deaths.get(victim.steamid, 0) + 1
+            # a trade: this kill came shortly after a teammate of the killer died
+            if any(spot[2] in self.players and self.players[spot[2]].team == killer.team and now - spot[0] <= 5
+                   for spot in self.kill_spots):
+                self.trade_kills[killer.steamid] = self.trade_kills.get(killer.steamid, 0) + 1
+            if victim:
+                self.kill_spots.append((now, killer.steamid, victim.steamid, victim.position or killer.position))
 
     def _count_damage(self, player: Player, round_damage: int) -> None:
         """Sum up the damage over the rounds (CS2 only reports the running round)."""

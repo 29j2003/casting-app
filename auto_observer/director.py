@@ -39,11 +39,12 @@ TUNING = {
     "shot": 12.0, "shot_aimed": 40.0, "shot_cap": 120.0, "shot_target": 30.0,
     "aim_angle": 30.0, "aim_reach": 1.2, "aim_close": 600.0,   # aimed: facing an enemy in reach, or one very close
     # real action beats prediction: aimed shots/hits elsewhere and nothing like that on the shown player → cut
-    "action_fresh": 1.2, "action_quiet": 2.5,
+    # (values marked "demos" were tuned on 10 pro maps: kills seen 58 → 64 %, cuts per minute 18 → 14)
+    "action_fresh": 1.2, "action_quiet": 1.5,                                            # demos
     # grenades: the thrower is shown when nothing else happens
     "nade": {"smoke": 40.0, "flashbang": 45.0, "frag": 45.0, "firebomb": 45.0, "decoy": 10.0}, "nade_other": 30.0,
-    "nade_fresh": 1.0, "nade_min_since": 2.0,     # a throw only cuts after this long on the current player
-    "nade_enemy_range": 0.0,     # > 0: only throws by players this close to an enemy (utility into a fight) cut
+    "nade_fresh": 1.0, "nade_min_since": 6.0,     # a throw only cuts after this long on the current player (demos)
+    "nade_enemy_range": 1200.0,  # only throws by players this close to an enemy (utility into a fight) cut (demos)
     "half_life_fight": 5.0, "half_life_near": 3.0, "half_life_idle": 2.0,
     "clutch": 300.0, "clutch_per_enemy": 25.0,
     "duel": 120.0, "duel_cap": 200.0, "duel_angle": 35.0,
@@ -51,7 +52,7 @@ TUNING = {
     "lookahead": 0.5, "closing_min": 40.0, "contact": 0.6, "contact_cap": 120.0,
     "flank": 45.0, "proximity": 10.0, "proximity_range": 1200.0,
     # standoff: two players only "looking" at each other (often through a wall) lose value without shots or hits
-    "standoff_grace": 2.5, "standoff_half_life": 2.0, "standoff_floor": 0.15,
+    "standoff_grace": 1.5, "standoff_half_life": 2.0, "standoff_floor": 0.15,             # demos
     "angle_hold": 260.0, "angle_hold_degrees": 10.0,   # beats the clutcher by a "jump": cut before he peeks
     # predictions from the situation
     "trade_try": 90.0, "trade_try_window": 4.0, "trade_reach": 1.3,      # teammate of a fallen player goes for the refrag
@@ -67,7 +68,7 @@ TUNING = {
     "push": 30.0, "push_carrier": 80.0, "push_radius": 700.0, "push_speed": 130.0,
     "flashed_factor": 0.4,       # a flashed player's view is white – show someone else
     "dwell": 2.0, "dwell_fast": 1.4, "dwell_calm": 3.5,
-    "margin_factor": 1.2, "margin": 20.0,
+    "margin_factor": 1.4, "margin": 35.0,                                                # demos
     "jump": 250.0, "jump_min": 1.0,
     "kill_hold": 1.2,            # the shown player just killed: stay at least this long
     "dead_switch_gap": 0.15,     # wait this long between commands while the camera is on a dead player

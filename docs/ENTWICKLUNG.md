@@ -717,6 +717,11 @@ Die Ideen (Abklingen, Flanke, Sniper-Reichweite, Vorsprung + Mindestzeit) stamme
 lässt sich weitergeben und hier mit `python -m auto_observer.demo_replay` auswerten (auch mit geänderten `TUNING`-Werten,
 `evaluate(pfad, {"dwell": 1.5})`).
 
+Stand der Abstimmung: 10 Pro-Maps (Vitality, MOUZ, Spirit, Falcons, NAVI; 7 zum Abstimmen, 3 zur Kontrolle) –
+Kills im Bild 58 → 64 %, mit ≥ 0,5 s Vorlauf 44 → 47 %, Wechsel pro Minute 18 → 14. Die so gefundenen Werte sind in
+`TUNING` mit „demos“ markiert. Erkenntnis aus den Demos: Zwischen erstem Schuss und Kill liegen im Median nur 1,6 s,
+18 % der Kills fallen ohne vorherigen Schuss – früher dran sein geht nur über die Lage (Positionen), nicht über Schüsse.
+
 **Abstimmen mit einem Mitschnitt:** In der Einrichtung „Mitschnitt starten“, ein Match laufen lassen, Datei aus dem
 Ordner `recordings` holen. Dann `python -m auto_observer.replay <datei>.jsonl` – zeigt jeden Wechsel mit Grund und wie
 oft die Regie mit der Kamera in der Aufnahme übereinstimmt (hat ein Mensch observt, ist das seine Wahl).

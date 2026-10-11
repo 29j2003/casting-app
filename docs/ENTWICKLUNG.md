@@ -384,9 +384,10 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
   echten Ziel-Lage – CSS-Regeln mit `!important` (Leiste rückt ohne Sponsor auf, `cast.css`) gelten mit; solange ein Teil
   gleitet, trägt es `.gliding`, und diese Regeln haben `:not(.gliding)`, sonst könnte die Animation sie nicht übersteuern.
   Neue Regeln dieser Art brauchen ebenfalls `:not(.gliding)`; `tests/live/flicker.py` meldet Hin-und-her-Sprünge.
-  - **Wischen** schneidet mit Rand (`WIPE_EDGE`, −140 px): Rahmen (`box-shadow`), goldene Kante (`::before`), Namensschild
+  - **Wischen** schneidet mit Rand (`WIPE_EDGE` = 140 px): Rahmen (`box-shadow`), goldene Kante (`::before`), Namensschild
     und Reiter ragen über den Kasten hinaus – mit `inset(0 …)` wurden sie während des Wischens abgeschnitten und sprangen
-    am Ende ins Bild.
+    am Ende ins Bild. Die Gegenseite muss dann `calc(100% + Rand)` sein (`PAST`); 2.23.0 hatte `100% − Rand`, dadurch blieb
+    von jedem Kasten ein 140 px breiter Streifen stehen. `test_wipe_leaves_nothing_behind` prüft das.
   - **Weite Sprünge** (mehr als `LONG_JUMP` = 300 px nach oben/unten, z. B. Leiste oben bei Clips ↔ unten bei Cast): ein
     *bleibt*-Teil gleitet nicht quer übers Bild, sondern blendet an der alten Stelle aus (Kopie in der alten Schicht) und an
     der neuen ein; ein *Überblendung*-Paar blendet an Ort und Stelle. Kameras gleiten immer (ihr Bild läuft weiter).

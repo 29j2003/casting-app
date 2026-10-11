@@ -61,18 +61,20 @@
   const opacity = e => { const cs = getComputedStyle(e); return cs.display === "none" ? 0 : parseFloat(cs.opacity) || 0; };
   // Wischen schneidet mit Rand: Rahmen, Schatten, Namensschild und Reiter ragen über den Kasten hinaus und würden
   // sonst während des Wischens abgeschnitten – erst am Ende sprangen Rahmen und Schild ins Bild (2.23)
-  const WIPE_EDGE = "-140px";
+  // Vorzeichen beachten: das Ende muss 100 % PLUS Rand sein, sonst bleibt ein 140 px breiter Streifen stehen (2.23.0, Video 11.10.)
+  const WIPE_EDGE = 140, EDGE = `-${WIPE_EDGE}px`, PAST = `calc(100% + ${WIPE_EDGE}px)`;
   const LONG_JUMP = 300;                             // px nach oben/unten: ab hier blendet ein Teil, statt zu gleiten
   const OUT = {
     fade: o => [{ opacity: o }, { opacity: 0 }],
     slide: o => [{ opacity: o, translate: "0 0" }, { opacity: 0, translate: "-80px 0" }],
-    wipe: () => [{ clipPath: `inset(${WIPE_EDGE})` }, { clipPath: `inset(${WIPE_EDGE} ${WIPE_EDGE} ${WIPE_EDGE} calc(100% + ${WIPE_EDGE}))` }]
+    wipe: () => [{ clipPath: `inset(${EDGE})` }, { clipPath: `inset(${EDGE} ${EDGE} ${EDGE} ${PAST})` }]
   };
   const IN = {
     fade: o => [{ opacity: 0 }, { opacity: o }],
     slide: o => [{ opacity: 0, translate: "80px 0" }, { opacity: o, translate: "0 0" }],
-    wipe: () => [{ clipPath: `inset(${WIPE_EDGE} calc(100% + ${WIPE_EDGE}) ${WIPE_EDGE} ${WIPE_EDGE})` }, { clipPath: `inset(${WIPE_EDGE})` }]
+    wipe: () => [{ clipPath: `inset(${EDGE} ${PAST} ${EDGE} ${EDGE})` }, { clipPath: `inset(${EDGE})` }]
   };
+  window.__transitionFrames = { OUT, IN };            // für tests/test_control_page.py (Wischen lässt nichts stehen)
   function logo() {
     const Z = C().Z;
     const T = Object.assign({}, (window.CAST_THEMES || {})[Z.theme] || (Z.ownThemes || {})[Z.theme] || {}, (Z.themeData || {})[Z.theme] || {});

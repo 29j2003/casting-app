@@ -12,7 +12,9 @@ Each player's rating = (base + decaying event score + situational score) × impo
 
 Switching rules keep the picture calm: a minimum time on a player that depends on the pace of the round
 (long in a quiet 1v1, short when kills come fast), a clear margin before cutting, an immediate cut for a
-much bigger moment, at least ~1 s on a player who just killed, and an immediate cut when the shown player
+much bigger moment, at least ~1 s on a player who just killed, a quick cut to real action (aimed shots – even
+misses – or hits) when the shown player has none, no cut away while the shown player is in a fight (a kill
+elsewhere may be missed – one fight in focus), the grenade thrower when nothing else happens, and an immediate cut when the shown player
 dies (to the killer if known). Two players only looking at each other – often through a wall – lose value
 after a few seconds without shots or hits ("standoff"), so a real fight elsewhere wins. In buy time and quiet
 moments the camera changes now and then: the other side and players not shown for a while first.
@@ -33,7 +35,13 @@ TUNING = {
     "clutch_kill": 40.0, "clutch_kill_per_enemy": 20.0,
     "damage_taken": 50.0,
     "shooter_hit": 45.0, "shooter_angle": 35.0,   # enemy looking at a player who just got hit: probably the shooter
-    "shot": 12.0, "shot_aimed": 20.0, "shot_cap": 60.0,
+    "shot": 12.0, "shot_aimed": 40.0, "shot_cap": 120.0, "shot_target": 30.0,
+    "aim_angle": 30.0, "aim_reach": 1.2, "aim_close": 600.0,   # aimed: facing an enemy in reach, or one very close
+    # real action beats prediction: aimed shots/hits elsewhere and nothing like that on the shown player → cut
+    "action_fresh": 1.2, "action_quiet": 2.5,
+    # grenades: the thrower is shown when nothing else happens
+    "nade": {"smoke": 40.0, "flashbang": 45.0, "frag": 45.0, "firebomb": 45.0, "decoy": 10.0}, "nade_other": 30.0,
+    "nade_fresh": 1.0,
     "half_life_fight": 5.0, "half_life_near": 3.0, "half_life_idle": 2.0,
     "clutch": 300.0, "clutch_per_enemy": 25.0,
     "duel": 120.0, "duel_cap": 200.0, "duel_angle": 35.0,
@@ -120,6 +128,8 @@ class Director:
         self.last_target = ""
         self.ratings: list[Rating] = []
         self.last_action: dict[str, float] = {}           # steamid → time of the last shot, hit or kill
+        self.last_aimed: dict[str, float] = {}            # steamid → time of the last aimed shot, hit taken/dealt or kill
+        self.last_throw: dict[str, float] = {}            # steamid → time of the last grenade thrown
         self.pair_since: dict[tuple[str, str], float] = {}  # duel pair → since when they face each other
         self.shown_at: dict[str, float] = {}               # steamid → when the camera last went there
         self._pairs_seen: set[tuple[str, str]] = set()
@@ -127,6 +137,8 @@ class Director:
     def reset(self) -> None:
         self.event_scores.clear()
         self.last_action.clear()
+        self.last_aimed.clear()
+        self.last_throw.clear()
         self.pair_since.clear()
         self.shown_at.clear()
         self.last_switch, self.last_target, self.ratings = -math.inf, "", []
@@ -143,6 +155,8 @@ class Director:
             boosts = self.event_scores.setdefault(event.steamid, [])
             if event.kind in ("kill", "shot", "damage"):
                 self.last_action[event.steamid] = event.time
+            if event.kind in ("kill", "damage"):
+                self.last_aimed[event.steamid] = event.time
             if event.kind == "kill":
                 amount = t["kill"] * event.amount + (t["headshot"] if event.headshot else 0)
                 if player.round_kills >= 2:
@@ -163,13 +177,39 @@ class Director:
                     if (player.position and enemy.position and facing(enemy, player, t["shooter_angle"])
                             and distance(player.position, enemy.position) <= enemy.engage_range):
                         self.event_scores.setdefault(enemy.steamid, []).append((event.time, t["shooter_hit"], "fight", player.name))
-                        self.last_action[enemy.steamid] = event.time
+                        self.last_action[enemy.steamid] = self.last_aimed[enemy.steamid] = event.time
             elif event.kind == "shot":
-                aimed = any(facing(player, enemy, 20) and distance(player.position, enemy.position) <= player.engage_range
-                            for enemy in match.enemies(player) if player.position and enemy.position)
-                boosts.append((event.time, t["shot"] + (t["shot_aimed"] if aimed else 0), "shots", ""))
+                target = self._aimed_at(player, match)
+                if target:
+                    boosts.append((event.time, (t["shot"] + t["shot_aimed"]) * event.amount ** 0.5, "shots", target.name))
+                    self.last_aimed[player.steamid] = event.time
+                    self.event_scores.setdefault(target.steamid, []).append((event.time, t["shot_target"], "fight", player.name))
+                    self.last_action[target.steamid] = event.time
+                else:
+                    boosts.append((event.time, t["shot"], "shots", ""))
+            elif event.kind == "throw":
+                value = t["nade"].get(event.detail, t["nade_other"])
+                if value >= 20:                       # a decoy is no reason to cut
+                    boosts.append((event.time, value, "nade", event.detail))
+                    self.last_throw[event.steamid] = event.time
             elif event.kind == "death":
                 self.event_scores.pop(event.steamid, None)
+
+    def _aimed_at(self, player: Player, match: Match) -> Player | None:
+        """The enemy a shot is aimed at (even if it misses): looked at within reach, or very close; else None."""
+        t = self.tuning
+        if not player.position:
+            return None
+        best, best_gap = None, math.inf
+        for enemy in match.enemies(player):
+            if not enemy.position:
+                continue
+            gap = distance(player.position, enemy.position)
+            aimed = (gap <= t["aim_close"]
+                     or (gap <= player.engage_range * t["aim_reach"] and facing(player, enemy, t["aim_angle"])))
+            if aimed and gap < best_gap:
+                best, best_gap = enemy, gap
+        return best
 
     def _event_score(self, player: Player, match: Match, now: float) -> dict[str, tuple[float, str]]:
         """Current value of the decaying boosts, grouped by code (code → (points, detail))."""
@@ -194,7 +234,7 @@ class Director:
             result[code] = (points + value, detail)
         self.event_scores[player.steamid] = kept
         if "shots" in result:
-            result["shots"] = (min(t["shot_cap"], result["shots"][0]), "")
+            result["shots"] = (min(t["shot_cap"], result["shots"][0]), result["shots"][1])
         return result
 
     # --- situation ---
@@ -353,6 +393,19 @@ class Director:
             return None                          # let the kill sink in
         if match.round_phase in ROUND_OVER:
             return None
+        if now - self.last_aimed.get(current, -math.inf) <= t["action_quiet"]:
+            return None                          # the shown player is in a fight: stay, even if a kill falls elsewhere
+        fighting = [r for r in ratings if r.importance > 0 and r.steamid != current
+                    and now - self.last_aimed.get(r.steamid, -math.inf) <= t["action_fresh"]]
+        if since >= t["jump_min"] and fighting:
+            action = max(fighting, key=lambda r: r.score)
+            return Decision(action.steamid, action.reason, action.detail)
+        throwing = [r for r in ratings if r.importance > 0 and r.steamid != current
+                    and now - self.last_throw.get(r.steamid, -math.inf) <= t["nade_fresh"]]
+        if (since >= t["jump_min"] and throwing and not fighting
+                and now - self.last_throw.get(current, -math.inf) > t["nade_fresh"] + 1.0):
+            thrower = max(throwing, key=lambda r: r.score)
+            return Decision(thrower.steamid, "nade", self._nade_of(thrower.steamid))
         if best.steamid != current:
             if best.score >= shown.score + t["jump"] and since >= t["jump_min"]:
                 return Decision(best.steamid, best.reason, best.detail)
@@ -364,6 +417,10 @@ class Director:
             if pick:
                 return Decision(pick, "rotation")
         return None
+
+    def _nade_of(self, steamid: str) -> str:
+        boosts = [b for b in self.event_scores.get(steamid, []) if b[2] == "nade"]
+        return boosts[-1][3] if boosts else ""
 
     def _rotation_pick(self, ratings: list[Rating], current: str, match: Match, now: float) -> str | None:
         """For quiet moments: important players, the other side and those not shown for a while first."""

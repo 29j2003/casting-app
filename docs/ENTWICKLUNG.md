@@ -692,7 +692,11 @@ sofort bei viel größerem Moment; nach einem Kill des gezeigten Spielers mindes
 Spieler, sofort (schon beim Eintreffen der Daten) auf den Schützen. „Patt“: zwei Spieler, die sich nur ansehen (oft
 durch eine Wand), verlieren nach 2,5 s ohne Schuss oder Treffer an Wert; wer getroffen wird, macht den Gegner, der in
 seine Richtung schaut, interessant (wahrscheinlich der Schütze). Kaufphase und ruhige Momente: Abwechslung, andere Seite
-und länger nicht gezeigte Spieler zuerst, die wichtigsten bevorzugt.
+und länger nicht gezeigte Spieler zuerst, die wichtigsten bevorzugt. **Echte Action schlägt Vorhersage:** gezielte
+Schüsse (auch daneben – Blick auf einen Gegner in Reichweite oder Gegner ganz nah) oder Treffer woanders, und beim
+gezeigten Spieler seit 2,5 s nichts davon → sofort rüber (nach mindestens 1 s). Kämpft der gezeigte Spieler selbst,
+bleibt die Kamera dort (ein Kill woanders darf fehlen). Granaten (neue Einträge in `allgrenades`, ohne Feuer am Boden
+und Decoy): der Werfer wird gezeigt, wenn sonst nichts passiert.
 Die Ideen (Abklingen, Flanke, Sniper-Reichweite, Vorsprung + Mindestzeit) stammen aus dem „Smart Auto Observer“ von
 [AlexNB01/cs2-observer-toolkit](https://github.com/AlexNB01/cs2-observer-toolkit) (MIT); der Code ist neu geschrieben.
 

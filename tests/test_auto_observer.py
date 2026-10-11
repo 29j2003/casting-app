@@ -557,3 +557,73 @@ def test_engine_cuts_at_once_when_shown_player_dies(engine):
     engine.clock_.now += 0.1
     engine.on_gsi(post(lineup(p0={"hp": 0}), observed=0))     # no tick in between
     assert len(engine.camera.sent) == sent + 1 and engine.camera.sent[-1] != sid(0)
+
+
+def test_aimed_shooting_elsewhere_wins_over_a_quiet_duel():
+    # camera on P0, who faces P5 (fresh duel, nobody shoots); far away P1 shoots at P6 – and misses
+    players = lineup(p0={"pos": (0, 0, 0), "fwd": (1, 0, 0)}, p5={"pos": (700, 0, 0), "fwd": (-1, 0, 0)},
+                     p1={"pos": (0, 40000, 0), "fwd": (1, 0, 0)}, p6={"pos": (1400, 40000, 0), "fwd": (0, 1, 0)})
+    match, director = Match(), Director()
+    match.update(post(players, observed=0), 0.0)
+    director.switched(sid(0), 0.0)
+    rate(match, 0.0, director=director)
+    for step in range(1, 40):
+        now = step * 0.1
+        if step == 30:
+            players[sid(1)]["weapons"]["weapon_1"]["ammo_clip"] = 27
+        director.feed(match.update(post(players, observed=0), now), match)
+        _, ratings = rate(match, now, director=director)
+        decision = director.decide(match, ratings, sid(0), now)
+        if step < 30:
+            assert decision is None or decision.steamid != sid(1)
+        elif decision:
+            break
+    assert decision and decision.steamid == sid(1) and decision.reason == "shots" and decision.detail == "P6"
+    assert now <= 3.1                                                     # at once, not after a long dwell
+
+
+def test_no_cut_away_from_a_player_who_is_shooting_himself():
+    players = lineup(p0={"pos": (0, 0, 0), "fwd": (1, 0, 0)}, p5={"pos": (700, 0, 0), "fwd": (-1, 0, 0)},
+                     p1={"pos": (0, 40000, 0), "fwd": (1, 0, 0)}, p6={"pos": (1400, 40000, 0), "fwd": (0, 1, 0)})
+    match, director = Match(), Director()
+    match.update(post(players, observed=0), 0.0)
+    director.switched(sid(0), 0.0)
+    players[sid(0)]["weapons"]["weapon_1"]["ammo_clip"] = 28
+    players[sid(1)]["weapons"]["weapon_1"]["ammo_clip"] = 28
+    director.feed(match.update(post(players, observed=0), 1.5), match)
+    _, ratings = rate(match, 1.6, director=director)
+    decision = director.decide(match, ratings, sid(0), 1.6)
+    assert decision is None or decision.steamid != sid(1) or decision.reason != "shots"
+
+
+def test_grenade_thrower_is_shown_when_nothing_else_happens():
+    match, director = Match(), Director()
+    first = post(lineup(), observed=0)
+    first["grenades"] = {"10": {"owner": sid(6), "type": "smoke", "position": "0, 0, 0", "lifetime": "3.0"}}
+    assert match.update(first, 0.0) == []                       # already flying when the app starts: no throw
+    director.switched(sid(0), 0.0)
+    second = post(lineup(), observed=0)
+    second["grenades"] = dict(first["grenades"], **{
+        "11": {"owner": sid(7), "type": "flashbang", "position": "0, 0, 0", "lifetime": "0.1"},
+        "12": {"owner": sid(8), "type": "inferno", "flames": {}}})
+    events = match.update(second, 2.0)
+    assert [(e.kind, e.steamid, e.detail) for e in events] == [("throw", sid(7), "flashbang")]
+    director.feed(events, match)
+    _, ratings = rate(match, 2.1, director=director)
+    decision = director.decide(match, ratings, sid(0), 2.1)
+    assert decision and decision.steamid == sid(7) and decision.reason == "nade" and decision.detail == "flashbang"
+
+
+def test_one_fight_in_focus_kill_elsewhere_does_not_pull():
+    players = lineup(p0={"pos": (0, 0, 0), "fwd": (1, 0, 0)}, p5={"pos": (700, 0, 0), "fwd": (-1, 0, 0)})
+    match, director = Match(), Director()
+    match.update(post(players, observed=0), 0.0)
+    director.switched(sid(0), 0.0)
+    players[sid(0)]["weapons"]["weapon_1"]["ammo_clip"] = 26                    # P0 fights P5
+    players[sid(8)]["match_stats"]["kills"] = 1                                 # P8 kills elsewhere
+    players[sid(8)]["state"]["round_kills"] = 1
+    players[sid(3)]["state"]["health"] = 0
+    director.feed(match.update(post(players, observed=0), 3.0), match)
+    for now in (3.1, 4.0, 5.0):
+        _, ratings = rate(match, now, director=director)
+        assert director.decide(match, ratings, sid(0), now) is None

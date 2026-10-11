@@ -54,11 +54,12 @@ def distance(a: Vector, b: Vector) -> float:
 @dataclass
 class Event:
     """Something that just happened to a player (derived from two snapshots)."""
-    kind: str              # "kill", "death", "damage", "shot"
+    kind: str              # "kill", "death", "damage", "shot", "throw"
     steamid: str
     time: float
     amount: int = 1        # kills in this snapshot, damage taken, bullets fired
     headshot: bool = False
+    detail: str = ""       # grenade type for "throw" (smoke, flashbang, frag, firebomb, decoy)
 
 
 @dataclass
@@ -140,6 +141,8 @@ class Match:
         self.scores = {"CT": 0, "T": 0}
         self.updated = 0.0             # time of the last post
         self.recent: deque[Event] = deque()
+        self.grenades: set[str] = set()   # ids of the grenades in the last post ("allgrenades")
+        self.grenades_known = False       # the first post only tells which grenades already fly
 
     # --- reading ---
 
@@ -179,6 +182,7 @@ class Match:
         if new_map:
             self.players.clear()
             self.recent.clear()
+            self.grenades, self.grenades_known = set(), False
         if map_name:
             self.map_name = map_name
         self.map_phase = str(game_map.get("phase") or self.map_phase)
@@ -200,6 +204,7 @@ class Match:
                 events += self._update_player(str(steamid), data, now)
         for steamid in [s for s in self.players if s not in all_players]:
             del self.players[steamid]          # left the server
+        events += self._update_grenades(state.get("grenades"), now)
 
         self.recent.extend(events)
         while self.recent and now - self.recent[0].time > RECENT_SECONDS:
@@ -260,6 +265,24 @@ class Match:
         if (self.round_phase == "live" and player.alive and weapon == player.weapon and clip >= 0
                 and 0 <= player.clip < clip):
             events.append(Event("shot", steamid, now, clip - player.clip))
+        return events
+
+    def _update_grenades(self, grenades, now: float) -> list[Event]:
+        """A grenade id that was not there before = its owner just threw it (fire on the ground does not count)."""
+        if not isinstance(grenades, dict):
+            return []
+        events = []
+        current = set()
+        for grenade_id, grenade in grenades.items():
+            if not isinstance(grenade, dict):
+                continue
+            current.add(str(grenade_id))
+            kind = str(grenade.get("type") or "")
+            owner = str(grenade.get("owner") or "")
+            if (self.grenades_known and str(grenade_id) not in self.grenades and kind != "inferno"
+                    and owner in self.players and self.players[owner].alive):
+                events.append(Event("throw", owner, now, detail=kind[:20]))
+        self.grenades, self.grenades_known = current, True
         return events
 
     def _count_damage(self, player: Player, round_damage: int) -> None:

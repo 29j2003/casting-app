@@ -74,6 +74,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Steuerseite: {url}")
     print(f"Daten: {settings.folder}")
     print("Zum Beenden dieses Fenster schließen oder Strg+C drücken.\n")
+    engine.auto_setup()
     if not args.no_browser:
         webbrowser.open(url)
     try:

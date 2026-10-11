@@ -26,8 +26,11 @@
 
 <main>
   <section class="card control">
-    <button id="enabled" class="big-toggle" type="button">Auto-Observer: AUS</button>
-    <label class="check"><input type="checkbox" id="xray"> X-Ray</label>
+    <div class="buttons">
+      <button id="launch-cs2" class="big-launch" type="button">CS2 starten</button>
+      <button id="enabled" class="big-toggle" type="button">Auto-Observer: AUS</button>
+      <label class="check"><input type="checkbox" id="xray"> X-Ray</label>
+    </div>
 
     <div class="status">
       <div>Jetzt: <b id="now-name">–</b> <span id="now-reason" class="reason"></span></div>
@@ -53,47 +56,39 @@
   <section id="teams" class="teams"></section>
 
   <details class="card setup" id="setup">
-    <summary>Einrichtung</summary>
-    <ol>
-      <li>
-        <b>CS2-Daten (GSI-Datei)</b> <span id="cfg-installed"></span><br>
-        <input id="cfg_folder" class="wide" placeholder="…\steamapps\common\Counter-Strike Global Offensive\game\csgo\cfg">
-        <button id="cfg-find" type="button">Ordner suchen</button>
-        <button id="cfg-write" type="button">GSI-Datei schreiben</button>
-        <span id="cfg-status"></span>
-        <ul id="cfg-list" class="choices"></ul>
-        <small>Danach CS2 neu starten. Die Datei der Casting-App bleibt, beide bekommen die Daten.</small>
-      </li>
-      <li>
-        <b>Startoptionen in Steam</b> (CS2 → Eigenschaften → Startoptionen):
-        <code id="launch">-netconport 54545 -insecure</code>
-        <button id="copy-launch" type="button">Kopieren</button><br>
-        <small>Ohne <code>-insecure</code> nimmt CS2 über die Fernkonsole keine Befehle an (VAC ist dann aus).</small>
-      </li>
-      <li>
-        <b>Fernkonsole</b>
-        Host <input id="netcon_host" class="host"> Port <input id="netcon_port" type="number" min="1" max="65535" class="port">
-        <label>Kamera-Weg
-          <select id="camera_mode">
-            <option value="auto">Automatisch (Fernkonsole, sonst Tasten)</option>
-            <option value="netcon">Nur Fernkonsole</option>
-            <option value="keys">Nur Tasten (CS2 im Vordergrund)</option>
-          </select>
-        </label>
-        <label>Befehl
-          <select id="spec_command">
-            <option value="name">spec_player "Name"</option>
-            <option value="accountid">spec_player_by_accountid</option>
-          </select>
-        </label>
-      </li>
-      <li>
-        <b>Mitschnitt</b> (für die Abstimmung der Regie)
-        <button id="record" type="button">Mitschnitt starten</button>
+    <summary>Einrichtung <span id="setup-summary" class="reason"></span></summary>
+    <p class="hint">Die App sucht Steam und CS2 selbst, richtet die CS2-Daten (GSI-Datei) ein und startet CS2 mit
+      den nötigen Startoptionen. Hier nur etwas ändern, wenn sie etwas nicht findet.</p>
+    <div class="setup-grid">
+      <span>Steam</span>
+      <span><input id="steam_exe" class="wide" placeholder="wird gesucht – sonst Pfad zu steam.exe"> <span id="steam-status"></span></span>
+      <span>CS2 (cfg-Ordner)</span>
+      <span><input id="cfg_folder" class="wide" placeholder="…\steamapps\common\Counter-Strike Global Offensive\game\csgo\cfg">
+        <button id="cfg-find" type="button">Suchen</button> <span id="cfg-status"></span>
+        <ul id="cfg-list" class="choices"></ul></span>
+      <span>CS2-Daten</span>
+      <span><span id="cfg-installed"></span> <button id="cfg-write" type="button">Neu schreiben</button></span>
+      <span>Weitere Startoptionen</span>
+      <span><input id="launch_extra" class="wide" placeholder="z. B. -novid -console"><br>
+        <small>„CS2 starten“ startet: <code id="launch-preview"></code></small></span>
+      <span>Fernkonsole</span>
+      <span>Host <input id="netcon_host" class="host"> Port <input id="netcon_port" type="number" min="1" max="65535" class="port">
+        <small>(Host nur ändern, wenn CS2 auf einem anderen PC läuft)</small></span>
+      <span>Kamera-Weg</span>
+      <span><select id="camera_mode">
+          <option value="auto">Automatisch (Fernkonsole, sonst Tasten)</option>
+          <option value="netcon">Nur Fernkonsole</option>
+          <option value="keys">Nur Tasten (CS2 im Vordergrund)</option>
+        </select>
+        Befehl <select id="spec_command">
+          <option value="name">spec_player "Name"</option>
+          <option value="accountid">spec_player_by_accountid</option>
+        </select></span>
+      <span>Mitschnitt</span>
+      <span><button id="record" type="button">Mitschnitt starten</button>
         <button id="open-recordings" type="button">Ordner öffnen</button>
-        <span id="record-status"></span>
-      </li>
-    </ol>
+        <span id="record-status"></span></span>
+    </div>
   </details>
 
   <section class="card">

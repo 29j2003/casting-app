@@ -677,7 +677,8 @@ nicht mit (`pyproject.toml` nimmt nur `casting_app*`). Läuft die Regie gut, kan
 | `engine.py` | verbindet alles: Token prüfen, Übernehmen von Hand + Rückkehr-Timer, Eingriff in CS2 erkennen, Zustand für die Seite |
 | `camera.py` | Fernkonsole (`-netconport`, `spec_player "Name"` / `spec_player_by_accountid`, `spec_show_xray`); Rückfall Tasten 1–0 per `SendInput` (nur Windows, CS2 im Vordergrund) |
 | `settings.py` | `settings.json` (Schalter, Regler je Spieler/Team, Fernkonsole); jede Änderung wird geprüft |
-| `cs2_cfg.py` | cfg-Ordner finden, GSI-Datei schreiben (mit `allplayers_position` und `allgrenades`) |
+| `cs2_cfg.py` | Steam (Registry/übliche Orte) und CS2 in allen Steam-Bibliotheken finden, GSI-Datei schreiben (mit `allplayers_position` und `allgrenades`) – beim Start ohne Nachfrage |
+| `launcher.py` | „CS2 starten“: `steam -applaunch 730 -netconport <port> -insecure <weitere Optionen>`, losgelöst von der App; läuft CS2 schon ohne Fernkonsole, kommt ein Hinweis |
 | `recorder.py`, `replay.py` | Mitschnitt eines Matches (`recordings/*.jsonl`) und Abspielen ohne CS2 |
 | `server.py`, `web/` | Steuerseite (nur Deutsch) und ihre API; POST nur mit Kopfzeile `X-Auto-Observer: 1`, nur Host 127.0.0.1/localhost |
 

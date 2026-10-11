@@ -12,10 +12,11 @@ import secrets
 import threading
 import time
 from collections import deque
+from pathlib import Path
 
-from . import VERSION
+from . import VERSION, launcher
 from .camera import Camera
-from .cs2_cfg import cfg_installed, find_cfg_folders, write_cfg
+from .cs2_cfg import cfg_installed, cs2_exe, find_cfg_folders, find_steam_exe, write_cfg
 from .director import Director, form
 from .game import Match, Player
 from .recorder import Recorder, without_token
@@ -213,6 +214,44 @@ class Engine:
     def find_cfg(self) -> list[str]:
         return find_cfg_folders()
 
+    def steam_exe(self) -> str:
+        """Steam program: the one set by hand, else the one found."""
+        return self.settings["steam_exe"] or find_steam_exe()
+
+    def auto_setup(self) -> None:
+        """Find CS2 and write the GSI file without asking (on start and before launching CS2)."""
+        folder = self.settings["cfg_folder"]
+        if not folder or not Path(folder).is_dir():
+            found = find_cfg_folders()
+            folder = found[0] if found else ""
+        if not folder:
+            self.log("CS2 nicht gefunden – cfg-Ordner in der Einrichtung eintragen", "warn")
+            return
+        if not cfg_installed(folder, self.settings.token):
+            ok, message = self.write_cfg(folder)
+            if not ok:
+                self.log(f"GSI-Datei nicht geschrieben: {message}", "warn")
+        elif self.settings["cfg_folder"] != folder:
+            self.settings.apply({"cfg_folder": folder})
+
+    def launch_cs2(self) -> tuple[bool, str]:
+        """Start CS2 through Steam with the console port (and the extra options)."""
+        if self.camera.netcon.connected:
+            return False, "CS2 läuft schon und die Fernkonsole ist verbunden"
+        self.auto_setup()
+        steam = self.steam_exe()
+        if not steam:
+            return False, "Steam nicht gefunden – Pfad in der Einrichtung eintragen"
+        if launcher.cs2_running():
+            return False, "CS2 läuft schon, aber ohne Fernkonsole – CS2 beenden und hier neu starten"
+        command = launcher.launch_command(steam, self.settings["netcon_port"], self.settings["launch_extra"])
+        try:
+            launcher.start(command)
+        except OSError as error:
+            return False, f"Start ging nicht: {error}"
+        self.log("CS2 wird gestartet: " + " ".join(command[1:]), "ok")
+        return True, ""
+
     def write_cfg(self, folder: str) -> tuple[bool, str]:
         try:
             path = write_cfg(folder, self.gsi_uri, self.settings.token)
@@ -220,7 +259,7 @@ class Engine:
             return False, str(error)
         with self.lock:
             self.settings.apply({"cfg_folder": folder.strip()})
-            self.log(f"GSI-Datei geschrieben: {path} – CS2 neu starten", "ok")
+            self.log(f"GSI-Datei eingerichtet: {path} (gilt ab dem nächsten Start von CS2)", "ok")
         return True, path
 
     def set_recording(self, on: bool) -> None:
@@ -266,10 +305,17 @@ class Engine:
                          "detail": upcoming.detail} if upcoming else None,
                 "teams": teams,
                 "recording": {"on": self.recorder.on, "path": self.recorder.path, "lines": self.recorder.lines},
-                "cfg": {"folder": settings["cfg_folder"], "installed": cfg_installed(settings["cfg_folder"], settings.token),
-                        "uri": self.gsi_uri},
+                "setup": self._setup_state(),
                 "log": list(self.log_lines)[-30:],
             }
+
+    def _setup_state(self) -> dict:
+        settings = self.settings
+        steam = self.steam_exe()
+        command = launcher.launch_command("steam", settings["netcon_port"], settings["launch_extra"])
+        return {"cfg_folder": settings["cfg_folder"], "installed": cfg_installed(settings["cfg_folder"], settings.token),
+                "cs2_found": bool(cs2_exe(settings["cfg_folder"])), "steam": steam, "steam_auto": not settings["steam_exe"],
+                "command": " ".join(command)}
 
     def _player_state(self, player: Player, rating, player_form: float, current: str) -> dict:
         return {

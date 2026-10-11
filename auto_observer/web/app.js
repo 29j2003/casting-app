@@ -69,13 +69,27 @@ $("netcon_host").addEventListener("change", (e) => { mark(e.target); sendSetting
 $("netcon_port").addEventListener("change", (e) => {
   mark(e.target);
   const port = Math.round(Number(e.target.value));
-  if (port >= 1 && port <= 65535) {
-    sendSettings({ netcon_port: port });
-    $("launch").textContent = `-netconport ${port} -insecure`;
-  }
+  if (port >= 1 && port <= 65535) sendSettings({ netcon_port: port });
 });
-$("copy-launch").addEventListener("click", () => navigator.clipboard && navigator.clipboard.writeText($("launch").textContent));
-$("cfg_folder").addEventListener("input", (e) => mark(e.target));
+$("steam_exe").addEventListener("change", (e) => { mark(e.target); sendSettings({ steam_exe: e.target.value.trim() }); });
+$("launch_extra").addEventListener("change", (e) => { mark(e.target); sendSettings({ launch_extra: e.target.value }); });
+$("cfg_folder").addEventListener("change", (e) => {
+  mark(e.target);
+  post("/api/cfg/write", { folder: e.target.value }).then(({ ok, data }) => showCfgStatus(ok, data.message));
+});
+$("launch-cs2").addEventListener("click", async () => {
+  $("launch-cs2").disabled = true;
+  const { ok, data } = await post("/api/launch");
+  if (!ok) flash(data.message || "CS2 konnte nicht gestartet werden");
+  launchClicked = ok ? Date.now() : 0;
+  $("launch-cs2").disabled = false;
+});
+let launchClicked = 0;
+let setupShown = false;          // Einrichtung einmal aufklappen, wenn etwas fehlt
+function showCfgStatus(ok, message) {
+  $("cfg-status").textContent = ok ? "✓ eingerichtet" : message || "Fehler";
+  $("cfg-status").className = ok ? "ok" : "bad";
+}
 $("cfg-find").addEventListener("click", async () => {
   $("cfg-status").textContent = "suche …";
   const { data } = await post("/api/cfg/find");
@@ -84,16 +98,19 @@ $("cfg-find").addEventListener("click", async () => {
   for (const folder of data.folders || []) {
     const item = document.createElement("li");
     item.textContent = folder;
-    item.addEventListener("click", () => { $("cfg_folder").value = folder; mark($("cfg_folder")); });
     list.append(item);
   }
-  if ((data.folders || []).length === 1) { $("cfg_folder").value = data.folders[0]; mark($("cfg_folder")); }
-  $("cfg-status").textContent = (data.folders || []).length ? "gefunden – auswählen und schreiben" : "nichts gefunden – Pfad selbst eintragen";
+  $("cfg-status").textContent = (data.folders || []).length ? "anklicken zum Übernehmen" : "nichts gefunden – Pfad selbst eintragen";
+  $("cfg-status").className = "";
+});
+$("cfg-list").addEventListener("click", (e) => {
+  if (e.target.tagName !== "LI") return;
+  $("cfg-list").replaceChildren();
+  post("/api/cfg/write", { folder: e.target.textContent }).then(({ ok, data }) => showCfgStatus(ok, data.message));
 });
 $("cfg-write").addEventListener("click", async () => {
   const { ok, data } = await post("/api/cfg/write", { folder: $("cfg_folder").value });
-  $("cfg-status").textContent = ok ? "geschrieben – CS2 neu starten" : data.message || "Fehler";
-  $("cfg-status").className = ok ? "ok" : "bad";
+  showCfgStatus(ok, data.message);
 });
 $("record").addEventListener("click", () => post("/api/record", { on: !(state && state.recording.on) }));
 $("open-recordings").addEventListener("click", () => post("/api/open-recordings"));
@@ -228,7 +245,7 @@ function render() {
   $("keys-foreground").textContent = mode === "keys" ? (state.camera.foreground ? "(CS2 ist im Vordergrund ✓)" : "(CS2 ist NICHT im Vordergrund!)") : "";
   if (Date.now() > flashUntil) {
     const problem = state.camera_problem
-      || (mode === "none" ? "Keine Verbindung zu CS2: CS2 mit den Startoptionen aus der Einrichtung starten (Fernkonsole)" : "");
+      || (mode === "none" ? "Keine Verbindung zu CS2 – CS2 über „CS2 starten“ starten" : "");
     $("problem-band").hidden = !(s.enabled && problem);
     $("problem-band").textContent = problem;
   }
@@ -245,10 +262,26 @@ function render() {
   setValue($("spec_command"), s.spec_command);
   setValue($("netcon_host"), s.netcon_host);
   setValue($("netcon_port"), s.netcon_port);
-  if (!busy($("netcon_port"))) $("launch").textContent = `-netconport ${s.netcon_port} -insecure`;
-  setValue($("cfg_folder"), state.cfg.folder);
-  $("cfg-installed").textContent = state.cfg.installed ? "✓ eingerichtet" : "noch nicht eingerichtet";
-  $("cfg-installed").className = state.cfg.installed ? "ok" : "bad";
+  const setup = state.setup;
+  setValue($("cfg_folder"), setup.cfg_folder);
+  setValue($("launch_extra"), s.launch_extra);
+  if (!busy($("steam_exe"))) {
+    $("steam_exe").value = setup.steam_auto ? "" : setup.steam;
+    $("steam_exe").placeholder = setup.steam_auto && setup.steam ? `gefunden: ${setup.steam}` : "wird gesucht – sonst Pfad zu steam.exe";
+  }
+  $("steam-status").textContent = setup.steam ? "✓" : "nicht gefunden";
+  $("steam-status").className = setup.steam ? "ok" : "bad";
+  $("cfg-installed").textContent = setup.installed ? "✓ GSI-Datei eingerichtet" : "nicht eingerichtet";
+  $("cfg-installed").className = setup.installed ? "ok" : "bad";
+  $("launch-preview").textContent = setup.command;
+  const ready = setup.steam && setup.installed;
+  $("setup-summary").textContent = ready ? "– alles gefunden" : "– bitte prüfen";
+  if (!ready && !setupShown) $("setup").open = true;
+  setupShown = true;
+
+  const connected = state.camera.netcon;
+  $("launch-cs2").textContent = connected ? "CS2 läuft ✓" : Date.now() - launchClicked < 60000 ? "CS2 startet …" : "CS2 starten";
+  $("launch-cs2").disabled = connected;
 
   const players = state.teams.flatMap((t) => t.players);
   const shown = players.find((p) => p.observed);

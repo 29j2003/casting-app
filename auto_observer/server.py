@@ -109,6 +109,12 @@ def make_handler(engine: Engine, port: int):
             if path == "/api/cfg/write":
                 ok, message = engine.write_cfg(str(body.get("folder") or ""))
                 return self._json(200 if ok else 400, {"ok": ok, "message": message})
+            if path == "/api/launch":
+                ok, message = engine.launch_cs2()
+                return self._json(200 if ok else 409, {"ok": ok, "message": message})
+            if path == "/api/setup":
+                engine.auto_setup()
+                return self._json(200, {"ok": True})
             if path == "/api/record":
                 engine.set_recording(bool(body.get("on")))
                 return self._json(200, {"ok": True})

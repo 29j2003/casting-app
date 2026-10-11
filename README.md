@@ -462,9 +462,10 @@ an observer. It does not need the casting app and does not change it.
 1. Download `Auto-Observer.exe`: GitHub → Actions → **Auto-Observer** → latest run → artifact *Auto-Observer-windows*.
    Windows may warn because the file is not signed yet (“More info” → “Run anyway”).
 2. Start it – the control page opens in the browser (`http://127.0.0.1:8790`, German only for now). Close the console
-   window to quit.
-3. **Einrichtung** (setup): “Ordner suchen” → “GSI-Datei schreiben”, then add the launch options shown there to CS2 in Steam
-   (`-netconport 54545 -insecure`) and restart CS2. Join as spectator (observer slot or GOTV).
+   window to quit. The app finds Steam and CS2 by itself and sets up the CS2 data (GSI file) – the casting app's file
+   stays, both get the data. If something is missing, fill it in under **Einrichtung** (setup).
+3. Close CS2 if it runs, then press **CS2 starten**: the app starts CS2 through Steam with the console port
+   (`-netconport 54545 -insecure`); more launch options can be added in the setup. Join as spectator (observer slot or GOTV).
 4. Switch **Auto-Observer** on. One slider per player and per team (0–200 %) sets how important they are, e.g. a star
    player at 150 %. “Einfluss der Matchdaten” sets how much the current form counts.
 5. Click a player to show them yourself – the automatic pauses and, with the timer on, takes over again after the set

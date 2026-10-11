@@ -13,6 +13,8 @@ import sys
 import threading
 from pathlib import Path
 
+from .launcher import clean_extra
+
 WEIGHT_MIN, WEIGHT_MAX = 0.0, 2.0
 MAX_WEIGHTS = 2000                       # stored players/teams (old ones are dropped beyond this)
 
@@ -29,7 +31,9 @@ DEFAULTS = {
     "data_mix": 0.5,                     # 0 = only the sliders, 1 = the match form counts fully
     "player_weights": {},                # steamid → {"weight": float, "name": str}
     "team_weights": {},                  # team key → {"weight": float, "name": str}
-    "cfg_folder": "",
+    "cfg_folder": "",                    # CS2's cfg folder (found by the app, can be changed)
+    "steam_exe": "",                     # Steam program; empty = find it
+    "launch_extra": "",                  # more CS2 launch options, e.g. "-novid -console"
 }
 
 CHOICES = {"camera_mode": ("auto", "netcon", "keys"), "spec_command": ("name", "accountid")}
@@ -133,8 +137,10 @@ class Settings:
         if key == "netcon_host":
             text = value.strip() if isinstance(value, str) else ""
             return text if text and len(text) <= 253 and all(ch.isalnum() or ch in ".-:" for ch in text) else None
-        if key == "cfg_folder":
-            return value[:1000] if isinstance(value, str) else None
+        if key in ("cfg_folder", "steam_exe"):
+            return value.strip()[:1000] if isinstance(value, str) else None
+        if key == "launch_extra":
+            return clean_extra(value) if isinstance(value, str) else None
         if key in ("player_weights", "team_weights"):
             if not isinstance(value, dict):
                 return None

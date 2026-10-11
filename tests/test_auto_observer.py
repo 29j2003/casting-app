@@ -193,7 +193,8 @@ def test_defuse_shows_defender_who_can_stop_it():
 # --- engine with a fake camera ---
 
 class FakeNetcon:
-    connected = True
+    def __init__(self):
+        self.connected = True
 
 
 class FakeCamera:
@@ -425,3 +426,40 @@ def test_server_routes_and_safety(server):
     assert status == 200 and state["settings"]["enabled"] and state["teams"][1]["name"] == "Bravo"
     status, _ = request(port, "POST", "/api/show", {"steamid": sid(6)}, {"X-Auto-Observer": "1"})
     assert status == 200
+
+
+# --- setup and starting CS2 ---
+
+def test_launch_options():
+    from auto_observer.launcher import launch_command, launch_options
+    assert launch_options(54545, "") == ["-netconport", "54545", "-insecure"]
+    assert launch_options(2121, "-novid  -console -netconport 1 -insecure\n+exec x") == [
+        "-netconport", "2121", "-insecure", "-novid", "-console", "+exec", "x"]
+    assert launch_command("steam.exe", 2121, "")[:3] == ["steam.exe", "-applaunch", "730"]
+
+
+def test_auto_setup_and_launch(engine, tmp_path, monkeypatch):
+    from auto_observer import engine as engine_module
+    cfg = tmp_path / "lib" / "game" / "csgo" / "cfg"
+    cfg.mkdir(parents=True)
+    monkeypatch.setattr(engine_module, "find_cfg_folders", lambda: [str(cfg)])
+    monkeypatch.setattr(engine_module, "find_steam_exe", lambda: "C:/Steam/steam.exe")
+    started = []
+    monkeypatch.setattr(engine_module.launcher, "start", started.append)
+    monkeypatch.setattr(engine_module.launcher, "cs2_running", lambda: False)
+
+    engine.auto_setup()
+    assert engine.settings["cfg_folder"] == str(cfg) and cfg_installed(str(cfg), TOKEN)
+    setup = engine.state()["setup"]
+    assert setup["installed"] and setup["steam"] == "C:/Steam/steam.exe" and "-netconport 54545 -insecure" in setup["command"]
+
+    ok, _ = engine.launch_cs2()                     # console already connected: nothing to start
+    assert not ok and not started
+    engine.camera.netcon.connected = False
+    engine.settings.apply({"launch_extra": "-novid"})
+    ok, message = engine.launch_cs2()
+    assert ok, message
+    assert started == [["C:/Steam/steam.exe", "-applaunch", "730", "-netconport", "54545", "-insecure", "-novid"]]
+    monkeypatch.setattr(engine_module.launcher, "cs2_running", lambda: True)
+    ok, message = engine.launch_cs2()               # running without console port: must be closed first
+    assert not ok and "beenden" in message and len(started) == 1

@@ -9,8 +9,9 @@ open HUD projects such as drweissbrot/cs-hud). HLTV shows the full width of the 
 evenly – checked against kill positions from pro demos on Mirage, Inferno, Dust2, Anubis and Cache (scale within 3 %,
 kills land on hot pixels 2–4× as often as random points). Fitted values from that check are used where known.
 
-Maps whose two levels HLTV draws one above the other are limited to the level that could be checked (Nuke upper),
-Vertigo is left out. Needs Pillow and NumPy (only for this tool, not for the app).
+Maps whose two levels HLTV draws one above the other are limited to the level that could be checked (Nuke upper).
+Train and Vertigo are left out (not in the active map pool). Needs Pillow and NumPy (only for this tool, not for the
+app).
 """
 
 import base64
@@ -28,7 +29,7 @@ CELL = 96                                     # same grid as map_knowledge.py
 RADAR = {   # Valve overview: pos_x, pos_y, scale
     "de_mirage": (-3230, 1713, 5.0), "de_inferno": (-2087, 3870, 4.9), "de_dust2": (-2476, 3239, 4.4),
     "de_nuke": (-3453, 2887, 7.0), "de_anubis": (-2796, 3328, 5.22), "de_cache": (-2000, 3250, 5.5),
-    "de_ancient": (-2953, 2164, 5.0), "de_overpass": (-4831, 1781, 5.2), "de_train": (-2308, 2078, 4.082077),
+    "de_ancient": (-2953, 2164, 5.0), "de_overpass": (-4831, 1781, 5.2),
 }
 # picture transform fitted to demo kills (scale, x offset, y offset in picture pixels at width 638)
 FITTED = {"de_mirage": (0.12386, 400.99, 112.96), "de_inferno": (0.1266, 265.0, 458.0),

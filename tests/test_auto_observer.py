@@ -931,7 +931,7 @@ def test_leetify_profiles_form_and_roles(tmp_path):
 
     scout = LeetifyScout(tmp_path, lambda *a: None, opener)
     assert scout.set_key("not a key!")[0] is False
-    ok, _ = scout.set_key("d289ab9c-0000-0000-0000-000000000000")
+    ok, _ = scout.set_key("abcd1234-0000-0000-0000-000000000000")
     assert ok
     scout.request([sid(i) for i in range(5)])
     for _ in range(100):
@@ -940,13 +940,13 @@ def test_leetify_profiles_form_and_roles(tmp_path):
         time.sleep(0.05)
     state = scout.state([sid(i) for i in range(5)])
     assert state["loaded"] == 4 and state["key"] and not state["error"]
-    assert all("Bearer d289ab9c" in h.get("Authorization", "") for h in seen_headers)
+    assert all("Bearer abcd1234" in h.get("Authorization", "") for h in seen_headers)
     priors = scout.form_priors([sid(i) for i in range(5)])
     assert priors[sid(0)] > 1.05 > priors[sid(1)] and sid(4) not in priors
     roles = scout.roles({"CT": [sid(0), sid(1), sid(2), sid(3)]})
     assert roles[sid(0)] == "entry" and roles[sid(1)] == "support"
     cache = (tmp_path / "leetify-cache.json").read_text()
-    assert "d289ab9c" not in cache and sid(0) in cache                     # the key is never written to a file
+    assert "abcd1234" not in cache and sid(0) in cache                     # the key is never written to a file
     again = LeetifyScout(tmp_path, lambda *a: None, opener)                 # cached for a day
     assert again.profile(sid(0))["aim"] == 95
 
@@ -961,9 +961,9 @@ def test_leetify_start_value_in_the_director():
 
 
 def test_leetify_key_never_reaches_the_page(engine):
-    ok, _ = engine.set_leetify_key("d289ab9c-1111-2222-3333-444444444444")
+    ok, _ = engine.set_leetify_key("abcd1234-1111-2222-3333-444444444444")
     assert ok
     engine.on_gsi(post(lineup()))
     text = json.dumps(engine.state())
-    assert "d289ab9c" not in text and engine.state()["leetify"]["key"] is True
-    assert "d289ab9c" not in json.dumps(list(engine.log_lines))
+    assert "abcd1234" not in text and engine.state()["leetify"]["key"] is True
+    assert "abcd1234" not in json.dumps(list(engine.log_lines))

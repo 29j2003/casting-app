@@ -722,6 +722,13 @@ Kills im Bild 58 → 64 %, mit ≥ 0,5 s Vorlauf 44 → 47 %, Wechsel pro Minute
 `TUNING` mit „demos“ markiert. Erkenntnis aus den Demos: Zwischen erstem Schuss und Kill liegen im Median nur 1,6 s,
 18 % der Kills fallen ohne vorherigen Schuss – früher dran sein geht nur über die Lage (Positionen), nicht über Schüsse.
 
+**Kartenwissen** (`map_knowledge.py`, Daten in `auto_observer/map_data/<map>.json`): aus den Rohdaten gezählt, wie oft
+ein T an Callout X und ein CT an Callout Y sich in den nächsten 3 s töten (Mirage: B-Site gegen B-Site 40 %, T-Ramp
+gegen Palace 26 %, Schnitt 1,3 %), dazu ein Raster Position → Callout (GSI sendet keine Callouts). Die Regie rechnet
+daraus den Teil „hotspot“. Neu erzeugen mit allen Rohdaten:
+`python -m auto_observer.map_knowledge build <dateien>` (schreibt `auto_observer/map_data/`). Faire Prüfung (jede Map
+nur mit Wissen aus den anderen Demos): Vorlauf ≥ 0,5 s 47 → 49 %, weniger Wechsel – je mehr Demos pro Map, desto besser.
+
 **Abstimmen mit einem Mitschnitt:** In der Einrichtung „Mitschnitt starten“, ein Match laufen lassen, Datei aus dem
 Ordner `recordings` holen. Dann `python -m auto_observer.replay <datei>.jsonl` – zeigt jeden Wechsel mit Grund und wie
 oft die Regie mit der Kamera in der Aufnahme übereinstimmt (hat ein Mensch observt, ist das seine Wahl).

@@ -55,7 +55,7 @@ TUNING = {
     "standoff_grace": 1.5, "standoff_half_life": 2.0, "standoff_floor": 0.15,             # demos
     "angle_hold": 260.0, "angle_hold_degrees": 10.0,   # beats the clutcher by a "jump": cut before he peeks
     # learned map knowledge (map_knowledge.py): chance that a T at callout X and a CT at callout Y fight soon
-    "hotspot": 150.0, "hotspot_ref": 0.25, "hotspot_cap": 1.5,
+    "hotspot": 400.0, "hotspot_ref": 0.2, "hotspot_cap": 1.5,                          # demos
     # predictions from the situation
     "trade_try": 90.0, "trade_try_window": 4.0, "trade_reach": 1.3,      # teammate of a fallen player goes for the refrag
     "swing": 80.0,                     # swinging an enemy who reloads

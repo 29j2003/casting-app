@@ -949,6 +949,12 @@ def test_hltv_links_are_found_in_pasted_text(tmp_path):
             "http://hltv.org/matches/2382241/nip-vs-g2-pgl-astana-2025 · https://example.com/matches/1/x")
     assert hltv_links(text) == ["https://www.hltv.org/matches/2382241/nip-vs-g2-pgl-astana-2025",
                                 "https://www.hltv.org/download/demo/98765"]
+    assert hltv_links("108850-108852 und https://www.hltv.org/download/demo/108851") == [
+        "https://www.hltv.org/download/demo/108851", "https://www.hltv.org/download/demo/108850",
+        "https://www.hltv.org/download/demo/108852"]
+    assert len(hltv_links("100000 bis 900000")) == 60                 # one batch at most
+    assert hltv_links("https://www.hltv.org/matches/2382241/season-2025-2026") == [
+        "https://www.hltv.org/matches/2382241/season-2025-2026"]      # numbers inside a link are no range
     store = Settings(tmp_path)
     assert store.apply({"demo_watch": "ja", "demo_watch_folder": 5}) == []
     assert store.apply({"demo_watch": True, "demo_watch_folder": " D:\\Demos "}) == ["demo_watch", "demo_watch_folder"]
@@ -1055,3 +1061,40 @@ def test_heat_from_hltv_heatmaps():
     assert know.heat("de_x", (10, 10, 0)) == 0.8 and know.heat("de_x", (100, 10, 0)) == 0.2
     assert know.heat("de_x", (5000, 10, 0)) == 0.0 and know.heat("de_x", (10, 10, -600)) is None
     assert know.fight_chance("de_x", (0, 0, 0), (1, 1, 1)) is None and know.place("de_x", (0, 0, 0)) == ""
+
+
+def test_hltv_demos_load_directly_and_fall_back_to_the_browser(tmp_path, monkeypatch):
+    import io
+    import urllib.error
+    from auto_observer import demo_jobs
+    demos, downloads, queued = bulk_demos(tmp_path)
+    opened = []
+    monkeypatch.setattr(demo_jobs, "HLTV_GAP", 0)
+    monkeypatch.setattr(demo_jobs.webbrowser, "open", opened.append)
+
+    class Answer(io.BytesIO):
+        def __init__(self, data, headers, url):
+            super().__init__(data)
+            self.headers, self._url = headers, url
+
+        def geturl(self):
+            return self._url
+
+    def fake_open(request, timeout=0):
+        number = request.full_url.rsplit("/", 1)[1]
+        assert "Auto-Observer" in request.get_header("User-agent")
+        if number == "100001":
+            return Answer(b"RAR!" * 100, {"Content-Type": "application/x-rar-compressed",
+                                          "Content-Disposition": 'attachment; filename="a-vs-b.rar"'},
+                          "https://r2.example/demos/a-vs-b.rar")
+        if number == "100002":
+            raise urllib.error.HTTPError(request.full_url, 404, "weg", {}, None)
+        raise urllib.error.HTTPError(request.full_url, 403, "nur Browser", {}, None)
+
+    monkeypatch.setattr(demo_jobs.urllib.request, "urlopen", fake_open)
+    demos._load_hltv(demo_jobs.hltv_links("100001-100004"))
+    target = demos.folder / "uploads" / "a-vs-b.rar"
+    assert target.read_bytes() == b"RAR!" * 100 and queued == [(str(target), True)]
+    assert opened == ["https://www.hltv.org/download/demo/100003", "https://www.hltv.org/download/demo/100004"]
+    assert demos._settings["demo_watch"] is True                       # the browser downloads get picked up
+    assert not demos.state()["hltv_busy"]

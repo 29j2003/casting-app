@@ -114,10 +114,12 @@
     </div>
     <p class="hint">Beobachten: Jede Demo, die neu im Ordner landet (z. B. aus dem Browser), wird von selbst umgewandelt –
       einfach auf HLTV mehrere Demos nacheinander anklicken. „Ordner umwandeln“ nimmt alle Demos eines Ordners, die noch
-      nicht umgewandelt sind.</p>
+      nicht umgewandelt sind. HLTV-Demos: Die App lädt sie nacheinander selbst (höchstens 60 auf einmal, die Nummern sind
+      fortlaufend); lässt HLTV das nicht zu, öffnet sie die Links im Browser.</p>
     <div class="hltv">
-      <textarea id="hltv-links" rows="3" placeholder="HLTV-Links einfügen (Matches oder GOTV-Demo-Links), beliebig viele"></textarea>
-      <button id="hltv-load" type="button">Demos im Browser laden</button>
+      <textarea id="hltv-links" rows="3" placeholder="HLTV-Demo-Links (…hltv.org/download/demo/108852), Match-Links oder Nummern von–bis (108800-108852)"></textarea>
+      <button id="hltv-load" type="button">HLTV-Demos laden</button>
+      <button id="hltv-stop" type="button" hidden>Stopp</button>
     </div>
     <div class="bulk">
       <button id="demo-pack" type="button">Für Claude packen</button>

@@ -18,6 +18,7 @@ import sys
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import webbrowser
 import zipfile
@@ -37,8 +38,11 @@ FOLDER_LIMIT = 500
 PART_SIZE = 45 * 1024 ** 2               # size of one zip from "Für Claude packen" (fits a chat upload)
 HLTV_LINK = re.compile(r"https?://(?:www\.)?hltv\.org/((?:matches/\d+/[\w-]+|download/demo/\d+))", re.I)
 HLTV_DEMO = re.compile(r"/download/demo/(\d+)")
+HLTV_RANGE = re.compile(r"(?<![\w/-])(\d{4,7})\s*(?:-|–|bis)\s*(\d{4,7})(?![\w/-])")   # "108800-108852"
 HLTV_GAP = 2.0                           # seconds between two links (polite to HLTV, browser keeps up)
 HLTV_LIMIT = 60
+HLTV_AGENT = "Auto-Observer (demo export for casting)"
+WAITING_MAX = 2                          # load the next demo only when at most this many wait for their export
 
 
 def downloads_folder() -> Path:
@@ -62,9 +66,15 @@ def is_download(path: Path) -> bool:
 
 
 def hltv_links(text: str) -> list[str]:
-    """HLTV match and demo links in any pasted text, without duplicates, in order."""
+    """HLTV match and demo links in any pasted text, without duplicates, in order. Demo numbers count up, so a
+    range like "108800-108852" stands for every demo link in between."""
+    text = text or ""
+    paths = HLTV_LINK.findall(text)
+    for first, last in HLTV_RANGE.findall(HLTV_LINK.sub(" ", text)):
+        low, high = sorted((int(first), int(last)))
+        paths += [f"download/demo/{number}" for number in range(low, min(high, low + HLTV_LIMIT - 1) + 1)]
     seen, links = set(), []
-    for path in HLTV_LINK.findall(text or ""):
+    for path in paths:
         same = re.sub(r"^(matches/\d+)/.*", r"\1", path.lower())          # one match, however its link is written
         if same not in seen:
             seen.add(same)
@@ -99,6 +109,7 @@ class DemoJobs:
         self._sizes: dict[str, tuple[int, float]] = {}      # watched file → (size, since when unchanged)
         self._queued: set[str] = set()
         self._hltv_busy = False
+        self._hltv_stop = threading.Event()
         self._sources = self._load_sources()
 
     # --- what was done already (demos/sources.json) ---
@@ -330,41 +341,107 @@ class DemoJobs:
         return True, text
 
     def hltv(self, text: str) -> tuple[bool, str]:
-        """Open HLTV demo downloads in the browser one after the other; the watched folder exports them."""
+        """Load HLTV demos one after the other: directly if HLTV lets the app, else in the browser (the watched
+        download folder then exports them)."""
         links = hltv_links(text)
         if not links:
-            return False, "Keine HLTV-Links gefunden (…hltv.org/matches/… oder …/download/demo/…)"
+            return False, "Keine HLTV-Links gefunden (…hltv.org/download/demo/…, …/matches/… oder Nummern von–bis)"
         if self._hltv_busy:
-            return False, "Die letzten HLTV-Links werden noch geöffnet"
+            return False, "Die letzten HLTV-Demos werden noch geladen"
+        self._hltv_busy = True
+        self._hltv_stop.clear()
+        threading.Thread(target=self._load_hltv, args=(links,), name="hltv-links", daemon=True).start()
+        return True, f"{len(links)} HLTV-Demo(s) werden nacheinander geladen"
+
+    def stop_hltv(self) -> None:
+        self._hltv_stop.set()
+
+    def _load_hltv(self, links: list[str]) -> None:
+        direct = True                        # HLTV often answers only browsers – then stop asking it
+        missing = 0
+        try:
+            for number, link in enumerate(links):
+                if self._hltv_stop.is_set():
+                    self.note("HLTV-Laden gestoppt")
+                    return
+                if number:
+                    self._hltv_stop.wait(HLTV_GAP)
+                demo = HLTV_DEMO.search(link)
+                if not demo and direct:
+                    demo, direct = self._hltv_demo_link(link)
+                if demo and direct:
+                    while len(self._queue) >= WAITING_MAX and not self._hltv_stop.is_set():
+                        self._hltv_stop.wait(2)              # don't fill the disk faster than the export runs
+                    result = self._fetch_hltv_demo(demo.group(1))
+                    if result == "ok":
+                        continue
+                    if result == "missing":
+                        missing += 1
+                        continue
+                    direct = False
+                    self.note("HLTV lässt die App nicht selbst laden – ab jetzt über den Browser")
+                self._open_in_browser(link if not demo else f"https://www.hltv.org/download/demo/{demo.group(1)}",
+                                      bool(demo))
+        finally:
+            if missing:
+                self.note(f"{missing} Demo-Nummer(n) ohne Demo bei HLTV übersprungen")
+            self._hltv_busy = False
+
+    def _open_in_browser(self, link: str, is_demo: bool) -> None:
         if self._settings is not None and not self._setting("demo_watch", False):
             self._settings.apply({"demo_watch": True})
             self.note("Download-Ordner wird jetzt beobachtet – die Demos werden nach dem Download umgewandelt")
-        self._hltv_busy = True
-        threading.Thread(target=self._open_hltv, args=(links,), name="hltv-links", daemon=True).start()
-        return True, f"{len(links)} HLTV-Link(s) werden nacheinander im Browser geöffnet"
+        webbrowser.open(link)
+        self.note(f"Im Browser angestoßen: {link}" if is_demo else
+                  f"Match im Browser geöffnet – dort „GOTV Demo“ klicken: {link}")
 
-    def _open_hltv(self, links: list[str]) -> None:
-        reachable = True                     # HLTV often answers only browsers – then stop asking it
+    def _fetch_hltv_demo(self, number: str) -> str:
+        """Download one HLTV demo into demos/uploads and queue it: "ok", "missing" (no such demo) or "blocked"."""
+        request = urllib.request.Request(f"https://www.hltv.org/download/demo/{number}",
+                                         headers={"User-Agent": HLTV_AGENT})
+        target = None
         try:
-            for number, link in enumerate(links):
-                if number:
-                    time.sleep(HLTV_GAP)
-                demo = HLTV_DEMO.search(link)
-                if not demo and reachable:
-                    demo, reachable = self._hltv_demo_link(link)
-                if demo:
-                    webbrowser.open(f"https://www.hltv.org/download/demo/{demo.group(1)}")
-                    self.note(f"HLTV-Demo {demo.group(1)} im Browser angestoßen")
-                else:
-                    webbrowser.open(link)
-                    self.note(f"Match im Browser geöffnet – dort „GOTV Demo“ klicken: {link}")
-        finally:
-            self._hltv_busy = False
+            with urllib.request.urlopen(request, timeout=30) as answer:
+                if "text/html" in (answer.headers.get("Content-Type") or ""):
+                    return "blocked"                         # a check page instead of the file
+                disposition = answer.headers.get("Content-Disposition") or ""
+                named = re.search(r'filename\*?=(?:UTF-8\'\')?"?([^";]+)', disposition)
+                name = urllib.parse.unquote(named.group(1)) if named else \
+                    Path(urllib.parse.urlparse(answer.geturl()).path).name
+                name = SAFE_NAME.sub("_", Path(name).name)[:120]
+                if not is_download(Path(name)):
+                    name = f"hltv-{number}.rar"
+                target = self.folder / "uploads" / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                temporary = target.with_name(target.name + ".part")
+                self.note(f"Lade HLTV-Demo {number} ({name}) …")
+                loaded = 0
+                with open(temporary, "wb") as out:
+                    while chunk := answer.read(1024 * 1024):
+                        if self._hltv_stop.is_set():
+                            raise InterruptedError
+                        out.write(chunk)
+                        loaded += len(chunk)
+                os.replace(temporary, target)
+        except urllib.error.HTTPError as error:
+            return "missing" if error.code in (404, 410) else "blocked"
+        except InterruptedError:
+            if target is not None:
+                target.with_name(target.name + ".part").unlink(missing_ok=True)
+            return "ok"
+        except (urllib.error.URLError, OSError, ValueError) as error:
+            if target is not None:
+                target.with_name(target.name + ".part").unlink(missing_ok=True)
+            self.note(f"HLTV-Demo {number} nicht geladen: {error}")
+            return "blocked"
+        self.note(f"HLTV-Demo {number} geladen ({loaded / 1e6:.0f} MB)")
+        self.add([str(target)], delete=True)               # our own download – not needed after the export
+        return "ok"
 
     @staticmethod
     def _hltv_demo_link(link: str):
         """(demo link match or None, HLTV still worth asking)."""
-        request = urllib.request.Request(link, headers={"User-Agent": "Auto-Observer (demo export for casting)"})
+        request = urllib.request.Request(link, headers={"User-Agent": HLTV_AGENT})
         try:
             with urllib.request.urlopen(request, timeout=15) as answer:
                 page = answer.read(3 * 1024 * 1024).decode("utf-8", "replace")
@@ -372,7 +449,8 @@ class DemoJobs:
             return None, error.code not in (403, 429, 503)
         except (urllib.error.URLError, OSError, ValueError):
             return None, False
-        return HLTV_DEMO.search(page), True
+        found = HLTV_DEMO.search(page)
+        return found, found is not None or "challenge" not in page.lower()     # Cloudflare's check page
 
     # --- getting files ---
 

@@ -174,6 +174,9 @@ def make_handler(engine: Engine, port: int, demos=None):
             if path == "/api/demo/hltv":
                 ok, message = demos.hltv(str(body.get("links") or "")[:20000])
                 return self._json(200 if ok else 400, {"ok": ok, "message": message})
+            if path == "/api/demo/hltv-stop":
+                demos.stop_hltv()
+                return self._json(200, {"ok": True})
             if path == "/api/demo/faceit":
                 if isinstance(body.get("key"), str) and body["key"].strip():
                     demos.faceit_key = body["key"].strip()[:200]

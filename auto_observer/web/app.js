@@ -357,6 +357,7 @@ $("hltv-load").addEventListener("click", async () => {
   if (ok) $("hltv-links").value = "";
   else flash(data.message || "Links nicht übernommen");
 });
+$("hltv-stop").addEventListener("click", () => post("/api/demo/hltv-stop"));
 $("demo-pack").addEventListener("click", async () => {
   const { ok, data } = await post("/api/demo/pack");
   $("demo-pack-status").textContent = data.message || (ok ? "" : "Packen ging nicht");
@@ -407,6 +408,7 @@ function renderDemo(demo) {
   $("demo_watch_folder").placeholder = demo.watch_folder || "Downloads";
   $("demo-pack").textContent = demo.unpacked ? `Für Claude packen (${demo.unpacked} neu)` : "Für Claude packen";
   $("hltv-load").disabled = demo.hltv_busy;
+  $("hltv-stop").hidden = !demo.hltv_busy;
   $("demo-log").replaceChildren(...demo.log.map((line) => Object.assign(document.createElement("li"), { textContent: line })));
   const key = JSON.stringify(demo.results);
   if (key === demoResultsKey) return;                    // Eingaben in der Tabelle nicht überschreiben

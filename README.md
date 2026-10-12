@@ -484,8 +484,10 @@ opens to download the demo there.
 
 Many demos at once: “Ordner umwandeln” (convert folder) takes every demo in a folder that was not converted yet.
 With “Download-Ordner beobachten” (watch download folder) on, every demo that finishes downloading there is converted
-by itself – just click several GOTV demos on HLTV one after the other. Pasted HLTV match or demo links (“Demos im
-Browser laden”) are opened in the browser one after the other, and the watched folder picks the downloads up.
+by itself – just click several GOTV demos on HLTV one after the other. “HLTV-Demos laden” takes pasted HLTV demo
+links (`hltv.org/download/demo/108852`), match links or a range of demo numbers (`108800-108852`, the numbers count
+up; at most 60 at a time) and downloads them one after the other; if HLTV does not let the app download, the links
+open in the browser and the watched folder picks the downloads up. “Stopp” ends it.
 “Demo nach dem Umwandeln löschen” removes each download after a good conversion. “Für Claude packen” puts all raw data
 files that were not packed yet into zip files of up to 45 MB in the folder “demos”.
 

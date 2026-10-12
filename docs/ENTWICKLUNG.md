@@ -727,12 +727,13 @@ Kills im Bild 58 → 64 %, mit ≥ 0,5 s Vorlauf 44 → 47 %, Wechsel pro Minute
 ein T an Callout X und ein CT an Callout Y sich in den nächsten 3 s töten (Mirage: B-Site gegen B-Site 40 %, T-Ramp
 gegen Palace 26 %, Schnitt 1,3 %), dazu ein Raster Position → Callout (GSI sendet keine Callouts). Die Regie rechnet
 daraus den Teil „hotspot“. Neu erzeugen mit allen Rohdaten:
-`python -m auto_observer.map_knowledge build <dateien>` (schreibt `auto_observer/map_data/`). Stand: 108 Rohdaten-Dateien
-(geteilte Demos als -p1/-p2, doppelte aussortiert) – Dust2 24, Nuke 18, Mirage 17, Inferno 13, Overpass 11, Anubis 9,
-Ancient 5, Cache 2; Train und Vertigo bewusst nicht (nicht im aktiven Map-Pool). Faire Prüfung (jede Map nur mit Wissen aus den anderen Demos derselben
-Karte): Kills im Bild 62,0 → 64,8 %, Vorlauf ≥ 0,5 s 46,7 → 51,1 %, Wechsel pro Minute 14,7 → 14,2 (mit 10 Demos
-+1 Punkt, mit 43 Dateien +2,5 – je mehr Demos pro Map, desto besser). Gewichte nachgeprüft (hotspot 400–700, Bezug
-15–30 %, Obergrenze `hotspot_cap` 1,5–2,5): ab 2,0 alles innerhalb von ±0,1 Punkten, deshalb 2,0.
+`python -m auto_observer.map_knowledge build <dateien>` (schreibt `auto_observer/map_data/`). Stand: 218 Rohdaten-Dateien
+(geteilte Demos als -p1/-p2, exakt doppelte aussortiert) – Dust2 43, Mirage 40, Nuke 34, Inferno 32, Ancient 24,
+Anubis 21, Cache 13, Overpass 11; Train und Vertigo bewusst nicht (nicht im aktiven Map-Pool). Faire Prüfung (jede Map
+nur mit Wissen aus den anderen Demos derselben Karte): Kills im Bild 62,5 → 65,1 %, Vorlauf ≥ 0,5 s 47,0 → 51,5 %,
+Wechsel pro Minute 14,8 → 14,4. Verlauf: mit 10 Demos +1 Punkt Vorlauf, mit 43 Dateien +3, mit 108 +4,4, mit 218 +4,5 –
+ab etwa 10–15 Demos pro Map bringt mehr kaum noch etwas. Gewichte nachgeprüft (hotspot 400–700, Bezug 15–30 %,
+Obergrenze `hotspot_cap` 1,5–2,5): ab 2,0 alles innerhalb von ±0,1 Punkten, deshalb 2,0.
 
 **Kill-Dichte aus HLTV-Heatmaps** (`tools/import_hltv_heatmaps.py`, Feld `heat` in `map_data`): die Heatmap-Bilder
 gespeicherter HLTV-Kartenseiten zurückgerechnet (Farbe → Dichte, Bildpunkt → Spielwelt über die Valve-Radarwerte;

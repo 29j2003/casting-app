@@ -78,6 +78,11 @@ $("netcon_port").addEventListener("change", (e) => {
   const port = Math.round(Number(e.target.value));
   if (port >= 1 && port <= 65535) sendSettings({ netcon_port: port });
 });
+$("leetify-save").addEventListener("click", async () => {
+  const { ok, data } = await post("/api/leetify/key", { key: $("leetify-key").value });
+  $("leetify-key").value = "";
+  if (!ok) flash(data.message || "Key nicht übernommen");
+});
 $("steam_exe").addEventListener("change", (e) => { mark(e.target); sendSettings({ steam_exe: e.target.value.trim() }); });
 $("launch_extra").addEventListener("change", (e) => { mark(e.target); sendSettings({ launch_extra: e.target.value }); });
 $("cfg_folder").addEventListener("change", (e) => {
@@ -231,6 +236,9 @@ function renderTeams() {
       row.hp.firstChild.style.width = `${player.health}%`;
       row.weight.set(Math.round(player.weight * 100));
       row.form.textContent = player.form.toFixed(2).replace(".", ",");
+      const l = player.leetify || {};
+      row.form.title = "Form (1,00 = Durchschnitt) – am Anfang aus Leetify, dann aus dem Match"
+        + (Object.keys(l).length ? `\nLeetify: Aim ${l.aim ?? "–"}, Positioning ${l.positioning ?? "–"}, Utility ${l.utility ?? "–"}, Opening ${l.opening ?? "–"}, Clutch ${l.clutch ?? "–"}` : "");
       row.kd.textContent = `${player.kills}/${player.deaths}`;
       row.bar.firstChild.style.width = `${Math.round((100 * player.score) / maxScore)}%`;
       row.why.textContent = player.alive && player.score ? `${player.score} · ${reasonText(player.reason, player.detail)}` : "";
@@ -289,6 +297,10 @@ function render() {
   $("cfg-installed").textContent = setup.installed ? "✓ GSI-Datei eingerichtet" : "nicht eingerichtet";
   $("cfg-installed").className = setup.installed ? "ok" : "bad";
   $("launch-preview").textContent = setup.command;
+  const leetify = state.leetify || {};
+  $("leetify-status").textContent = !leetify.key ? "kein Key" : leetify.error ? leetify.error
+    : `✓ ${leetify.loaded}/${leetify.players} Spieler geladen${leetify.busy ? " …" : ""}${leetify.stored ? "" : " (nur bis zum Beenden)"}`;
+  $("leetify-status").className = leetify.key && !leetify.error ? "ok" : "bad";
   const ready = setup.steam && setup.installed;
   $("setup-summary").textContent = ready ? "– alles gefunden" : "– bitte prüfen";
   if (!ready && !setupShown) $("setup").open = true;

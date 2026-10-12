@@ -124,6 +124,9 @@ def make_handler(engine: Engine, port: int, demos=None):
             if path == "/api/show":
                 ok, message = engine.show(str(body.get("steamid") or ""))
                 return self._json(200 if ok else 409, {"ok": ok, "message": message})
+            if path == "/api/leetify/key":
+                ok, message = engine.set_leetify_key(str(body.get("key") or ""))
+                return self._json(200 if ok else 400, {"ok": ok, "message": message})
             if path == "/api/resume":
                 engine.resume()
                 return self._json(200, {"ok": True})

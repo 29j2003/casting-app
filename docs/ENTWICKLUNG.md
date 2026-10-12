@@ -683,6 +683,7 @@ nicht mit (`pyproject.toml` nimmt nur `casting_app*`). Läuft die Regie gut, kan
 | `recorder.py`, `replay.py` | Mitschnitt eines Matches (`recordings/*.jsonl`) und Abspielen ohne CS2 |
 | `demo_export.py`, `weapons.py` | Demo (.dem, HLTV-.rar/.zip, FACEIT-.dem.zst/.gz) → `demos/<name>.rohdaten.jsonl.gz`: alle Spieler alle 8 Ticks (Position, Blick, HP, Waffe, Kugeln, Callout, wer ihn sieht, Inventar …) und alle Ereignisse (Schüsse, Treffer, Kills, Granaten, Bombe, Runden); `round_text()` = eine Runde als Text zum Einfügen; RAR über das `tar` von Windows 11 oder 7-Zip |
 | `demo_replay.py` | Rohdaten → GSI-Posts, Regie darüber laufen lassen und messen (Kills gesehen, Vorlauf, Wechsel pro Minute, verpasste Kills): `python -m auto_observer.demo_replay <datei>` |
+| `leetify.py` | Leetify-Profile (`/v3/profile`, Key nur im Schlüsselbund, Dienst „Auto-Observer“): Aim, Positioning, Opening, Clutch, Leetify-Rating → Startwert der Form relativ zu den anderen Spielern (vor Runde 1 nur Leetify, ab Runde 8 nur das Match); Opening-Aggression → Entry, Trade-Chancen → Support (wenn das Match noch keine Rolle zeigt); Zwischenspeicher `leetify-cache.json` (1 Tag, ohne Key) |
 | `demo_jobs.py` | Bereich „Demo“ der Steuerseite: Dateiauswahl (Tk-Dialog), Hochladen per Ziehen, Dateien auf die .exe ziehen, FACEIT-Link (Key aus dem Schlüsselbund der Casting-App; Download nur mit freigeschalteter Downloads-API, sonst Matchroom öffnen) |
 | `server.py`, `web/` | Steuerseite (nur Deutsch) und ihre API; POST nur mit Kopfzeile `X-Auto-Observer: 1`, nur Host 127.0.0.1/localhost |
 

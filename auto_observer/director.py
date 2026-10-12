@@ -105,17 +105,18 @@ class Decision:
     detail: str = ""
 
 
-def form(player: Player, match: Match) -> float:
-    """Form from the match data, 0.75 … 1.3 (1.0 = average). Counts fully only after 8 rounds."""
+def form(player: Player, match: Match, prior: float = 1.0) -> float:
+    """Form 0.75 … 1.3 (1.0 = average): starts at `prior` (e.g. from Leetify) and moves to the match data,
+    which counts fully after 8 rounds."""
     rounds = match.rounds_played()
     if rounds <= 0:
-        return 1.0
+        return max(0.75, min(1.3, prior))
     kpr = player.kills / rounds
     survival = 1 - min(1.0, player.deaths / rounds)
     adr = (player.damage + player.round_damage) / rounds
     rating = (kpr / 0.68 + survival / 0.32 + adr / 78) / 3
     confidence = min(1.0, rounds / 8)
-    return max(0.75, min(1.3, 1 + (rating - 1) * 0.5 * confidence))
+    return max(0.75, min(1.3, (1 - confidence) * prior + confidence * (1 + (rating - 1) * 0.5)))
 
 
 ROLES = ("entry", "awp", "lurker", "support", "anchor")
@@ -511,11 +512,14 @@ class Director:
 
     # --- rating and deciding ---
 
-    def rate(self, match: Match, importance, now: float, data_mix: float, roles=None) -> list[Rating]:
+    def rate(self, match: Match, importance, now: float, data_mix: float, roles=None,
+             priors: dict | None = None, suggested_roles: dict | None = None) -> list[Rating]:
         """Ratings of all alive players, best first. `importance(player)` gives the producer's weight (0..2),
-        `roles(player)` the role set by hand ("" = learn it from the match)."""
+        `roles(player)` the role set by hand ("" = learn it from the match), `priors` start values of the form and
+        `suggested_roles` roles from outside the match (both from Leetify)."""
         t = self.tuning
-        forms = {p.steamid: form(p, match) for p in match.players.values()}
+        priors, suggested_roles = priors or {}, suggested_roles or {}
+        forms = {p.steamid: form(p, match, priors.get(p.steamid, 1.0)) for p in match.players.values()}
         equip = {}
         for side in ("CT", "T"):
             values = [p.equip_value for p in match.players.values() if p.team == side and p.alive]
@@ -530,7 +534,7 @@ class Director:
             if not player.team:
                 continue
             parts = self._event_score(player, match, now)
-            role = (roles(player) if roles else "") or learned_role(player, match)
+            role = (roles(player) if roles else "") or learned_role(player, match) or suggested_roles.get(player.steamid, "")
             self.roles[player.steamid] = role
             for code, (points, detail) in self._situation(player, match, forms, now, role, eco).items():
                 old, old_detail = parts.get(code, (0.0, ""))

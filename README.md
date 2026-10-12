@@ -471,6 +471,10 @@ an observer. It does not need the casting app and does not change it.
 5. Click a player to show them yourself – the automatic pauses and, with the timer on, takes over again after the set
    seconds (or with “Automatik übernimmt”). Switching in CS2 by hand pauses it too.
 
+**Leetify** (setup): with a key from leetify.com/app/developer the app loads each player's Leetify profile (aim,
+positioning, opening duels, trades) as a start value for the form and to suggest entry/support roles until the match
+itself shows them. The key stays in the system keyring.
+
 **Demo → Rohdaten** (raw data): choose a demo – HLTV `.rar`/`.zip`, FACEIT `.dem.zst`/`.dem.gz` or a `.dem` – or drag
 it onto the page or onto `Auto-Observer.exe`. Each map becomes a file in the folder “demos” with every player's
 position, view, health, weapon and every shot, hit, kill and grenade. “Runde als Text” copies one round as text,

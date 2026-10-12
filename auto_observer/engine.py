@@ -18,6 +18,7 @@ from . import VERSION, launcher
 from .camera import Camera
 from .cs2_cfg import cfg_installed, cs2_exe, find_cfg_folders, find_steam_exe, write_cfg
 from .director import Director, form
+from .leetify import LeetifyScout
 from .map_knowledge import MapKnowledge
 from .game import Match, Player
 from .recorder import Recorder, without_token
@@ -52,6 +53,8 @@ class Engine:
         self.camera_problem = ""
         self.log_lines: deque = deque(maxlen=LOG_LINES)
         self.echo = None                        # optional: also print log lines (console window)
+        self.leetify = LeetifyScout(settings.folder, self.log)
+        self._known_players: set[str] = set()
 
     @property
     def gsi_uri(self) -> str:
@@ -85,6 +88,9 @@ class Engine:
                 return 400                      # not what CS2 sends
             self.director.feed(events, self.match)
             self._check_manual_switch(now)
+            if set(self.match.players) - self._known_players:
+                self._known_players = set(self.match.players)
+                self.leetify.request(sorted(self._known_players))
             current = self._current(now)
             if any(e.kind == "death" and e.steamid == current for e in events):
                 self._direct(now)               # shown player died: cut now, not at the next tick
@@ -158,7 +164,7 @@ class Engine:
     def _direct(self, now: float) -> None:
         """Rate the players and, if the automatic runs, switch the camera when the director says so."""
         ratings = self.director.rate(self.match, self._importance, now, self.settings["data_mix"],
-                                     lambda player: self.settings.player_role(player.steamid))
+                                     lambda player: self.settings.player_role(player.steamid), *self._scouting())
         if not self.settings["enabled"] or self.paused:
             return
         decision = self.director.decide(self.match, ratings, self._current(now), now)
@@ -190,6 +196,14 @@ class Engine:
             return self.commanded
         return self.match.observed
 
+    def _scouting(self) -> tuple[dict, dict]:
+        """Form start values and suggested roles from Leetify for the players in the match."""
+        steamids = list(self.match.players)
+        teams: dict[str, list[str]] = {}
+        for player in self.match.players.values():
+            teams.setdefault(player.team, []).append(player.steamid)
+        return self.leetify.form_priors(steamids), self.leetify.roles(teams)
+
     def _importance(self, player: Player) -> float:
         return self.settings.player_weight(player.steamid) * self.settings.team_weight(self.match.team_key(player.team))
 
@@ -219,6 +233,13 @@ class Engine:
             if "camera_mode" in changed:
                 self.log(f"Kamera-Weg: {self.settings['camera_mode']}", "info")
             return changed
+
+    def set_leetify_key(self, key: str) -> tuple[bool, str]:
+        ok, message = self.leetify.set_key(key)
+        if ok:
+            self.log(message, "ok")
+            self.leetify.request(sorted(self.match.players))
+        return ok, message
 
     def find_cfg(self) -> list[str]:
         return find_cfg_folders()
@@ -288,6 +309,7 @@ class Engine:
             match, settings = self.match, self.settings
             ratings = {r.steamid: r for r in self.director.ratings}
             current = self._current(now)
+            priors, _ = self._scouting()
             teams = []
             for side in ("CT", "T"):
                 key = match.team_key(side)
@@ -295,7 +317,8 @@ class Engine:
                 teams.append({
                     "side": side, "key": key, "name": match.team_names.get(side) or side,
                     "score": match.scores.get(side, 0), "weight": settings.team_weight(key),
-                    "players": [self._player_state(p, ratings.get(p.steamid), form(p, match), current) for p in players],
+                    "players": [self._player_state(p, ratings.get(p.steamid), form(p, match, priors.get(p.steamid, 1.0)),
+                                                   current) for p in players],
                 })
             upcoming = next((r for r in self.director.ratings if r.steamid != current), None)
             camera = self.camera.status()
@@ -316,6 +339,7 @@ class Engine:
                 "recording": {"on": self.recorder.on, "path": self.recorder.path, "lines": self.recorder.lines},
                 "setup": self._setup_state(),
                 "log": list(self.log_lines)[-30:],
+                "leetify": self.leetify.state(list(match.players)),
             }
 
     def _setup_state(self) -> dict:
@@ -334,4 +358,6 @@ class Engine:
             "reason": rating.reason if rating else "", "detail": rating.detail if rating else "",
             "observed": player.steamid == current, "kills": player.kills, "deaths": player.deaths,
             "role": self.settings.player_role(player.steamid), "role_used": self.director.roles.get(player.steamid, ""),
+            "leetify": {k: v for k, v in self.leetify.profile(player.steamid).items()
+                        if k in ("aim", "positioning", "utility", "opening", "clutch") and v is not None},
         }

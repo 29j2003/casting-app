@@ -890,3 +890,80 @@ def test_map_knowledge_learns_where_fights_happen(tmp_path):
     hot = know.fight_chance("de_test", (800, 0, 0), (0, 0, 0))                  # T in Connector vs CT in Mid
     cold = know.fight_chance("de_test", (800, 0, 0), (0, 9000, 0))              # vs CT in Window
     assert hot > cold > 0 and know.fight_chance("de_other", (0, 0, 0), (1, 1, 1)) is None
+
+
+# --- Leetify ---
+
+class FakeAnswer:
+    def __init__(self, data):
+        self.data = json.dumps(data).encode()
+
+    def read(self, limit=None):
+        return self.data
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+
+def leetify_profile(aim, opening, trades):
+    return {"name": "x", "steam64_id": "1", "rating": {"aim": aim, "positioning": 50, "utility": 50, "clutch": 0.1,
+            "opening": opening, "ct_leetify": 0.0, "t_leetify": 0.0},
+            "stats": {"t_opening_aggression_success_rate": opening * 100, "ct_opening_duel_success_percentage": 50,
+                      "trade_kill_opportunities_per_round": trades, "trade_kills_success_percentage": 40}}
+
+
+def test_leetify_profiles_form_and_roles(tmp_path):
+    import urllib.error
+    from auto_observer.leetify import LeetifyScout
+    seen_headers = []
+    profiles = {sid(0): leetify_profile(95, 0.1, 0.1), sid(1): leetify_profile(60, -0.05, 0.4),
+                sid(2): leetify_profile(70, 0.0, 0.2), sid(3): leetify_profile(65, -0.02, 0.1)}
+
+    def opener(request, timeout):
+        seen_headers.append(dict(request.header_items()))
+        steamid = request.full_url.split("steam64_id=")[1]
+        if steamid not in profiles:
+            raise urllib.error.HTTPError(request.full_url, 404, "not found", {}, None)
+        return FakeAnswer(profiles[steamid])
+
+    scout = LeetifyScout(tmp_path, lambda *a: None, opener)
+    assert scout.set_key("not a key!")[0] is False
+    ok, _ = scout.set_key("d289ab9c-0000-0000-0000-000000000000")
+    assert ok
+    scout.request([sid(i) for i in range(5)])
+    for _ in range(100):
+        if not scout.state([sid(i) for i in range(5)])["busy"]:
+            break
+        time.sleep(0.05)
+    state = scout.state([sid(i) for i in range(5)])
+    assert state["loaded"] == 4 and state["key"] and not state["error"]
+    assert all("Bearer d289ab9c" in h.get("Authorization", "") for h in seen_headers)
+    priors = scout.form_priors([sid(i) for i in range(5)])
+    assert priors[sid(0)] > 1.05 > priors[sid(1)] and sid(4) not in priors
+    roles = scout.roles({"CT": [sid(0), sid(1), sid(2), sid(3)]})
+    assert roles[sid(0)] == "entry" and roles[sid(1)] == "support"
+    cache = (tmp_path / "leetify-cache.json").read_text()
+    assert "d289ab9c" not in cache and sid(0) in cache                     # the key is never written to a file
+    again = LeetifyScout(tmp_path, lambda *a: None, opener)                 # cached for a day
+    assert again.profile(sid(0))["aim"] == 95
+
+
+def test_leetify_start_value_in_the_director():
+    match = Match()
+    match.update(post(lineup(), phase="freezetime", round_number=0), 0.0)
+    player = match.players[sid(0)]
+    assert form(player, match, 1.2) == pytest.approx(1.2)                    # before the first round: Leetify only
+    match.round, match.round_phase = 8, "live"
+    assert form(player, match, 1.2) == pytest.approx(form(player, match, 1.0))   # after 8 rounds: the match only
+
+
+def test_leetify_key_never_reaches_the_page(engine):
+    ok, _ = engine.set_leetify_key("d289ab9c-1111-2222-3333-444444444444")
+    assert ok
+    engine.on_gsi(post(lineup()))
+    text = json.dumps(engine.state())
+    assert "d289ab9c" not in text and engine.state()["leetify"]["key"] is True
+    assert "d289ab9c" not in json.dumps(list(engine.log_lines))

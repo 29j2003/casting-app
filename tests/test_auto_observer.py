@@ -915,6 +915,7 @@ def test_watched_download_folder_takes_finished_demos_only(tmp_path):
 
 
 def test_folder_export_skips_done_demos_and_packing_splits(tmp_path, monkeypatch):
+    import zipfile
     from auto_observer import demo_jobs
     demos, downloads, queued = bulk_demos(tmp_path)
     (downloads / "sub").mkdir()
@@ -925,21 +926,23 @@ def test_folder_export_skips_done_demos_and_packing_splits(tmp_path, monkeypatch
     assert demos.add_folder(downloads) == (1, 1)
     assert queued == [(str(second), False)]
 
-    assert demos.pack() == (False, "Noch keine Rohdaten zum Packen")
+    assert demos.pack()[0] is False                                 # nothing to pack yet
     demos.folder.mkdir(parents=True, exist_ok=True)
-    for name in ("m1", "m2", "m3"):
-        (demos.folder / f"{name}.rohdaten.jsonl.gz").write_bytes(b"x" * 600)
-    monkeypatch.setattr(demo_jobs, "PART_SIZE", 1000)
+    for name in ("m1", "m2", "m3", "m4"):
+        (demos.folder / f"{name}.rohdaten.jsonl.gz").write_bytes(name.encode() * 200)
+    monkeypatch.setattr(demo_jobs, "PART_SIZE", 1700)
+    assert demos.state()["unpacked"] == 4
     ok, text = demos.pack()
     zips = sorted(demos.folder.glob("Rohdaten_*.zip"))
-    assert ok and len(zips) == 3 and "3 Rohdaten-Datei(en)" in text
-    assert demos.state()["unpacked"] == 0
-    (demos.folder / "m4.rohdaten.jsonl.gz").write_bytes(b"y")
-    assert demos.state()["unpacked"] == 1
-    ok, text = demos.pack()                                        # only the new one
+    assert ok and len(zips) == 2 and "4 Rohdaten-Datei(en) gepackt und gelöscht" in text
+    assert all(z.stat().st_size <= 1700 for z in zips)
+    inside = sorted(n for z in zips for n in zipfile.ZipFile(z).namelist())
+    assert inside == [f"m{i}.rohdaten.jsonl.gz" for i in range(1, 5)]
+    assert zipfile.ZipFile(zips[0]).read(inside[0]) == b"m1" * 200
+    assert demos.state()["unpacked"] == 0 and not list(demos.folder.glob("*.rohdaten.jsonl.gz"))
+    (demos.folder / "m5.rohdaten.jsonl.gz").write_bytes(b"y")
+    ok, text = demos.pack()                                        # only the new one – the others are gone
     assert ok and "1 Rohdaten-Datei(en)" in text
-    reloaded = demo_jobs.DemoJobs(tmp_path / "data", lambda *a: None)
-    assert reloaded.state()["unpacked"] == 0                       # remembered in sources.json
 
 
 def test_hltv_links_are_found_in_pasted_text(tmp_path):
@@ -1098,3 +1101,9 @@ def test_hltv_demos_load_directly_and_fall_back_to_the_browser(tmp_path, monkeyp
     assert opened == ["https://www.hltv.org/download/demo/100003", "https://www.hltv.org/download/demo/100004"]
     assert demos._settings["demo_watch"] is True                       # the browser downloads get picked up
     assert not demos.state()["hltv_busy"]
+    opened.clear()
+    queued.clear()
+    demos._load_hltv(demo_jobs.hltv_links("100001"))
+    demos._load_hltv(demo_jobs.hltv_links("https://www.hltv.org/download/demo/100001"))
+    assert queued == [] and opened == []                               # loaded before: skipped
+    assert "100001" in demo_jobs.DemoJobs(tmp_path / "data", lambda *a: None)._sources["hltv"]

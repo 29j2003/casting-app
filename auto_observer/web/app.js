@@ -406,7 +406,7 @@ function renderDemo(demo) {
     for (const id of ["demo_watch", "demo_delete", "demo_watch_folder"]) setValue($(id), state.settings[id] ?? "");
   }
   $("demo_watch_folder").placeholder = demo.watch_folder || "Downloads";
-  $("demo-pack").textContent = demo.unpacked ? `Für Claude packen (${demo.unpacked} neu)` : "Für Claude packen";
+  $("demo-pack").textContent = demo.unpacked ? `Für Claude packen (${demo.unpacked} Datei${demo.unpacked === 1 ? "" : "en"})` : "Für Claude packen";
   $("hltv-load").disabled = demo.hltv_busy;
   $("hltv-stop").hidden = !demo.hltv_busy;
   $("demo-log").replaceChildren(...demo.log.map((line) => Object.assign(document.createElement("li"), { textContent: line })));

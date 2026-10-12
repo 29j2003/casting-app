@@ -489,7 +489,8 @@ links (`hltv.org/download/demo/108852`), match links or a range of demo numbers 
 up; at most 60 at a time) and downloads them one after the other; if HLTV does not let the app download, the links
 open in the browser and the watched folder picks the downloads up. “Stopp” ends it.
 “Demo nach dem Umwandeln löschen” removes each download after a good conversion. “Für Claude packen” puts all raw data
-files that were not packed yet into zip files of up to 45 MB in the folder “demos”.
+files into zip files of up to 29 MB in the folder “demos” and deletes the packed files, so nothing is sent twice. HLTV
+demo numbers that were loaded before are skipped.
 
 Without the console port, the app presses the spectator keys 1–0 instead; a yellow band shows this mode, and CS2 must
 then be the window in front. **Mitschnitt** (recording, in the setup) saves the CS2 data of a match, which helps tune the director.

@@ -8,7 +8,8 @@ round as text or let the director run over the map (demo_replay.py) and copy the
 Many demos at once: a whole folder ("Ordner umwandeln"), watching the download folder (every finished demo download
 is exported on its own), a list of HLTV links (opened in the browser one after the other – HLTV lets only browsers
 download, the watched folder picks the files up) and packing all raw data into a few zip files to pass on.
-`demos/sources.json` remembers which downloads were exported and which raw data files were packed.
+`demos/sources.json` remembers which downloads and HLTV demo numbers were exported already. Packed raw data files are
+deleted (they are in the zip), so the folder does not grow and nothing is sent twice.
 """
 
 import json
@@ -35,7 +36,8 @@ STABLE_SECONDS = 4.0                     # a download counts as finished when it
 WATCH_EVERY = 3.0
 FOLDER_DEPTH = 2                         # "Ordner umwandeln" also looks into sub folders this deep
 FOLDER_LIMIT = 500
-PART_SIZE = 45 * 1024 ** 2               # size of one zip from "Für Claude packen" (fits a chat upload)
+PART_SIZE = 29_000_000                   # one zip from "Für Claude packen" at most (chat uploads: 30 MB per file)
+ZIP_ENTRY = 200                          # zip bookkeeping per file on top of its name (headers, directory)
 HLTV_LINK = re.compile(r"https?://(?:www\.)?hltv\.org/((?:matches/\d+/[\w-]+|download/demo/\d+))", re.I)
 HLTV_DEMO = re.compile(r"/download/demo/(\d+)")
 HLTV_RANGE = re.compile(r"(?<![\w/-])(\d{4,7})\s*(?:-|–|bis)\s*(\d{4,7})(?![\w/-])")   # "108800-108852"
@@ -120,7 +122,7 @@ class DemoJobs:
         except (OSError, ValueError):
             data = {}
         data = data if isinstance(data, dict) else {}
-        for key, empty in (("done", {}), ("packed", [])):
+        for key, empty in (("done", {}), ("hltv", [])):
             if not isinstance(data.get(key), type(empty)):
                 data[key] = empty
         return data
@@ -209,11 +211,10 @@ class DemoJobs:
 
     def state(self) -> dict:
         with self._lock:
-            unpacked = [r for r in self._files() if r["file"] not in self._sources["packed"]]
             return {"running": self._running, "current": self.current, "queued": len(self._queue),
                     "log": list(self.lines)[-12:], "results": self._files(),
                     "faceit_key": bool(self.faceit_key or casting_app_faceit_key()),
-                    "watch_folder": str(self.watch_folder()), "unpacked": len(unpacked),
+                    "watch_folder": str(self.watch_folder()), "unpacked": len(self._files()),
                     "hltv_busy": self._hltv_busy}
 
     # --- many demos at once ---
@@ -309,34 +310,47 @@ class DemoJobs:
         return True, text
 
     def pack(self) -> tuple[bool, str]:
-        """All raw data files not packed yet (else all) into zip files of at most PART_SIZE in the demos folder."""
+        """All raw data files into zip files of at most PART_SIZE in the demos folder; each file is deleted once its
+        zip is written and checked."""
         files = sorted(self.folder.glob("*.rohdaten.jsonl.gz"), key=lambda p: p.stat().st_mtime)
         if not files:
-            return False, "Noch keine Rohdaten zum Packen"
-        new = [p for p in files if p.name not in self._sources["packed"]] or files
-        parts, part, size = [], [], 0
-        for path in new:
-            length = path.stat().st_size
+            return False, "Keine Rohdaten zum Packen (schon gepackte Dateien sind gelöscht)"
+        parts, part, size = [], [], 22                       # 22: end record of a zip
+        for path in files:
+            length = path.stat().st_size + ZIP_ENTRY + 2 * len(path.name.encode())
             if part and size + length > PART_SIZE:
                 parts.append(part)
-                part, size = [], 0
+                part, size = [], 22
             part.append(path)
             size += length
         parts.append(part)
-        stamp = time.strftime("%Y-%m-%d_%H-%M")
-        written = []
+        stamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+        written, packed = [], 0
         for number, group in enumerate(parts, 1):
             target = self.folder / (f"Rohdaten_{stamp}" + (f"_{number}" if len(parts) > 1 else "") + ".zip")
             temporary = target.with_suffix(".zip.part")
-            with zipfile.ZipFile(temporary, "w", zipfile.ZIP_STORED) as archive:   # already gzip
-                for path in group:
-                    archive.write(path, path.name)
-            os.replace(temporary, target)
-            written.append(target.name)
-        with self._lock:
-            self._sources["packed"] = sorted(set(self._sources["packed"]) | {p.name for p in new})
-            self._save_sources()
-        text = f"{len(new)} Rohdaten-Datei(en) gepackt: {', '.join(written)}"
+            try:
+                with zipfile.ZipFile(temporary, "w", zipfile.ZIP_STORED) as archive:   # already gzip
+                    for path in group:
+                        archive.write(path, path.name)
+                with zipfile.ZipFile(temporary) as archive:
+                    if archive.testzip() is not None or len(archive.namelist()) != len(group):
+                        raise OSError("Zip fehlerhaft")
+                os.replace(temporary, target)
+            except OSError as error:
+                temporary.unlink(missing_ok=True)
+                self.note(f"Packen abgebrochen: {error}")
+                break
+            for path in group:
+                try:
+                    path.unlink()
+                    packed += 1
+                except OSError as error:
+                    self.note(f"{path.name} nicht gelöscht: {error}")
+            written.append(f"{target.name} ({target.stat().st_size / 1e6:.0f} MB)")
+        if not written:
+            return False, "Packen ging nicht"
+        text = f"{packed} Rohdaten-Datei(en) gepackt und gelöscht: {', '.join(written)}"
         self.note(text)
         return True, text
 
@@ -358,7 +372,7 @@ class DemoJobs:
 
     def _load_hltv(self, links: list[str]) -> None:
         direct = True                        # HLTV often answers only browsers – then stop asking it
-        missing = 0
+        missing = skipped = 0
         try:
             for number, link in enumerate(links):
                 if self._hltv_stop.is_set():
@@ -369,6 +383,9 @@ class DemoJobs:
                 demo = HLTV_DEMO.search(link)
                 if not demo and direct:
                     demo, direct = self._hltv_demo_link(link)
+                if demo and demo.group(1) in self._sources["hltv"]:
+                    skipped += 1                             # loaded and exported before
+                    continue
                 if demo and direct:
                     while len(self._queue) >= WAITING_MAX and not self._hltv_stop.is_set():
                         self._hltv_stop.wait(2)              # don't fill the disk faster than the export runs
@@ -385,6 +402,8 @@ class DemoJobs:
         finally:
             if missing:
                 self.note(f"{missing} Demo-Nummer(n) ohne Demo bei HLTV übersprungen")
+            if skipped:
+                self.note(f"{skipped} HLTV-Demo(s) schon früher geladen – übersprungen")
             self._hltv_busy = False
 
     def _open_in_browser(self, link: str, is_demo: bool) -> None:
@@ -435,6 +454,9 @@ class DemoJobs:
             self.note(f"HLTV-Demo {number} nicht geladen: {error}")
             return "blocked"
         self.note(f"HLTV-Demo {number} geladen ({loaded / 1e6:.0f} MB)")
+        with self._lock:
+            self._sources["hltv"] = (self._sources["hltv"] + [number])[-5000:]
+            self._save_sources()
         self.add([str(target)], delete=True)               # our own download – not needed after the export
         return "ok"
 

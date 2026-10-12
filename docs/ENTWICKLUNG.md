@@ -730,6 +730,12 @@ daraus den Teil „hotspot“. Neu erzeugen mit allen Rohdaten:
 `python -m auto_observer.map_knowledge build <dateien>` (schreibt `auto_observer/map_data/`). Faire Prüfung (jede Map
 nur mit Wissen aus den anderen Demos): Vorlauf ≥ 0,5 s 47 → 49 %, weniger Wechsel – je mehr Demos pro Map, desto besser.
 
+**Kill-Dichte aus HLTV-Heatmaps** (`tools/import_hltv_heatmaps.py`, Feld `heat` in `map_data`): die Heatmap-Bilder
+gespeicherter HLTV-Kartenseiten zurückgerechnet (Farbe → Dichte, Bildpunkt → Spielwelt über die Valve-Radarwerte;
+HLTV zeigt das Radar in voller Breite und schneidet oben/unten etwa gleich viel ab). Geprüft: Ohne Paare aus Demos
+verschlechtert die Dichte die Regie leicht (Kills im Bild −1 Punkt), mit Paaren ist sie neutral – deshalb steht
+`TUNING["heat"]` auf 0. „Wo oft Kills fallen“ sagt eben nicht, *wer gleich* kämpft.
+
 **Abstimmen mit einem Mitschnitt:** In der Einrichtung „Mitschnitt starten“, ein Match laufen lassen, Datei aus dem
 Ordner `recordings` holen. Dann `python -m auto_observer.replay <datei>.jsonl` – zeigt jeden Wechsel mit Grund und wie
 oft die Regie mit der Kamera in der Aufnahme übereinstimmt (hat ein Mensch observt, ist das seine Wahl).

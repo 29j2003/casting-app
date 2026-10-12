@@ -54,6 +54,8 @@ TUNING = {
     # standoff: two players only "looking" at each other (often through a wall) lose value without shots or hits
     "standoff_grace": 1.5, "standoff_half_life": 2.0, "standoff_floor": 0.15,             # demos
     "angle_hold": 260.0, "angle_hold_degrees": 10.0,   # beats the clutcher by a "jump": cut before he peeks
+    # learned map knowledge (map_knowledge.py): chance that a T at callout X and a CT at callout Y fight soon
+    "hotspot": 150.0, "hotspot_ref": 0.25, "hotspot_cap": 1.5,
     # predictions from the situation
     "trade_try": 90.0, "trade_try_window": 4.0, "trade_reach": 1.3,      # teammate of a fallen player goes for the refrag
     "swing": 80.0,                     # swinging an enemy who reloads
@@ -204,8 +206,9 @@ def duel_chance(a: Player, b: Player, form_a: float, form_b: float, a_sees_b: bo
 class Director:
     """Keeps the decaying event scores and the switching memory; rates players and decides."""
 
-    def __init__(self, tuning: dict | None = None):
+    def __init__(self, tuning: dict | None = None, knowledge=None):
         self.tuning = dict(TUNING, **(tuning or {}))
+        self.knowledge = knowledge                         # MapKnowledge or None
         self.event_scores: dict[str, list[tuple[float, float, str, str]]] = {}   # steamid → (time, amount, code, detail)
         self.last_switch = -math.inf
         self.last_target = ""
@@ -216,6 +219,7 @@ class Director:
         self.pair_since: dict[tuple[str, str], float] = {}  # duel pair → since when they face each other
         self.shown_at: dict[str, float] = {}               # steamid → when the camera last went there
         self.roles: dict[str, str] = {}                    # steamid → role used in the last rating
+        self._map_known = False
         self._pairs_seen: set[tuple[str, str]] = set()
 
     def reset(self) -> None:
@@ -360,6 +364,12 @@ class Director:
         for enemy in enemies:
             if not (player.position and enemy.position):
                 continue
+            # where fights usually happen on this map (learned from demos)
+            if self._map_known and player.position and enemy.position:
+                t_side, ct_side = (player, enemy) if player.team == "T" else (enemy, player)
+                chance = self.knowledge.fight_chance(match.map_name, t_side.position, ct_side.position)
+                if chance:
+                    add("hotspot", t["hotspot"] * min(1.0, chance / t["hotspot_ref"]), enemy.name)
             gap = distance(player.position, enemy.position)
             ahead = distance(player.position_in(t["lookahead"]), enemy.position_in(t["lookahead"]))
             closing = gap - ahead >= t["closing_min"]
@@ -404,6 +414,9 @@ class Director:
             if (low <= player.speed() <= high and gap <= reach * 1.2 and approaching(player, enemy, minimum=25)
                     and not facing(enemy, player, 60)):
                 add("sneak", t["sneak"] * max(0.0, 1 - gap / (reach * 1.2)), enemy.name)
+        if "hotspot" in parts:
+            points, detail = parts["hotspot"]
+            parts["hotspot"] = (min(t["hotspot"] * t["hotspot_cap"], points), detail)
         if duel_points:
             add("duel", min(t["duel_cap"], duel_points), duel_detail)
         if contact_points:
@@ -511,6 +524,7 @@ class Director:
                for side, other in (("CT", "T"), ("T", "CT"))}
         self.roles = {}
         self._pairs_seen = set()
+        self._map_known = bool(self.knowledge and self.knowledge.knows(match.map_name))
         ratings = []
         for player in match.alive():
             if not player.team:

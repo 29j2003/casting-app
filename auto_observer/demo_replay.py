@@ -202,10 +202,11 @@ def timeline(path: str) -> tuple[dict, list[tuple]]:
     return meta, items
 
 
-def evaluate(source, tuning: dict | None = None, only_round: int | None = None, weights: dict | None = None) -> dict:
+def evaluate(source, tuning: dict | None = None, only_round: int | None = None, weights: dict | None = None,
+             knowledge=None) -> dict:
     """Run the director over one raw data file (path, or the result of timeline()); returns the measurements."""
     meta, items = timeline(source) if isinstance(source, str) else source
-    match, director = Match(), Director(tuning)
+    match, director = Match(), Director(tuning, knowledge)
     weights = weights or {}
     camera, camera_since = "", 0.0
     segments: list[tuple[float, float, str, str]] = []           # (start, end, steamid, reason)

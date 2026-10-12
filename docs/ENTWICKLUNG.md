@@ -727,8 +727,11 @@ Kills im Bild 58 → 64 %, mit ≥ 0,5 s Vorlauf 44 → 47 %, Wechsel pro Minute
 ein T an Callout X und ein CT an Callout Y sich in den nächsten 3 s töten (Mirage: B-Site gegen B-Site 40 %, T-Ramp
 gegen Palace 26 %, Schnitt 1,3 %), dazu ein Raster Position → Callout (GSI sendet keine Callouts). Die Regie rechnet
 daraus den Teil „hotspot“. Neu erzeugen mit allen Rohdaten:
-`python -m auto_observer.map_knowledge build <dateien>` (schreibt `auto_observer/map_data/`). Faire Prüfung (jede Map
-nur mit Wissen aus den anderen Demos): Vorlauf ≥ 0,5 s 47 → 49 %, weniger Wechsel – je mehr Demos pro Map, desto besser.
+`python -m auto_observer.map_knowledge build <dateien>` (schreibt `auto_observer/map_data/`). Stand: 38 Pro-Maps
+(43 Rohdaten-Dateien, geteilte Demos als -p1/-p2) – Dust2 8, Mirage 7, Anubis 6, Nuke 4, Inferno 3, Overpass 3,
+Cache 2, Ancient 1; Train und Vertigo noch ohne. Faire Prüfung (jede Map nur mit Wissen aus den anderen Demos derselben
+Karte): Kills im Bild 61,6 → 64,1 %, Vorlauf ≥ 0,5 s 47,0 → 50,1 %, Wechsel pro Minute 14,6 → 13,9 – mit 10 Demos
+waren es noch +1 Punkt, je mehr Demos pro Map, desto besser.
 
 **Kill-Dichte aus HLTV-Heatmaps** (`tools/import_hltv_heatmaps.py`, Feld `heat` in `map_data`): die Heatmap-Bilder
 gespeicherter HLTV-Kartenseiten zurückgerechnet (Farbe → Dichte, Bildpunkt → Spielwelt über die Valve-Radarwerte;

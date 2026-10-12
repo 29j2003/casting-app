@@ -874,3 +874,19 @@ def test_demo_area_on_the_server(engine, tmp_path):
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+def test_map_knowledge_learns_where_fights_happen(tmp_path):
+    from auto_observer.map_knowledge import MapKnowledge, build, save
+    path = tmp_path / "x.rohdaten.jsonl.gz"
+    write_raw(path)
+    knowledge = build([str(path)])
+    assert set(knowledge) == {"de_test"}
+    save(knowledge, tmp_path / "map_data")
+    know = MapKnowledge.load_folder(tmp_path / "map_data")
+    assert know.knows("de_test") and not know.knows("de_other")
+    assert know.place("de_test", (800, 0, 0)) == "Connector" and know.place("de_test", (0, 9000, 0)) == "Window"
+    assert know.place("de_test", (850, 30, 0)) == "Connector"                  # a neighbour cell
+    hot = know.fight_chance("de_test", (800, 0, 0), (0, 0, 0))                  # T in Connector vs CT in Mid
+    cold = know.fight_chance("de_test", (800, 0, 0), (0, 9000, 0))              # vs CT in Window
+    assert hot > cold > 0 and know.fight_chance("de_other", (0, 0, 0), (1, 1, 1)) is None

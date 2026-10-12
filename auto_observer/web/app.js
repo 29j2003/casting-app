@@ -11,6 +11,7 @@ const REASONS = {
   trade_try: (d) => `Will ${d} traden`, swing: (d) => `Swingt auf ${d} (lädt nach)`,
   flash_peek: (d) => `Peekt den geblendeten ${d}`, sneak: (d) => `Schleicht auf ${d} zu`,
   retake: () => "Retake", execute: () => "Angriff mit Smokes/Molotovs",
+  hotspot: (d) => `Typische Duell-Stelle gegen ${d}`,
   importance: () => "Wichtigkeit", killer: (d) => `Hat ${d} getötet`, rotation: () => "Abwechslung",
 };
 const NADES = { smoke: "eine Smoke", flashbang: "eine Flash", frag: "eine HE", firebomb: "einen Molotov", decoy: "ein Decoy" };
@@ -253,7 +254,7 @@ function render() {
   const mode = state.camera.mode;
   $("lamp-camera").className = `lamp ${mode === "netcon" ? "on" : mode === "keys" ? "mid" : ""}`;
   $("lamp-camera").textContent = `Kamera: ${state.camera_name}`;
-  $("map").textContent = state.map ? `${state.map} · Runde ${state.round} · ${state.phase || "–"}` : "";
+  $("map").textContent = state.map ? `${state.map}${state.map_known ? " (Kartenwissen ✓)" : ""} · Runde ${state.round} · ${state.phase || "–"}` : "";
 
   $("keys-band").hidden = mode !== "keys";
   $("keys-foreground").textContent = mode === "keys" ? (state.camera.foreground ? "(CS2 ist im Vordergrund ✓)" : "(CS2 ist NICHT im Vordergrund!)") : "";

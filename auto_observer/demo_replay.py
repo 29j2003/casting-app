@@ -19,6 +19,7 @@ from collections import Counter, defaultdict
 from .demo_export import load
 from .director import Director
 from .game import Match
+from .map_knowledge import MapKnowledge
 from .weapons import THROWN, from_display
 
 ROUND_TIME = 115.0
@@ -288,9 +289,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="auto_observer.demo_replay")
     parser.add_argument("files", nargs="+")
     parser.add_argument("--round", type=int)
+    parser.add_argument("--no-map-knowledge", action="store_true", help="ohne gelerntes Kartenwissen")
     args = parser.parse_args(argv)
+    knowledge = None if args.no_map_knowledge else MapKnowledge.load_folder()
     for path in args.files:
-        print(report(evaluate(path, only_round=args.round)))
+        print(report(evaluate(path, only_round=args.round, knowledge=knowledge)))
     return 0
 
 

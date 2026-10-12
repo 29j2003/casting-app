@@ -206,4 +206,5 @@ class DemoJobs:
 
     def evaluate(self, name: str) -> str:
         from .demo_replay import evaluate, report
-        return report(evaluate(str(self.path_of(name))))
+        from .map_knowledge import MapKnowledge
+        return report(evaluate(str(self.path_of(name)), knowledge=MapKnowledge.load_folder()))

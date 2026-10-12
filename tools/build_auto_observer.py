@@ -34,6 +34,9 @@ def main() -> int:
         "--exclude-module", "casting_app", "--exclude-module", "PySide6",
         str(launcher),
     ]
+    map_data = ROOT / "auto_observer" / "map_data"
+    if map_data.is_dir():                                    # learned map knowledge (map_knowledge.py)
+        command[-1:-1] = ["--add-data", f"{map_data}{separator}auto_observer/map_data"]
     result = subprocess.run(command, cwd=ROOT)
     if result.returncode:
         return result.returncode

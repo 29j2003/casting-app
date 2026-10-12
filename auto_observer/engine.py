@@ -18,6 +18,7 @@ from . import VERSION, launcher
 from .camera import Camera
 from .cs2_cfg import cfg_installed, cs2_exe, find_cfg_folders, find_steam_exe, write_cfg
 from .director import Director, form
+from .map_knowledge import MapKnowledge
 from .game import Match, Player
 from .recorder import Recorder, without_token
 from .settings import DEFAULTS, Settings
@@ -37,7 +38,8 @@ class Engine:
         self.clock = clock
         self.lock = threading.RLock()
         self.match = Match()
-        self.director = Director()
+        self.knowledge = MapKnowledge.load_folder()       # where fights happen per map (learned from demos)
+        self.director = Director(knowledge=self.knowledge)
         self.paused = False
         self.paused_until: float | None = None
         self.pause_reason = ""
@@ -303,7 +305,7 @@ class Engine:
                 "camera": camera, "camera_name": CAMERA_NAMES.get(camera["mode"], camera["mode"]),
                 "camera_problem": self.camera_problem,
                 "settings": {k: settings[k] for k in DEFAULTS if k not in ("player_weights", "team_weights", "player_roles")},
-                "map": match.map_name, "round": match.round + (1 if match.round_phase in ("live", "freezetime") else 0),
+                "map": match.map_name, "map_known": self.knowledge.knows(match.map_name), "round": match.round + (1 if match.round_phase in ("live", "freezetime") else 0),
                 "phase": match.round_phase, "observed": current,
                 "paused": {"on": self.paused, "reason": self.pause_reason,
                            "seconds": max(0, math.ceil(self.paused_until - now)) if self.paused and self.paused_until else None},

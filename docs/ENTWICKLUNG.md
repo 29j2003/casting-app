@@ -731,7 +731,9 @@ daraus den Teil „hotspot“. Neu erzeugen mit allen Rohdaten:
 (43 Rohdaten-Dateien, geteilte Demos als -p1/-p2) – Dust2 8, Mirage 7, Anubis 6, Nuke 4, Inferno 3, Overpass 3,
 Cache 2, Ancient 1; Train und Vertigo noch ohne. Faire Prüfung (jede Map nur mit Wissen aus den anderen Demos derselben
 Karte): Kills im Bild 61,6 → 64,1 %, Vorlauf ≥ 0,5 s 47,0 → 50,1 %, Wechsel pro Minute 14,6 → 13,9 – mit 10 Demos
-waren es noch +1 Punkt, je mehr Demos pro Map, desto besser.
+waren es noch +1 Punkt, je mehr Demos pro Map, desto besser. Gewichte nachgeprüft (hotspot 400–700, Bezug 15–30 %):
+alles innerhalb von ±0,4 Punkten; nur die Obergrenze `hotspot_cap` 2,0 statt 1,5 hilft auf alten wie neuen Demos
+(64,5 % im Bild, 50,7 % Vorlauf).
 
 **Kill-Dichte aus HLTV-Heatmaps** (`tools/import_hltv_heatmaps.py`, Feld `heat` in `map_data`): die Heatmap-Bilder
 gespeicherter HLTV-Kartenseiten zurückgerechnet (Farbe → Dichte, Bildpunkt → Spielwelt über die Valve-Radarwerte;

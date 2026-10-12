@@ -55,7 +55,7 @@ TUNING = {
     "standoff_grace": 1.5, "standoff_half_life": 2.0, "standoff_floor": 0.15,             # demos
     "angle_hold": 260.0, "angle_hold_degrees": 10.0,   # beats the clutcher by a "jump": cut before he peeks
     # learned map knowledge (map_knowledge.py): chance that a T at callout X and a CT at callout Y fight soon
-    "hotspot": 400.0, "hotspot_ref": 0.2, "hotspot_cap": 1.5,                          # demos
+    "hotspot": 400.0, "hotspot_ref": 0.2, "hotspot_cap": 2.0,                          # demos
     # kill density from HLTV heatmaps: a player standing where many pro kills happen, with an enemy in reach
     "heat": 0.0, "heat_reach": 1.3,
     # predictions from the situation

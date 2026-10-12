@@ -482,6 +482,13 @@ position, view, health, weapon and every shot, hit, kill and grenade. “Runde a
 link works with the casting app's FACEIT key if FACEIT allows that key to download demos; otherwise the match room
 opens to download the demo there.
 
+Many demos at once: “Ordner umwandeln” (convert folder) takes every demo in a folder that was not converted yet.
+With “Download-Ordner beobachten” (watch download folder) on, every demo that finishes downloading there is converted
+by itself – just click several GOTV demos on HLTV one after the other. Pasted HLTV match or demo links (“Demos im
+Browser laden”) are opened in the browser one after the other, and the watched folder picks the downloads up.
+“Demo nach dem Umwandeln löschen” removes each download after a good conversion. “Für Claude packen” puts all raw data
+files that were not packed yet into zip files of up to 45 MB in the folder “demos”.
+
 Without the console port, the app presses the spectator keys 1–0 instead; a yellow band shows this mode, and CS2 must
 then be the window in front. **Mitschnitt** (recording, in the setup) saves the CS2 data of a match, which helps tune the director.
 

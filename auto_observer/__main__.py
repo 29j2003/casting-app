@@ -65,13 +65,14 @@ def main(argv: list[str] | None = None) -> int:
     camera = Camera(settings, log)
     engine = Engine(settings, camera, Recorder(settings.folder), args.port)
     engine.echo = lambda line: print(line, flush=True)
-    demos = DemoJobs(settings.folder, engine.log)
+    demos = DemoJobs(settings.folder, engine.log, settings)
     try:
         server = make_server(engine, args.port, demos)
     except OSError as error:
         print(f"Port {args.port} ist belegt ({error}). Mit --port einen anderen wählen.")
         return 1
     camera.start()
+    demos.start_watching()
     stop = threading.Event()
     threading.Thread(target=run_ticks, args=(engine, stop), name="director", daemon=True).start()
 

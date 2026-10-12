@@ -36,6 +36,9 @@ DEFAULTS = {
     "cfg_folder": "",                    # CS2's cfg folder (found by the app, can be changed)
     "steam_exe": "",                     # Steam program; empty = find it
     "launch_extra": "",                  # more CS2 launch options, e.g. "-novid -console"
+    "demo_watch": False,                 # export every new demo download in the watched folder
+    "demo_watch_folder": "",             # empty = the user's download folder
+    "demo_delete": False,                # delete a download after its good export (saves space)
 }
 
 CHOICES = {"camera_mode": ("auto", "netcon", "keys"), "spec_command": ("name", "accountid")}
@@ -139,7 +142,7 @@ class Settings:
         if key == "netcon_host":
             text = value.strip() if isinstance(value, str) else ""
             return text if text and len(text) <= 253 and all(ch.isalnum() or ch in ".-:" for ch in text) else None
-        if key in ("cfg_folder", "steam_exe"):
+        if key in ("cfg_folder", "steam_exe", "demo_watch_folder"):
             return value.strip()[:1000] if isinstance(value, str) else None
         if key == "launch_extra":
             return clean_extra(value) if isinstance(value, str) else None

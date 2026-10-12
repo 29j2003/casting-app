@@ -344,6 +344,23 @@ function render() {
 // --- Demo → Rohdaten ---
 
 $("demo-choose").addEventListener("click", () => post("/api/demo/choose"));
+$("demo-folder").addEventListener("click", async () => {
+  const { ok, data } = await post("/api/demo/folder");
+  if (!ok && data.message !== "Kein Ordner gewählt") flash(data.message || "Ordner nicht übernommen");
+});
+for (const id of ["demo_watch", "demo_delete"]) {
+  $(id).addEventListener("change", (e) => { mark(e.target); sendSettings({ [id]: e.target.checked }); });
+}
+$("demo_watch_folder").addEventListener("change", (e) => { mark(e.target); sendSettings({ demo_watch_folder: e.target.value.trim() }); });
+$("hltv-load").addEventListener("click", async () => {
+  const { ok, data } = await post("/api/demo/hltv", { links: $("hltv-links").value });
+  if (ok) $("hltv-links").value = "";
+  else flash(data.message || "Links nicht übernommen");
+});
+$("demo-pack").addEventListener("click", async () => {
+  const { ok, data } = await post("/api/demo/pack");
+  $("demo-pack-status").textContent = data.message || (ok ? "" : "Packen ging nicht");
+});
 $("demo-open").addEventListener("click", () => post("/api/demo/open"));
 $("faceit-load").addEventListener("click", async () => {
   const { ok, data } = await post("/api/demo/faceit", { link: $("faceit-link").value, key: $("faceit-key").value });
@@ -384,6 +401,12 @@ function renderDemo(demo) {
   $("demo-summary").textContent = demo.running ? `– exportiert ${demo.current}${demo.queued ? ` (+${demo.queued})` : ""}`
     : demo.results.length ? `– ${demo.results.length} Datei(en)` : "";
   $("faceit-key").hidden = demo.faceit_key;
+  if (state && state.settings) {
+    for (const id of ["demo_watch", "demo_delete", "demo_watch_folder"]) setValue($(id), state.settings[id] ?? "");
+  }
+  $("demo_watch_folder").placeholder = demo.watch_folder || "Downloads";
+  $("demo-pack").textContent = demo.unpacked ? `Für Claude packen (${demo.unpacked} neu)` : "Für Claude packen";
+  $("hltv-load").disabled = demo.hltv_busy;
   $("demo-log").replaceChildren(...demo.log.map((line) => Object.assign(document.createElement("li"), { textContent: line })));
   const key = JSON.stringify(demo.results);
   if (key === demoResultsKey) return;                    // Eingaben in der Tabelle nicht überschreiben

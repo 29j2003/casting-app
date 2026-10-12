@@ -160,6 +160,20 @@ def make_handler(engine: Engine, port: int, demos=None):
             if path == "/api/demo/open":
                 open_folder(demos.folder)
                 return self._json(200, {"ok": True})
+            if path == "/api/demo/folder":
+                ok, message = demos.choose_folder()
+                return self._json(200 if ok else 409, {"ok": ok, "message": message})
+            if path == "/api/demo/pack":
+                ok, message = demos.pack()
+                if ok:
+                    try:
+                        open_folder(demos.folder)
+                    except OSError:
+                        pass                                   # packed anyway; "Ordner öffnen" shows the error
+                return self._json(200 if ok else 409, {"ok": ok, "message": message})
+            if path == "/api/demo/hltv":
+                ok, message = demos.hltv(str(body.get("links") or "")[:20000])
+                return self._json(200 if ok else 400, {"ok": ok, "message": message})
             if path == "/api/demo/faceit":
                 if isinstance(body.get("key"), str) and body["key"].strip():
                     demos.faceit_key = body["key"].strip()[:200]

@@ -871,9 +871,88 @@ def test_demo_area_on_the_server(engine, tmp_path):
         assert json.loads(body)["demo"]["results"][0]["file"] == "x.rohdaten.jsonl.gz"
         status, _ = request(port, "POST", "/api/demo/faceit", {"link": "keine id"}, header)
         assert status == 409
+        status, _ = request(port, "POST", "/api/demo/hltv", {"links": "nichts von HLTV"}, header)
+        assert status == 400
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+def bulk_demos(tmp_path, **settings):
+    from auto_observer.demo_jobs import DemoJobs
+    store = Settings(tmp_path / "data")
+    downloads = tmp_path / "downloads"
+    downloads.mkdir()
+    store.apply(dict({"demo_watch_folder": str(downloads)}, **settings))
+    demos = DemoJobs(store.folder, lambda *a: None, store)
+    queued = []
+    demos.add = lambda paths, delete=False: queued.extend((p, delete) for p in paths) or len(paths)
+    return demos, downloads, queued
+
+
+def test_watched_download_folder_takes_finished_demos_only(tmp_path):
+    import os
+    demos, downloads, queued = bulk_demos(tmp_path, demo_watch=True, demo_delete=True)
+    now = time.time()
+    old = downloads / "old-match.rar"
+    old.write_bytes(b"x" * 10)
+    os.utime(old, (now - 3600, now - 3600))
+    (downloads / "notes.txt").write_text("keine Demo")
+    (downloads / "busy.rar").write_bytes(b"")                     # Firefox: empty file + .part while loading
+    (downloads / "busy.rar.part").write_bytes(b"x" * 10)
+    new = downloads / "vitality-vs-mouz.rar"
+    new.write_bytes(b"x" * 10)
+    assert demos.watch_once(now) == 0                              # first look: size noted
+    new.write_bytes(b"x" * 20)
+    assert demos.watch_once(now + 5) == 0                          # still growing
+    assert demos.watch_once(now + 8) == 0                          # not stable for long enough yet
+    assert demos.watch_once(now + 10) == 1
+    assert queued == [(str(new), True)]
+    demos._sources["done"][demos._source_key(new)] = "ok"          # after the export it is never taken again
+    assert demos.watch_once(now + 20) == 0
+    demos._settings.apply({"demo_watch": False})
+    assert demos.watch_once(now + 30) == 0 and "watch_since" not in demos._sources
+
+
+def test_folder_export_skips_done_demos_and_packing_splits(tmp_path, monkeypatch):
+    from auto_observer import demo_jobs
+    demos, downloads, queued = bulk_demos(tmp_path)
+    (downloads / "sub").mkdir()
+    first, second = downloads / "a.rar", downloads / "sub" / "b.dem.zst"
+    first.write_bytes(b"1")
+    second.write_bytes(b"2")
+    demos._sources["done"][demos._source_key(first)] = "ok"
+    assert demos.add_folder(downloads) == (1, 1)
+    assert queued == [(str(second), False)]
+
+    assert demos.pack() == (False, "Noch keine Rohdaten zum Packen")
+    demos.folder.mkdir(parents=True, exist_ok=True)
+    for name in ("m1", "m2", "m3"):
+        (demos.folder / f"{name}.rohdaten.jsonl.gz").write_bytes(b"x" * 600)
+    monkeypatch.setattr(demo_jobs, "PART_SIZE", 1000)
+    ok, text = demos.pack()
+    zips = sorted(demos.folder.glob("Rohdaten_*.zip"))
+    assert ok and len(zips) == 3 and "3 Rohdaten-Datei(en)" in text
+    assert demos.state()["unpacked"] == 0
+    (demos.folder / "m4.rohdaten.jsonl.gz").write_bytes(b"y")
+    assert demos.state()["unpacked"] == 1
+    ok, text = demos.pack()                                        # only the new one
+    assert ok and "1 Rohdaten-Datei(en)" in text
+    reloaded = demo_jobs.DemoJobs(tmp_path / "data", lambda *a: None)
+    assert reloaded.state()["unpacked"] == 0                       # remembered in sources.json
+
+
+def test_hltv_links_are_found_in_pasted_text(tmp_path):
+    from auto_observer.demo_jobs import hltv_links
+    text = ("https://www.hltv.org/matches/2382241/nip-vs-g2-pgl-astana-2025\n"
+            "Demo: https://www.hltv.org/download/demo/98765 und nochmal "
+            "http://hltv.org/matches/2382241/nip-vs-g2-pgl-astana-2025 · https://example.com/matches/1/x")
+    assert hltv_links(text) == ["https://www.hltv.org/matches/2382241/nip-vs-g2-pgl-astana-2025",
+                                "https://www.hltv.org/download/demo/98765"]
+    store = Settings(tmp_path)
+    assert store.apply({"demo_watch": "ja", "demo_watch_folder": 5}) == []
+    assert store.apply({"demo_watch": True, "demo_watch_folder": " D:\\Demos "}) == ["demo_watch", "demo_watch_folder"]
+    assert store["demo_watch_folder"] == "D:\\Demos"
 
 
 def test_map_knowledge_learns_where_fights_happen(tmp_path):

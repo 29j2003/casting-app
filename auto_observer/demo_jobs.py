@@ -4,14 +4,23 @@ Demos come from the file dialog (button "Demo auswählen"), from dragging files 
 local server), from dragging them onto Auto-Observer.exe (start arguments) or from a FACEIT match link.
 Each map ends up as `<data folder>/demos/<name>.rohdaten.jsonl.gz` (see demo_export.py); the page can copy one
 round as text or let the director run over the map (demo_replay.py) and copy the report.
+
+Many demos at once: a whole folder ("Ordner umwandeln"), watching the download folder (every finished demo download
+is exported on its own), a list of HLTV links (opened in the browser one after the other – HLTV lets only browsers
+download, the watched folder picks the files up) and packing all raw data into a few zip files to pass on.
+`demos/sources.json` remembers which downloads were exported and which raw data files were packed.
 """
 
 import json
+import os
 import re
+import sys
 import threading
+import time
 import urllib.error
 import urllib.request
 import webbrowser
+import zipfile
 from collections import deque
 from pathlib import Path
 
@@ -19,6 +28,48 @@ FACEIT_MATCH = re.compile(r"\b(1-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}
 FACEIT_API = "https://open.faceit.com"
 UPLOAD_LIMIT = 4 * 1024 ** 3
 SAFE_NAME = re.compile(r"[^\w.\-]+")
+DOWNLOAD_SUFFIXES = (".rar", ".zip", ".7z", ".dem", ".dem.zst", ".dem.gz", ".dem.bz2")
+UNFINISHED = (".crdownload", ".part", ".partial", ".download", ".tmp")   # browsers' files while downloading
+STABLE_SECONDS = 4.0                     # a download counts as finished when its size stays the same this long
+WATCH_EVERY = 3.0
+FOLDER_DEPTH = 2                         # "Ordner umwandeln" also looks into sub folders this deep
+FOLDER_LIMIT = 500
+PART_SIZE = 45 * 1024 ** 2               # size of one zip from "Für Claude packen" (fits a chat upload)
+HLTV_LINK = re.compile(r"https?://(?:www\.)?hltv\.org/((?:matches/\d+/[\w-]+|download/demo/\d+))", re.I)
+HLTV_DEMO = re.compile(r"/download/demo/(\d+)")
+HLTV_GAP = 2.0                           # seconds between two links (polite to HLTV, browser keeps up)
+HLTV_LIMIT = 60
+
+
+def downloads_folder() -> Path:
+    """The user's download folder (Windows: also when moved to another drive)."""
+    if sys.platform == "win32":
+        try:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                                r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders") as key:
+                value, _ = winreg.QueryValueEx(key, "{374DE290-123F-4565-9164-39C4925E467B}")
+            return Path(os.path.expandvars(value))
+        except OSError:
+            pass
+    return Path.home() / "Downloads"
+
+
+def is_download(path: Path) -> bool:
+    """A demo download by its name (not a half-finished browser file)."""
+    name = path.name.lower()
+    return name.endswith(DOWNLOAD_SUFFIXES) and not name.startswith("rohdaten_")      # not our own packed zips
+
+
+def hltv_links(text: str) -> list[str]:
+    """HLTV match and demo links in any pasted text, without duplicates, in order."""
+    seen, links = set(), []
+    for path in HLTV_LINK.findall(text or ""):
+        same = re.sub(r"^(matches/\d+)/.*", r"\1", path.lower())          # one match, however its link is written
+        if same not in seen:
+            seen.add(same)
+            links.append(f"https://www.hltv.org/{path}")
+    return links[:HLTV_LIMIT]
 
 
 def casting_app_faceit_key() -> str:
@@ -33,17 +84,57 @@ def casting_app_faceit_key() -> str:
 class DemoJobs:
     """Queue of demo files to export, results and a short log for the page."""
 
-    def __init__(self, data_folder: Path, log):
+    def __init__(self, data_folder: Path, log, settings=None):
         self.folder = data_folder / "demos"
         self._log = log
+        self._settings = settings            # demo_watch, demo_watch_folder, demo_delete (None in tests: all off)
         self._lock = threading.Lock()
         self._dialog_lock = threading.Lock()
-        self._queue: deque[Path] = deque()
+        self._queue: deque[tuple[Path, bool]] = deque()     # (file, delete it after a good export)
         self._running = False
         self.current = ""
         self.lines: deque = deque(maxlen=40)
         self.results: list[dict] = []
         self.faceit_key = ""                 # typed in on the page (only for this session)
+        self._sizes: dict[str, tuple[int, float]] = {}      # watched file → (size, since when unchanged)
+        self._queued: set[str] = set()
+        self._hltv_busy = False
+        self._sources = self._load_sources()
+
+    # --- what was done already (demos/sources.json) ---
+
+    def _load_sources(self) -> dict:
+        try:
+            data = json.loads((self.folder / "sources.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            data = {}
+        data = data if isinstance(data, dict) else {}
+        for key, empty in (("done", {}), ("packed", [])):
+            if not isinstance(data.get(key), type(empty)):
+                data[key] = empty
+        return data
+
+    def _save_sources(self) -> None:
+        try:
+            self.folder.mkdir(parents=True, exist_ok=True)
+            temporary = self.folder / "sources.json.tmp"
+            temporary.write_text(json.dumps(self._sources, ensure_ascii=False), encoding="utf-8")
+            os.replace(temporary, self.folder / "sources.json")
+        except OSError:
+            pass
+
+    @staticmethod
+    def _source_key(path: Path) -> str:
+        try:
+            return f"{path.name}|{path.stat().st_size}"
+        except OSError:
+            return path.name
+
+    def _setting(self, key: str, default):
+        try:
+            return self._settings[key] if self._settings is not None else default
+        except KeyError:
+            return default
 
     # --- queue ---
 
@@ -61,13 +152,15 @@ class DemoJobs:
         self.lines.append(text)
         self._log(text, "info")
 
-    def add(self, paths: list[str]) -> int:
+    def add(self, paths: list[str], delete: bool = False) -> int:
+        """Queue files for export; `delete` = remove each file after its good export (copies, or if wanted)."""
         added = 0
         with self._lock:
             for raw in paths:
                 path = Path(raw)
-                if path.is_file():
-                    self._queue.append(path)
+                if path.is_file() and str(path) not in self._queued:
+                    self._queue.append((path, delete))
+                    self._queued.add(str(path))
                     added += 1
             if added and not self._running:
                 self._running = True
@@ -81,21 +174,205 @@ class DemoJobs:
                 if not self._queue:
                     self._running, self.current = False, ""
                     return
-                path = self._queue.popleft()
+                path, delete = self._queue.popleft()
                 self.current = path.name
+            key, good = self._source_key(path), False
             try:
                 for result in export_download(path, self.folder, log=self.note):
                     result["file"] = Path(result["file"]).name
                     with self._lock:
                         self.results = [r for r in self.results if r["file"] != result["file"]] + [result]
+                good = True
             except Exception as error:       # a broken demo must not stop the queue
                 self.note(f"Fehler bei {path.name}: {error}")
+            with self._lock:
+                self._queued.discard(str(path))
+                self._sources["done"][key] = "ok" if good else "error"
+                self._save_sources()
+            if good and delete:
+                try:
+                    path.unlink()
+                    self.note(f"{path.name} gelöscht (umgewandelt)")
+                except OSError as error:
+                    self.note(f"{path.name} nicht gelöscht: {error}")
 
     def state(self) -> dict:
         with self._lock:
+            unpacked = [r for r in self._files() if r["file"] not in self._sources["packed"]]
             return {"running": self._running, "current": self.current, "queued": len(self._queue),
                     "log": list(self.lines)[-12:], "results": self._files(),
-                    "faceit_key": bool(self.faceit_key or casting_app_faceit_key())}
+                    "faceit_key": bool(self.faceit_key or casting_app_faceit_key()),
+                    "watch_folder": str(self.watch_folder()), "unpacked": len(unpacked),
+                    "hltv_busy": self._hltv_busy}
+
+    # --- many demos at once ---
+
+    def watch_folder(self) -> Path:
+        chosen = str(self._setting("demo_watch_folder", "") or "").strip()
+        return Path(chosen) if chosen else downloads_folder()
+
+    def start_watching(self) -> None:
+        threading.Thread(target=self._watch_loop, name="demo-watch", daemon=True).start()
+
+    def _watch_loop(self) -> None:
+        while True:
+            try:
+                self.watch_once()
+            except Exception as error:       # never stop watching because of one odd file
+                self._log(f"Download-Ordner: {error!r}", "warn")
+            time.sleep(WATCH_EVERY)
+
+    def watch_once(self, now: float | None = None) -> int:
+        """One look into the watched folder: queue finished demo downloads that are new since watching began."""
+        if not self._setting("demo_watch", False):
+            self._sources.pop("watch_since", None)
+            self._sizes.clear()
+            return 0
+        now = time.time() if now is None else now
+        if not isinstance(self._sources.get("watch_since"), (int, float)):
+            self._sources["watch_since"] = now
+            self._save_sources()
+            self.note(f"Beobachte {self.watch_folder()} – neue Demo-Downloads werden von selbst umgewandelt")
+        since = self._sources["watch_since"]
+        folder = self.watch_folder()
+        try:
+            entries = [p for p in folder.iterdir() if p.is_file()]
+        except OSError:
+            return 0
+        names = {p.name.lower() for p in entries}
+        ready = []
+        for path in entries:
+            if not is_download(path) or any(path.name.lower() + end in names for end in UNFINISHED):
+                continue
+            try:
+                info = path.stat()
+            except OSError:
+                continue
+            if info.st_mtime < since - 60 or info.st_size == 0 or self._source_key(path) in self._sources["done"]:
+                continue
+            size, unchanged_since = self._sizes.get(str(path), (-1, now))
+            if size != info.st_size:
+                self._sizes[str(path)] = (info.st_size, now)
+                continue
+            if now - unchanged_since >= STABLE_SECONDS and str(path) not in self._queued:
+                ready.append(path)
+        if ready:
+            self.note(f"Neue Demo im Download-Ordner: {', '.join(p.name for p in ready)}")
+        return self.add([str(p) for p in ready], delete=bool(self._setting("demo_delete", False)))
+
+    def add_folder(self, folder: Path) -> tuple[int, int]:
+        """Queue every demo in a folder (and sub folders) that was not exported before; (queued, skipped)."""
+        found: list[Path] = []
+        base_depth = len(folder.parts)
+        for root, dirs, files in os.walk(folder):
+            if len(Path(root).parts) - base_depth >= FOLDER_DEPTH:
+                dirs[:] = []
+            found += [Path(root) / name for name in files if is_download(Path(name))]
+            if len(found) >= FOLDER_LIMIT:
+                break
+        found.sort(key=lambda p: p.stat().st_mtime if p.exists() else 0)
+        fresh = [p for p in found if self._source_key(p) not in self._sources["done"]]
+        added = self.add([str(p) for p in fresh], delete=bool(self._setting("demo_delete", False)))
+        return added, len(found) - len(fresh)
+
+    def choose_folder(self) -> tuple[bool, str]:
+        with self._dialog_lock:
+            try:
+                import tkinter
+                from tkinter import filedialog
+                root = tkinter.Tk()
+                root.withdraw()
+                root.attributes("-topmost", True)
+                chosen = filedialog.askdirectory(parent=root, title="Ordner mit Demos auswählen",
+                                                 initialdir=str(self.watch_folder()))
+                root.destroy()
+            except Exception as error:
+                return False, f"Ordnerauswahl geht nicht ({error})"
+        if not chosen:
+            return False, "Kein Ordner gewählt"
+        added, skipped = self.add_folder(Path(chosen))
+        text = f"{added} Demo(s) aus {chosen} in der Warteschlange"
+        if skipped:
+            text += f", {skipped} schon umgewandelt"
+        self.note(text)
+        return True, text
+
+    def pack(self) -> tuple[bool, str]:
+        """All raw data files not packed yet (else all) into zip files of at most PART_SIZE in the demos folder."""
+        files = sorted(self.folder.glob("*.rohdaten.jsonl.gz"), key=lambda p: p.stat().st_mtime)
+        if not files:
+            return False, "Noch keine Rohdaten zum Packen"
+        new = [p for p in files if p.name not in self._sources["packed"]] or files
+        parts, part, size = [], [], 0
+        for path in new:
+            length = path.stat().st_size
+            if part and size + length > PART_SIZE:
+                parts.append(part)
+                part, size = [], 0
+            part.append(path)
+            size += length
+        parts.append(part)
+        stamp = time.strftime("%Y-%m-%d_%H-%M")
+        written = []
+        for number, group in enumerate(parts, 1):
+            target = self.folder / (f"Rohdaten_{stamp}" + (f"_{number}" if len(parts) > 1 else "") + ".zip")
+            temporary = target.with_suffix(".zip.part")
+            with zipfile.ZipFile(temporary, "w", zipfile.ZIP_STORED) as archive:   # already gzip
+                for path in group:
+                    archive.write(path, path.name)
+            os.replace(temporary, target)
+            written.append(target.name)
+        with self._lock:
+            self._sources["packed"] = sorted(set(self._sources["packed"]) | {p.name for p in new})
+            self._save_sources()
+        text = f"{len(new)} Rohdaten-Datei(en) gepackt: {', '.join(written)}"
+        self.note(text)
+        return True, text
+
+    def hltv(self, text: str) -> tuple[bool, str]:
+        """Open HLTV demo downloads in the browser one after the other; the watched folder exports them."""
+        links = hltv_links(text)
+        if not links:
+            return False, "Keine HLTV-Links gefunden (…hltv.org/matches/… oder …/download/demo/…)"
+        if self._hltv_busy:
+            return False, "Die letzten HLTV-Links werden noch geöffnet"
+        if self._settings is not None and not self._setting("demo_watch", False):
+            self._settings.apply({"demo_watch": True})
+            self.note("Download-Ordner wird jetzt beobachtet – die Demos werden nach dem Download umgewandelt")
+        self._hltv_busy = True
+        threading.Thread(target=self._open_hltv, args=(links,), name="hltv-links", daemon=True).start()
+        return True, f"{len(links)} HLTV-Link(s) werden nacheinander im Browser geöffnet"
+
+    def _open_hltv(self, links: list[str]) -> None:
+        reachable = True                     # HLTV often answers only browsers – then stop asking it
+        try:
+            for number, link in enumerate(links):
+                if number:
+                    time.sleep(HLTV_GAP)
+                demo = HLTV_DEMO.search(link)
+                if not demo and reachable:
+                    demo, reachable = self._hltv_demo_link(link)
+                if demo:
+                    webbrowser.open(f"https://www.hltv.org/download/demo/{demo.group(1)}")
+                    self.note(f"HLTV-Demo {demo.group(1)} im Browser angestoßen")
+                else:
+                    webbrowser.open(link)
+                    self.note(f"Match im Browser geöffnet – dort „GOTV Demo“ klicken: {link}")
+        finally:
+            self._hltv_busy = False
+
+    @staticmethod
+    def _hltv_demo_link(link: str):
+        """(demo link match or None, HLTV still worth asking)."""
+        request = urllib.request.Request(link, headers={"User-Agent": "Auto-Observer (demo export for casting)"})
+        try:
+            with urllib.request.urlopen(request, timeout=15) as answer:
+                page = answer.read(3 * 1024 * 1024).decode("utf-8", "replace")
+        except urllib.error.HTTPError as error:
+            return None, error.code not in (403, 429, 503)
+        except (urllib.error.URLError, OSError, ValueError):
+            return None, False
+        return HLTV_DEMO.search(page), True
 
     # --- getting files ---
 
@@ -132,7 +409,7 @@ class DemoJobs:
                     raise ValueError("Übertragung abgebrochen")
                 out.write(chunk)
                 left -= len(chunk)
-        self.add([str(target)])
+        self.add([str(target)], delete=True)                # our own copy – not needed after the export
         return target
 
     def faceit(self, link: str) -> tuple[bool, str]:
@@ -160,7 +437,7 @@ class DemoJobs:
                     target = target.with_name(f"{match_id}{suffix}")
                     self.note(f"Lade FACEIT-Demo {match_id} …")
                     self._download(url, target)
-                    self.add([str(target)])
+                    self.add([str(target)], delete=True)        # our own download – not needed afterwards
                     return True, "FACEIT-Demo geladen, Export läuft"
         except urllib.error.HTTPError as error:
             if error.code in (401, 403):

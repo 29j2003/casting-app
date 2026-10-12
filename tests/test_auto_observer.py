@@ -967,3 +967,12 @@ def test_leetify_key_never_reaches_the_page(engine):
     text = json.dumps(engine.state())
     assert "abcd1234" not in text and engine.state()["leetify"]["key"] is True
     assert "abcd1234" not in json.dumps(list(engine.log_lines))
+
+
+def test_heat_from_hltv_heatmaps():
+    from auto_observer.map_knowledge import MapKnowledge
+    know = MapKnowledge({"de_x": {"map": "de_x", "heat": {"0_0": 0.8, "1_0": 0.2}, "heat_cell": 96, "heat_min_z": -495}})
+    assert know.has_heat("de_x") and not know.knows("de_x")                 # heat only, no learned pairs
+    assert know.heat("de_x", (10, 10, 0)) == 0.8 and know.heat("de_x", (100, 10, 0)) == 0.2
+    assert know.heat("de_x", (5000, 10, 0)) == 0.0 and know.heat("de_x", (10, 10, -600)) is None
+    assert know.fight_chance("de_x", (0, 0, 0), (1, 1, 1)) is None and know.place("de_x", (0, 0, 0)) == ""

@@ -56,6 +56,8 @@ TUNING = {
     "angle_hold": 260.0, "angle_hold_degrees": 10.0,   # beats the clutcher by a "jump": cut before he peeks
     # learned map knowledge (map_knowledge.py): chance that a T at callout X and a CT at callout Y fight soon
     "hotspot": 400.0, "hotspot_ref": 0.2, "hotspot_cap": 1.5,                          # demos
+    # kill density from HLTV heatmaps: a player standing where many pro kills happen, with an enemy in reach
+    "heat": 0.0, "heat_reach": 1.3,
     # predictions from the situation
     "trade_try": 90.0, "trade_try_window": 4.0, "trade_reach": 1.3,      # teammate of a fallen player goes for the refrag
     "swing": 80.0,                     # swinging an enemy who reloads
@@ -415,6 +417,13 @@ class Director:
             if (low <= player.speed() <= high and gap <= reach * 1.2 and approaching(player, enemy, minimum=25)
                     and not facing(enemy, player, 60)):
                 add("sneak", t["sneak"] * max(0.0, 1 - gap / (reach * 1.2)), enemy.name)
+        if t["heat"] and self.knowledge and player.position and enemies:
+            density = self.knowledge.heat(match.map_name, player.position)
+            if density:
+                near = any(e.position and distance(player.position, e.position) <= player.engage_range * t["heat_reach"]
+                           for e in enemies)
+                if near:
+                    add("heat", t["heat"] * density)
         if "hotspot" in parts:
             points, detail = parts["hotspot"]
             parts["hotspot"] = (min(t["hotspot"] * t["hotspot_cap"], points), detail)

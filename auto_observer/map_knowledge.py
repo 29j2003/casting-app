@@ -117,11 +117,12 @@ class MapKnowledge:
         return cls(maps)
 
     def knows(self, map_name: str) -> bool:
-        return map_name in self.maps
+        """True if the map has learned fight pairs (from demos)."""
+        return "pairs" in self.maps.get(map_name, {})
 
     def place(self, map_name: str, position) -> str:
         data = self.maps.get(map_name)
-        if not data or not position:
+        if not data or not position or "grid" not in data:
             return ""
         x, y, z = position
         grid = data["grid"]
@@ -137,6 +138,20 @@ class MapKnowledge:
                         return grid[near]
         return ""
 
+    def heat(self, map_name: str, position) -> float | None:
+        """Kill density 0..1 at a position (from HLTV heatmaps of pro matches); None if the map has none."""
+        data = self.maps.get(map_name)
+        if not data or "heat" not in data or not position:
+            return None
+        x, y, z = position
+        if z < data.get("heat_min_z", -1e9):
+            return None
+        cell = data.get("heat_cell", CELL)
+        return data["heat"].get(f"{int(x // cell)}_{int(y // cell)}", 0.0)
+
+    def has_heat(self, map_name: str) -> bool:
+        return "heat" in self.maps.get(map_name, {})
+
     def fight_chance(self, map_name: str, t_position, ct_position) -> float | None:
         """Chance (0..1) that a T at `t_position` and a CT at `ct_position` fight within the horizon; None if unknown."""
         data = self.maps.get(map_name)
@@ -145,15 +160,23 @@ class MapKnowledge:
         t_place, ct_place = self.place(map_name, t_position), self.place(map_name, ct_position)
         if not t_place or not ct_place:
             return None
+        if "pairs" not in data:
+            return None
         frames, fights = data["pairs"].get(f"{t_place}|{ct_place}", (0, 0))
         return (fights + PRIOR * data["base"]) / (frames + PRIOR)
 
 
 def save(knowledge: dict[str, dict], folder: Path = DATA_FOLDER) -> list[Path]:
+    """Write the learned pairs; heat imported from HLTV (tools/import_hltv_heatmaps.py) is kept."""
     folder.mkdir(parents=True, exist_ok=True)
     written = []
     for name, data in knowledge.items():
         path = folder / f"{name}.json"
+        try:
+            old = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            old = {}
+        data = dict(data, **{k: v for k, v in old.items() if k.startswith("heat")})
         path.write_text(json.dumps(data, separators=(",", ":"), sort_keys=True), encoding="utf-8")
         written.append(path)
     return written

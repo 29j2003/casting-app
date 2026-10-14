@@ -56,7 +56,7 @@ function mark(input) { touched.set(input, Date.now()); }
 
 $("enabled").addEventListener("click", () => sendSettings({ enabled: !(state && state.settings.enabled) }));
 $("resume").addEventListener("click", () => post("/api/resume"));
-for (const id of ["xray", "return_timer", "pause_on_manual"]) {
+for (const id of ["xray", "return_timer", "pause_on_manual", "auto_record"]) {
   $(id).addEventListener("change", (e) => { mark(e.target); sendSettings({ [id]: e.target.checked }); });
 }
 $("return_seconds").addEventListener("change", (e) => {
@@ -69,7 +69,7 @@ $("data_mix").addEventListener("input", (e) => {
   $("data_mix_value").textContent = `${e.target.value} %`;
   later("data_mix", () => sendSettings({ data_mix: Number(e.target.value) / 100 }));
 });
-for (const id of ["camera_mode", "spec_command"]) {
+for (const id of ["camera_mode", "spec_command", "mark_key"]) {
   $(id).addEventListener("change", (e) => { mark(e.target); sendSettings({ [id]: e.target.value }); });
 }
 $("netcon_host").addEventListener("change", (e) => { mark(e.target); sendSettings({ netcon_host: e.target.value.trim() }); });
@@ -123,6 +123,10 @@ $("cfg-list").addEventListener("click", (e) => {
 $("cfg-write").addEventListener("click", async () => {
   const { ok, data } = await post("/api/cfg/write", { folder: $("cfg_folder").value });
   showCfgStatus(ok, data.message);
+});
+$("mark").addEventListener("click", async () => {
+  const { ok, data } = await post("/api/mark");
+  if (!ok) flash(data.message || "Markieren ging nicht");
 });
 $("record").addEventListener("click", () => post("/api/record", { on: !(state && state.recording.on) }));
 $("open-recordings").addEventListener("click", () => post("/api/open-recordings"));
@@ -323,6 +327,13 @@ function render() {
   $("pause-seconds").textContent = state.paused.seconds != null ? `– zurück in ${state.paused.seconds} s` : "– zurück per Knopf";
 
   $("record").textContent = state.recording.on ? "Mitschnitt stoppen" : "Mitschnitt starten";
+  const hotkey = state.hotkey || {};
+  $("mark").textContent = hotkey.active ? `Schlechter Schnitt (${hotkey.key})` : "Schlechter Schnitt";
+  $("mark").disabled = !state.recording.on;
+  $("mark-status").textContent = state.recording.marks ? `${state.recording.marks} markiert` : "";
+  $("hotkey-status").textContent = !hotkey.key ? "" : hotkey.active ? "✓ aktiv" :
+    hotkey.available ? "nicht aktiv (belegt?)" : "Taste nur unter Windows – Knopf benutzen";
+  for (const id of ["auto_record", "mark_key"]) setValue($(id), state.settings[id]);
   $("record-status").textContent = state.recording.on ? `läuft (${state.recording.lines} Zeilen)` : state.recording.path ? `zuletzt: ${state.recording.path}` : "";
 
   renderTeams();

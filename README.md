@@ -493,7 +493,13 @@ files into zip files of up to 29 MB in the folder “demos” and deletes the pa
 demo numbers that were loaded before are skipped.
 
 Without the console port, the app presses the spectator keys 1–0 instead; a yellow band shows this mode, and CS2 must
-then be the window in front. **Mitschnitt** (recording, in the setup) saves the CS2 data of a match, which helps tune the director.
+then be the window in front.
+
+**Feedback:** every map is recorded automatically while CS2 sends data (a few MB per map; can be turned off in the
+setup under “Feedback”). When a cut is bad, press **F9** (works while CS2 is in front; the key can be changed in the
+setup) or click “Schlechter Schnitt” – the moment is marked in the recording. Switching to a player by hand is recorded
+as well. After the match, “Für Claude packen” in “Demo → Rohdaten” puts the recordings with the marks into zip files
+to pass on. “Mitschnitt starten” records by hand when automatic recording is off.
 
 ## Good to know
 

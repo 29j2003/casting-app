@@ -127,6 +127,9 @@ def make_handler(engine: Engine, port: int, demos=None):
             if path == "/api/leetify/key":
                 ok, message = engine.set_leetify_key(str(body.get("key") or ""))
                 return self._json(200 if ok else 400, {"ok": ok, "message": message})
+            if path == "/api/mark":
+                ok, message = engine.mark("Knopf")
+                return self._json(200 if ok else 409, {"ok": ok, "message": message})
             if path == "/api/resume":
                 engine.resume()
                 return self._json(200, {"ok": True})
@@ -164,6 +167,7 @@ def make_handler(engine: Engine, port: int, demos=None):
                 ok, message = demos.choose_folder()
                 return self._json(200 if ok else 409, {"ok": ok, "message": message})
             if path == "/api/demo/pack":
+                engine.finish_recording()                  # the running map goes into the pack, too
                 ok, message = demos.pack()
                 if ok:
                     try:

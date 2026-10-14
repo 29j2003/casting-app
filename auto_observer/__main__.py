@@ -16,6 +16,7 @@ from . import VERSION
 from .camera import Camera
 from .demo_jobs import DemoJobs
 from .engine import Engine
+from .hotkey import GlobalHotkey
 from .recorder import Recorder
 from .server import make_server
 from .settings import Settings
@@ -66,6 +67,7 @@ def main(argv: list[str] | None = None) -> int:
     engine = Engine(settings, camera, Recorder(settings.folder), args.port)
     engine.echo = lambda line: print(line, flush=True)
     demos = DemoJobs(settings.folder, engine.log, settings)
+    engine.hotkey = GlobalHotkey(engine.mark, engine.log)
     try:
         server = make_server(engine, args.port, demos)
     except OSError as error:
@@ -73,6 +75,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     camera.start()
     demos.start_watching()
+    engine.hotkey.set_key(settings["mark_key"])
     stop = threading.Event()
     threading.Thread(target=run_ticks, args=(engine, stop), name="director", daemon=True).start()
 

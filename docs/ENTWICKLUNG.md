@@ -680,7 +680,8 @@ nicht mit (`pyproject.toml` nimmt nur `casting_app*`). Läuft die Regie gut, kan
 | `settings.py` | `settings.json` (Schalter, Regler je Spieler/Team, Fernkonsole); jede Änderung wird geprüft |
 | `cs2_cfg.py` | Steam (Registry/übliche Orte) und CS2 in allen Steam-Bibliotheken finden, GSI-Datei schreiben (mit `allplayers_position` und `allgrenades`) – beim Start ohne Nachfrage |
 | `launcher.py` | „CS2 starten“: `steam -applaunch 730 -netconport <port> -insecure <weitere Optionen>`, losgelöst von der App; läuft CS2 schon ohne Fernkonsole, kommt ein Hinweis |
-| `recorder.py`, `replay.py` | Mitschnitt eines Matches (`recordings/*.jsonl`) und Abspielen ohne CS2 |
+| `recorder.py`, `replay.py` | Mitschnitt (`recordings/<zeit>_<map>.jsonl.gz`, gzip, alle 5 s geschrieben; eine Datei pro Map, automatisch solange CS2-Daten kommen; erste Zeile `meta` mit Reglern/Rollen, dazu Wechsel mit Grund, Wechsel von Hand, Einstellungsänderungen und Markierungen `mark`) und Abspielen ohne CS2 |
+| `hotkey.py` | Globale Taste „Schlechter Schnitt“ (Windows `RegisterHotKey`, eigener Thread mit Nachrichtenschleife; die Taste geht dann nicht mehr an CS2) |
 | `demo_export.py`, `weapons.py` | Demo (.dem, HLTV-.rar/.zip, FACEIT-.dem.zst/.gz) → `demos/<name>.rohdaten.jsonl.gz`: alle Spieler alle 8 Ticks (Position, Blick, HP, Waffe, Kugeln, Callout, wer ihn sieht, Inventar …) und alle Ereignisse (Schüsse, Treffer, Kills, Granaten, Bombe, Runden); `round_text()` = eine Runde als Text zum Einfügen; RAR über das `tar` von Windows 11 oder 7-Zip |
 | `demo_replay.py` | Rohdaten → GSI-Posts, Regie darüber laufen lassen und messen (Kills gesehen, Vorlauf, Wechsel pro Minute, verpasste Kills): `python -m auto_observer.demo_replay <datei>` |
 | `leetify.py` | Leetify-Profile (`/v3/profile`, Key nur im Schlüsselbund, Dienst „Auto-Observer“): Aim, Positioning, Opening, Clutch, Leetify-Rating → Startwert der Form relativ zu den anderen Spielern (vor Runde 1 nur Leetify, ab Runde 8 nur das Match); Opening-Aggression → Entry, Trade-Chancen → Support (wenn das Match noch keine Rolle zeigt); Zwischenspeicher `leetify-cache.json` (1 Tag, ohne Key) |
@@ -741,9 +742,12 @@ HLTV zeigt das Radar in voller Breite und schneidet oben/unten etwa gleich viel 
 verschlechtert die Dichte die Regie leicht (Kills im Bild −1 Punkt), mit Paaren ist sie neutral – deshalb steht
 `TUNING["heat"]` auf 0. „Wo oft Kills fallen“ sagt eben nicht, *wer gleich* kämpft.
 
-**Abstimmen mit einem Mitschnitt:** In der Einrichtung „Mitschnitt starten“, ein Match laufen lassen, Datei aus dem
-Ordner `recordings` holen. Dann `python -m auto_observer.replay <datei>.jsonl` – zeigt jeden Wechsel mit Grund und wie
-oft die Regie mit der Kamera in der Aufnahme übereinstimmt (hat ein Mensch observt, ist das seine Wahl).
+**Abstimmen mit einem Mitschnitt:** Jede Map wird automatisch mitgeschnitten (abschaltbar in der Einrichtung), eine
+Map gepackt etwa 3–7 MB. Der Caster drückt bei einem schlechten Schnitt die Taste (Standard F9) oder den Knopf – das
+landet als `{"mark": "bad", "observed", "round", "last_switch"}` in der Datei; Wechsel von Hand stehen als
+`{"switch", "manual": true}` drin (die Wahl eines Menschen). „Für Claude packen“ nimmt alle fertigen Mitschnitte mit.
+Auswerten: `python -m auto_observer.replay <datei>.jsonl.gz` – zeigt jeden Wechsel mit Grund und wie oft die Regie mit
+der Kamera in der Aufnahme übereinstimmt (hat ein Mensch observt, ist das seine Wahl).
 
 **Starten und bauen:** `python -m auto_observer` (`--port`, `--no-browser`) · `python tools/build_auto_observer.py`
 → `dist/Auto-Observer.exe`. Der Workflow `.github/workflows/auto-observer.yml` baut die Windows-Datei bei jeder

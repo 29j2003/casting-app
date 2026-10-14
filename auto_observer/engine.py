@@ -55,6 +55,8 @@ class Engine:
         self.echo = None                        # optional: also print log lines (console window)
         self.leetify = LeetifyScout(settings.folder, self.log)
         self._known_players: set[str] = set()
+        self.hotkey = None                      # GlobalHotkey for "bad cut" (set by __main__)
+        self.marks = 0
 
     @property
     def gsi_uri(self) -> str:
@@ -87,6 +89,7 @@ class Engine:
             except (TypeError, ValueError, AttributeError, OverflowError):
                 return 400                      # not what CS2 sends
             self.director.feed(events, self.match)
+            self._auto_record()
             self._check_manual_switch(now)
             if set(self.match.players) - self._known_players:
                 self._known_players = set(self.match.players)
@@ -158,6 +161,8 @@ class Engine:
                 if self.receiving:
                     self.receiving = False
                     self.log("Keine CS2-Daten mehr", "warn")
+                    if self.recorder.automatic:
+                        self.finish_recording()
                 return
             self._direct(now)
 
@@ -232,6 +237,12 @@ class Engine:
                 self.camera.apply_settings()
             if "camera_mode" in changed:
                 self.log(f"Kamera-Weg: {self.settings['camera_mode']}", "info")
+            if "mark_key" in changed and self.hotkey is not None:
+                self.hotkey.set_key(self.settings["mark_key"])
+            recorded = [k for k in changed if k in ("enabled", "data_mix", "player_weights", "team_weights",
+                                                    "player_roles")]
+            if recorded:                        # the replay needs to know what the caster changed when
+                self.recorder.write({"settings": {k: self.settings[k] for k in recorded}})
             return changed
 
     def set_leetify_key(self, key: str) -> tuple[bool, str]:
@@ -292,10 +303,57 @@ class Engine:
             self.log(f"GSI-Datei eingerichtet: {path} (gilt ab dem nächsten Start von CS2)", "ok")
         return True, path
 
+    # --- recording and the caster's marks ---
+
+    def _record_meta(self) -> dict:
+        settings = self.settings
+        return {"app": VERSION, "map": self.match.map_name, "enabled": settings["enabled"],
+                "data_mix": settings["data_mix"], "player_weights": settings["player_weights"],
+                "team_weights": settings["team_weights"], "player_roles": settings["player_roles"]}
+
+    def _auto_record(self) -> None:
+        """One file per map while CS2 sends data (only if the caster did not start a recording by hand)."""
+        recorder, name = self.recorder, self.match.map_name
+        if recorder.on and not recorder.automatic:
+            return
+        if not self.settings["auto_record"]:
+            if recorder.on:
+                self.finish_recording()
+            return
+        if recorder.on and name and recorder.label and name != recorder.label:
+            self.finish_recording()             # next map: next file
+        if not recorder.on and name:
+            recorder.start(name, self._record_meta(), automatic=True)
+            self.log(f"Mitschnitt läuft ({name}) – „Schlechter Schnitt“ markiert Stellen für die Auswertung", "ok")
+
+    def finish_recording(self) -> None:
+        with self.lock:
+            if self.recorder.on:
+                label, lines = self.recorder.label, self.recorder.lines
+                self.recorder.stop()
+                self.log(f"Mitschnitt gespeichert{f' ({label})' if label else ''}: {lines} Zeilen", "ok")
+
+    def mark(self, via: str = "Knopf") -> tuple[bool, str]:
+        """The caster says "that was a bad cut": noted in the recording with what was shown."""
+        with self.lock:
+            now = self.clock()
+            current = self._current(now)
+            player = self.match.players.get(current)
+            number = self.match.round + (1 if self.match.round_phase in ("live", "freezetime") else 0)
+            if not self.recorder.on:
+                self.log("Markieren geht nur, während ein Mitschnitt läuft (CS2-Daten kommen an?)", "warn")
+                return False, "Kein Mitschnitt läuft"
+            self.marks += 1
+            self.recorder.write({"mark": "bad", "via": via, "observed": current, "round": number,
+                                 "phase": self.match.round_phase, "paused": self.paused,
+                                 "last_switch": (self.last_switch or {}).get("reason", "")})
+            self.log(f"Schlechter Schnitt markiert (Runde {number}, gezeigt: {player.name if player else '–'})", "warn")
+            return True, ""
+
     def set_recording(self, on: bool) -> None:
         with self.lock:
             if on and not self.recorder.on:
-                path = self.recorder.start()
+                path = self.recorder.start(self.match.map_name, self._record_meta())
                 self.log(f"Mitschnitt läuft: {path}", "ok")
             elif not on and self.recorder.on:
                 self.recorder.stop()
@@ -336,7 +394,10 @@ class Engine:
                 "next": {"steamid": upcoming.steamid, "name": upcoming.name, "reason": upcoming.reason,
                          "detail": upcoming.detail} if upcoming else None,
                 "teams": teams,
-                "recording": {"on": self.recorder.on, "path": self.recorder.path, "lines": self.recorder.lines},
+                "recording": {"on": self.recorder.on, "path": self.recorder.path, "lines": self.recorder.lines,
+                              "automatic": self.recorder.automatic, "marks": self.marks},
+                "hotkey": self.hotkey.state() if self.hotkey is not None else {"key": "", "active": False,
+                                                                                "available": False},
                 "setup": self._setup_state(),
                 "log": list(self.log_lines)[-30:],
                 "leetify": self.leetify.state(list(match.players)),

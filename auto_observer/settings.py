@@ -14,6 +14,7 @@ import threading
 from pathlib import Path
 
 from .director import ROLES
+from .hotkey import KEYS
 from .launcher import clean_extra
 
 WEIGHT_MIN, WEIGHT_MAX = 0.0, 2.0
@@ -39,9 +40,12 @@ DEFAULTS = {
     "demo_watch": False,                 # export every new demo download in the watched folder
     "demo_watch_folder": "",             # empty = the user's download folder
     "demo_delete": False,                # delete a download after its good export (saves space)
+    "auto_record": True,                 # record every map while CS2 sends data (for feedback to the developers)
+    "mark_key": "F9",                    # global key "bad cut" ("" = none)
 }
 
-CHOICES = {"camera_mode": ("auto", "netcon", "keys"), "spec_command": ("name", "accountid")}
+CHOICES = {"camera_mode": ("auto", "netcon", "keys"), "spec_command": ("name", "accountid"),
+           "mark_key": ("", *KEYS)}
 
 
 def data_folder() -> Path:

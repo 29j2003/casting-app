@@ -1,6 +1,6 @@
 """Play a recording back through the director, without CS2 (for tuning).
 
-    python -m auto_observer.replay recordings/2026-10-11_20-00-00.jsonl [--weights steamid=1.5 ...]
+    python -m auto_observer.replay recordings/2026-10-11_20-00-00_de_mirage.jsonl.gz [--weights steamid=1.5 ...]
 
 Prints every switch the director would make and how often it agreed with the camera in the recording
 (when a human observed, that is the human's choice).

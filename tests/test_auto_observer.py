@@ -237,7 +237,8 @@ def engine(tmp_path):
     clock = Clock()
     engine = Engine(settings, FakeCamera(), Recorder(tmp_path), 8790, clock)
     engine.clock_ = clock
-    return engine
+    yield engine
+    engine.recorder.stop()                                         # close the gzip stream of a running recording
 
 
 def test_engine_token_and_switching(engine):
@@ -310,11 +311,58 @@ def test_recording_and_replay(engine, tmp_path):
     engine.on_gsi(post(lineup(p0={"hp": 0}), observed=0))
     path = engine.recorder.path
     engine.set_recording(False)
-    records = load(path)
-    assert len(records) == 2 and "auth" not in records[0]["gsi"]
+    records = [r for r in load(path) if "gsi" in r]
+    assert path.endswith(".jsonl.gz") and len(records) == 2 and "auth" not in records[0]["gsi"]
     records[1]["t"] = records[0]["t"] + 0.5
     result = simulate(records)
     assert result["posts"] == 2 and result["switches"]
+
+
+def test_every_map_is_recorded_with_the_casters_marks(engine, tmp_path):
+    from auto_observer.demo_jobs import DemoJobs
+    assert engine.mark()[0] is False                                 # nothing recorded yet
+    engine.on_gsi(post(lineup(), observed=0))
+    first = engine.recorder.path
+    assert engine.recorder.automatic and "de_mirage" in first
+    engine.apply_settings({"enabled": True, "player_weights": {sid(1): {"weight": 1.5, "name": "donk"}}})
+    engine.clock_.now += 0.5
+    engine.on_gsi(post(lineup(), observed=1))
+    assert engine.mark("Taste") == (True, "")
+    other = post(lineup(), observed=1)
+    other["map"]["name"] = "de_nuke"
+    engine.on_gsi(other)                                             # next map: next file
+    assert engine.recorder.path != first and "de_nuke" in engine.recorder.path
+    records = load(first)
+    assert records[0]["meta"]["map"] == "de_mirage"
+    assert any(r.get("settings", {}).get("player_weights", {}).get(sid(1), {}).get("weight") == 1.5 for r in records)
+    marks = [r for r in records if r.get("mark")]
+    assert marks == [dict(marks[0], mark="bad", via="Taste", observed=sid(1), round=4)]
+    assert engine.state()["recording"]["marks"] == 1
+
+    demos = DemoJobs(engine.settings.folder, lambda *a: None)
+    assert demos.state()["unpacked"] == 2                            # both maps (one still running)
+    engine.finish_recording()
+    ok, text = demos.pack()
+    assert ok and "2 Datei(en)" in text and not list((tmp_path / "recordings").glob("*.gz"))
+    import zipfile
+    names = zipfile.ZipFile(next((tmp_path / "demos").glob("Rohdaten_*.zip"))).namelist()
+    assert sorted(n.split("_", 2)[-1] for n in names) == ["de_mirage.jsonl.gz", "de_nuke.jsonl.gz"]
+
+    engine.apply_settings({"auto_record": False})
+    engine.on_gsi(post(lineup(), observed=1))
+    assert not engine.recorder.on
+
+
+def test_mark_key_setting_and_hotkey_off_windows(tmp_path):
+    from auto_observer.hotkey import GlobalHotkey
+    settings = Settings(tmp_path)
+    assert settings["mark_key"] == "F9"
+    assert settings.apply({"mark_key": "A"}) == [] and settings.apply({"mark_key": "Pause"}) == ["mark_key"]
+    key = GlobalHotkey(lambda via: None, lambda *a: None)
+    key.set_key("F9")
+    assert key.state() == {"key": "F9", "active": key.available() and key.active, "available": key.available()}
+    key.set_key("")
+    assert key.state()["key"] == ""
 
 
 # --- settings ---
@@ -934,7 +982,7 @@ def test_folder_export_skips_done_demos_and_packing_splits(tmp_path, monkeypatch
     assert demos.state()["unpacked"] == 4
     ok, text = demos.pack()
     zips = sorted(demos.folder.glob("Rohdaten_*.zip"))
-    assert ok and len(zips) == 2 and "4 Rohdaten-Datei(en) gepackt und gelöscht" in text
+    assert ok and len(zips) == 2 and "4 Datei(en) gepackt und gelöscht" in text
     assert all(z.stat().st_size <= 1700 for z in zips)
     inside = sorted(n for z in zips for n in zipfile.ZipFile(z).namelist())
     assert inside == [f"m{i}.rohdaten.jsonl.gz" for i in range(1, 5)]
@@ -942,7 +990,7 @@ def test_folder_export_skips_done_demos_and_packing_splits(tmp_path, monkeypatch
     assert demos.state()["unpacked"] == 0 and not list(demos.folder.glob("*.rohdaten.jsonl.gz"))
     (demos.folder / "m5.rohdaten.jsonl.gz").write_bytes(b"y")
     ok, text = demos.pack()                                        # only the new one – the others are gone
-    assert ok and "1 Rohdaten-Datei(en)" in text
+    assert ok and "1 Datei(en)" in text
 
 
 def test_hltv_links_are_found_in_pasted_text(tmp_path):

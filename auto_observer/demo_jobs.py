@@ -214,8 +214,12 @@ class DemoJobs:
             return {"running": self._running, "current": self.current, "queued": len(self._queue),
                     "log": list(self.lines)[-12:], "results": self._files(),
                     "faceit_key": bool(self.faceit_key or casting_app_faceit_key()),
-                    "watch_folder": str(self.watch_folder()), "unpacked": len(self._files()),
+                    "watch_folder": str(self.watch_folder()), "unpacked": len(self._files()) + self._recordings(),
                     "hltv_busy": self._hltv_busy}
+
+    def _recordings(self) -> int:
+        folder = self.folder.parent / "recordings"
+        return len([*folder.glob("*.jsonl.gz"), *folder.glob("*.jsonl")]) if folder.is_dir() else 0
 
     # --- many demos at once ---
 
@@ -310,11 +314,13 @@ class DemoJobs:
         return True, text
 
     def pack(self) -> tuple[bool, str]:
-        """All raw data files into zip files of at most PART_SIZE in the demos folder; each file is deleted once its
-        zip is written and checked."""
-        files = sorted(self.folder.glob("*.rohdaten.jsonl.gz"), key=lambda p: p.stat().st_mtime)
+        """All raw data files and finished match recordings (with the caster's marks) into zip files of at most
+        PART_SIZE in the demos folder; each file is deleted once its zip is written and checked."""
+        recordings = self.folder.parent / "recordings"
+        files = sorted([*self.folder.glob("*.rohdaten.jsonl.gz"), *recordings.glob("*.jsonl.gz"),
+                        *recordings.glob("*.jsonl")], key=lambda p: p.stat().st_mtime)
         if not files:
-            return False, "Keine Rohdaten zum Packen (schon gepackte Dateien sind gelöscht)"
+            return False, "Nichts zum Packen (keine Rohdaten oder Mitschnitte; Gepacktes ist schon gelöscht)"
         parts, part, size = [], [], 22                       # 22: end record of a zip
         for path in files:
             length = path.stat().st_size + ZIP_ENTRY + 2 * len(path.name.encode())
@@ -325,14 +331,16 @@ class DemoJobs:
             size += length
         parts.append(part)
         stamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+        self.folder.mkdir(parents=True, exist_ok=True)       # only recordings so far: no demos folder yet
         written, packed = [], 0
         for number, group in enumerate(parts, 1):
             target = self.folder / (f"Rohdaten_{stamp}" + (f"_{number}" if len(parts) > 1 else "") + ".zip")
             temporary = target.with_suffix(".zip.part")
             try:
                 with zipfile.ZipFile(temporary, "w", zipfile.ZIP_STORED) as archive:   # already gzip
-                    for path in group:
-                        archive.write(path, path.name)
+                    for path in group:                   # .gz is packed already, old .jsonl not
+                        kind = zipfile.ZIP_STORED if path.suffix == ".gz" else zipfile.ZIP_DEFLATED
+                        archive.write(path, path.name, compress_type=kind)
                 with zipfile.ZipFile(temporary) as archive:
                     if archive.testzip() is not None or len(archive.namelist()) != len(group):
                         raise OSError("Zip fehlerhaft")
@@ -350,7 +358,7 @@ class DemoJobs:
             written.append(f"{target.name} ({target.stat().st_size / 1e6:.0f} MB)")
         if not written:
             return False, "Packen ging nicht"
-        text = f"{packed} Rohdaten-Datei(en) gepackt und gelöscht: {', '.join(written)}"
+        text = f"{packed} Datei(en) gepackt und gelöscht: {', '.join(written)}"
         self.note(text)
         return True, text
 

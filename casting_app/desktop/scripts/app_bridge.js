@@ -21,7 +21,8 @@
 
   document.addEventListener(TO_APP, event => {
     if (typeof event.detail !== "string" || event.detail.length > 2000) return;
-    if (app) app.receive(event.detail); else waiting.push(event.detail);
+    if (app) app.receive(event.detail);
+    else waiting.push(event.detail);
   });
 
   // called by Python (runJavaScript in this world)
@@ -29,9 +30,13 @@
 
   // "Ton im App-Fenster": every frame of the window asks for the volume factor when it starts (see volume.js)
   let volumeFactor = 1;
-  window.castAppSetVolumeFactor = factor => { volumeFactor = factor; };
+  window.castAppSetVolumeFactor = factor => {
+    volumeFactor = factor;
+  };
   addEventListener("message", event => {
     if (!event.data || event.data.castingAppVolumeRequest !== true || !event.source) return;
-    try { event.source.postMessage({ castingAppVolumeFactor: volumeFactor }, "*"); } catch (error) {}
+    try {
+      event.source.postMessage({ castingAppVolumeFactor: volumeFactor }, "*");
+    } catch (error) {}
   });
 })();

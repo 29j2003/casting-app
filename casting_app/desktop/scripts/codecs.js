@@ -19,12 +19,15 @@
     return answer || (CONVERTED.test(String(type).trim()) ? "maybe" : "");
   };
 
-  const fix = source => { if (CONVERTED.test(source.getAttribute("type") || "")) source.removeAttribute("type"); };
+  const fix = source => {
+    if (CONVERTED.test(source.getAttribute("type") || "")) source.removeAttribute("type");
+  };
   new MutationObserver(records => {
-    for (const record of records) for (const node of record.addedNodes) {
-      if (node.nodeType !== 1) continue;
-      if (node.tagName === "SOURCE") fix(node);
-      else if (node.querySelectorAll) node.querySelectorAll("source[type]").forEach(fix);
-    }
+    for (const record of records)
+      for (const node of record.addedNodes) {
+        if (node.nodeType !== 1) continue;
+        if (node.tagName === "SOURCE") fix(node);
+        else if (node.querySelectorAll) node.querySelectorAll("source[type]").forEach(fix);
+      }
   }).observe(document, { childList: true, subtree: true });
 })();

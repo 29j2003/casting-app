@@ -15,22 +15,29 @@
   "use strict";
   const KEY = Symbol.for("casting-app-volume");
   if (window[KEY]) return;
-  let factor = 1;                                // until the control page answers (a few milliseconds)
+  let factor = 1; // until the control page answers (a few milliseconds)
 
   const media = HTMLMediaElement.prototype;
   const volumeProperty = Object.getOwnPropertyDescriptor(media, "volume");
-  const wantedVolume = new WeakMap();            // volume the page asked for
-  const playsThroughWebAudio = new WeakSet();    // regulated by the Web Audio gain instead
-  const knownElements = new Set();               // WeakRefs, for factor changes
+  const wantedVolume = new WeakMap(); // volume the page asked for
+  const playsThroughWebAudio = new WeakSet(); // regulated by the Web Audio gain instead
+  const knownElements = new Set(); // WeakRefs, for factor changes
   const knownContexts = new Set();
   const gainOfContext = new WeakMap();
 
-  const forgetCollected = refs => { for (const ref of refs) if (!ref.deref()) refs.delete(ref); };
-  const remember = (refs, object) => { refs.add(new WeakRef(object)); if (refs.size > 300) forgetCollected(refs); };
+  const forgetCollected = refs => {
+    for (const ref of refs) if (!ref.deref()) refs.delete(ref);
+  };
+  const remember = (refs, object) => {
+    refs.add(new WeakRef(object));
+    if (refs.size > 300) forgetCollected(refs);
+  };
 
   function applyVolume(element) {
     const wanted = wantedVolume.get(element);
-    try { volumeProperty.set.call(element, playsThroughWebAudio.has(element) ? wanted : wanted * factor); } catch (error) {}
+    try {
+      volumeProperty.set.call(element, playsThroughWebAudio.has(element) ? wanted : wanted * factor);
+    } catch (error) {}
   }
   function track(element) {
     if (!wantedVolume.has(element)) {
@@ -41,23 +48,44 @@
   }
 
   Object.defineProperty(media, "volume", {
-    configurable: true, enumerable: volumeProperty.enumerable,
-    get() { return wantedVolume.has(this) ? wantedVolume.get(this) : volumeProperty.get.call(this); },
+    configurable: true,
+    enumerable: volumeProperty.enumerable,
+    get() {
+      return wantedVolume.has(this) ? wantedVolume.get(this) : volumeProperty.get.call(this);
+    },
     set(value) {
       const volume = Number(value);
-      if (!(volume >= 0 && volume <= 1)) return volumeProperty.set.call(this, value);   // invalid: throw as usual
+      if (!(volume >= 0 && volume <= 1)) return volumeProperty.set.call(this, value); // invalid: throw as usual
       if (!wantedVolume.has(this)) remember(knownElements, this);
       wantedVolume.set(this, volume);
       applyVolume(this);
-    }
+    },
   });
   const play = media.play;
-  media.play = function () { try { track(this); } catch (error) {} return play.apply(this, arguments); };
-  addEventListener("play", event => { if (event.target instanceof HTMLMediaElement) track(event.target); }, true);
-  addEventListener("loadedmetadata", event => { if (event.target instanceof HTMLMediaElement) track(event.target); }, true);
+  media.play = function () {
+    try {
+      track(this);
+    } catch (error) {}
+    return play.apply(this, arguments);
+  };
+  addEventListener(
+    "play",
+    event => {
+      if (event.target instanceof HTMLMediaElement) track(event.target);
+    },
+    true
+  );
+  addEventListener(
+    "loadedmetadata",
+    event => {
+      if (event.target instanceof HTMLMediaElement) track(event.target);
+    },
+    true
+  );
 
   if (window.AudioNode && window.AudioDestinationNode) {
-    const connect = AudioNode.prototype.connect, disconnect = AudioNode.prototype.disconnect;
+    const connect = AudioNode.prototype.connect,
+      disconnect = AudioNode.prototype.disconnect;
     const isOffline = context => window.OfflineAudioContext && context instanceof OfflineAudioContext;
     function gainFor(context) {
       let gain = gainOfContext.get(context);
@@ -71,18 +99,25 @@
       return gain;
     }
     AudioNode.prototype.connect = function (target, ...rest) {
-      if (target instanceof AudioDestinationNode && !isOffline(target.context)) { connect.call(this, gainFor(target.context), ...rest); return target; }
+      if (target instanceof AudioDestinationNode && !isOffline(target.context)) {
+        connect.call(this, gainFor(target.context), ...rest);
+        return target;
+      }
       return connect.call(this, target, ...rest);
     };
     AudioNode.prototype.disconnect = function (target, ...rest) {
-      if (target instanceof AudioDestinationNode && gainOfContext.has(target.context)) return disconnect.call(this, gainOfContext.get(target.context), ...rest);
+      if (target instanceof AudioDestinationNode && gainOfContext.has(target.context))
+        return disconnect.call(this, gainOfContext.get(target.context), ...rest);
       return disconnect.apply(this, arguments);
     };
     if (window.AudioContext && AudioContext.prototype.createMediaElementSource) {
       const createSource = AudioContext.prototype.createMediaElementSource;
       AudioContext.prototype.createMediaElementSource = function (element) {
         const node = createSource.call(this, element);
-        try { playsThroughWebAudio.add(element); track(element); } catch (error) {}
+        try {
+          playsThroughWebAudio.add(element);
+          track(element);
+        } catch (error) {}
         return node;
       };
     }
@@ -90,20 +125,30 @@
 
   const setFactor = newFactor => {
     factor = newFactor;
-    forgetCollected(knownElements); forgetCollected(knownContexts);
-    for (const ref of knownElements) { const element = ref.deref(); if (element) applyVolume(element); }
-    for (const ref of knownContexts) { const gain = gainOfContext.get(ref.deref()); if (gain) gain.gain.value = factor; }
+    forgetCollected(knownElements);
+    forgetCollected(knownContexts);
+    for (const ref of knownElements) {
+      const element = ref.deref();
+      if (element) applyVolume(element);
+    }
+    for (const ref of knownContexts) {
+      const gain = gainOfContext.get(ref.deref());
+      if (gain) gain.gain.value = factor;
+    }
   };
   // for tests: what is really set on an element / a context
   setFactor.inspect = (element, context) => ({
     factor,
     actualVolume: element ? volumeProperty.get.call(element) : null,
-    contextGain: context && gainOfContext.has(context) ? gainOfContext.get(context).gain.value : null
+    contextGain: context && gainOfContext.has(context) ? gainOfContext.get(context).gain.value : null,
   });
   // the app pushes every change straight into each frame; after such a push the (older) answer to the
   // start-up question below must not win – it can arrive later than the push
   let pushed = false;
-  const pushFactor = newFactor => { pushed = true; setFactor(newFactor); };
+  const pushFactor = newFactor => {
+    pushed = true;
+    setFactor(newFactor);
+  };
   pushFactor.inspect = setFactor.inspect;
   Object.defineProperty(window, KEY, { value: pushFactor });
 
@@ -113,5 +158,7 @@
     if (pushed || event.source !== window.top || !answer || typeof answer.castingAppVolumeFactor !== "number") return;
     setFactor(Math.max(0, Math.min(1, answer.castingAppVolumeFactor)));
   });
-  try { window.top.postMessage({ castingAppVolumeRequest: true }, "*"); } catch (error) {}
+  try {
+    window.top.postMessage({ castingAppVolumeRequest: true }, "*");
+  } catch (error) {}
 })();

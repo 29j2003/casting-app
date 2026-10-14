@@ -11,40 +11,60 @@
   const TO_PAGE = "casting-app:to-page";
   const toApp = message => document.dispatchEvent(new CustomEvent(TO_APP, { detail: JSON.stringify(message) }));
 
-  let onCloseRequested = null;     // the page's close dialog
-  let onReloadOverlays = null;     // the page's "reload browser sources in OBS"
-  let onShowUpdate = null;         // the page's update area (tray message "new version")
+  let onCloseRequested = null; // the page's close dialog
+  let onReloadOverlays = null; // the page's "reload browser sources in OBS"
+  let onShowUpdate = null; // the page's update area (tray message "new version")
 
   document.addEventListener(TO_PAGE, async event => {
     let message;
-    try { message = JSON.parse(event.detail); } catch (error) { return; }
-    if (message.type === "ask-close") {
-      if (!onCloseRequested) return;                          // page not ready: the app asks itself
-      toApp({ type: "close-dialog-shown", requestId: message.requestId });
-      try { onCloseRequested(); } catch (error) {}
+    try {
+      message = JSON.parse(event.detail);
+    } catch (error) {
+      return;
     }
-    if (message.type === "show-update" && onShowUpdate) { try { onShowUpdate(); } catch (error) {} }
+    if (message.type === "ask-close") {
+      if (!onCloseRequested) return; // page not ready: the app asks itself
+      toApp({ type: "close-dialog-shown", requestId: message.requestId });
+      try {
+        onCloseRequested();
+      } catch (error) {}
+    }
+    if (message.type === "show-update" && onShowUpdate) {
+      try {
+        onShowUpdate();
+      } catch (error) {}
+    }
     if (message.type === "reload-overlays") {
       let viaObs = false;
-      try { viaObs = onReloadOverlays ? !!(await onReloadOverlays()) : false; } catch (error) {}
+      try {
+        viaObs = onReloadOverlays ? !!(await onReloadOverlays()) : false;
+      } catch (error) {}
       toApp({ type: "overlays-reloaded", requestId: message.requestId, viaObs });
     }
   });
 
-  Object.defineProperty(window, "castApp", { value: Object.freeze({
-    desktop: true,
-    // the app's access key – handed over here so it never appears in an address, history or browser storage
-    accessKey: "__CASTING_APP_ACCESS_KEY__",
-    // H.264 videos (MP4) play here through the app's converter (casting_app/desktop/media.py)
-    canPlayH264: "__CASTING_APP_CAN_CONVERT__" === "true",
-    // close dialog: the page registers its dialog and reports the choice ("quit", "window" or "")
-    onCloseRequested: handler => { if (typeof handler === "function") onCloseRequested = handler; },
-    closeAnswer: choice => toApp({ type: "close-answer", choice: ["quit", "window"].includes(choice) ? choice : "" }),
-    // "Ton im App-Fenster": on/off and volume 0–100
-    audio: (on, volume) => toApp({ type: "audio", on: on === true, volume: Number(volume) }),
-    // tray "Overlays in OBS neu laden": the handler returns true when OBS did it
-    onReloadOverlays: handler => { if (typeof handler === "function") onReloadOverlays = handler; },
-    // tray message "new version": open the update area of the settings
-    onShowUpdate: handler => { if (typeof handler === "function") onShowUpdate = handler; }
-  }) });
+  Object.defineProperty(window, "castApp", {
+    value: Object.freeze({
+      desktop: true,
+      // the app's access key – handed over here so it never appears in an address, history or browser storage
+      accessKey: "__CASTING_APP_ACCESS_KEY__",
+      // H.264 videos (MP4) play here through the app's converter (casting_app/desktop/media.py)
+      canPlayH264: "__CASTING_APP_CAN_CONVERT__" === "true",
+      // close dialog: the page registers its dialog and reports the choice ("quit", "window" or "")
+      onCloseRequested: handler => {
+        if (typeof handler === "function") onCloseRequested = handler;
+      },
+      closeAnswer: choice => toApp({ type: "close-answer", choice: ["quit", "window"].includes(choice) ? choice : "" }),
+      // "Ton im App-Fenster": on/off and volume 0–100
+      audio: (on, volume) => toApp({ type: "audio", on: on === true, volume: Number(volume) }),
+      // tray "Overlays in OBS neu laden": the handler returns true when OBS did it
+      onReloadOverlays: handler => {
+        if (typeof handler === "function") onReloadOverlays = handler;
+      },
+      // tray message "new version": open the update area of the settings
+      onShowUpdate: handler => {
+        if (typeof handler === "function") onShowUpdate = handler;
+      },
+    }),
+  });
 })();

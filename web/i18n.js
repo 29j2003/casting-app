@@ -18,7 +18,10 @@
   const STORAGE_KEY = "casting-app-language";
   const LANGUAGES = ["de", "en"];
   let language = "de";
-  try { const stored = localStorage.getItem(STORAGE_KEY); if (LANGUAGES.includes(stored)) language = stored; } catch (e) {}
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (LANGUAGES.includes(stored)) language = stored;
+  } catch (e) {}
 
   const api = {
     language,
@@ -27,25 +30,34 @@
     /** Switch the app language: remember it and reload the page. */
     setLanguage(next) {
       if (!LANGUAGES.includes(next) || next === language) return;
-      try { localStorage.setItem(STORAGE_KEY, next); } catch (e) {}
+      try {
+        localStorage.setItem(STORAGE_KEY, next);
+      } catch (e) {}
       let stored = null;
-      try { stored = localStorage.getItem(STORAGE_KEY); } catch (e) {}
-      if (stored === next) location.reload();          // without storage a reload would not help (and could repeat)
+      try {
+        stored = localStorage.getItem(STORAGE_KEY);
+      } catch (e) {}
+      if (stored === next) location.reload(); // without storage a reload would not help (and could repeat)
     },
     /** The app settings (server) know the language: follow them if the browser remembered another one. */
     follow(serverLanguage) {
       if (LANGUAGES.includes(serverLanguage) && serverLanguage !== language) api.setLanguage(serverLanguage);
-    }
+    },
   };
   window.CastI18n = api;
   document.documentElement.lang = language;
   if (language === "de") return;
 
   const dictionary = (window.CastLanguages || {})[language] || {};
-  const exact = new Map(), patterns = [], pieces = [];
+  const exact = new Map(),
+    patterns = [],
+    pieces = [];
   for (const [german, translated] of Object.entries(dictionary)) {
     if (german.includes("{}")) {
-      const source = german.split("{}").map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("(.*?)");
+      const source = german
+        .split("{}")
+        .map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+        .join("(.*?)");
       patterns.push({ re: new RegExp("^" + source + "$", "s"), translated });
     } else {
       exact.set(german, translated);
@@ -59,7 +71,13 @@
     if (exact.has(core)) return exact.get(core);
     for (const p of patterns) {
       const m = p.re.exec(core);
-      if (m) { let i = 1; return p.translated.replace(/\{\}/g, () => { const v = m[i++] ?? ""; return (v && translateCore(v)) ?? v; }); }
+      if (m) {
+        let i = 1;
+        return p.translated.replace(/\{\}/g, () => {
+          const v = m[i++] ?? "";
+          return (v && translateCore(v)) ?? v;
+        });
+      }
     }
     // pieces of composed texts: "Fehler: " + text, text + " – jetzt CS2 neu starten."
     for (const [german, translated] of pieces) {
@@ -84,7 +102,8 @@
 
   const ATTRIBUTES = ["title", "placeholder", "aria-label"];
   const SKIPPED = new Set(["SCRIPT", "STYLE", "TEXTAREA", "CODE", "PRE"]);
-  const skipped = element => !element || SKIPPED.has(element.nodeName) || element.isContentEditable || !!element.closest("[data-no-translate]");
+  const skipped = element =>
+    !element || SKIPPED.has(element.nodeName) || element.isContentEditable || !!element.closest("[data-no-translate]");
 
   function translateText(node) {
     if (skipped(node.parentElement)) return;
@@ -95,13 +114,19 @@
     if (element.closest("[data-no-translate]")) return;
     for (const name of ATTRIBUTES) {
       const value = element.getAttribute(name);
-      if (value) { const translated = t(value); if (translated !== value) element.setAttribute(name, translated); }
+      if (value) {
+        const translated = t(value);
+        if (translated !== value) element.setAttribute(name, translated);
+      }
     }
   }
   function translateTree(root) {
     if (root.nodeType === Node.TEXT_NODE) return translateText(root);
     if (root.nodeType !== Node.ELEMENT_NODE && root.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) return;
-    if (root.nodeType === Node.ELEMENT_NODE) { translateAttributes(root); if (skipped(root)) return; }
+    if (root.nodeType === Node.ELEMENT_NODE) {
+      translateAttributes(root);
+      if (skipped(root)) return;
+    }
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
       if (node.nodeType === Node.TEXT_NODE) translateText(node);
@@ -115,13 +140,20 @@
       else if (r.type === "attributes") translateAttributes(r.target);
       else r.addedNodes.forEach(translateTree);
     }
-  }).observe(document.documentElement, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRIBUTES });
+  }).observe(document.documentElement, {
+    subtree: true,
+    childList: true,
+    characterData: true,
+    attributes: true,
+    attributeFilter: ATTRIBUTES,
+  });
 
   const show = { alert: window.alert, confirm: window.confirm, prompt: window.prompt };
   window.alert = message => show.alert.call(window, t(String(message)));
   window.confirm = message => show.confirm.call(window, t(String(message)));
   window.prompt = (message, value) => show.prompt.call(window, t(String(message)), value);
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => translateTree(document.body));
+  if (document.readyState === "loading")
+    document.addEventListener("DOMContentLoaded", () => translateTree(document.body));
   else translateTree(document.body);
 })();

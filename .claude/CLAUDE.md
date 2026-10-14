@@ -36,7 +36,8 @@ Aufbau und Rezepte für Änderungen: `docs/ENTWICKLUNG.md` (bei neuen Bausteinen
   Bereiche Live · Match · Turnier · Setup · Log, Docks, Arbeitsbereiche, Befehlspalette (Strg K), Ton über OBS-WebSocket.
 - `web/overlay.html` + `web/broadcast.js` – Szenenwechsel in einer Quelle (gemeinsame Teile bleiben/gleiten,
   Übergänge Schnitt/Blende/Schieben/Wischen/Stinger); DACH CS – Offiziell als Vollbild-iframes (3 Rahmen im Wechsel).
-- `web/cast.js` – Zeichnen aller Overlay-Teile (Themes, Einblendungen, Live-Stats, Turnier, Ton im Overlay).
+- `web/cast/01-base.js … 15-connection.js` – Zeichnen aller Overlay-Teile (Themes, Einblendungen, Live-Stats, Turnier,
+  Ton im Overlay), nach Themen; der Server liefert sie verbunden und gekapselt als `/cast.js` (Lageplan in `01-base.js`).
 - `web/cast-core.js` – gemeinsamer Kern (Standardzustand, Kanal, Turnier-Logik SE/DE/Swiss/GSL/Tabelle, DACH-Rahmen).
 - `web/themes.js` – Themes (Regulär, DACH CS eigener Stil, DACH CS – Offiziell, ESEA, Uniliga).
 - `web/connection.js` – Startwerte der OBS-Verbindung.

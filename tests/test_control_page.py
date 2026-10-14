@@ -182,7 +182,8 @@ def test_wipe_leaves_nothing_behind(server, browser):
     """Wipe: the outgoing part is fully gone at the end and the incoming part fully hidden at the start.
 
     2.23.0 clipped with calc(100% + -140px) – a 140 px strip of every box stayed on screen (video from 11.10.).
-    Probes hit testing, which follows clip-path, inside the box and in its frame/shadow margin."""
+    Probes hit testing, which follows clip-path, inside the box and in its frame/shadow margin (all elements at a
+    point, so an overlay part drawn on top cannot hide the box)."""
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
     errors = watch(page)
     page.goto(f"{BASE_URL}/overlay.html")
@@ -193,7 +194,7 @@ def test_wipe_leaves_nothing_behind(server, browser):
       box.innerHTML = '<i style="position:absolute;inset:-50px;pointer-events:auto"></i>';   // ragt hinaus wie Rahmen und Schild
       document.body.appendChild(box);
       const probe = clip => { box.style.clipPath = clip; let n = 0;
-        for (let x = 545; x <= 1155; x += 10) for (let y = 345; y <= 605; y += 10) if (box.contains(document.elementFromPoint(x, y))) n++;
+        for (let x = 545; x <= 1155; x += 10) for (let y = 345; y <= 605; y += 10) if (document.elementsFromPoint(x, y).some(e => box.contains(e))) n++;
         return n; };
       const r = { full: probe('none'), outEnd: probe(OUT.wipe(1).at(-1).clipPath), inStart: probe(IN.wipe(1)[0].clipPath),
                   inEnd: probe(IN.wipe(1).at(-1).clipPath) };

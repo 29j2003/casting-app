@@ -1,5 +1,6 @@
 # Baut die Test-App Auto-Observer (auto_observer/) als eine Windows-Datei – getrennt von der Casting-App.
-# Herunterladen: Actions → „Auto-Observer“ → letzter Lauf → Artefakt „Auto-Observer-windows“ (enthält Auto-Observer.exe).
+# Herunterladen: Actions → „Auto-Observer“ → letzter Lauf → Artefakt „Auto-Observer-windows“ (klein: Auto-Observer.exe)
+# oder „Auto-Observer-Demos-windows“ (groß, wandelt auch Demos um: Auto-Observer-Demos.exe).
 # Läuft, wenn sich auto_observer/ oder der Bau ändert, oder von Hand (Run workflow). Die Tests laufen im Workflow „Bauen“ mit.
 name: Auto-Observer
 
@@ -25,6 +26,10 @@ jobs:
       # echte Windows-Befehle (tasklist) einmal ausprobieren – CS2 läuft hier nicht
       - run: python -c "from auto_observer.launcher import cs2_running; r = cs2_running(); print('cs2_running:', r); assert r is False"
       - run: python tools/build_auto_observer.py
+      - run: python tools/build_auto_observer.py --demos
+      - name: Größen
+        shell: pwsh
+        run: Get-ChildItem dist/*.exe | ForEach-Object { Write-Host "$($_.Name): $([math]::Round($_.Length / 1MB)) MB" }
       - name: Starten und antworten lassen
         shell: pwsh
         run: |
@@ -47,7 +52,7 @@ jobs:
           if ((Get-FileHash $demo -Algorithm SHA256).Hash -ne "84A1A4191302BDD2A3BBB5A727842093744B1FB1A228AEEC630369E44B622CB2") { throw "Testdemo hat eine andere Prüfsumme" }
           Compress-Archive $demo "$env:RUNNER_TEMP\hltv.zip"
           $env:AUTO_OBSERVER_DATA = "$env:RUNNER_TEMP\auto-observer-demo"
-          $app = Start-Process dist/Auto-Observer.exe -ArgumentList "--no-browser", "--port", "8795", "$env:RUNNER_TEMP\hltv.zip" -PassThru
+          $app = Start-Process dist/Auto-Observer-Demos.exe -ArgumentList "--no-browser", "--port", "8795", "$env:RUNNER_TEMP\hltv.zip" -PassThru
           $file = "$env:AUTO_OBSERVER_DATA\demos\test_demo.rohdaten.jsonl.gz"
           for ($i = 0; $i -lt 120 -and -not (Test-Path $file); $i++) { Start-Sleep 1 }
           Start-Sleep 2
@@ -56,3 +61,5 @@ jobs:
           Write-Host "Rohdaten: $((Get-Item $file).Length) Bytes"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with: { name: Auto-Observer-windows, path: dist/Auto-Observer.exe, retention-days: 30 }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with: { name: Auto-Observer-Demos-windows, path: dist/Auto-Observer-Demos.exe, retention-days: 30 }

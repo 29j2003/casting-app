@@ -1155,3 +1155,17 @@ def test_hltv_demos_load_directly_and_fall_back_to_the_browser(tmp_path, monkeyp
     demos._load_hltv(demo_jobs.hltv_links("https://www.hltv.org/download/demo/100001"))
     assert queued == [] and opened == []                               # loaded before: skipped
     assert "100001" in demo_jobs.DemoJobs(tmp_path / "data", lambda *a: None)._sources["hltv"]
+
+
+def test_small_version_without_demo_reader_still_packs(tmp_path, monkeypatch):
+    from auto_observer import demo_jobs
+    monkeypatch.setattr(demo_jobs, "can_export", lambda: False)
+    demos = demo_jobs.DemoJobs(tmp_path, lambda *a: None)
+    demo = tmp_path / "x.dem"
+    demo.write_bytes(b"demo")
+    assert demos.add([str(demo)]) == 0 and demos.state()["export"] is False
+    assert demos.hltv("108800-108801") == (False, demo_jobs.LITE_TEXT)
+    assert demos.faceit("https://www.faceit.com/de/cs2/room/1-12345678-1234-1234-1234-123456789012")[0] is False
+    (tmp_path / "recordings").mkdir()
+    (tmp_path / "recordings" / "2026-10-14_20-00-00_de_nuke.jsonl.gz").write_bytes(b"x" * 10)
+    assert demos.pack()[0] is True

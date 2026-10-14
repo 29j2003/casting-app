@@ -12,6 +12,7 @@ download, the watched folder picks the files up) and packing all raw data into a
 deleted (they are in the zip), so the folder does not grow and nothing is sent twice.
 """
 
+import importlib.util
 import json
 import os
 import re
@@ -45,6 +46,14 @@ HLTV_GAP = 2.0                           # seconds between two links (polite to 
 HLTV_LIMIT = 60
 HLTV_AGENT = "Auto-Observer (demo export for casting)"
 WAITING_MAX = 2                          # load the next demo only when at most this many wait for their export
+
+
+LITE_TEXT = "Demos umwandeln kann nur die große Version Auto-Observer-Demos.exe"
+
+
+def can_export() -> bool:
+    """The small Auto-Observer.exe comes without the demo reader (demoparser2 and its table libraries)."""
+    return importlib.util.find_spec("demoparser2") is not None
 
 
 def downloads_folder() -> Path:
@@ -167,6 +176,9 @@ class DemoJobs:
 
     def add(self, paths: list[str], delete: bool = False) -> int:
         """Queue files for export; `delete` = remove each file after its good export (copies, or if wanted)."""
+        if paths and not can_export():
+            self.note(LITE_TEXT)
+            return 0
         added = 0
         with self._lock:
             for raw in paths:
@@ -215,7 +227,7 @@ class DemoJobs:
                     "log": list(self.lines)[-12:], "results": self._files(),
                     "faceit_key": bool(self.faceit_key or casting_app_faceit_key()),
                     "watch_folder": str(self.watch_folder()), "unpacked": len(self._files()) + self._recordings(),
-                    "hltv_busy": self._hltv_busy}
+                    "hltv_busy": self._hltv_busy, "export": can_export()}
 
     def _recordings(self) -> int:
         folder = self.folder.parent / "recordings"
@@ -240,7 +252,7 @@ class DemoJobs:
 
     def watch_once(self, now: float | None = None) -> int:
         """One look into the watched folder: queue finished demo downloads that are new since watching began."""
-        if not self._setting("demo_watch", False):
+        if not self._setting("demo_watch", False) or not can_export():
             self._sources.pop("watch_since", None)
             self._sizes.clear()
             return 0
@@ -292,6 +304,8 @@ class DemoJobs:
         return added, len(found) - len(fresh)
 
     def choose_folder(self) -> tuple[bool, str]:
+        if not can_export():
+            return False, LITE_TEXT
         with self._dialog_lock:
             try:
                 import tkinter
@@ -365,6 +379,8 @@ class DemoJobs:
     def hltv(self, text: str) -> tuple[bool, str]:
         """Load HLTV demos one after the other: directly if HLTV lets the app, else in the browser (the watched
         download folder then exports them)."""
+        if not can_export():
+            return False, LITE_TEXT
         links = hltv_links(text)
         if not links:
             return False, "Keine HLTV-Links gefunden (…hltv.org/download/demo/…, …/matches/… oder Nummern von–bis)"
@@ -486,6 +502,9 @@ class DemoJobs:
 
     def choose(self) -> int:
         """Native file dialog on this PC (the browser can't hand over file paths)."""
+        if not can_export():
+            self.note(LITE_TEXT)
+            return 0
         with self._dialog_lock:
             try:
                 import tkinter
@@ -504,6 +523,8 @@ class DemoJobs:
 
     def upload(self, name: str, stream, length: int) -> Path:
         """Save a file dragged onto the page and queue it."""
+        if not can_export():
+            raise ValueError(LITE_TEXT)
         if not 0 < length <= UPLOAD_LIMIT:
             raise ValueError("Datei leer oder zu groß")
         safe = SAFE_NAME.sub("_", Path(name).name)[:120] or "demo.dem"
@@ -522,6 +543,8 @@ class DemoJobs:
 
     def faceit(self, link: str) -> tuple[bool, str]:
         """Load the demo of a FACEIT match: with download rights of the key directly, else open the match room."""
+        if not can_export():
+            return False, LITE_TEXT
         found = FACEIT_MATCH.search(link or "")
         if not found:
             return False, "Kein FACEIT-Match im Link gefunden (…/room/1-…)"

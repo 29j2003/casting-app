@@ -387,6 +387,7 @@ document.addEventListener("dragleave", (e) => { if (!e.relatedTarget) drop.class
 document.addEventListener("drop", async (e) => {
   e.preventDefault();
   drop.classList.remove("over");
+  if (state && state.demo && !state.demo.export) { flash("Demos umwandeln kann nur Auto-Observer-Demos.exe"); return; }
   for (const file of e.dataTransfer.files) {
     const response = await fetch(`/api/demo/upload?name=${encodeURIComponent(file.name)}`, {
       method: "POST", headers: { "X-Auto-Observer": "1" }, body: file,
@@ -413,6 +414,8 @@ function renderDemo(demo) {
   $("demo-summary").textContent = demo.running ? `– exportiert ${demo.current}${demo.queued ? ` (+${demo.queued})` : ""}`
     : demo.results.length ? `– ${demo.results.length} Datei(en)` : "";
   $("faceit-key").hidden = demo.faceit_key;
+  $("demo-export").hidden = !demo.export;
+  $("demo-lite").hidden = demo.export;
   if (state && state.settings) {
     for (const id of ["demo_watch", "demo_delete", "demo_watch_folder"]) setValue($(id), state.settings[id] ?? "");
   }

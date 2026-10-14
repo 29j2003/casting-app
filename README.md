@@ -459,7 +459,9 @@ restarts. Settings, pictures and access data stay.
 A separate small app that switches the CS2 spectator camera to the right player automatically – for casts without
 an observer. It does not need the casting app and does not change it.
 
-1. Download `Auto-Observer.exe`: GitHub → Actions → **Auto-Observer** → latest run → artifact *Auto-Observer-windows*.
+1. Download `Auto-Observer.exe` (about 15 MB): GitHub → Actions → **Auto-Observer** → latest run → artifact
+   *Auto-Observer-windows*. `Auto-Observer-Demos.exe` (artifact *Auto-Observer-Demos-windows*, about 175 MB) can also
+   turn demos into raw data (see below); otherwise both are the same.
    Windows may warn because the file is not signed yet (“More info” → “Run anyway”).
 2. Start it – the control page opens in the browser (`http://127.0.0.1:8790`, German only for now). Close the console
    window to quit. The app finds Steam and CS2 by itself and sets up the CS2 data (GSI file) – the casting app's file
@@ -475,8 +477,8 @@ an observer. It does not need the casting app and does not change it.
 positioning, opening duels, trades) as a start value for the form and to suggest entry/support roles until the match
 itself shows them. The key stays in the system keyring.
 
-**Demo → Rohdaten** (raw data): choose a demo – HLTV `.rar`/`.zip`, FACEIT `.dem.zst`/`.dem.gz` or a `.dem` – or drag
-it onto the page or onto `Auto-Observer.exe`. Each map becomes a file in the folder “demos” with every player's
+**Demo → Rohdaten** (raw data, only in `Auto-Observer-Demos.exe`, area “Daten für Claude”): choose a demo – HLTV
+`.rar`/`.zip`, FACEIT `.dem.zst`/`.dem.gz` or a `.dem` – or drag it onto the page or onto `Auto-Observer-Demos.exe`. Each map becomes a file in the folder “demos” with every player's
 position, view, health, weapon and every shot, hit, kill and grenade. “Runde als Text” copies one round as text,
 “Regie prüfen” lets the director run over the map and shows how many kills it would have caught. A FACEIT match
 link works with the casting app's FACEIT key if FACEIT allows that key to download demos; otherwise the match room
@@ -498,7 +500,7 @@ then be the window in front.
 **Feedback:** every map is recorded automatically while CS2 sends data (a few MB per map; can be turned off in the
 setup under “Feedback”). When a cut is bad, press **F9** (works while CS2 is in front; the key can be changed in the
 setup) or click “Schlechter Schnitt” – the moment is marked in the recording. Switching to a player by hand is recorded
-as well. After the match, “Für Claude packen” in “Demo → Rohdaten” puts the recordings with the marks into zip files
+as well. After the match, “Für Claude packen” in “Daten für Claude” puts the recordings with the marks into zip files
 to pass on. “Mitschnitt starten” records by hand when automatic recording is off.
 
 ## Good to know

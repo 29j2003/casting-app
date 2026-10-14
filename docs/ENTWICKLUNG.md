@@ -750,8 +750,11 @@ Auswerten: `python -m auto_observer.replay <datei>.jsonl.gz` – zeigt jeden Wec
 der Kamera in der Aufnahme übereinstimmt (hat ein Mensch observt, ist das seine Wahl).
 
 **Starten und bauen:** `python -m auto_observer` (`--port`, `--no-browser`) · `python tools/build_auto_observer.py`
-→ `dist/Auto-Observer.exe`. Der Workflow `.github/workflows/auto-observer.yml` baut die Windows-Datei bei jeder
-Änderung in `auto_observer/` und startet sie einmal zur Probe (Artefakt „Auto-Observer-windows“). Tests:
+→ `dist/Auto-Observer.exe` (klein, ~15 MB, ohne Demo-Leser: demoparser2/pandas/polars/pyarrow/numpy/zstandard/tkinter
+ausgeschlossen – die App merkt das an `demo_jobs.can_export()` und blendet „Demo → Rohdaten“ aus) ·
+`python tools/build_auto_observer.py --demos` → `dist/Auto-Observer-Demos.exe` (~175 MB, mit Demo-Umwandlung). Der
+Workflow `.github/workflows/auto-observer.yml` baut beide bei jeder Änderung in `auto_observer/`, startet die kleine
+einmal und wandelt mit der großen eine Testdemo um (Artefakte „Auto-Observer-windows“, „Auto-Observer-Demos-windows“). Tests:
 `tests/test_auto_observer.py`.
 
 **Geplant:** HOT-HLAE (Fork von HLAE, MIT) für sanfte Übergänge, Granaten und Kamerafahrten; HOT selbst darf wegen

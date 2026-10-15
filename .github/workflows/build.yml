@@ -147,6 +147,7 @@ jobs:
           python3 -m compileall -q casting_app tools tests
           for f in web/*.js casting_app/desktop/scripts/*.js; do node --check "$f"; done
           cat web/control/*.js > "$RUNNER_TEMP/control.js" && node --check "$RUNNER_TEMP/control.js"
+          { echo '(function () {'; cat web/cast/*.js; echo '})();'; } > "$RUNNER_TEMP/cast.js" && node --check "$RUNNER_TEMP/cast.js"
       - name: Ungenutzte Importe und Namen in Python (pyflakes)
         run: pipx run pyflakes casting_app tools tests
       - name: Szenen passen zu tools/generate_scenes.py (nie von Hand ändern)

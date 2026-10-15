@@ -116,5 +116,5 @@
     }
   } catch (e) { /* no storage (private mode) – nothing to migrate */ }
 
-  window.CastLegacy = { migrate, migrateImport, ready };
+  window.CastLegacy = { migrateImport, ready };
 })();

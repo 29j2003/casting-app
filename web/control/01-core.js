@@ -130,11 +130,7 @@ function remove(list, i, name, newDraw) {
     send();
   });
 }
-const esc = s =>
-  String(s == null ? "" : s).replace(
-    /[&<>"']/g,
-    c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
-  );
+const esc = K.esc;
 // Teil des Zustands holen und fehlende Werte ergänzen – IM vorhandenen Objekt, nie durch ein neues ersetzen:
 // sonst ändert, wer sich das Objekt vorher geholt hat, eine Kopie, die nicht mehr im Zustand hängt (und nie gesendet wird)
 function ensure(parent, key, defaults) {
@@ -298,10 +294,29 @@ function send() {
     : "⚠ Speichern fehlgeschlagen";
   if (typeof stepsDraw === "function") setTimeout(stepsDraw, 0);
   channel.send({ cast: "state", z: small });
-  const f = $("frame").contentWindow;
-  if (f) f.postMessage({ cast: "state", z: Z }, location.origin);
-  const g = $("studioFrame") && $("studioFrame")._live && $("studioFrame").contentWindow; // Studio-Modus: Vorschau
-  if (g) g.postMessage({ cast: "state", z: Z }, location.origin);
+  previewPost($("frame"), small, images);
+  if ($("studioFrame") && $("studioFrame")._live) previewPost($("studioFrame"), small, images); // Studio-Modus
+}
+// Vorschau-Rahmen (Vorschau, Studio): kleiner Zustand plus nur die Bilder, die dieser Rahmen noch nicht hat –
+// nicht bei jeder Änderung der ganze Zustand mit allen Bildern (mehrere MB). Nach dem Laden: frameLoaded().
+function previewPost(frame, small, images) {
+  const win = frame && frame.contentWindow;
+  if (!win) return;
+  const known = frame._images || (frame._images = new Set());
+  const missing = {};
+  Object.entries(images).forEach(([id, v]) => {
+    if (!known.has(id)) {
+      missing[id] = v;
+      known.add(id);
+    }
+  });
+  win.postMessage({ cast: "state", z: small, images: missing }, location.origin);
+}
+// Rahmen neu geladen: er kennt noch keine Bilder – alles schicken
+function frameLoaded(frame) {
+  frame._images = new Set();
+  const { small, images } = K.split(Z);
+  previewPost(frame, small, images);
 }
 // alle Bilder erneut schicken (neu geladene Quellen, neue Verbindung)
 function allImagesSend() {
@@ -319,7 +334,6 @@ const statusTexts = {
   disconnected: ["OBS: nicht verbunden", ""],
   password: ["OBS: Passwort falsch", ""],
 };
-let browsersourcesOk = null;
 channel = K.channel({
   obs: true,
   page: "control",
@@ -388,7 +402,6 @@ channel = K.channel({
   },
 });
 function broadcastStatus(ok, hint) {
-  browsersourcesOk = ok;
   const e = $("transmission");
   if (ok === null) {
     e.textContent = "";

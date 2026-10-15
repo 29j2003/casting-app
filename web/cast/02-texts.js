@@ -29,15 +29,31 @@ function fit(force) {
     names.forEach(n => {
       if (n.dataset.full !== undefined && n.textContent !== n.dataset.full) n.textContent = n.dataset.full;
     });
+    // Schrift in 2-px-Schritten ab der Startgröße verkleinern, bis der Text passt (nicht unter 16 px).
+    // Die Breite wächst etwa mit der Schriftgröße: gleich nahe ans Ergebnis springen und von dort genau einpassen –
+    // jeder Versuch kostet eine Berechnung der Seite. Ergebnis wie Schritt für Schritt (gleiches 2-px-Raster).
     const shrink = () => {
       e.style.fontSize = "";
-      const box = e.parentElement,
-        start = parseFloat(getComputedStyle(e).fontSize);
-      let s = start;
-      while (e.scrollWidth > box.clientWidth - 30 && s > 16) {
-        s -= 2;
-        e.style.fontSize = s + "px";
-      }
+      const start = parseFloat(getComputedStyle(e).fontSize),
+        room = () => e.parentElement.clientWidth - 30,
+        fits = () => e.scrollWidth <= room(),
+        size = v => (e.style.fontSize = v + "px");
+      if (fits() || start <= 16) return 1;
+      const lowest = start - 2 * Math.ceil((start - 16) / 2); // erste Rasterstufe ≤ 16 px
+      let s = Math.max(lowest, start - 2 * Math.floor((start - (start * room()) / e.scrollWidth) / 2));
+      size(s);
+      if (fits()) {
+        while (s < start) {
+          size(s + 2);
+          if (!fits()) break;
+          s += 2;
+        }
+        size(s);
+      } else
+        while (!fits() && s > 16) {
+          s -= 2;
+          size(s);
+        }
       return s / start;
     };
     if (shrink() < FIT_SHORT_BELOW && names.some(n => n.dataset.short)) {

@@ -143,10 +143,14 @@ def ping_proof(access_key: str, nonce: str) -> str:
     return hmac.new(access_key.encode(), b"casting-app ping:" + nonce.encode(), "sha256").hexdigest()
 
 
-def public_state(text: str) -> str:
-    """The state without camera links and device names – for overlays that do not have the access key."""
+def public_state(text: str, state: dict | None = None) -> str:
+    """The state without camera links and device names – for overlays that do not have the access key.
+
+    state: `text` already parsed (it is changed here), so a new state is parsed only once.
+    """
     try:
-        state = json.loads(text)
+        if state is None:
+            state = json.loads(text)
         for source in (state.get("sources") or {}).values():
             if isinstance(source, dict):
                 for field in PRIVATE_SOURCE_FIELDS:
@@ -254,18 +258,23 @@ class CastingServer:
         self._state_text, self._state_revision = text, (int(match.group(1)) if match else 0)
         self._public_state_text = public_state(text)
 
-    def _store_state(self, text: str) -> bool:
-        """Take a new state from the control page; older states (lower "revision") are ignored."""
+    def _store_state(self, text: str, parsed: dict | None = None) -> bool:
+        """Take a new state from the control page; older states (lower "revision") are ignored.
+
+        parsed: `text` already read as JSON by the caller (saves parsing a large state twice).
+        """
         match = STATE_REVISION.search(text)
         if not match:
             return False
         number = int(match.group(1))
-        try:                                      # only a state Python can read again (else the next start fails)
-            if not isinstance(json.loads(text), dict):
+        if parsed is None:
+            try:                                  # only a state Python can read again (else the next start fails)
+                parsed = json.loads(text)
+            except (ValueError, RecursionError):
                 return False
-        except (ValueError, RecursionError):
+        if not isinstance(parsed, dict):
             return False
-        public = public_state(text)
+        public = public_state(text, parsed)
         with self._state_lock:
             if number < self._state_revision:
                 return False
@@ -330,6 +339,8 @@ class CastingServer:
         server = self
 
         class RequestHandler(_JsonHandler):
+            """Hands every request (all methods) to CastingServer.handle."""
+
             def do_GET(self):
                 server.handle(self)
 
@@ -630,7 +641,7 @@ class CastingServer:
             request.wfile.flush()
             self.log.info(f"verbunden: {label} · Version {client.version}")
             while not client.closed:
-                request.wfile.write(client.next_message().encode())
+                request.wfile.write(client.next_message())
                 request.wfile.flush()
         except OSError:
             pass
@@ -646,12 +657,12 @@ class CastingServer:
             if not STATE_REVISION.search(text):
                 return request.send_json(400, {"error": "keine Revision"})
             try:                                  # e.g. nested deeper than Python's json reads (imported file)
-                valid = isinstance(json.loads(text), dict)
+                parsed = json.loads(text)
             except (ValueError, RecursionError):
-                valid = False
-            if not valid:
+                parsed = None
+            if not isinstance(parsed, dict):
                 return request.send_json(400, {"error": "kein gültiger Zustand"})
-            if not self._store_state(text):
+            if not self._store_state(text, parsed):
                 # older than what the server has (e.g. the PC clock went back): the page continues above it
                 return request.send_json(409, {"error": "veraltet", "revision": self._state_revision})
             return request.send_json(200, {"ok": True})

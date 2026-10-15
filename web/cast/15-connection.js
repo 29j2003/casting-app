@@ -55,17 +55,25 @@ window.CastOverlay = {
    Die Browserquelle in OBS übernimmt Änderungen, die nur „im Hintergrund" passieren (laufendes Video,
    durchlaufender Lauftext), nicht zuverlässig in die Aufnahme – dann zeigt OBS ein altes Bild
    (z. B. den Theme-Hintergrund vom Seitenstart) statt des Videos. Eine winzige, unsichtbare Änderung
-   in jedem Bild zwingt OBS, jedes Bild frisch zu übernehmen. Läuft nur in OBS und nur, wenn die Quelle aktiv ist. */
+   in jedem Bild zwingt OBS, jedes Bild frisch zu übernehmen. Läuft nur in OBS, nur wenn die Quelle aktiv ist
+   und nur, solange sich etwas bewegt – ein stehendes Bild braucht keinen Takt (dann rechnen weder die Seite
+   noch OBS jedes Bild neu). */
 if (IN_OBS && !EMBEDDED && !PREVIEW) {
   const timerHandle = document.createElement("div");
   timerHandle.className = "obs-timer";
   timerHandle.setAttribute("aria-hidden", "true");
   document.body.appendChild(timerHandle);
+  // bewegt sich etwas? Animation/Übergang, laufendes Video oder eingebettete Seite (Kamera-Link, DACH-Rahmen)
+  const moving = () =>
+    !document.getAnimations ||
+    document.getAnimations().some(a => a.playState === "running") ||
+    $$("video").some(v => !v.paused && !v.ended) ||
+    !!document.querySelector("iframe");
   let n = 0,
     running = true;
   const step = () => {
     if (!running) return;
-    timerHandle.style.backgroundColor = n++ & 1 ? "rgba(0,0,0,.004)" : "rgba(0,0,0,.006)";
+    if (moving()) timerHandle.style.backgroundColor = n++ & 1 ? "rgba(0,0,0,.004)" : "rgba(0,0,0,.006)";
     requestAnimationFrame(step);
   };
   requestAnimationFrame(step);
@@ -77,7 +85,6 @@ if (IN_OBS && !EMBEDDED && !PREVIEW) {
     }
     if (!on) running = false;
   });
-  window.__obsTimer = () => running;
   // Zustandsbericht alle 30 s ins Log der App: läuft das Video wirklich? Wie viel Speicher braucht die Seite?
   try {
     const n = +(sessionStorage.getItem("cast-loads") || 0) + 1;
@@ -147,7 +154,10 @@ addEventListener("message", ev => {
     return;
   }
   if (d && d.cast === "state" && d.z) {
-    Z = rawState = K.merge(K.clone(K.DEFAULT), d.z);
+    // kleiner Zustand mit Bild-Verweisen (asset:…), neue Bilder kommen mit – wie in OBS
+    if (d.images) Object.assign(K.Images.mem, d.images);
+    rawState = K.merge(K.clone(K.DEFAULT), d.z);
+    Z = K.resolve(rawState, K.Images.mem);
     receivedFrom = "Vorschau der Steuerseite";
     receivedAt = Date.now();
     draw();

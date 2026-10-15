@@ -58,12 +58,7 @@ function teams() {
 }
 
 /* ---------- Map-Veto ---------- */
-const normMap = n =>
-  String(n || "")
-    .toLowerCase()
-    .replace(/^de_/, "")
-    .replace(/[^a-z0-9]/g, "")
-    .replace(/ii$/, "2");
+const normMap = K.normMap;
 function mapImage(name) {
   return (Z.mapPool || []).find(x => normMap(x.name) === normMap(name)) || {};
 }

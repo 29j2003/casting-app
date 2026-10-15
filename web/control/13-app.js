@@ -574,7 +574,7 @@ function preview() {
   $("frame").src = (single ? "overlay" : $("scene").value) + ".html?preview=1";
 }
 $("scene").onchange = preview;
-$("frame").onload = () => $("frame").contentWindow.postMessage({ cast: "state", z: Z }, location.origin);
+$("frame").onload = () => frameLoaded($("frame"));
 // Vorschau so groß wie möglich, ohne Verzerrung (wie in OBS); im Studio-Modus zwei Bilder nebeneinander
 function previewSize() {
   const p = $("stageSlot"),
@@ -666,7 +666,7 @@ $("studioTake").onclick = studioTake;
 $("studioFrame").onload = () => {
   if ($("studioFrame")._live)
     try {
-      $("studioFrame").contentWindow.postMessage({ cast: "state", z: Z }, location.origin);
+      frameLoaded($("studioFrame"));
     } catch (err) {}
 };
 new ResizeObserver(previewSize).observe($("stageSlot"));

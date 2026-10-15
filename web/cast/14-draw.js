@@ -1,11 +1,14 @@
 /* cast/14-draw.js · Alles zeichnen: draw(), newDraw(), Ecken der Boxen (Teil von cast.js, siehe cast/01-base.js) */
 /* ---------- Alles zeichnen ---------- */
+// Welche Ecke einer Box abgeschrägt ist, hängt von ihrer Seite im Bild ab. Erst alle Lagen lesen, dann schreiben
+// (abwechselnd erzwänge je Box eine neue Berechnung der Seite).
 function cornersSet() {
-  $$(".box").forEach(b => {
-    if (b.dataset.corner !== undefined || !b.offsetWidth) return;
-    const r = b.getBoundingClientRect(),
-      middle = r.left + r.width / 2,
-      width = document.documentElement.clientWidth || 1920;
+  const width = document.documentElement.clientWidth || 1920;
+  const boxes = $$(".box")
+    .filter(b => b.dataset.corner === undefined && b.offsetWidth)
+    .map(b => [b, b.getBoundingClientRect()]);
+  boxes.forEach(([b, r]) => {
+    const middle = r.left + r.width / 2;
     b.dataset.corner = middle < width * 0.42 ? "left" : middle > width * 0.58 ? "right" : "middle";
   });
 }

@@ -212,6 +212,9 @@
     previous.querySelectorAll(".enter").forEach(e => e.classList.remove("enter"));
     // Teile paaren
     const previousParts = new Map([...previous.children].filter(e => e.dataset.part).map(e => [e.dataset.part, e]));
+    // erst alle Lagen lesen, dann umhängen: Lesen nach jedem Umhängen erzwänge je Teil eine neue Berechnung der
+    // Seite (und läse Lagen, die nie zu sehen waren – ohne Sponsor rückt die Leiste per CSS auf)
+    const fromOf = new Map([...previousParts.values()].map(e => [e, where(e)]));
     const proceed = [],
       cross = [],
       come = [];
@@ -227,9 +230,9 @@
         const info = n.querySelector(".cam-info"),
           ai = a.querySelector(".cam-info");
         if (info && ai) ai.innerHTML = info.innerHTML;
-        proceed.push({ el: a, from: where(a), target: n.getAttribute("style") });
+        proceed.push({ el: a, from: fromOf.get(a), target: n.getAttribute("style") });
         n.replaceWith(a);
-        pin(a, proceed[proceed.length - 1].from);
+        pin(a, fromOf.get(a));
       } else cross.push([a, n]);
     });
     fresh.querySelectorAll(".enter").forEach(e => e.classList.remove("enter"));
@@ -242,6 +245,7 @@
     await awaiting(50);
     // Teile, die nach dem Zeichnen genau gleich aussehen (z. B. das Logo – nur seine Größengrenze data-max ist je Szene
     // anders), bleiben stehen statt überzublenden: zwei halb durchsichtige gleiche Bilder übereinander flackern sichtbar
+    const crossFrom = new Map(cross.map(([a]) => [a, where(a)])); // erst lesen, dann umhängen (s. o.)
     for (let i = cross.length - 1; i >= 0; i--) {
       const [a, n] = cross[i];
       const look = e =>
@@ -258,10 +262,10 @@
       if (scale) a.style.setProperty("--brand-scale", scale);
       else a.style.removeProperty("--brand-scale");
       n.classList.remove("pending"); // (nur zum Füllen versteckt – die Lage übernimmt a)
-      proceed.push({ el: a, from: where(a), target: n.getAttribute("style") });
+      proceed.push({ el: a, from: crossFrom.get(a), target: n.getAttribute("style") });
       newParts.splice(newParts.indexOf(n), 1);
       n.replaceWith(a);
-      pin(a, proceed[proceed.length - 1].from);
+      pin(a, crossFrom.get(a));
       cross.splice(i, 1);
     }
     const go = [...previous.children].filter(e => !cross.some(p => p[0] === e));
@@ -314,10 +318,14 @@
     // 1) weiterverwendete Teile gleiten von ihrer echten Lage an ihre echte neue Lage. Bis 2.14 galten die Werte der
     //    Vorlage – rückte die Leiste ohne Sponsor auf (CSS mit !important), sprang sie kurz an die Vorlagen-Stelle.
     //    .gliding schaltet solche Regeln für die Dauer des Gleitens ab, damit die Animation die Lage bestimmt.
+    //    Erst alle an die neue Lage setzen, dann alle Lagen lesen, dann animieren (eine Berechnung statt einer je Teil).
     proceed.forEach(w => {
       restyle(w);
       w.el.classList.remove("gliding");
-      const post = where(w.el);
+    });
+    const posts = proceed.map(w => where(w.el));
+    proceed.forEach((w, index) => {
+      const post = posts[index];
       if (["left", "top", "width", "height"].every(k => w.from[k] === post[k])) return;
       // weiter Sprung (Leiste oben bei Clips ↔ unten bei Cast): nicht quer durchs Bild und über die Kameras gleiten,
       // sondern an der alten Stelle aus- und an der neuen einblenden. Kameras gleiten immer (ihr Bild läuft weiter).
@@ -448,6 +456,10 @@
     }
     if (!should) {
       overLayer.classList.remove("on");
+      // nach dem Ausblenden (0,35 s) leeren – sonst zeichnet cast.js den unsichtbaren Inhalt bei jeder Änderung weiter
+      setTimeout(() => {
+        if (overScene === null) overLayer.innerHTML = "";
+      }, 400);
       return;
     }
     try {

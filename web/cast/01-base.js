@@ -41,11 +41,7 @@ if (EMBEDDED) document.body.classList.add("embedded", "waiting");
 let rawState = K.load(); // Zustand mit Bild-Verweisen (klein)
 let Z = K.resolve(rawState, K.Images.mem); // Zustand mit echten Bildern (zum Zeichnen)
 const $$ = s => [...document.querySelectorAll(s)];
-const esc = s =>
-  String(s == null ? "" : s).replace(
-    /[&<>"']/g,
-    c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
-  );
+const esc = K.esc;
 const teamKey = v => (v === "a" || v === "b" ? v : ""); // Team-Schlüssel aus dem Zustand: nur "a"/"b" (Klassen, Attribute)
 const pull = path => path.split(".").reduce((o, k) => (o == null ? o : o[k]), Z);
 

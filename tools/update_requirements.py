@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def main() -> None:
+    """Compile requirements/build.txt with uv (all systems, with hashes)."""
     uv = shutil.which("uv")
     if not uv:
         sys.exit("uv fehlt – erst: pip install uv")

@@ -40,7 +40,7 @@ Aufbau und Rezepte für Änderungen: `docs/ENTWICKLUNG.md` (bei neuen Bausteinen
   Ton im Overlay), nach Themen; der Server liefert sie verbunden und gekapselt als `/cast.js` (Lageplan in `01-base.js`).
 - `web/cast-core.js` – gemeinsamer Kern (Standardzustand, Kanal, Turnier-Logik SE/DE/Swiss/GSL/Tabelle, DACH-Rahmen).
 - `web/themes.js` – Themes (Regulär, DACH CS eigener Stil, DACH CS – Offiziell, ESEA, Uniliga).
-- `web/connection.js` – Startwerte der OBS-Verbindung.
+- `web/connection.js` – Startwerte der OBS-Verbindung (nur die Steuerseite lädt sie).
 - `web/i18n.js` + `web/lang-en.js` – Sprache der Steuerseite (übersetzt beim Anzeigen, Wörterbuch Deutsch → Englisch);
   `casting_app/texts.py` – Texte der Python-Seite (Tray, Dialoge) in beiden Sprachen.
 - `web/<scene>.html` – Szenen-Vorlagen, **erzeugt** von `tools/generate_scenes.py` (dort ändern, dann ausführen).

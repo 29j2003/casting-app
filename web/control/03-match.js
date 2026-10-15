@@ -325,12 +325,7 @@ function poolComplete() {
     }
   });
 }
-const normMap = n =>
-  String(n || "")
-    .toLowerCase()
-    .replace(/^de_/, "")
-    .replace(/[^a-z0-9]/g, "")
-    .replace(/ii$/, "2");
+const normMap = K.normMap;
 // Kacheln wie im Konzept: Bild mit Name, Schalter „im Pool", Füllen/Ganz, Map-Fakten; oben die aktiven, darunter die übrigen
 const poolStandard = m => K.DEFAULT.mapPool.some(s => normMap(s.name) === normMap(m.name));
 function poolCard(m, i) {

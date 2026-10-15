@@ -182,12 +182,10 @@ $("themeFile").onchange = async () => {
     const k = themeCreate(d, String(d.name || "Importiertes Theme").slice(0, 60));
     if (Array.isArray(j.sponsors)) {
       Z.sponsors.byTheme = Z.sponsors.byTheme || {};
-      Z.sponsors.byTheme[k] = j.sponsors
-        .slice(0, 40)
-        .map(s => ({
-          name: String(s.name || "").slice(0, 80),
-          logo: /^data:image\//.test(s.logo || "") ? s.logo : "",
-        }));
+      Z.sponsors.byTheme[k] = j.sponsors.slice(0, 40).map(s => ({
+        name: String(s.name || "").slice(0, 80),
+        logo: /^data:image\//.test(s.logo || "") ? s.logo : "",
+      }));
     }
     themeChoose(k);
     $("themeStatus").textContent = `✓ Theme „${Z.ownThemes[k].name}“ importiert.`;

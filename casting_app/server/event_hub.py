@@ -16,6 +16,12 @@ KEEPALIVE_SECONDS = 20
 MAX_QUEUED_EVENTS = 500
 MAX_QUEUED_BYTES = 32_000_000     # a page that stops reading is cut off before its queue holds many copies of a large state
 CONTROL_PAGE = "control"          # page name the control page reports itself with
+KEEPALIVE = b": still\n\n"
+
+
+def event_message(event: str, data: str) -> bytes:
+    """One Server-Sent Event, ready to write; data must not contain line breaks."""
+    return f"event: {event}\ndata: {data}\n\n".encode()
 
 
 class EventClient:
@@ -41,7 +47,10 @@ class EventClient:
 
     def send(self, event: str, data: str) -> None:
         """Queue one event; data must not contain line breaks."""
-        message = f"event: {event}\ndata: {data}\n\n"
+        self.send_message(event_message(event, data))
+
+    def send_message(self, message: bytes) -> None:
+        """Queue an event built with event_message (a broadcast builds it once for all pages)."""
         with self._bytes_lock:
             if self._queued_bytes + len(message) > MAX_QUEUED_BYTES:
                 self.closed = True
@@ -52,12 +61,12 @@ class EventClient:
         except queue.Full:
             self.closed = True
 
-    def next_message(self) -> str:
+    def next_message(self) -> bytes:
         """Next message to write, or a keepalive comment after a quiet period."""
         try:
             message = self._queue.get(timeout=KEEPALIVE_SECONDS)
         except queue.Empty:
-            return ": still\n\n"
+            return KEEPALIVE
         with self._bytes_lock:
             self._queued_bytes -= len(message)
         return message
@@ -108,13 +117,15 @@ class EventHub:
         public_data: what pages without the access key get instead of `data` (None = the same for all).
         """
         receivers = [c for c in self.clients() if not (overlays_only and c.is_control_page)]
+        full = event_message(event, data)
+        public = full if public_data is None else event_message(event, public_data)
         for client in receivers:
-            client.send(event, data if client.trusted or public_data is None else public_data)
+            client.send_message(full if client.trusted else public)
         return len(receivers)
 
     def send_client_list(self) -> None:
         """Tell the control page(s) which pages are connected."""
-        listing = json.dumps({"clients": [c.describe() for c in self.clients()]})
+        message = event_message("status", json.dumps({"clients": [c.describe() for c in self.clients()]}))
         for client in self.clients():
             if client.is_control_page:
-                client.send("status", listing)
+                client.send_message(message)

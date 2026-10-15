@@ -107,16 +107,18 @@ function seriesDraw() {
 }
 
 /* ---------- Sitzungen (in der Browser-Datenbank, genug Platz auch für Bilder) ---------- */
-const DB = (() => {
+// Kleine IndexedDB-Ablage: ein Speicher je Datenbank, Einträge mit dem Schlüssel `name`.
+// `before` = worauf vor dem ersten Öffnen gewartet wird (Übernahme alter Daten).
+function nameStore(dbName, storeName, before) {
   let db;
   const openDb = () =>
     db
       ? Promise.resolve(db)
-      : (window.CastLegacy ? window.CastLegacy.ready : Promise.resolve()).then(
+      : (before ? before() : Promise.resolve()).then(
           () =>
             new Promise((ok, no) => {
-              const r = indexedDB.open("cast-sessions", 1);
-              r.onupgradeneeded = () => r.result.createObjectStore("s", { keyPath: "name" });
+              const r = indexedDB.open(dbName, 1);
+              r.onupgradeneeded = () => r.result.createObjectStore(storeName, { keyPath: "name" });
               r.onsuccess = () => ok((db = r.result));
               r.onerror = () => no(r.error);
             })
@@ -125,46 +127,29 @@ const DB = (() => {
     openDb().then(
       d =>
         new Promise((ok, no) => {
-          const t = d.transaction("s", mode),
-            r = f(t.objectStore("s"));
+          const t = d.transaction(storeName, mode),
+            r = f(t.objectStore(storeName));
           t.oncomplete = () => ok(r && r.result);
           t.onerror = () => no(t.error);
         })
     );
   return {
     all: () => tx("readonly", s => s.getAll()),
-    set: (name, z) => tx("readwrite", s => s.put({ name, z, date: Date.now() })),
+    put: entry => tx("readwrite", s => s.put(entry)),
     erase: name => tx("readwrite", s => s.delete(name)),
   };
-})();
+}
+const sessionStore = nameStore("cast-sessions", "s", () =>
+  window.CastLegacy ? window.CastLegacy.ready : Promise.resolve()
+);
+const DB = {
+  all: sessionStore.all,
+  set: (name, z) => sessionStore.put({ name, z, date: Date.now() }),
+  erase: sessionStore.erase,
+};
 // Team-Bibliothek: Teams mit Logo, Farben und Spielern auf diesem PC (eigene Datenbank, nicht Teil der Sendung)
-const TEAM_DB = (() => {
-  let db;
-  const openDb = () =>
-    db
-      ? Promise.resolve(db)
-      : new Promise((ok, no) => {
-          const r = indexedDB.open("cast-teams", 1);
-          r.onupgradeneeded = () => r.result.createObjectStore("t", { keyPath: "name" });
-          r.onsuccess = () => ok((db = r.result));
-          r.onerror = () => no(r.error);
-        });
-  const tx = (mode, f) =>
-    openDb().then(
-      d =>
-        new Promise((ok, no) => {
-          const t = d.transaction("t", mode),
-            r = f(t.objectStore("t"));
-          t.oncomplete = () => ok(r && r.result);
-          t.onerror = () => no(t.error);
-        })
-    );
-  return {
-    all: () => tx("readonly", s => s.getAll()),
-    set: entry => tx("readwrite", s => s.put(entry)),
-    erase: name => tx("readwrite", s => s.delete(name)),
-  };
-})();
+const teamStore = nameStore("cast-teams", "t");
+const TEAM_DB = { all: teamStore.all, set: teamStore.put, erase: teamStore.erase };
 async function teamLibDraw(selection) {
   let list = [];
   try {
@@ -664,9 +649,12 @@ function gsiDraw() {
     li.hidden = li.dataset.gsi !== where;
   });
   $("gsiNetworkOn").checked = !!gsiInfo.network;
-  $("gsiNetworkInfo").innerHTML = gsiInfo.network
-    ? `<span>Diese App ist im Netzwerk erreichbar unter: ${(gsiInfo.ips || []).map(ip => `<b>${esc(ip)}:${esc(gsiInfo.port)}</b>`).join(" · ") || "–"}</span><span class="small">Die Datei zum Herunterladen enthält Adresse und Schlüssel bereits.</span>`
-    : `<span class="small">Aus – die App nimmt nur Daten von diesem PC an.</span>`;
+  setHtml(
+    $("gsiNetworkInfo"),
+    gsiInfo.network
+      ? `<span>Diese App ist im Netzwerk erreichbar unter: ${(gsiInfo.ips || []).map(ip => `<b>${esc(ip)}:${esc(gsiInfo.port)}</b>`).join(" · ") || "–"}</span><span class="small">Die Datei zum Herunterladen enthält Adresse und Schlüssel bereits.</span>`
+      : `<span class="small">Aus – die App nimmt nur Daten von diesem PC an.</span>`
+  );
   const sideA = (liveLast && liveLast.sideA) || gsiInfo.sideA || "CT";
   document.querySelectorAll("#gsiSide button").forEach(b => b.setAttribute("aria-pressed", b.dataset.side === sideA));
 }
@@ -1273,7 +1261,6 @@ function graphicsDraw() {
   const show = all.filter(x => gfxAll || x.favorite !== false || x.on);
   $("gfxAllButton").textContent = gfxAll ? "Nur Favoriten" : `Alle ${all.length}`;
   show.forEach(x => {
-    const on = K.gfxVisible(x, Date.now(), Z.broadcast.scene);
     const z = document.createElement("div");
     z.className = "gfx-line2" + (x.on ? " on" : "");
     z.dataset.id = x.id;

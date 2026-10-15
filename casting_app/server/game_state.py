@@ -259,6 +259,7 @@ class GameStateReceiver:
                 timeout = 10
 
                 def do_POST(self):
+                    """Only /api/gsi with the token is taken; it goes to the same handling as on this PC."""
                     if self.path.split("?")[0] != "/api/gsi":
                         return self._answer(403, {})
                     length = content_length(self.headers)

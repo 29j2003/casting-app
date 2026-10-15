@@ -687,7 +687,6 @@ window.CastCore = (function () {
           onAnswer: opt.onAnswer,
           onEvent: opt.onEvent,
           events: opt.events,
-          onClients: opt.onClients,
           onMessage: received,
         })
       : null;
@@ -710,7 +709,6 @@ window.CastCore = (function () {
           n.push(now);
           sessionStorage.setItem("cast-reload", JSON.stringify(n));
         } catch (e) {}
-        window.__newLoad = true;
         location.reload();
       });
       es.addEventListener("state", ev => {
@@ -763,6 +761,21 @@ window.CastCore = (function () {
       obs,
     };
   }
+
+  /* ---------- Kleine Helfer für Steuerseite und Overlays ---------- */
+  // Text sicher in HTML einsetzen (innerHTML und Attribute)
+  const esc = s =>
+    String(s == null ? "" : s).replace(
+      /[&<>"']/g,
+      c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
+    );
+  // Map-Namen vergleichbar machen: „de_dust2“, „Dust II“, „Dust2“ → „dust2“
+  const normMap = n =>
+    String(n || "")
+      .toLowerCase()
+      .replace(/^de_/, "")
+      .replace(/[^a-z0-9]/g, "")
+      .replace(/ii$/, "2");
 
   /* ---------- Timer ---------- */
   function timerRest(t) {
@@ -1216,10 +1229,8 @@ window.CastCore = (function () {
     const active = B.table
       .filter(b => !b.status)
       .map(b => Object.assign({}, b, { seed: T.teams.findIndex(t => t.id === b.id) }));
-    if (num === 1) {
-      const h = Math.ceil(active.length / 2);
-      active.sort((a, b) => a.seed - b.seed);
-    } else active.sort((a, b) => b.wins - b.losses - (a.wins - a.losses) || a.seed - b.seed);
+    if (num === 1) active.sort((a, b) => a.seed - b.seed);
+    else active.sort((a, b) => b.wins - b.losses - (a.wins - a.losses) || a.seed - b.seed);
     const isOpen = active.slice(),
       round = [];
     if (num === 1) {
@@ -1335,8 +1346,6 @@ window.CastCore = (function () {
     nextRevision,
     GFX_POSITIONS,
     GFX_DEFAULT_POS,
-    OVERLAY_TEXTS,
-    OVERLAY_WORDS,
     word,
     overlayLanguageSet,
     split,
@@ -1352,7 +1361,6 @@ window.CastCore = (function () {
     Images,
     cssUrl,
     DEFAULT,
-    KEY,
     clone,
     merge,
     load,
@@ -1361,5 +1369,7 @@ window.CastCore = (function () {
     channel,
     timerRest,
     time,
+    esc,
+    normMap,
   };
 })();

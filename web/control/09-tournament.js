@@ -598,13 +598,11 @@ $("tourFaceitAll").onclick = async () => {
         };
       } catch (err) {}
     }
-    T.teams = [...teams.values()]
-      .slice(0, 32)
-      .map((t, n) =>
-        Object.assign({ id: "t" + Date.now().toString(36) + n, short: (t.name || "").slice(0, 3).toUpperCase() }, t, {
-          players: t.players.slice(0, 7),
-        })
-      );
+    T.teams = [...teams.values()].slice(0, 32).map((t, n) =>
+      Object.assign({ id: "t" + Date.now().toString(36) + n, short: (t.name || "").slice(0, 3).toUpperCase() }, t, {
+        players: t.players.slice(0, 7),
+      })
+    );
     const tid = fid => (T.teams.find(t => t.faceitId === fid) || {}).id || null;
     // Aufbau erkennen: Spiele mit Gruppen-Nummer und ohne K.-o.-Runden = Gruppen mit Tabelle, sonst der Baum genau wie bei FACEIT
     const groupsNum = [...new Set(games.map(x => x.group).filter(g => g !== undefined && g !== null))];

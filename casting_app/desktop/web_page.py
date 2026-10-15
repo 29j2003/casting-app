@@ -183,6 +183,7 @@ class _ExternalLinkPage(QWebEnginePage):
         QTimer.singleShot(5000, self, self.deleteLater)
 
     def acceptNavigationRequest(self, url: QUrl, navigation_type, is_main_frame: bool) -> bool:
+        """Open the link in the system browser (at most once every 2 s) and never load it here."""
         now = time.monotonic()
         if url.scheme() in ("http", "https") and now - _ExternalLinkPage.last_opened > 2:
             _ExternalLinkPage.last_opened = now

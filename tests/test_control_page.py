@@ -182,7 +182,8 @@ def test_wipe_leaves_nothing_behind(server, browser):
     """Wipe: the outgoing part is fully gone at the end and the incoming part fully hidden at the start.
 
     2.23.0 clipped with calc(100% + -140px) – a 140 px strip of every box stayed on screen (video from 11.10.).
-    Probes hit testing, which follows clip-path, inside the box and in its frame/shadow margin."""
+    Probes hit testing, which follows clip-path, inside the box and in its frame/shadow margin (all elements at a
+    point, so an overlay part drawn on top cannot hide the box)."""
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
     errors = watch(page)
     page.goto(f"{BASE_URL}/overlay.html")
@@ -193,13 +194,62 @@ def test_wipe_leaves_nothing_behind(server, browser):
       box.innerHTML = '<i style="position:absolute;inset:-50px;pointer-events:auto"></i>';   // ragt hinaus wie Rahmen und Schild
       document.body.appendChild(box);
       const probe = clip => { box.style.clipPath = clip; let n = 0;
-        for (let x = 545; x <= 1155; x += 10) for (let y = 345; y <= 605; y += 10) if (box.contains(document.elementFromPoint(x, y))) n++;
+        for (let x = 545; x <= 1155; x += 10) for (let y = 345; y <= 605; y += 10) if (document.elementsFromPoint(x, y).some(e => box.contains(e))) n++;
         return n; };
       const r = { full: probe('none'), outEnd: probe(OUT.wipe(1).at(-1).clipPath), inStart: probe(IN.wipe(1)[0].clipPath),
                   inEnd: probe(IN.wipe(1).at(-1).clipPath) };
       box.remove(); return r; }""")
     assert hits["full"] > 1000 and hits["inEnd"] == hits["full"]     # at rest: box with its frame margin fully visible
     assert hits["outEnd"] == 0 and hits["inStart"] == 0
+    assert errors == []
+
+
+def test_obs_frame_pulse_runs_only_while_something_moves(server, browser):
+    """In OBS a tiny change in every frame keeps video and ticker current in the recording. On a still picture it
+    pauses (neither the page nor OBS redraws 60 times a second for nothing) and resumes with the next animation."""
+    page = browser.new_page(viewport={"width": 1920, "height": 1080})
+    page.add_init_script("window.obsstudio = { pluginVersion: 'test' }")
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/ingame.html?access={server.access_key}")
+    page.evaluate("""() => { const z = JSON.parse(JSON.stringify(CastCore.DEFAULT)); z.revision = Date.now();
+      return fetch('/api/state', { method: 'POST', body: JSON.stringify(z) }); }""")
+    page.wait_for_timeout(3000)
+    pulses = """() => new Promise(ok => { const el = document.querySelector('.obs-timer'), seen = new Set(), t0 = performance.now();
+      const f = () => { seen.add(el.style.backgroundColor); performance.now() - t0 < 600 ? requestAnimationFrame(f) : ok(seen.size); };
+      f(); })"""
+    assert page.evaluate(pulses) == 1                                           # still: no change at all
+    page.evaluate("document.body.animate([{ opacity: 1 }, { opacity: 1 }], 1500)")
+    assert page.evaluate(pulses) >= 2                                           # something moves: every frame
+    assert errors == []
+
+
+def test_preview_gets_the_small_state_and_each_image_once(server, browser):
+    """The preview frame gets the state with image references (like OBS) and every image only once – not all
+    images with every keystroke. After it reloads it gets all images again."""
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    errors = watch(page)
+    page.goto(f"{BASE_URL}/control.html?access={server.access_key}")
+    page.wait_for_timeout(1500)
+    spy = """() => { const w = $('frame').contentWindow; w.__got = [];
+      w.addEventListener('message', ev => ev.data && ev.data.cast === 'state' && w.__got.push(
+        [JSON.stringify(ev.data.z).length, Object.keys(ev.data.images || {}).length])); }"""
+    page.evaluate(spy)
+    page.evaluate("""() => { const c = document.createElement('canvas'); c.width = c.height = 120; const g = c.getContext('2d');
+      for (let i = 0; i < 400; i++) { g.fillStyle = `hsl(${i * 37 % 360},70%,50%)`; g.fillRect(i * 13 % 120, i * 7 % 120, 9, 9); }
+      Z.teams.a.logo = c.toDataURL(); send(); }""")
+    page.wait_for_timeout(300)
+    page.evaluate("Z.texts.title = 'NEU'; send()")
+    page.wait_for_timeout(300)
+    logo, full = page.evaluate("[Z.teams.a.logo.length, JSON.stringify(Z).length]")
+    got = page.evaluate("$('frame').contentWindow.__got")
+    assert logo > 2000 and len(got) == 2
+    assert got[0][1] == 1 and got[1][1] == 0                                    # the image once, then not again
+    assert all(size < full - logo + 200 for size, _ in got)                     # the state itself without the image
+    shown = "$('frame').contentWindow.CastOverlay.Z.teams.a.logo === Z.teams.a.logo"
+    assert page.evaluate(shown)                                                 # the preview draws the real image
+    page.evaluate("$('frame').contentWindow.location.reload()")
+    page.wait_for_timeout(1500)
+    assert page.evaluate(shown)                                                 # after reloading: all images again
     assert errors == []
 
 

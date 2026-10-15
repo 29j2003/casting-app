@@ -31,7 +31,6 @@ HEAD = '''<!DOCTYPE html>
 {backdrop}{brand}'''
 FOOT = '''
 <script src="themes.js"></script>
-<script src="connection.js"></script>
 <script src="cast-core.js"></script>
 <script src="cast.js"></script>
 </body>

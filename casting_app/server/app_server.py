@@ -143,10 +143,14 @@ def ping_proof(access_key: str, nonce: str) -> str:
     return hmac.new(access_key.encode(), b"casting-app ping:" + nonce.encode(), "sha256").hexdigest()
 
 
-def public_state(text: str) -> str:
-    """The state without camera links and device names – for overlays that do not have the access key."""
+def public_state(text: str, state: dict | None = None) -> str:
+    """The state without camera links and device names – for overlays that do not have the access key.
+
+    state: `text` already parsed (it is changed here), so a new state is parsed only once.
+    """
     try:
-        state = json.loads(text)
+        if state is None:
+            state = json.loads(text)
         for source in (state.get("sources") or {}).values():
             if isinstance(source, dict):
                 for field in PRIVATE_SOURCE_FIELDS:
@@ -254,18 +258,23 @@ class CastingServer:
         self._state_text, self._state_revision = text, (int(match.group(1)) if match else 0)
         self._public_state_text = public_state(text)
 
-    def _store_state(self, text: str) -> bool:
-        """Take a new state from the control page; older states (lower "revision") are ignored."""
+    def _store_state(self, text: str, parsed: dict | None = None) -> bool:
+        """Take a new state from the control page; older states (lower "revision") are ignored.
+
+        parsed: `text` already read as JSON by the caller (saves parsing a large state twice).
+        """
         match = STATE_REVISION.search(text)
         if not match:
             return False
         number = int(match.group(1))
-        try:                                      # only a state Python can read again (else the next start fails)
-            if not isinstance(json.loads(text), dict):
+        if parsed is None:
+            try:                                  # only a state Python can read again (else the next start fails)
+                parsed = json.loads(text)
+            except (ValueError, RecursionError):
                 return False
-        except (ValueError, RecursionError):
+        if not isinstance(parsed, dict):
             return False
-        public = public_state(text)
+        public = public_state(text, parsed)
         with self._state_lock:
             if number < self._state_revision:
                 return False
@@ -330,6 +339,8 @@ class CastingServer:
         server = self
 
         class RequestHandler(_JsonHandler):
+            """Hands every request (all methods) to CastingServer.handle."""
+
             def do_GET(self):
                 server.handle(self)
 
@@ -630,7 +641,7 @@ class CastingServer:
             request.wfile.flush()
             self.log.info(f"verbunden: {label} · Version {client.version}")
             while not client.closed:
-                request.wfile.write(client.next_message().encode())
+                request.wfile.write(client.next_message())
                 request.wfile.flush()
         except OSError:
             pass
@@ -646,12 +657,12 @@ class CastingServer:
             if not STATE_REVISION.search(text):
                 return request.send_json(400, {"error": "keine Revision"})
             try:                                  # e.g. nested deeper than Python's json reads (imported file)
-                valid = isinstance(json.loads(text), dict)
+                parsed = json.loads(text)
             except (ValueError, RecursionError):
-                valid = False
-            if not valid:
+                parsed = None
+            if not isinstance(parsed, dict):
                 return request.send_json(400, {"error": "kein gültiger Zustand"})
-            if not self._store_state(text):
+            if not self._store_state(text, parsed):
                 # older than what the server has (e.g. the PC clock went back): the page continues above it
                 return request.send_json(409, {"error": "veraltet", "revision": self._state_revision})
             return request.send_json(200, {"ok": True})
@@ -901,8 +912,8 @@ class CastingServer:
         # no hidden files, "..", backslashes, drive letters or "//" (on Windows "//server/share" is a network path)
         if re.search(r"(^|/)\.|\\|:|\x00|//", relative):
             return request.send_json(404, {"error": "nicht gefunden"})
-        if relative == "control.js":
-            return request.send_body(200, control_script(), CONTENT_TYPES[".js"])
+        if relative in JOINED_SCRIPTS:
+            return request.send_body(200, joined_script(relative), CONTENT_TYPES[".js"])
         suffix = Path(relative).suffix.lower()
         if suffix not in CONTENT_TYPES:
             return request.send_json(404, {"error": "nicht gefunden"})
@@ -926,21 +937,36 @@ class CastingServer:
         send_file(request, full, CONTENT_TYPES[suffix], VERSION, extra)
 
 
-def control_script() -> bytes:
-    """The control page's logic: web/control/*.js joined in file-name order into one script.
+# Scripts that humans edit as numbered parts (web/<folder>/NN-*.js) and the browser gets as one file:
+# address → (folder, wrapped). A wrapped script runs inside its own function, so its names stay private
+# (the overlay); an unwrapped one shares its top-level names with the page (the control page and its tests).
+JOINED_SCRIPTS = {
+    "control.js": ("control", False),
+    "cast.js": ("cast", True),
+}
+
+
+def joined_script(name: str) -> bytes:
+    """One of JOINED_SCRIPTS: its parts joined in file-name order into one script.
 
     Humans edit the numbered files; the browser gets one script, so a function may be used before the file that
     declares it (as if it were one big file). A marker line in front of each part shows where it came from.
+    The result is cached and rebuilt only when a part changed (so editing a part needs no restart).
     """
-    files = sorted((WEB_DIR / "control").glob("*.js"))
-    stamp = tuple((file.name, file.stat().st_mtime_ns) for file in files)    # rebuilt only when a part changed
-    if _control_cache.get("stamp") != stamp:
-        parts = [f"\n// ===== control/{file.name} =====\n" + file.read_text(encoding="utf-8") for file in files]
-        _control_cache.update(stamp=stamp, body="".join(parts).encode("utf-8"))
-    return _control_cache["body"]
+    folder, wrapped = JOINED_SCRIPTS[name]
+    files = sorted((WEB_DIR / folder).glob("*.js"))
+    stamp = tuple((file.name, file.stat().st_mtime_ns) for file in files)
+    cached = _joined_cache.get(name)
+    if not cached or cached[0] != stamp:
+        parts = [f"\n// ===== {folder}/{file.name} =====\n" + file.read_text(encoding="utf-8") for file in files]
+        body = "".join(parts)
+        if wrapped:
+            body = '(function () {\n"use strict";\n' + body + "\n})();\n"
+        cached = _joined_cache[name] = (stamp, body.encode("utf-8"))
+    return cached[1]
 
 
-_control_cache: dict = {}
+_joined_cache: dict[str, tuple] = {}
 
 
 # "address in use" / "access denied" (Windows: port held exclusively by another program)

@@ -243,14 +243,19 @@ def test_update_status_check_and_install_need_the_key(server, monkeypatch):
     assert request("POST", "/api/update-install")[0] == 409        # nothing that installs with one click (no checked file)
 
 
-def test_control_script_joins_all_parts_in_order(server):
+@pytest.mark.parametrize("name, folder, minimum", [("control.js", "control", 10), ("cast.js", "cast", 10)])
+def test_joined_scripts_contain_all_parts_in_order(server, name, folder, minimum):
+    """/control.js and /cast.js are web/<folder>/*.js joined in file-name order; cast.js is wrapped in a function."""
     from casting_app.paths import WEB_DIR
-    status, headers, body = request("GET", "/control.js", access=False)
-    names = sorted(f.name for f in (WEB_DIR / "control").glob("*.js"))
-    markers = [f"// ===== control/{name} =====".encode() for name in names]
+    status, headers, body = request("GET", "/" + name, access=False)
+    names = sorted(f.name for f in (WEB_DIR / folder).glob("*.js"))
+    markers = [f"// ===== {folder}/{n} =====".encode() for n in names]
     assert status == 200 and headers["Content-Type"].startswith("text/javascript")
-    assert len(names) >= 10 and all(m in body for m in markers)
+    assert len(names) >= minimum and all(m in body for m in markers)
     assert [body.index(m) for m in markers] == sorted(body.index(m) for m in markers)
+    if folder == "cast":
+        assert body.startswith(b'(function () {\n"use strict";') and body.rstrip().endswith(b"})();")
+        assert not (WEB_DIR / "cast.js").exists()                   # no stale copy next to the parts
 
 
 @pytest.mark.skipif(find_ffmpeg() is None, reason="FFmpeg (imageio-ffmpeg) fehlt")

@@ -4,11 +4,28 @@
 
 /* ---------- Unterseiten in Match und Setup ---------- */
 const SUBPAGES = {
-  match: [["import", "Spieltag & Import", ["matchday", "sessions", "faceit"]], ["teams", "Teams & Spieler", ["teams-result", "players", "team-intro"]],
-          ["veto", "Map-Veto & Serie", ["map-veto", "series-map-results"]], ["caster", "Caster & Kameras", ["caster-guest", "cameras-sources"]], ["texts", "Timer & Texte", ["timer", "tickers-title"]]],
-  tournament: [["setup", "Aufbau", ["tournament"]], ["teams", "Teams & FACEIT", ["tournament-teams"]], ["games", "Spiele", ["tournament-games"]], ["overlay", "Im Overlay", ["tournament-overlay"]]],
-  setup: [["appearance", "Aussehen", ["themes", "theme-adjust", "headings"]], ["sponsors", "Sponsoren", ["sponsors"]], ["maps", "Map-Pool", ["map-pool"]],
-          ["background", "Hintergrund", ["background-clips-dronefootage"]], ["sceneList", "Szenen & OBS", ["scenes-setup"]], ["panels", "Szenen-Panels", ["scene-panels"]], ["cs2", "CS2-Livedaten", ["cs2-livedata"]]]
+  match: [
+    ["import", "Spieltag & Import", ["matchday", "sessions", "faceit"]],
+    ["teams", "Teams & Spieler", ["teams-result", "players", "team-intro"]],
+    ["veto", "Map-Veto & Serie", ["map-veto", "series-map-results"]],
+    ["caster", "Caster & Kameras", ["caster-guest", "cameras-sources"]],
+    ["texts", "Timer & Texte", ["timer", "tickers-title"]],
+  ],
+  tournament: [
+    ["setup", "Aufbau", ["tournament"]],
+    ["teams", "Teams & FACEIT", ["tournament-teams"]],
+    ["games", "Spiele", ["tournament-games"]],
+    ["overlay", "Im Overlay", ["tournament-overlay"]],
+  ],
+  setup: [
+    ["appearance", "Aussehen", ["themes", "theme-adjust", "headings"]],
+    ["sponsors", "Sponsoren", ["sponsors"]],
+    ["maps", "Map-Pool", ["map-pool"]],
+    ["background", "Hintergrund", ["background-clips-dronefootage"]],
+    ["sceneList", "Szenen & OBS", ["scenes-setup"]],
+    ["panels", "Szenen-Panels", ["scene-panels"]],
+    ["cs2", "CS2-Livedaten", ["cs2-livedata"]],
+  ],
 };
 const STEPPER_GROUPS = ["match", "tournament"];
 // Status je Unterseite (Punkt + eine Zeile): Grün = fertig, Gelb = fehlt noch/wartet, Lila = angepasst, Grau = Vorgabe/aus
@@ -16,36 +33,127 @@ function subStatus(group, key) {
   const t = (k, n) => (Z.teams[k].name || "").trim() || n;
   try {
     if (group === "match") {
-      if (key === "import" && ((Z.matchday || {}).list || []).length) { const l = Z.matchday.list, i = l.findIndex(x => x.id === Z.matchday.current);
-        return i >= 0 ? ["ok", `Spiel ${i + 1} von ${l.length}`] : ["wait", `${l.length} Spiele geplant`]; }
-      if (key === "import") return activeSession() ? ["ok", "Sitzung „" + activeSession() + "“"] : $("faceitUrl").value.trim() ? ["ok", "FACEIT verknüpft"] : ["", "manuell"];
-      if (key === "teams") { const own = k => !!(Z.teams[k].name || "").trim() && !/^team [ab]$/i.test(Z.teams[k].name.trim()), named = own("a") && own("b");
-        return named ? ["ok", `${t("a", "Team A")} vs ${t("b", "Team B")}`] : ["wait", "Teamnamen fehlen"]; }
-      if (key === "veto") { const st = steps(), done = st.filter(x => x.map || x.action === "decider" && st.filter(y => y.map).length === st.length - 1).length;
-        return done >= st.length ? ["ok", `${(Z.vetoPresets[Z.veto.format] || {}).name || Z.veto.format} · fertig`] : done ? ["wait", `Schritt ${done + 1} von ${st.length}`] : ["", `${(Z.vetoPresets[Z.veto.format] || {}).name || ""} · noch offen`]; }
-      if (key === "caster") { const c = Z.caster || {}, names = ["c1", "c2"].map(k => (c[k] || {}).name || "").filter(n => n && !/^CASTER \d$/.test(n));
-        return names.length ? ["ok", names.join(" · ")] : ["wait", "Caster-Namen fehlen"]; }
-      if (key === "texts") return Z.timer.running ? ["wait", "Timer läuft"] : ["", "Timer " + K.time(K.timerRest(Z.timer))];
+      if (key === "import" && ((Z.matchday || {}).list || []).length) {
+        const l = Z.matchday.list,
+          i = l.findIndex(x => x.id === Z.matchday.current);
+        return i >= 0 ? ["ok", `Spiel ${i + 1} von ${l.length}`] : ["wait", `${l.length} Spiele geplant`];
+      }
+      if (key === "import")
+        return activeSession()
+          ? ["ok", "Sitzung „" + activeSession() + "“"]
+          : $("faceitUrl").value.trim()
+            ? ["ok", "FACEIT verknüpft"]
+            : ["", "manuell"];
+      if (key === "teams") {
+        const own = k => !!(Z.teams[k].name || "").trim() && !/^team [ab]$/i.test(Z.teams[k].name.trim()),
+          named = own("a") && own("b");
+        return named ? ["ok", `${t("a", "Team A")} vs ${t("b", "Team B")}`] : ["wait", "Teamnamen fehlen"];
+      }
+      if (key === "veto") {
+        const st = steps(),
+          done = st.filter(
+            x => x.map || (x.action === "decider" && st.filter(y => y.map).length === st.length - 1)
+          ).length;
+        return done >= st.length
+          ? ["ok", `${(Z.vetoPresets[Z.veto.format] || {}).name || Z.veto.format} · fertig`]
+          : done
+            ? ["wait", `Schritt ${done + 1} von ${st.length}`]
+            : ["", `${(Z.vetoPresets[Z.veto.format] || {}).name || ""} · noch offen`];
+      }
+      if (key === "caster") {
+        const c = Z.caster || {},
+          names = ["c1", "c2"].map(k => (c[k] || {}).name || "").filter(n => n && !/^CASTER \d$/.test(n));
+        return names.length ? ["ok", names.join(" · ")] : ["wait", "Caster-Namen fehlen"];
+      }
+      if (key === "texts")
+        return Z.timer.running ? ["wait", "Timer läuft"] : ["", "Timer " + K.time(K.timerRest(Z.timer))];
     }
     if (group === "tournament") {
-      const T = tour(), B = subMemo.B || (subMemo.B = K.tournamentBuild(T, CastI18n.language)), FORMAT = { se: "Single Elimination", de: "Double Elimination", swiss: "Swiss", gsl: "Gruppen (GSL)", table: "Tabelle", import: "Baum wie bei FACEIT" };
-      const all = [...B.rounds.flatMap(r => r.matches), ...B.bottom.flatMap(r => r.matches), ...(B.finale ? [B.finale] : []), ...B.groups.flatMap(g => g.matches)].filter(m => m.a && m.b && m.a !== "BYE" && m.b !== "BYE");
-      if (key === "setup") return T.teams.length >= 2 ? ["ok", `${FORMAT[T.format] || T.format}${T.name ? " · " + T.name : ""}`] : ["", FORMAT[T.format] || T.format];
-      if (key === "teams") return T.teams.length >= 2 ? ["ok", `${T.teams.length} Teams${T.teams.some(t => t.faceitId) ? " · FACEIT" : ""}`] : ["wait", "Teams fehlen"];
-      if (key === "games") { const done = all.filter(m => m.done).length, fixed = Object.values(T.res).filter(e => e && e.fixed).length;
-        return !all.length ? ["", "noch keine Spiele"] : [done >= all.length ? "ok" : "wait", `${done} von ${all.length} fertig${fixed ? ` · ${fixed} korrigiert` : ""}`]; }
-      if (key === "overlay") { const V = T.visible; return V.mode === "all" && !V.resultsOff && !T.focused ? ["", "alles sichtbar"] : ["next", V.mode === "reveal" ? `bis Runde ${V.round}` : V.mode === "fromRound" ? `ab Runde ${V.round}` : T.focused ? "Team hervorgehoben" : "ohne Ergebnisse"]; }
+      const T = tour(),
+        B = subMemo.B || (subMemo.B = K.tournamentBuild(T, CastI18n.language)),
+        FORMAT = {
+          se: "Single Elimination",
+          de: "Double Elimination",
+          swiss: "Swiss",
+          gsl: "Gruppen (GSL)",
+          table: "Tabelle",
+          import: "Baum wie bei FACEIT",
+        };
+      const all = [
+        ...B.rounds.flatMap(r => r.matches),
+        ...B.bottom.flatMap(r => r.matches),
+        ...(B.finale ? [B.finale] : []),
+        ...B.groups.flatMap(g => g.matches),
+      ].filter(m => m.a && m.b && m.a !== "BYE" && m.b !== "BYE");
+      if (key === "setup")
+        return T.teams.length >= 2
+          ? ["ok", `${FORMAT[T.format] || T.format}${T.name ? " · " + T.name : ""}`]
+          : ["", FORMAT[T.format] || T.format];
+      if (key === "teams")
+        return T.teams.length >= 2
+          ? ["ok", `${T.teams.length} Teams${T.teams.some(t => t.faceitId) ? " · FACEIT" : ""}`]
+          : ["wait", "Teams fehlen"];
+      if (key === "games") {
+        const done = all.filter(m => m.done).length,
+          fixed = Object.values(T.res).filter(e => e && e.fixed).length;
+        return !all.length
+          ? ["", "noch keine Spiele"]
+          : [
+              done >= all.length ? "ok" : "wait",
+              `${done} von ${all.length} fertig${fixed ? ` · ${fixed} korrigiert` : ""}`,
+            ];
+      }
+      if (key === "overlay") {
+        const V = T.visible;
+        return V.mode === "all" && !V.resultsOff && !T.focused
+          ? ["", "alles sichtbar"]
+          : [
+              "next",
+              V.mode === "reveal"
+                ? `bis Runde ${V.round}`
+                : V.mode === "fromRound"
+                  ? `ab Runde ${V.round}`
+                  : T.focused
+                    ? "Team hervorgehoben"
+                    : "ohne Ergebnisse",
+            ];
+      }
     }
     if (group === "setup") {
       if (key === "appearance") return ["ok", (T[Z.theme] || {}).name || Z.theme];
-      if (key === "sponsors") { const l = sponsorEntries(), missing = l.filter(x => !x.logo).length;
-        return !l.length ? ["", "keine Sponsoren"] : missing ? ["wait", `${missing} Logo${missing > 1 ? "s" : ""} fehlt`] : ["ok", `${l.length} Logos`]; }
-      if (key === "maps") { const n = Z.mapPool.filter(m => m.active !== false).length; return [n >= 7 ? "ok" : "wait", `${n} Maps im Pool`]; }
-      if (key === "background") { const l = bgPlaylists(), v = l.reduce((a, p) => a + p.videos.length, 0);
-        return v ? ["ok", `${l.length} Playlist${l.length > 1 ? "en" : ""} · ${(Z.background.source === "obs") ? "OBS spielt ab" : "Overlay spielt ab"}`] : ["", "kein Video"]; }
-      if (key === "sceneList") return channel.obs && channel.obs.isOpen ? ["ok", "OBS verbunden"] : ["wait", "OBS nicht verbunden"];
-      if (key === "panels") { const n = Object.keys(ui.panels || {}).length; return n ? ["next", `${n} angepasst`] : ["", "Vorgabe"]; }
-      if (key === "cs2") return liveLast && Date.now() - liveLast.time < 15000 ? ["ok", "Live-Daten kommen"] : ["wait", "wartet auf Spiel"];
+      if (key === "sponsors") {
+        const l = sponsorEntries(),
+          missing = l.filter(x => !x.logo).length;
+        return !l.length
+          ? ["", "keine Sponsoren"]
+          : missing
+            ? ["wait", `${missing} Logo${missing > 1 ? "s" : ""} fehlt`]
+            : ["ok", `${l.length} Logos`];
+      }
+      if (key === "maps") {
+        const n = Z.mapPool.filter(m => m.active !== false).length;
+        return [n >= 7 ? "ok" : "wait", `${n} Maps im Pool`];
+      }
+      if (key === "background") {
+        const l = bgPlaylists(),
+          v = l.reduce((a, p) => a + p.videos.length, 0);
+        return v
+          ? [
+              "ok",
+              `${l.length} Playlist${l.length > 1 ? "en" : ""} · ${Z.background.source === "obs" ? "OBS spielt ab" : "Overlay spielt ab"}`,
+            ]
+          : ["", "kein Video"];
+      }
+      if (key === "sceneList")
+        return channel.obs && channel.obs.isOpen ? ["ok", "OBS verbunden"] : ["wait", "OBS nicht verbunden"];
+      if (key === "panels") {
+        const n = Object.keys(ui.panels || {}).length;
+        return n ? ["next", `${n} angepasst`] : ["", "Vorgabe"];
+      }
+      if (key === "cs2")
+        return liveLast && Date.now() - liveLast.time < 15000
+          ? ["ok", "Live-Daten kommen"]
+          : ["wait", "wartet auf Spiel"];
     }
   } catch (err) {}
   return ["", ""];
@@ -55,11 +163,13 @@ let subMemo = {};
 function subStatusDraw() {
   subMemo = {};
   document.querySelectorAll(".subnav").forEach(nav => {
-    const g = nav.closest(".group"); if (g && g.hidden) return;        // nur der sichtbare Reiter – beim Wechsel sofort (tabs)
+    const g = nav.closest(".group");
+    if (g && g.hidden) return; // nur der sichtbare Reiter – beim Wechsel sofort (tabs)
     const group = nav.dataset.for || (g || {}).dataset?.group;
     nav.querySelectorAll("[data-below]").forEach(b => {
       const [state, text] = b.dataset.below === "all" ? ["", ""] : subStatus(group, b.dataset.below);
-      const dot = b.querySelector(".sub-dot"), small = b.querySelector(".sub-text");
+      const dot = b.querySelector(".sub-dot"),
+        small = b.querySelector(".sub-text");
       if (dot.className !== "sub-dot " + state) dot.className = "sub-dot " + state;
       if (small.textContent !== text) small.textContent = text;
     });
@@ -67,26 +177,61 @@ function subStatusDraw() {
 }
 setInterval(subStatusDraw, 2000);
 setTimeout(subStatusDraw, 0);
-function belowFrom(group, slug) { const u = (SUBPAGES[group] || []).find(([, , l]) => l.includes(slug)); return u ? u[0] : null; }
+function belowFrom(group, slug) {
+  const u = (SUBPAGES[group] || []).find(([, , l]) => l.includes(slug));
+  return u ? u[0] : null;
+}
 function belowApply() {
   for (const group of Object.keys(SUBPAGES)) {
-    const g = document.querySelector(`.group[data-group="${group}"]`), nav = g.querySelector(".subnav");
+    const g = document.querySelector(`.group[data-group="${group}"]`),
+      nav = g.querySelector(".subnav");
     const cur = (ui.below || {})[group] || SUBPAGES[group][0][0];
-    nav.innerHTML = [...SUBPAGES[group], ["all", "Alle", []]].map(([k, n]) =>
-      `<button data-below="${k}" aria-pressed="${k === cur}"><i class="sub-dot"></i><span>${esc(n)}<small class="sub-text"></small></span></button>`).join("");
-    nav.querySelectorAll("button").forEach(b => b.onclick = () => { ui.below = Object.assign({}, ui.below, { [group]: b.dataset.below }); uiSave(); belowApply(); });
-    [...g.children].filter(x => x.tagName === "DETAILS").forEach(d => { d.hidden = cur !== "all" && belowFrom(group, d.dataset.area) !== cur; if (!d.hidden && cur !== "all") d.open = true; });
+    nav.innerHTML = [...SUBPAGES[group], ["all", "Alle", []]]
+      .map(
+        ([k, n]) =>
+          `<button data-below="${k}" aria-pressed="${k === cur}"><i class="sub-dot"></i><span>${esc(n)}<small class="sub-text"></small></span></button>`
+      )
+      .join("");
+    nav.querySelectorAll("button").forEach(
+      b =>
+        (b.onclick = () => {
+          ui.below = Object.assign({}, ui.below, { [group]: b.dataset.below });
+          uiSave();
+          belowApply();
+        })
+    );
+    [...g.children]
+      .filter(x => x.tagName === "DETAILS")
+      .forEach(d => {
+        d.hidden = cur !== "all" && belowFrom(group, d.dataset.area) !== cur;
+        if (!d.hidden && cur !== "all") d.open = true;
+      });
     // Stepper (Match, Turnier): Zurück / Weiter zur nächsten Unterseite – Schritt für Schritt durch die Vorbereitung
     if (STEPPER_GROUPS.includes(group)) {
       let step = g.querySelector(":scope > .stepper");
-      if (!step) { step = document.createElement("div"); step.className = "stepper"; g.appendChild(step); }
-      const list = SUBPAGES[group], i = list.findIndex(([k]) => k === cur);
+      if (!step) {
+        step = document.createElement("div");
+        step.className = "stepper";
+        g.appendChild(step);
+      }
+      const list = SUBPAGES[group],
+        i = list.findIndex(([k]) => k === cur);
       step.hidden = i < 0;
-      const go = k => { ui.below = Object.assign({}, ui.below, { [group]: k }); uiSave(); belowApply(); g.scrollIntoView({ block: "start" }); };
-      step.innerHTML = i < 0 ? "" : `<span class="small">Schritt ${i + 1} von ${list.length}</span>` +
-        (i > 0 ? `<button class="button" data-step="${list[i - 1][0]}">← ${esc(list[i - 1][1])}</button>` : "") +
-        (i < list.length - 1 ? `<button class="button main" data-step="${list[i + 1][0]}">Weiter: ${esc(list[i + 1][1])} →</button>` : "");
-      step.querySelectorAll("[data-step]").forEach(b => b.onclick = () => go(b.dataset.step));
+      const go = k => {
+        ui.below = Object.assign({}, ui.below, { [group]: k });
+        uiSave();
+        belowApply();
+        g.scrollIntoView({ block: "start" });
+      };
+      step.innerHTML =
+        i < 0
+          ? ""
+          : `<span class="small">Schritt ${i + 1} von ${list.length}</span>` +
+            (i > 0 ? `<button class="button" data-step="${list[i - 1][0]}">← ${esc(list[i - 1][1])}</button>` : "") +
+            (i < list.length - 1
+              ? `<button class="button main" data-step="${list[i + 1][0]}">Weiter: ${esc(list[i + 1][1])} →</button>`
+              : "");
+      step.querySelectorAll("[data-step]").forEach(b => (b.onclick = () => go(b.dataset.step)));
     }
   }
   setTimeout(subStatusDraw, 0);
@@ -95,14 +240,21 @@ function belowApply() {
 /* ---------- Oberfläche: Docks wie in OBS, Trennlinien, Einklappen, Zoom, Design ---------- */
 // Spalte ohne sichtbare Karte (z. B. alle Karten in Docks): Seite schmaler machen
 function columnEmptyCheck() {
-  const g = document.querySelector(".group:not([hidden])"), s = document.querySelector(".page");
+  const g = document.querySelector(".group:not([hidden])"),
+    s = document.querySelector(".page");
   if (!g || !s) return;
   const empty = ![...g.children].some(x => x.tagName === "DETAILS" && !x.hidden);
-  if (s.classList.contains("column-empty") !== empty) { s.classList.toggle("column-empty", empty); if (typeof widths === "function") try { widths(); } catch (err) {} }
+  if (s.classList.contains("column-empty") !== empty) {
+    s.classList.toggle("column-empty", empty);
+    if (typeof widths === "function")
+      try {
+        widths();
+      } catch (err) {}
+  }
 }
 const pageEl = document.querySelector(".page");
 const DOCKS = { bottom: $("dockBottom"), right: $("dockRight") };
-if (Array.isArray(ui.dock)) ui.dock = { right: ui.dock, bottom: [] };      // ältere Version
+if (Array.isArray(ui.dock)) ui.dock = { right: ui.dock, bottom: [] }; // ältere Version
 ui.dock = Object.assign({ bottom: [], right: [] }, ui.dock || {});
 function widths() {
   if (ui.b1) pageEl.style.setProperty("--b1", ui.b1 + "px");
@@ -113,13 +265,26 @@ function widths() {
 }
 function draggable(divider, field, element, direction, reversedValue) {
   divider.addEventListener("pointerdown", ev => {
-    if (divider.dataset.locked || !document.body.classList.contains("layout-edit")) return;   // gesperrt oder nicht im Bearbeiten-Modus
+    if (divider.dataset.locked || !document.body.classList.contains("layout-edit")) return; // gesperrt oder nicht im Bearbeiten-Modus
     const reversed = typeof reversedValue === "function" ? reversedValue() : reversedValue;
-    ev.preventDefault(); divider.setPointerCapture(ev.pointerId); divider.classList.add("drags");
-    const vertical = direction === "y", start = vertical ? ev.clientY : ev.clientX;
-    const r = element.getBoundingClientRect(), startSize = vertical ? r.height : r.width, zoom = parseFloat(document.body.style.zoom) || 1;
-    const move = m => { const d = ((vertical ? m.clientY : m.clientX) - start) / zoom; ui[field] = Math.max(vertical ? 120 : 260, Math.round(startSize + (reversed ? -d : d))); widths(); };
-    const end = () => { divider.classList.remove("drags"); divider.removeEventListener("pointermove", move); uiSave(); };
+    ev.preventDefault();
+    divider.setPointerCapture(ev.pointerId);
+    divider.classList.add("drags");
+    const vertical = direction === "y",
+      start = vertical ? ev.clientY : ev.clientX;
+    const r = element.getBoundingClientRect(),
+      startSize = vertical ? r.height : r.width,
+      zoom = parseFloat(document.body.style.zoom) || 1;
+    const move = m => {
+      const d = ((vertical ? m.clientY : m.clientX) - start) / zoom;
+      ui[field] = Math.max(vertical ? 120 : 260, Math.round(startSize + (reversed ? -d : d)));
+      widths();
+    };
+    const end = () => {
+      divider.classList.remove("drags");
+      divider.removeEventListener("pointermove", move);
+      uiSave();
+    };
     divider.addEventListener("pointermove", move);
     divider.addEventListener("pointerup", end, { once: true });
   });
@@ -128,41 +293,86 @@ draggable($("divider1"), "b1", document.querySelector(".column"), "x", () => pla
 draggable($("divider2"), "b2", $("dockRight"), "x", () => placement().page !== "left");
 draggable($("dividerH"), "hU", $("dockBottom"), "y", () => placement().preview !== "upper");
 function bottomFit() {
-  const cards = cardsIn($("dockBottom")); if (!cards.length) return;
-  const full = Math.max(...cards.map(k => { const previousMax = k.style.maxHeight; k.style.maxHeight = "none"; const h = k.scrollHeight; k.style.maxHeight = previousMax; return h; })) + 16;
+  const cards = cardsIn($("dockBottom"));
+  if (!cards.length) return;
+  const full =
+    Math.max(
+      ...cards.map(k => {
+        const previousMax = k.style.maxHeight;
+        k.style.maxHeight = "none";
+        const h = k.scrollHeight;
+        k.style.maxHeight = previousMax;
+        return h;
+      })
+    ) + 16;
   const max = $("middle").clientHeight * 0.6;
-  ui.hU = Math.round(Math.min(full, max)); pageEl.style.setProperty("--hU", ui.hU + "px"); uiSave();
+  ui.hU = Math.round(Math.min(full, max));
+  pageEl.style.setProperty("--hU", ui.hU + "px");
+  uiSave();
 }
-$("dividerH").addEventListener("dblclick", () => { if (!locked("bottom")) bottomFit(); });
+$("dividerH").addEventListener("dblclick", () => {
+  if (!locked("bottom")) bottomFit();
+});
 $("dividerH").title = "Ziehen = Höhe ändern · Doppelklick = Höhe passend zum Inhalt";
 // Lage der Bereiche frei wählbar – nur die Reihenfolge ändert sich, nichts wird neu aufgebaut
-function placement() { return Object.assign({ tabs: "left", side: "right", preview: "bottom" }, ui.placement || {}); }
+function placement() {
+  return Object.assign({ tabs: "left", side: "right", preview: "bottom" }, ui.placement || {});
+}
 function placementSet() {
-  const L = placement(), columnEl = document.querySelector(".column"), middleEl = $("middle"), dockRightEl = $("dockRight"), t1 = $("divider1"), t2 = $("divider2");
+  const L = placement(),
+    columnEl = document.querySelector(".column"),
+    middleEl = $("middle"),
+    dockRightEl = $("dockRight"),
+    t1 = $("divider1"),
+    t2 = $("divider2");
   const middlePart = L.side === "left" ? [dockRightEl, t2, middleEl] : [middleEl, t2, dockRightEl];
   const sequence = L.tabs === "right" ? [...middlePart, t1, columnEl] : [columnEl, t1, ...middlePart];
-  sequence.forEach((el, i) => { el.style.order = i + 1; });
+  sequence.forEach((el, i) => {
+    el.style.order = i + 1;
+  });
   const upper = L.preview === "upper";
-  $("dockBottom").style.order = upper ? 0 : 3; $("dividerH").style.order = upper ? 1 : 2; middleEl.querySelector(".preview").style.order = upper ? 2 : 0;
-  document.querySelectorAll("[data-placement]").forEach(g => g.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.value === L[g.dataset.placement])));
+  $("dockBottom").style.order = upper ? 0 : 3;
+  $("dividerH").style.order = upper ? 1 : 2;
+  middleEl.querySelector(".preview").style.order = upper ? 2 : 0;
+  document
+    .querySelectorAll("[data-placement]")
+    .forEach(g =>
+      g
+        .querySelectorAll("button")
+        .forEach(b => b.setAttribute("aria-pressed", b.dataset.value === L[g.dataset.placement]))
+    );
   zones.bottom.textContent = upper ? "Über der Vorschau" : "Unter der Vorschau";
   zones.right.textContent = L.side === "left" ? "Links neben der Vorschau" : "Rechts neben der Vorschau";
-  DOCKS.bottom.querySelector(".dock-target").textContent = upper ? "Über der Vorschau andocken" : "Unter der Vorschau andocken";
-  DOCKS.right.querySelector(".dock-target").textContent = L.side === "left" ? "Links neben der Vorschau andocken" : "Rechts neben der Vorschau andocken";
+  DOCKS.bottom.querySelector(".dock-target").textContent = upper
+    ? "Über der Vorschau andocken"
+    : "Unter der Vorschau andocken";
+  DOCKS.right.querySelector(".dock-target").textContent =
+    L.side === "left" ? "Links neben der Vorschau andocken" : "Rechts neben der Vorschau andocken";
 }
-document.querySelectorAll("[data-placement] button").forEach(b => b.onclick = () => {
-  ui.placement = Object.assign(placement(), { [b.parentElement.dataset.placement]: b.dataset.value }); uiSave(); placementSet();
-});
-$("previewFold").onclick = () => { ui.previewClose = !ui.previewClose; widths(); uiSave(); };
+document.querySelectorAll("[data-placement] button").forEach(
+  b =>
+    (b.onclick = () => {
+      ui.placement = Object.assign(placement(), { [b.parentElement.dataset.placement]: b.dataset.value });
+      uiSave();
+      placementSet();
+    })
+);
+$("previewFold").onclick = () => {
+  ui.previewClose = !ui.previewClose;
+  widths();
+  uiSave();
+};
 // Zoom: „auto" wächst mit der Fensterbreite (1920 px = 100 %, 2560 px = 130 %) – große Bildschirme bleiben lesbar
-const zoomAuto = () => Math.min(1.5, Math.max(0.8, Math.round(innerWidth / 1920 * 10) / 10));
+const zoomAuto = () => Math.min(1.5, Math.max(0.8, Math.round((innerWidth / 1920) * 10) / 10));
 function zoomSet(f) {
   ui.zoom = f === "auto" ? "auto" : Math.min(1.5, Math.max(0.6, Math.round(f * 10) / 10));
   const z = ui.zoom === "auto" ? zoomAuto() : ui.zoom;
-  document.body.style.zoom = z; document.body.style.setProperty("--zoom", z);
+  document.body.style.zoom = z;
+  document.body.style.setProperty("--zoom", z);
   $("zoomValue").textContent = ui.zoom === "auto" ? "Auto" : Math.round(z * 100) + " %";
   $("zoomValue").title = ui.zoom === "auto" ? "Größe passt sich dem Fenster an" : "Zurück auf automatische Größe";
-  $("zoomSlider").value = z; $("zoomDisplay").textContent = Math.round(z * 100) + " %";
+  $("zoomSlider").value = z;
+  $("zoomDisplay").textContent = Math.round(z * 100) + " %";
   if ($("zoomAutoOn")) $("zoomAutoOn").checked = ui.zoom === "auto";
   uiSave();
 }
@@ -170,7 +380,9 @@ const zoomNow = () => parseFloat(document.body.style.zoom) || 1;
 $("zoomSmall").onclick = () => zoomSet(zoomNow() - 0.1);
 $("zoomLarge").onclick = () => zoomSet(zoomNow() + 0.1);
 $("zoomValue").onclick = () => zoomSet("auto");
-addEventListener("resize", () => { if (ui.zoom === "auto") zoomSet("auto"); });
+addEventListener("resize", () => {
+  if (ui.zoom === "auto") zoomSet("auto");
+});
 $("zoomSlider").oninput = () => zoomSet(+$("zoomSlider").value);
 // Design der App: dunkel / hell / wie Windows
 const systemLight = matchMedia("(prefers-color-scheme: light)");
@@ -178,275 +390,518 @@ function designSet(d) {
   ui.design = d || "dark";
   const light = ui.design === "light" || (ui.design === "system" && systemLight.matches);
   document.documentElement.dataset.design = light ? "light" : "dark";
-  document.querySelectorAll("#appDesign button").forEach(b => b.setAttribute("aria-pressed", b.dataset.design === ui.design));
+  document
+    .querySelectorAll("#appDesign button")
+    .forEach(b => b.setAttribute("aria-pressed", b.dataset.design === ui.design));
   uiSave();
 }
-document.querySelectorAll("#appDesign button").forEach(b => b.onclick = () => designSet(b.dataset.design));
-systemLight.addEventListener("change", () => { if (ui.design === "system") designSet("system"); });
+document.querySelectorAll("#appDesign button").forEach(b => (b.onclick = () => designSet(b.dataset.design)));
+systemLight.addEventListener("change", () => {
+  if (ui.design === "system") designSet("system");
+});
 // App-Einstellungen: eigene Seite mit Liste links (je Bereich ein Status), rechts ein Bereich auf einmal
 function settings(unfolded, section) {
   $("appDialog").hidden = !unfolded;
-  if (unfolded) { settingsShow(section || ui.settingsSection || "setLinks"); settingsNavDraw(); }
+  if (unfolded) {
+    settingsShow(section || ui.settingsSection || "setLinks");
+    settingsNavDraw();
+  }
 }
 // alle Bereiche stehen untereinander; die Sprungleiste scrollt zum Bereich (oder zu einer Karte darin, z. B. „setObs")
 function settingsShow(id) {
   if (!$(id) || !$(id).closest(".dialog-content")) id = "setLinks";
-  document.querySelectorAll(".dialog-content > section[hidden]").forEach(x => { x.hidden = false; });   // (bis 2.13 je ein Bereich)
+  document.querySelectorAll(".dialog-content > section[hidden]").forEach(x => {
+    x.hidden = false;
+  }); // (bis 2.13 je ein Bereich)
   const section = $(id).closest(".dialog-content > section") || $(id);
-  document.querySelectorAll(".settings-nav [data-jump]").forEach(b => b.setAttribute("aria-current", b.dataset.jump === section.id));
+  document
+    .querySelectorAll(".settings-nav [data-jump]")
+    .forEach(b => b.setAttribute("aria-current", b.dataset.jump === section.id));
   requestAnimationFrame(() => $(id).scrollIntoView({ block: "start" }));
-  ui.settingsSection = section.id; uiSave();
+  ui.settingsSection = section.id;
+  uiSave();
 }
 // Status je Bereich: Grün = verbunden/gespeichert, Gelb = fehlt/wartet, Grau = aus – nur Anzeige
 function settingsNavDraw() {
-  const obsOn = $("obsStatus").classList.contains("ok"), dachOn = typeof dachInfo !== "undefined" && dachInfo.idSet && dachInfo.keySet;
-  const faceitOn = typeof faceitKeySaved !== "undefined" && faceitKeySaved, musicOn = !(Z.music && Z.music.displayed === false);
-  const state = (id, on, text, off) => { const e = $(id); e.className = "state " + (on ? "ok" : off || ""); e.textContent = text; };
+  const obsOn = $("obsStatus").classList.contains("ok"),
+    dachOn = typeof dachInfo !== "undefined" && dachInfo.idSet && dachInfo.keySet;
+  const faceitOn = typeof faceitKeySaved !== "undefined" && faceitKeySaved,
+    musicOn = !(Z.music && Z.music.displayed === false);
+  const state = (id, on, text, off) => {
+    const e = $(id);
+    e.className = "state " + (on ? "ok" : off || "");
+    e.textContent = text;
+  };
   state("setObsState", obsOn, obsOn ? "verbunden" : "nicht verbunden", "wait");
   state("setFaceitState", faceitOn, faceitOn ? "Schlüssel gespeichert" : "kein Schlüssel");
   state("setDachState", dachOn, dachOn ? "Zugang gespeichert" : "nicht eingerichtet");
   state("setMusicState", musicOn, musicOn ? "an" : "aus");
   $("navLinksDot").className = obsOn ? "ok" : "wait";
-  $("navLanguage").textContent = `App ${CastI18n.language === "en" ? "English" : "Deutsch"} · Overlays ${(Z.overlayLanguage || "de") === "en" ? "English" : "Deutsch"}`;
-  $("navLook").innerHTML = `<span>${({ dark: "Dunkel", light: "Hell", system: "Wie das System" })[ui.design || "dark"]}</span> · <span>${ui.zoom === "auto" ? "Größe automatisch" : Math.round((ui.zoom || 1) * 100) + " %"}</span>`;
+  $("navLanguage").textContent =
+    `App ${CastI18n.language === "en" ? "English" : "Deutsch"} · Overlays ${(Z.overlayLanguage || "de") === "en" ? "English" : "Deutsch"}`;
+  $("navLook").innerHTML =
+    `<span>${{ dark: "Dunkel", light: "Hell", system: "Wie das System" }[ui.design || "dark"]}</span> · <span>${ui.zoom === "auto" ? "Größe automatisch" : Math.round((ui.zoom || 1) * 100) + " %"}</span>`;
   $("navUpdate").textContent = $("updateState").textContent;
-  $("navUpdateDot").className = /available|error/.test(lastUpdateState || "") ? "wait" : lastUpdateState === "current" ? "ok" : "";
+  $("navUpdateDot").className = /available|error/.test(lastUpdateState || "")
+    ? "wait"
+    : lastUpdateState === "current"
+      ? "ok"
+      : "";
   $("aboutVersion").textContent = $("appVersion").textContent;
 }
-document.querySelectorAll(".settings-nav [data-jump]").forEach(b => b.onclick = () => settingsShow(b.dataset.jump));
-document.querySelectorAll("[data-settings]").forEach(b => b.onclick = () => settings(true, b.dataset.settings));
+document.querySelectorAll(".settings-nav [data-jump]").forEach(b => (b.onclick = () => settingsShow(b.dataset.jump)));
+document.querySelectorAll("[data-settings]").forEach(b => (b.onclick = () => settings(true, b.dataset.settings)));
 $("setExport").onclick = () => $("export").click();
 $("setImport").onclick = () => $("import").click();
 $("aboutSteps").onclick = () => $("stepsAgain").click();
-$("zoomAutoOn").onchange = () => { zoomSet($("zoomAutoOn").checked ? "auto" : zoomNow()); settingsNavDraw(); };
+$("zoomAutoOn").onchange = () => {
+  zoomSet($("zoomAutoOn").checked ? "auto" : zoomNow());
+  settingsNavDraw();
+};
 $("dialogOpen").onclick = () => settings(true);
 $("dialogClose").onclick = () => settings(false);
-$("appDialog").addEventListener("click", ev => { if (ev.target === $("appDialog")) settings(false); });
-addEventListener("keydown", ev => { if (ev.key === "Escape" && !$("appDialog").hidden) settings(false); });
-$("stepsAgain").onclick = () => { localStorage.removeItem("cast-steps-off"); stepsDraw(); settings(false); tabs("live"); };
+$("appDialog").addEventListener("click", ev => {
+  if (ev.target === $("appDialog")) settings(false);
+});
+addEventListener("keydown", ev => {
+  if (ev.key === "Escape" && !$("appDialog").hidden) settings(false);
+});
+$("stepsAgain").onclick = () => {
+  localStorage.removeItem("cast-steps-off");
+  stepsDraw();
+  settings(false);
+  tabs("live");
+};
 // Alle Bereiche ein-/ausklappen (sichtbarer Reiter + Docks)
 function allAreas(unfolded) {
-  document.querySelectorAll('.group:not([hidden]) > details, .dock details').forEach(d => { if (d.id !== "firstSteps" && !(d.dataset.locked && placeFrom(d) !== "left")) d.open = unfolded; });
+  document.querySelectorAll(".group:not([hidden]) > details, .dock details").forEach(d => {
+    if (d.id !== "firstSteps" && !(d.dataset.locked && placeFrom(d) !== "left")) d.open = unfolded;
+  });
 }
 $("allClose").onclick = () => allAreas(false);
 $("allOpen").onclick = () => allAreas(true);
 // Bereiche andocken: links (Reiter) · unter der Vorschau · rechts daneben
-const slug = t => t.toLowerCase().replace(/[^a-z0-9äöüß]+/g, "-").replace(/^-|-$/g, "");
+const slug = t =>
+  t
+    .toLowerCase()
+    .replace(/[^a-z0-9äöüß]+/g, "-")
+    .replace(/^-|-$/g, "");
 const areas = [...document.querySelectorAll(".group > details")];
-const placeFrom = d => { const k = d.closest("#dockBottom, #dockRight"); return !k ? "left" : k.id === "dockBottom" ? "bottom" : "right"; };
-const cardsIn = dock => [...dock.children].filter(x => x.tagName === "DETAILS" || x.classList.contains("tabgroup") || x.classList.contains("dock-stack"));
-const groupFrom = d => d.parentElement && d.parentElement.classList.contains("tabgroup") ? d.parentElement : null;
+const placeFrom = d => {
+  const k = d.closest("#dockBottom, #dockRight");
+  return !k ? "left" : k.id === "dockBottom" ? "bottom" : "right";
+};
+const cardsIn = dock =>
+  [...dock.children].filter(
+    x => x.tagName === "DETAILS" || x.classList.contains("tabgroup") || x.classList.contains("dock-stack")
+  );
+const groupFrom = d => (d.parentElement && d.parentElement.classList.contains("tabgroup") ? d.parentElement : null);
 // Stapel (2.15): im Dock unter der Vorschau liegen Bereiche auch übereinander – ein Stapel ist eine Spalte mit
 // Bereichen oder Tab-Gruppen, jedes Teil scrollt für sich. Gespeichert als { stack: [Eintrag, …] } in ui.dock.bottom.
-const stackFrom = el => el && el.parentElement && el.parentElement.classList.contains("dock-stack") ? el.parentElement : null;
+const stackFrom = el =>
+  el && el.parentElement && el.parentElement.classList.contains("dock-stack") ? el.parentElement : null;
 const stackOf = d => stackFrom(d) || stackFrom(groupFrom(d));
 function stackCleanup(st) {
   if (!st || !st.isConnected) return;
   const parts = [...st.children];
-  if (parts.length <= 1) { if (parts[0]) st.replaceWith(parts[0]); else st.remove(); }
+  if (parts.length <= 1) {
+    if (parts[0]) st.replaceWith(parts[0]);
+    else st.remove();
+  }
 }
 function stackWith(d, card, below) {
   if (card === d) return;
-  const previousGroup = groupFrom(d), previousStack = stackOf(d);
+  const previousGroup = groupFrom(d),
+    previousStack = stackOf(d);
   let st = stackFrom(card);
-  if (!st) { st = document.createElement("div"); st.className = "dock-stack"; card.parentElement.insertBefore(st, card); st.appendChild(card); }
+  if (!st) {
+    st = document.createElement("div");
+    st.className = "dock-stack";
+    card.parentElement.insertBefore(st, card);
+    st.appendChild(card);
+  }
   d.classList.remove("tab-active");
-  st.insertBefore(d, below ? card.nextSibling : card); d.open = true;
-  groupCleanup(previousGroup); if (previousStack !== st) stackCleanup(previousStack);
+  st.insertBefore(d, below ? card.nextSibling : card);
+  d.open = true;
+  groupCleanup(previousGroup);
+  if (previousStack !== st) stackCleanup(previousStack);
   dockRemember();
 }
 // ein gespeicherter Eintrag (Bereich, Tab-Gruppe oder Stapel) in ein Dock oder einen Stapel legen
 function dockEntryPlace(container, entry, before) {
   before = before === undefined ? container.querySelector(":scope > .dock-target") : before;
   if (typeof entry === "string" || (entry && entry.area)) {
-    const d = areaAfter(entry.area || entry); if (!d) return;
-    container.insertBefore(d, before); if (entry.open !== undefined) d.open = entry.open !== false;
+    const d = areaAfter(entry.area || entry);
+    if (!d) return;
+    container.insertBefore(d, before);
+    if (entry.open !== undefined) d.open = entry.open !== false;
     return;
   }
   if (entry && Array.isArray(entry.stack)) {
-    const st = document.createElement("div"); st.className = "dock-stack"; container.insertBefore(st, before);
+    const st = document.createElement("div");
+    st.className = "dock-stack";
+    container.insertBefore(st, before);
     entry.stack.forEach(x => dockEntryPlace(st, x, null));
-    stackCleanup(st); return;
+    stackCleanup(st);
+    return;
   }
   const cards = ((entry || {}).tabs || []).map(areaAfter).filter(Boolean);
-  if (cards.length < 2) { cards.forEach(d => container.insertBefore(d, before)); return; }
-  const g = document.createElement("div"); g.className = "tabgroup"; g.dataset.active = entry.active || "";
-  g.innerHTML = `<div class="tab-bar" role="tablist"></div>`; container.insertBefore(g, before);
-  cards.forEach(d => g.appendChild(d)); tabsDraw(g);
+  if (cards.length < 2) {
+    cards.forEach(d => container.insertBefore(d, before));
+    return;
+  }
+  const g = document.createElement("div");
+  g.className = "tabgroup";
+  g.dataset.active = entry.active || "";
+  g.innerHTML = `<div class="tab-bar" role="tablist"></div>`;
+  container.insertBefore(g, before);
+  cards.forEach(d => g.appendChild(d));
+  tabsDraw(g);
 }
 // Tab-Leiste einer Gruppe neu aufbauen; die Tabs lassen sich anklicken und wieder herausziehen
 function tabsDraw(g) {
   const cards = [...g.querySelectorAll(":scope > details")];
   if (!cards.some(x => x.dataset.area === g.dataset.active)) g.dataset.active = cards[0] ? cards[0].dataset.area : "";
-  const strip = g.querySelector(".tab-bar"); strip.innerHTML = "";
+  const strip = g.querySelector(".tab-bar");
+  strip.innerHTML = "";
   cards.forEach(d => {
     const on = d.dataset.area === g.dataset.active;
-    d.classList.toggle("tab-active", on); if (on) d.open = true;
-    const b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "tab"); b.setAttribute("aria-selected", on);
+    d.classList.toggle("tab-active", on);
+    if (on) d.open = true;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", on);
     b.textContent = d.querySelector("summary").textContent.replace(/[⠿⧉]/g, "").trim();
     b.addEventListener("pointerdown", ev => dragStart(ev, d));
-    b.addEventListener("click", () => { if (d._dragged) { d._dragged = false; return; } g.dataset.active = d.dataset.area; tabsDraw(g); dockRemember(); });
+    b.addEventListener("click", () => {
+      if (d._dragged) {
+        d._dragged = false;
+        return;
+      }
+      g.dataset.active = d.dataset.area;
+      tabsDraw(g);
+      dockRemember();
+    });
     strip.appendChild(b);
   });
 }
 function groupCleanup(g) {
   if (!g || !g.isConnected) return;
   const cards = [...g.querySelectorAll(":scope > details")];
-  if (cards.length <= 1) { if (cards[0]) { cards[0].classList.remove("tab-active"); g.replaceWith(cards[0]); } else g.remove(); }
-  else tabsDraw(g);
+  if (cards.length <= 1) {
+    if (cards[0]) {
+      cards[0].classList.remove("tab-active");
+      g.replaceWith(cards[0]);
+    } else g.remove();
+  } else tabsDraw(g);
 }
 function groupNew(dock, before, active) {
-  const g = document.createElement("div"); g.className = "tabgroup"; g.dataset.active = active || "";
+  const g = document.createElement("div");
+  g.className = "tabgroup";
+  g.dataset.active = active || "";
   g.innerHTML = `<div class="tab-bar" role="tablist"></div>`;
   dock.insertBefore(g, before || dock.querySelector(".dock-target"));
   return g;
 }
 function asTab(d, target) {
   if (target === d || target === groupFrom(d)) return;
-  const previousGroup = groupFrom(d), previousStack = stackOf(d);
+  const previousGroup = groupFrom(d),
+    previousStack = stackOf(d);
   let g = target.classList.contains("tabgroup") ? target : null;
-  if (!g) { g = groupNew(target.parentElement, target, d.dataset.area); g.appendChild(target); target.open = true; }
-  g.appendChild(d); g.dataset.active = d.dataset.area; d.open = true;
-  tabsDraw(g); groupCleanup(previousGroup); if (previousStack !== stackOf(d)) stackCleanup(previousStack); dockRemember();
+  if (!g) {
+    g = groupNew(target.parentElement, target, d.dataset.area);
+    g.appendChild(target);
+    target.open = true;
+  }
+  g.appendChild(d);
+  g.dataset.active = d.dataset.area;
+  d.open = true;
+  tabsDraw(g);
+  groupCleanup(previousGroup);
+  if (previousStack !== stackOf(d)) stackCleanup(previousStack);
+  dockRemember();
 }
 // eigene Reihenfolge der Bereiche je Reiter (Ziehen in der linken Spalte)
 function rowRemember(g) {
   const cards = [...g.children].filter(x => x.tagName === "DETAILS");
   const numbering = cards.map(x => +x.dataset.num).sort((a, b) => a - b);
-  cards.forEach((x, i) => { x.dataset.num = numbering[i]; });
-  ui.line = ui.line || {}; ui.line[g.dataset.group] = cards.map(x => x.dataset.area); uiSave();
+  cards.forEach((x, i) => {
+    x.dataset.num = numbering[i];
+  });
+  ui.line = ui.line || {};
+  ui.line[g.dataset.group] = cards.map(x => x.dataset.area);
+  uiSave();
 }
 function afterHome(d) {
-  const previousGroup = groupFrom(d), previousStack = stackOf(d);
+  const previousGroup = groupFrom(d),
+    previousStack = stackOf(d);
   const g = document.querySelector(`.group[data-group="${d.dataset.home}"]`);
   const after = [...g.children].find(x => x.tagName === "DETAILS" && +x.dataset.num > +d.dataset.num);
   d.classList.remove("tab-active");
   g.insertBefore(d, after || null);
-  groupCleanup(previousGroup); stackCleanup(previousStack);
+  groupCleanup(previousGroup);
+  stackCleanup(previousStack);
 }
 function dockPanel(d, place, before) {
-  const previousGroup = groupFrom(d), previousStack = stackOf(d);
+  const previousGroup = groupFrom(d),
+    previousStack = stackOf(d);
   if (place === "left") afterHome(d);
   else {
     const dock = DOCKS[place];
     d.classList.remove("tab-active");
-    dock.insertBefore(d, before && before.parentElement === dock && before !== d ? before : dock.querySelector(".dock-target"));
-    groupCleanup(previousGroup); stackCleanup(previousStack);
+    dock.insertBefore(
+      d,
+      before && before.parentElement === dock && before !== d ? before : dock.querySelector(".dock-target")
+    );
+    groupCleanup(previousGroup);
+    stackCleanup(previousStack);
   }
   if (place !== "left") d.open = true;
   dockRemember();
 }
 function dockRemember() {
   for (const [place, dock] of Object.entries(DOCKS)) {
-    const entry = k => k.classList.contains("tabgroup")
-      ? { tabs: [...k.querySelectorAll(":scope > details")].map(d => d.dataset.area), active: k.dataset.active }
-      : k.classList.contains("dock-stack") ? { stack: [...k.children].map(entry) } : k.dataset.area;
+    const entry = k =>
+      k.classList.contains("tabgroup")
+        ? { tabs: [...k.querySelectorAll(":scope > details")].map(d => d.dataset.area), active: k.dataset.active }
+        : k.classList.contains("dock-stack")
+          ? { stack: [...k.children].map(entry) }
+          : k.dataset.area;
     ui.dock[place] = cardsIn(dock).map(entry);
     dock.classList.toggle("empty", !ui.dock[place].length);
   }
   uiSave();
-  if (typeof lockDraw === "function" && typeof areas !== "undefined") try { lockDraw(); belowApply(); } catch (err) {}
+  if (typeof lockDraw === "function" && typeof areas !== "undefined")
+    try {
+      lockDraw();
+      belowApply();
+    } catch (err) {}
   columnEmptyCheck();
 }
 // Menüs am unteren Rand nach oben klappen, damit sie immer ganz zu sehen sind
 function menuFit(el, r, z) {
-  const h = el.offsetHeight, bottom = window.innerHeight / z;
+  const h = el.offsetHeight,
+    bottom = window.innerHeight / z;
   if (r.bottom / z + 4 + h > bottom - 8) el.style.top = Math.max(8, r.top / z - h - 4) + "px";
 }
 // kleines Menü am Bereich
-const menu = document.createElement("div"); menu.className = "dock-menu"; menu.hidden = true; document.body.appendChild(menu);
+const menu = document.createElement("div");
+menu.className = "dock-menu";
+menu.hidden = true;
+document.body.appendChild(menu);
 function menuShow(d, button) {
-  const place = placeFrom(d), r = button.getBoundingClientRect(), z = parseFloat(document.body.style.zoom) || 1;
+  const place = placeFrom(d),
+    r = button.getBoundingClientRect(),
+    z = parseFloat(document.body.style.zoom) || 1;
   const L = placement();
-  menu.innerHTML = [["left", "In den Reiter"], ["bottom", L.preview === "upper" ? "Über der Vorschau" : "Unter der Vorschau"], ["right", L.side === "left" ? "Links neben der Vorschau" : "Rechts neben der Vorschau"]]
-    .map(([o, t]) => `<button data-place="${o}"${o === place ? ' aria-current="true"' : ""}${locked(o) ? " disabled" : ""}>${t}${locked(o) ? icon("lock") : ""}</button>`).join("");
-  menu.style.left = Math.max(8, r.right / z - 220) + "px"; menu.style.top = (r.bottom / z + 4) + "px";
-  menu.hidden = false; menuFit(menu, r, z);
-  menu.querySelectorAll("button").forEach(b => b.onclick = () => { menu.hidden = true; dockPanel(d, b.dataset.place); });
+  menu.innerHTML = [
+    ["left", "In den Reiter"],
+    ["bottom", L.preview === "upper" ? "Über der Vorschau" : "Unter der Vorschau"],
+    ["right", L.side === "left" ? "Links neben der Vorschau" : "Rechts neben der Vorschau"],
+  ]
+    .map(
+      ([o, t]) =>
+        `<button data-place="${o}"${o === place ? ' aria-current="true"' : ""}${locked(o) ? " disabled" : ""}>${t}${locked(o) ? icon("lock") : ""}</button>`
+    )
+    .join("");
+  menu.style.left = Math.max(8, r.right / z - 220) + "px";
+  menu.style.top = r.bottom / z + 4 + "px";
+  menu.hidden = false;
+  menuFit(menu, r, z);
+  menu.querySelectorAll("button").forEach(
+    b =>
+      (b.onclick = () => {
+        menu.hidden = true;
+        dockPanel(d, b.dataset.place);
+      })
+  );
 }
-document.addEventListener("pointerdown", ev => { if (!menu.hidden && !menu.contains(ev.target) && !ev.target.classList.contains("pin")) menu.hidden = true; });
+document.addEventListener("pointerdown", ev => {
+  if (!menu.hidden && !menu.contains(ev.target) && !ev.target.classList.contains("pin")) menu.hidden = true;
+});
 areas.forEach((d, n) => {
   const s = d.querySelector("summary");
-  if (!d.dataset.area) d.dataset.area = slug(s.textContent);    // fixed keys in the HTML (stored in docks/workspaces)
-  d.dataset.home = d.parentElement.dataset.group; d.dataset.num = n;
-  const handle = document.createElement("span"); handle.className = "handle"; handle.innerHTML = icon("grip"); handle.title = "Ziehen: links, unter oder neben die Vorschau";
+  if (!d.dataset.area) d.dataset.area = slug(s.textContent); // fixed keys in the HTML (stored in docks/workspaces)
+  d.dataset.home = d.parentElement.dataset.group;
+  d.dataset.num = n;
+  const handle = document.createElement("span");
+  handle.className = "handle";
+  handle.innerHTML = icon("grip");
+  handle.title = "Ziehen: links, unter oder neben die Vorschau";
   s.prepend(handle);
-  const pin = document.createElement("button"); pin.className = "pin"; pin.type = "button"; pin.title = "Andocken: links, unter oder neben der Vorschau"; pin.innerHTML = icon("dock"); pin.setAttribute("aria-label", "Andocken");
-  pin.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); if (locked(placeFrom(d))) return; if (menu.hidden) menuShow(d, pin); else menu.hidden = true; };
+  const pin = document.createElement("button");
+  pin.className = "pin";
+  pin.type = "button";
+  pin.title = "Andocken: links, unter oder neben der Vorschau";
+  pin.innerHTML = icon("dock");
+  pin.setAttribute("aria-label", "Andocken");
+  pin.onclick = ev => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (locked(placeFrom(d))) return;
+    if (menu.hidden) menuShow(d, pin);
+    else menu.hidden = true;
+  };
   s.appendChild(pin);
   s.addEventListener("pointerdown", ev => dragStart(ev, d));
-  s.addEventListener("click", ev => { if (d._dragged) { ev.preventDefault(); d._dragged = false; return; } if (d.dataset.locked && placeFrom(d) !== "left") ev.preventDefault(); });
+  s.addEventListener("click", ev => {
+    if (d._dragged) {
+      ev.preventDefault();
+      d._dragged = false;
+      return;
+    }
+    if (d.dataset.locked && placeFrom(d) !== "left") ev.preventDefault();
+  });
 });
 // Ziehen mit der Maus: Geist folgt dem Zeiger, Ablageflächen und Einfügelinie zeigen, wo es landet
-const ghost = document.createElement("div"); ghost.className = "drag-ghost"; ghost.hidden = true;
-const stroke = document.createElement("div"); stroke.className = "insert-line"; stroke.hidden = true;
-const zones = { left: document.createElement("div"), bottom: document.createElement("div"), right: document.createElement("div") };
-zones.left.textContent = "Zurück in den Reiter"; zones.bottom.textContent = "Unter der Vorschau"; zones.right.textContent = "Rechts neben der Vorschau";
-Object.values(zones).forEach(z => { z.className = "zone"; document.documentElement.appendChild(z); });
+const ghost = document.createElement("div");
+ghost.className = "drag-ghost";
+ghost.hidden = true;
+const stroke = document.createElement("div");
+stroke.className = "insert-line";
+stroke.hidden = true;
+const zones = {
+  left: document.createElement("div"),
+  bottom: document.createElement("div"),
+  right: document.createElement("div"),
+};
+zones.left.textContent = "Zurück in den Reiter";
+zones.bottom.textContent = "Unter der Vorschau";
+zones.right.textContent = "Rechts neben der Vorschau";
+Object.values(zones).forEach(z => {
+  z.className = "zone";
+  document.documentElement.appendChild(z);
+});
 document.documentElement.append(ghost, stroke);
 let dragState = null;
 function dragStart(ev, d) {
-  if (!document.body.classList.contains("layout-edit")) return;     // im Normalbetrieb bleibt alles, wo es ist
+  if (!document.body.classList.contains("layout-edit")) return; // im Normalbetrieb bleibt alles, wo es ist
   if (ev.button !== 0 || ev.target.closest(".pin")) return;
-  if (locked(placeFrom(d))) return;                            // aus gesperrten Bereichen lässt sich nichts herausziehen
+  if (locked(placeFrom(d))) return; // aus gesperrten Bereichen lässt sich nichts herausziehen
   dragState = { d, x: ev.clientX, y: ev.clientY, active: false, target: null };
-  const move = m => dragMove(m), release = m => { document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", release); dragEnd(m); };
-  document.addEventListener("pointermove", move); document.addEventListener("pointerup", release);
+  const move = m => dragMove(m),
+    release = m => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", release);
+      dragEnd(m);
+    };
+  document.addEventListener("pointermove", move);
+  document.addEventListener("pointerup", release);
 }
-function surface(el) { const r = el.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }
-function zoneSet(z, r) { Object.assign(z.style, { left: r.x + 6 + "px", top: r.y + 6 + "px", width: Math.max(0, r.w - 12) + "px", height: Math.max(0, r.h - 12) + "px" }); }
-const compass = document.createElement("div"); compass.className = "compass"; compass.hidden = true;
-compass.innerHTML = ["", "up", "", "left", "dock", "right", "", "down", ""].map(z => `<i class="${z ? "" : "empty"}">${z ? icon(z) : ""}</i>`).join("");
-const tabTarget = document.createElement("div"); tabTarget.className = "tab-target"; tabTarget.hidden = true; tabTarget.innerHTML = "<span></span>";
+function surface(el) {
+  const r = el.getBoundingClientRect();
+  return { x: r.left, y: r.top, w: r.width, h: r.height };
+}
+function zoneSet(z, r) {
+  Object.assign(z.style, {
+    left: r.x + 6 + "px",
+    top: r.y + 6 + "px",
+    width: Math.max(0, r.w - 12) + "px",
+    height: Math.max(0, r.h - 12) + "px",
+  });
+}
+const compass = document.createElement("div");
+compass.className = "compass";
+compass.hidden = true;
+compass.innerHTML = ["", "up", "", "left", "dock", "right", "", "down", ""]
+  .map(z => `<i class="${z ? "" : "empty"}">${z ? icon(z) : ""}</i>`)
+  .join("");
+const tabTarget = document.createElement("div");
+tabTarget.className = "tab-target";
+tabTarget.hidden = true;
+tabTarget.innerHTML = "<span></span>";
 document.documentElement.append(compass, tabTarget);
 function compassShow(r, field) {
-  compass.hidden = false; compass.style.left = (r.left + r.width / 2) + "px"; compass.style.top = (r.top + Math.min(r.height / 2, 120)) + "px";
+  compass.hidden = false;
+  compass.style.left = r.left + r.width / 2 + "px";
+  compass.style.top = r.top + Math.min(r.height / 2, 120) + "px";
   [...compass.children].forEach((z, i) => z.classList.toggle("on", i === field));
 }
 function dragMove(m) {
   if (!dragState) return;
   if (!dragState.active) {
-    if (Math.hypot(m.clientX - dragState.x, m.clientY - dragState.y) < 7) return;     // kleiner Ruck = Klick, kein Ziehen
-    dragState.active = true; dragState.d._dragged = true; menu.hidden = true;
-    document.body.classList.add("is-dragging"); dragState.d.classList.add("becomes-dragged");
-    ghost.textContent = dragState.d.querySelector("summary").textContent.trim(); ghost.hidden = false;
-    DOCKS.bottom.classList.remove("empty"); DOCKS.right.classList.remove("empty");
-    requestAnimationFrame(() => { zoneSet(zones.left, surface(document.querySelector(".column"))); zoneSet(zones.bottom, surface(DOCKS.bottom)); zoneSet(zones.right, surface(DOCKS.right)); });
+    if (Math.hypot(m.clientX - dragState.x, m.clientY - dragState.y) < 7) return; // kleiner Ruck = Klick, kein Ziehen
+    dragState.active = true;
+    dragState.d._dragged = true;
+    menu.hidden = true;
+    document.body.classList.add("is-dragging");
+    dragState.d.classList.add("becomes-dragged");
+    ghost.textContent = dragState.d.querySelector("summary").textContent.trim();
+    ghost.hidden = false;
+    DOCKS.bottom.classList.remove("empty");
+    DOCKS.right.classList.remove("empty");
+    requestAnimationFrame(() => {
+      zoneSet(zones.left, surface(document.querySelector(".column")));
+      zoneSet(zones.bottom, surface(DOCKS.bottom));
+      zoneSet(zones.right, surface(DOCKS.right));
+    });
   }
-  ghost.style.left = m.clientX + 14 + "px"; ghost.style.top = m.clientY + 10 + "px";
+  ghost.style.left = m.clientX + 14 + "px";
+  ghost.style.top = m.clientY + 10 + "px";
   const below = document.elementFromPoint(m.clientX, m.clientY);
   const dock = below && below.closest("#dockBottom, #dockRight");
   const left = below && below.closest(".column");
   let place = dock ? (dock.id === "dockBottom" ? "bottom" : "right") : left ? "left" : null;
-  if (place && locked(place)) place = null;                         // gesperrt: hier landet nichts
-  Object.entries(zones).forEach(([o, z]) => z.classList.toggle("on", o === place && (o === "left" || !cardsIn(DOCKS[o]).some(k => k !== dragState.d))));
+  if (place && locked(place)) place = null; // gesperrt: hier landet nichts
+  Object.entries(zones).forEach(([o, z]) =>
+    z.classList.toggle("on", o === place && (o === "left" || !cardsIn(DOCKS[o]).some(k => k !== dragState.d)))
+  );
   Object.entries(DOCKS).forEach(([o, dk]) => dk.classList.toggle("over-zone", o === place));
   dragState.target = place ? { place } : null;
-  stroke.hidden = true; compass.hidden = true; tabTarget.hidden = true;
+  stroke.hidden = true;
+  compass.hidden = true;
+  tabTarget.hidden = true;
   // über einer angedockten Karte: Kompass – Mitte = als Tab, Rand = davor/danach
   const card = dock && below.closest("#dockBottom > details, #dockRight > details, .tabgroup, .dock-stack > details");
   if (card && card !== dragState.d && card !== groupFrom(dragState.d)) {
-    const r = card.getBoundingClientRect(), fx = (m.clientX - r.left) / r.width, fy = (m.clientY - r.top) / Math.min(r.height, 240);
-    const across = place === "bottom", fyAll = (m.clientY - r.top) / r.height;
+    const r = card.getBoundingClientRect(),
+      fx = (m.clientX - r.left) / r.width,
+      fy = (m.clientY - r.top) / Math.min(r.height, 240);
+    const across = place === "bottom",
+      fyAll = (m.clientY - r.top) / r.height;
     // unter der Vorschau: oberes/unteres Viertel = darüber/darunter stapeln (Linie zeigt, wo)
     if (across && Math.abs(fx - 0.5) < 0.4 && (fyAll < 0.25 || fyAll > 0.75)) {
       const below2 = fyAll > 0.75;
       dragState.target = { place, stack: card, below: below2 };
-      Object.assign(stroke.style, { left: r.left + "px", top: (below2 ? r.bottom - 3 : r.top - 1) + "px", width: r.width + "px", height: "4px" });
+      Object.assign(stroke.style, {
+        left: r.left + "px",
+        top: (below2 ? r.bottom - 3 : r.top - 1) + "px",
+        width: r.width + "px",
+        height: "4px",
+      });
       stroke.hidden = false;
-      tabTarget.hidden = false; Object.assign(tabTarget.style, { left: r.left + "px", top: (below2 ? r.top + r.height / 2 : r.top) + "px", width: r.width + "px", height: r.height / 2 + "px" });
-      tabTarget.firstChild.textContent = (below2 ? "Darunter: " : "Darüber: ") + "„" + card.querySelector("summary").textContent.replace(/[⠿⧉]/g, "").trim() + "“";
+      tabTarget.hidden = false;
+      Object.assign(tabTarget.style, {
+        left: r.left + "px",
+        top: (below2 ? r.top + r.height / 2 : r.top) + "px",
+        width: r.width + "px",
+        height: r.height / 2 + "px",
+      });
+      tabTarget.firstChild.textContent =
+        (below2 ? "Darunter: " : "Darüber: ") +
+        "„" +
+        card.querySelector("summary").textContent.replace(/[⠿⧉]/g, "").trim() +
+        "“";
       return;
     }
     if (Math.abs(fx - 0.5) < 0.22 && Math.abs(fy - 0.5) < 0.3) {
       dragState.target = { place, tab: card };
       compassShow(r, 4);
-      tabTarget.hidden = false; Object.assign(tabTarget.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: Math.min(r.height, 240) + "px" });
-      const name = card.classList.contains("tabgroup") ? "der Gruppe" : "„" + card.querySelector("summary").textContent.replace(/[⠿⧉]/g, "").trim() + "“";
+      tabTarget.hidden = false;
+      Object.assign(tabTarget.style, {
+        left: r.left + "px",
+        top: r.top + "px",
+        width: r.width + "px",
+        height: Math.min(r.height, 240) + "px",
+      });
+      const name = card.classList.contains("tabgroup")
+        ? "der Gruppe"
+        : "„" + card.querySelector("summary").textContent.replace(/[⠿⧉]/g, "").trim() + "“";
       tabTarget.firstChild.textContent = "Als Tab zu " + name;
       return;
     }
-    compassShow(r, across ? (fx < 0.5 ? 3 : 5) : (fy < 0.5 ? 1 : 7));
+    compassShow(r, across ? (fx < 0.5 ? 3 : 5) : fy < 0.5 ? 1 : 7);
   }
   // linke Spalte: im eigenen Reiter an die Stelle unter dem Zeiger einsortieren
   if (place === "left") {
@@ -454,12 +909,24 @@ function dragMove(m) {
     if (g && !g.hidden) {
       const cards = [...g.children].filter(x => x.tagName === "DETAILS" && x !== dragState.d && !x.hidden);
       let before = null;
-      for (const k of cards) { const r = k.getBoundingClientRect(); if (m.clientY < r.top + r.height / 2) { before = k; break; } }
+      for (const k of cards) {
+        const r = k.getBoundingClientRect();
+        if (m.clientY < r.top + r.height / 2) {
+          before = k;
+          break;
+        }
+      }
       dragState.target = { place: "left", before, group: g };
       zones.left.classList.remove("on");
       if (cards.length) {
-        const ref = before || cards[cards.length - 1], r = ref.getBoundingClientRect();
-        Object.assign(stroke.style, { left: r.left + "px", top: (before ? r.top - 5 : r.bottom + 2) + "px", width: r.width + "px", height: "4px" });
+        const ref = before || cards[cards.length - 1],
+          r = ref.getBoundingClientRect();
+        Object.assign(stroke.style, {
+          left: r.left + "px",
+          top: (before ? r.top - 5 : r.bottom + 2) + "px",
+          width: r.width + "px",
+          height: "4px",
+        });
         stroke.hidden = false;
       }
       return;
@@ -469,85 +936,187 @@ function dragMove(m) {
     const cards = cardsIn(dock).filter(x => x !== dragState.d);
     const across = place === "bottom";
     let before = null;
-    for (const k of cards) { const r = k.getBoundingClientRect(); if (across ? m.clientX < r.left + r.width / 2 : m.clientY < r.top + r.height / 2) { before = k; break; } }
+    for (const k of cards) {
+      const r = k.getBoundingClientRect();
+      if (across ? m.clientX < r.left + r.width / 2 : m.clientY < r.top + r.height / 2) {
+        before = k;
+        break;
+      }
+    }
     dragState.target.before = before;
     if (cards.length) {
-      const ref = before || cards[cards.length - 1], r = ref.getBoundingClientRect(), post = !before;
-      Object.assign(stroke.style, across
-        ? { left: (post ? r.right + 2 : r.left - 4) + "px", top: r.top + "px", width: "4px", height: r.height + "px" }
-        : { left: r.left + "px", top: (post ? r.bottom + 2 : r.top - 4) + "px", width: r.width + "px", height: "4px" });
+      const ref = before || cards[cards.length - 1],
+        r = ref.getBoundingClientRect(),
+        post = !before;
+      Object.assign(
+        stroke.style,
+        across
+          ? { left: (post ? r.right + 2 : r.left - 4) + "px", top: r.top + "px", width: "4px", height: r.height + "px" }
+          : { left: r.left + "px", top: (post ? r.bottom + 2 : r.top - 4) + "px", width: r.width + "px", height: "4px" }
+      );
       stroke.hidden = false;
     }
   }
 }
 function dragEnd() {
   if (!dragState) return;
-  const { d, active, target } = dragState; dragState = null;
-  ghost.hidden = true; stroke.hidden = true; compass.hidden = true; tabTarget.hidden = true; Object.values(zones).forEach(z => z.classList.remove("on"));
-  document.body.classList.remove("is-dragging"); d.classList.remove("becomes-dragged"); Object.values(DOCKS).forEach(dk => dk.classList.remove("over-zone"));
+  const { d, active, target } = dragState;
+  dragState = null;
+  ghost.hidden = true;
+  stroke.hidden = true;
+  compass.hidden = true;
+  tabTarget.hidden = true;
+  Object.values(zones).forEach(z => z.classList.remove("on"));
+  document.body.classList.remove("is-dragging");
+  d.classList.remove("becomes-dragged");
+  Object.values(DOCKS).forEach(dk => dk.classList.remove("over-zone"));
   if (active && target && target.tab) asTab(d, target.tab);
   else if (active && target && target.stack) stackWith(d, target.stack, target.below);
-  else if (active && target && target.group) { const previousGroup = groupFrom(d), previousStack = stackOf(d); d.classList.remove("tab-active"); target.group.insertBefore(d, target.before || null); groupCleanup(previousGroup); stackCleanup(previousStack); rowRemember(target.group); dockRemember(); }
-  else if (active && target) dockPanel(d, target.place, target.before);
+  else if (active && target && target.group) {
+    const previousGroup = groupFrom(d),
+      previousStack = stackOf(d);
+    d.classList.remove("tab-active");
+    target.group.insertBefore(d, target.before || null);
+    groupCleanup(previousGroup);
+    stackCleanup(previousStack);
+    rowRemember(target.group);
+    dockRemember();
+  } else if (active && target) dockPanel(d, target.place, target.before);
   else dockRemember();
 }
-addEventListener("keydown", ev => { if (ev.key === "Escape" && dragState) { dragState.active = false; dragEnd(); } });
+addEventListener("keydown", ev => {
+  if (ev.key === "Escape" && dragState) {
+    dragState.active = false;
+    dragEnd();
+  }
+});
 $("docksBack").onclick = () => {
-  areas.forEach(d => { if (placeFrom(d) !== "left") afterHome(d); });
-  ui.b1 = ui.b2 = ui.hU = null; ["--b1", "--b2", "--hU"].forEach(v => pageEl.style.removeProperty(v));
-  ui.previewClose = false; ui.placement = null; dockRemember(); widths(); placementSet();
+  areas.forEach(d => {
+    if (placeFrom(d) !== "left") afterHome(d);
+  });
+  ui.b1 = ui.b2 = ui.hU = null;
+  ["--b1", "--b2", "--hU"].forEach(v => pageEl.style.removeProperty(v));
+  ui.previewClose = false;
+  ui.placement = null;
+  dockRemember();
+  widths();
+  placementSet();
 };
 const areaAfter = b => areas.find(x => x.dataset.area === b);
 // gespeicherte Reihenfolge in den Reitern wiederherstellen
 Object.entries(ui.line || {}).forEach(([group, list]) => {
-  const g = document.querySelector(`.group[data-group="${group}"]`); if (!g) return;
+  const g = document.querySelector(`.group[data-group="${group}"]`);
+  if (!g) return;
   const present = [...g.children].filter(x => x.tagName === "DETAILS");
   const numbering = present.map(x => +x.dataset.num).sort((a, b) => a - b);
-  const sorted = [...list.map(areaAfter).filter(x => x && x.parentElement === g), ...present.filter(x => !list.includes(x.dataset.area))];
-  sorted.forEach((x, i) => { g.appendChild(x); x.dataset.num = numbering[i]; });
+  const sorted = [
+    ...list.map(areaAfter).filter(x => x && x.parentElement === g),
+    ...present.filter(x => !list.includes(x.dataset.area)),
+  ];
+  sorted.forEach((x, i) => {
+    g.appendChild(x);
+    x.dataset.num = numbering[i];
+  });
 });
-function locked(place) { return !!((ui.locked || {})[place]); }
-[["left", "divider1"], ["bottom", "dividerH"], ["right", "divider2"]].forEach(([place, t]) => {
-  const b = document.querySelector(`[data-lock="${place}"]`); if (!b) return;
+function locked(place) {
+  return !!(ui.locked || {})[place];
+}
+[
+  ["left", "divider1"],
+  ["bottom", "dividerH"],
+  ["right", "divider2"],
+].forEach(([place, t]) => {
+  const b = document.querySelector(`[data-lock="${place}"]`);
+  if (!b) return;
   $(t).appendChild(b);
-  b.addEventListener("pointerdown", ev => ev.stopPropagation());     // Klick aufs Schloss zieht nicht an der Linie
+  b.addEventListener("pointerdown", ev => ev.stopPropagation()); // Klick aufs Schloss zieht nicht an der Linie
 });
 function lockDraw() {
   document.querySelectorAll("[data-lock]").forEach(b => {
     const on = locked(b.dataset.lock);
-    b.setAttribute("aria-pressed", on); b.innerHTML = icon(on ? "lock" : "unlock");
-    b.title = (on ? "Entsperren" : "Sperren") + " – " + { left: "Reiter-Spalte", bottom: "Vorschau-Dock", right: "Seiten-Dock" }[b.dataset.lock];
+    b.setAttribute("aria-pressed", on);
+    b.innerHTML = icon(on ? "lock" : "unlock");
+    b.title =
+      (on ? "Entsperren" : "Sperren") +
+      " – " +
+      { left: "Reiter-Spalte", bottom: "Vorschau-Dock", right: "Seiten-Dock" }[b.dataset.lock];
   });
-  const flag = (el, on) => { if (on) el.dataset.locked = "1"; else delete el.dataset.locked; };
-  flag($("divider1"), locked("left")); flag($("divider2"), locked("right")); flag($("dividerH"), locked("bottom"));
+  const flag = (el, on) => {
+    if (on) el.dataset.locked = "1";
+    else delete el.dataset.locked;
+  };
+  flag($("divider1"), locked("left"));
+  flag($("divider2"), locked("right"));
+  flag($("dividerH"), locked("bottom"));
   areas.forEach(d => flag(d, locked(placeFrom(d))));
 }
-document.querySelectorAll("[data-lock]").forEach(b => b.onclick = ev => {
-  ev.stopPropagation();
-  ui.locked = Object.assign({}, ui.locked, { [b.dataset.lock]: !locked(b.dataset.lock) }); uiSave(); lockDraw();
-});
-for (const place of ["bottom", "right"]) (ui.dock[place] || []).forEach(entry => dockEntryPlace(DOCKS[place], typeof entry === "string" ? entry : Object.assign({}, entry, { open: undefined })));
-if (!ui.zoom3) { if (!ui.zoom || ui.zoom === 1) ui.zoom = "auto"; ui.zoom3 = true; }   // 3.0: wer nie gezoomt hat, bekommt die automatische Größe
-dockRemember(); widths(); zoomSet(ui.zoom || "auto"); designSet(ui.design || "dark"); placementSet(); lockDraw();
+document.querySelectorAll("[data-lock]").forEach(
+  b =>
+    (b.onclick = ev => {
+      ev.stopPropagation();
+      ui.locked = Object.assign({}, ui.locked, { [b.dataset.lock]: !locked(b.dataset.lock) });
+      uiSave();
+      lockDraw();
+    })
+);
+for (const place of ["bottom", "right"])
+  (ui.dock[place] || []).forEach(entry =>
+    dockEntryPlace(DOCKS[place], typeof entry === "string" ? entry : Object.assign({}, entry, { open: undefined }))
+  );
+if (!ui.zoom3) {
+  if (!ui.zoom || ui.zoom === 1) ui.zoom = "auto";
+  ui.zoom3 = true;
+} // 3.0: wer nie gezoomt hat, bekommt die automatische Größe
+dockRemember();
+widths();
+zoomSet(ui.zoom || "auto");
+designSet(ui.design || "dark");
+placementSet();
+lockDraw();
 // Start: alles in den Reitern zu; angedockte Bereiche so, wie du sie zuletzt hattest („Erste Schritte“ nur beim allerersten Start offen)
 ui.isOpen = ui.isOpen || {};
 // die Szenen-Liste (2.21: Standard links) merkt sich ihren Zustand auch in der linken Spalte – sie ist das Wichtigste in Live
 const remembersOpen = d => placeFrom(d) !== "left" || d.dataset.area === "sceneList";
 areas.forEach(d => {
-  d.open = remembersOpen(d) && d.id !== "firstSteps" ? ui.isOpen[d.dataset.area] !== false : d.id === "firstSteps" && !ui.stepsSeen;
-  d.addEventListener("toggle", () => { if (remembersOpen(d)) { ui.isOpen[d.dataset.area] = d.open; uiSave(); } });
+  d.open =
+    remembersOpen(d) && d.id !== "firstSteps"
+      ? ui.isOpen[d.dataset.area] !== false
+      : d.id === "firstSteps" && !ui.stepsSeen;
+  d.addEventListener("toggle", () => {
+    if (remembersOpen(d)) {
+      ui.isOpen[d.dataset.area] = d.open;
+      uiSave();
+    }
+  });
 });
-if (!ui.stepsSeen) { ui.stepsSeen = true; uiSave(); }
+if (!ui.stepsSeen) {
+  ui.stepsSeen = true;
+  uiSave();
+}
 // Erklärtexte (2.16): lange, feste Hinweise am Anfang eines Bereichs stehen hinter „?“ am Titel – ein Klick zeigt sie.
 // So bleiben die Bereiche ruhig; wer neu ist, findet die Erklärung trotzdem an derselben Stelle.
 areas.forEach(d => {
-  const long = [...d.querySelectorAll(":scope > .content > p.small:not([id])")].filter(p => p.textContent.trim().length > 70);
+  const long = [...d.querySelectorAll(":scope > .content > p.small:not([id])")].filter(
+    p => p.textContent.trim().length > 70
+  );
   if (!long.length) return;
   long.forEach(p => p.classList.add("explain"));
-  const b = document.createElement("button"); b.type = "button"; b.className = "explain-toggle"; b.textContent = "?";
-  b.title = "Erklärung zeigen"; b.setAttribute("aria-label", "Erklärung zeigen"); b.setAttribute("aria-pressed", "false");
-  b.addEventListener("pointerdown", ev => ev.stopPropagation());               // kein Ziehen am Titel
-  b.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); const on = !d.classList.contains("explain-open");
-    d.classList.toggle("explain-open", on); b.setAttribute("aria-pressed", on); if (on) d.open = true; };
-  const s = d.querySelector("summary"); s.insertBefore(b, s.querySelector(".pin"));
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "explain-toggle";
+  b.textContent = "?";
+  b.title = "Erklärung zeigen";
+  b.setAttribute("aria-label", "Erklärung zeigen");
+  b.setAttribute("aria-pressed", "false");
+  b.addEventListener("pointerdown", ev => ev.stopPropagation()); // kein Ziehen am Titel
+  b.onclick = ev => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const on = !d.classList.contains("explain-open");
+    d.classList.toggle("explain-open", on);
+    b.setAttribute("aria-pressed", on);
+    if (on) d.open = true;
+  };
+  const s = d.querySelector("summary");
+  s.insertBefore(b, s.querySelector(".pin"));
 });

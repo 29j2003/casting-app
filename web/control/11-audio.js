@@ -5,29 +5,54 @@
 /* ---------- Ton über OBS ----------
    Wie im OBS-Mixer: jede Tonquelle ist eine eigene OBS-Quelle. Die App regelt Lautstärke (bis 300 %), Stumm,
    Verzögerung (Synchronisation) und Abhören direkt in OBS – live, genau wie die Regler in OBS selbst. */
-const AUDIO_OBS = [["Cast – Overlay", "Overlay (Clips, Seiten, Videos im Overlay)"], ["Cast – Hintergrund", "Hintergrund-Video (OBS spielt ab)"],
-  ["Cast – Ton Caster 1", "Caster 1"], ["Cast – Ton Caster 2", "Caster 2"], ["Cast – Ton Gast", "Gast"]];
+const AUDIO_OBS = [
+  ["Cast – Overlay", "Overlay (Clips, Seiten, Videos im Overlay)"],
+  ["Cast – Hintergrund", "Hintergrund-Video (OBS spielt ab)"],
+  ["Cast – Ton Caster 1", "Caster 1"],
+  ["Cast – Ton Caster 2", "Caster 2"],
+  ["Cast – Ton Gast", "Gast"],
+];
 // Abhören wie in OBS (Erweiterte Audioeigenschaften): aus · nur abhören · abhören und ausgeben
-const MONITOR = [["OBS_MONITORING_TYPE_NONE", "Abhören aus"], ["OBS_MONITORING_TYPE_MONITOR_ONLY", "Nur abhören (Ausgabe stumm)"], ["OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT", "Abhören und Ausgabe"]];
-const MONITOR_HINT = { OBS_MONITORING_TYPE_NONE: "nur im Stream/der Aufnahme, nicht auf deinem Kopfhörer",
+const MONITOR = [
+  ["OBS_MONITORING_TYPE_NONE", "Abhören aus"],
+  ["OBS_MONITORING_TYPE_MONITOR_ONLY", "Nur abhören (Ausgabe stumm)"],
+  ["OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT", "Abhören und Ausgabe"],
+];
+const MONITOR_HINT = {
+  OBS_MONITORING_TYPE_NONE: "nur im Stream/der Aufnahme, nicht auf deinem Kopfhörer",
   OBS_MONITORING_TYPE_MONITOR_ONLY: "nur auf deinem Kopfhörer, nicht im Stream",
-  OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT: "im Stream und auf deinem Kopfhörer" };
-let audioRevision = {}, audioMoreOpen = new Set(), audioFetchRunning = false;
+  OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT: "im Stream und auf deinem Kopfhörer",
+};
+let audioRevision = {},
+  audioMoreOpen = new Set(),
+  audioFetchRunning = false;
 // alle Quellen mit Ton in OBS (wie der OBS-Mixer) – die der App zuerst; die Liste wird alle 15 s erneuert
-let audioInputs = [], audioInputsAt = 0;
+let audioInputs = [],
+  audioInputsAt = 0;
 async function audioInputsLoad() {
   if (audioInputs.length && Date.now() - audioInputsAt < 15000) return audioInputs;
   const names = ((await channel.obs.question("GetInputList", {})).inputs || []).map(i => i.inputName);
   const withAudio = [];
-  for (const name of names) { try { await channel.obs.question("GetInputVolume", { inputName: name }); withAudio.push(name); } catch (err) {} }
+  for (const name of names) {
+    try {
+      await channel.obs.question("GetInputVolume", { inputName: name });
+      withAudio.push(name);
+    } catch (err) {}
+  }
   const own = AUDIO_OBS.map(([n]) => n).filter(n => withAudio.includes(n));
-  audioInputs = own.concat(withAudio.filter(n => !own.includes(n))); audioInputsAt = Date.now();
+  audioInputs = own.concat(withAudio.filter(n => !own.includes(n)));
+  audioInputsAt = Date.now();
   return audioInputs;
 }
 // Ton-Bereich zu sehen? (zugeklappt, anderer Reiter oder Fenster im Hintergrund: OBS nicht fragen – spart ~24 Anfragen/s)
-function audioVisible() { const b = $("audioList"); return !document.hidden && !!b && !!b.offsetParent; }
+function audioVisible() {
+  const b = $("audioList");
+  return !document.hidden && !!b && !!b.offsetParent;
+}
 // Pegel (InputVolumeMeters, ~20 Meldungen/s je Quelle) nur abonnieren, solange der Ton-Bereich zu sehen ist
-function audioMeterSubscribe() { if (channel.obs && channel.obs.subscribe) channel.obs.subscribe(1 | 4 | 16 | (audioVisible() ? 65536 : 0)); }
+function audioMeterSubscribe() {
+  if (channel.obs && channel.obs.subscribe) channel.obs.subscribe(1 | 4 | 16 | (audioVisible() ? 65536 : 0));
+}
 async function audioFetch() {
   audioMeterSubscribe();
   if (!channel.obs.isOpen || audioFetchRunning || !audioVisible()) return;
@@ -36,20 +61,43 @@ async function audioFetch() {
     const inputs = await audioInputsLoad();
     const fresh = {};
     for (const name of inputs) {
-      const [v, m, o, t] = await Promise.all([channel.obs.question("GetInputVolume", { inputName: name }), channel.obs.question("GetInputMute", { inputName: name }),
-        channel.obs.question("GetInputAudioSyncOffset", { inputName: name }), channel.obs.question("GetInputAudioMonitorType", { inputName: name })]).catch(() => [null, null, null, null]);
-      if (v) fresh[name] = { vol: Math.round((v.inputVolumeMul || 0) * 100), mute: !!m.inputMuted, delay: o.inputAudioSyncOffset || 0, monitor: t.monitorType };
+      const [v, m, o, t] = await Promise.all([
+        channel.obs.question("GetInputVolume", { inputName: name }),
+        channel.obs.question("GetInputMute", { inputName: name }),
+        channel.obs.question("GetInputAudioSyncOffset", { inputName: name }),
+        channel.obs.question("GetInputAudioMonitorType", { inputName: name }),
+      ]).catch(() => [null, null, null, null]);
+      if (v)
+        fresh[name] = {
+          vol: Math.round((v.inputVolumeMul || 0) * 100),
+          mute: !!m.inputMuted,
+          delay: o.inputAudioSyncOffset || 0,
+          monitor: t.monitorType,
+        };
     }
-    if (JSON.stringify(fresh) !== JSON.stringify(audioRevision)) { audioRevision = fresh; audioDraw(); }
-  } catch (err) {} finally { audioFetchRunning = false; }
+    if (JSON.stringify(fresh) !== JSON.stringify(audioRevision)) {
+      audioRevision = fresh;
+      audioDraw();
+    }
+  } catch (err) {
+  } finally {
+    audioFetchRunning = false;
+  }
 }
-setInterval(audioFetch, 2000);                                    // auch Änderungen direkt in OBS erscheinen hier
+setInterval(audioFetch, 2000); // auch Änderungen direkt in OBS erscheinen hier
 // Bereich aufgeklappt / Reiter gewechselt / Fenster wieder vorn: gleich nachfragen statt bis zu 2 s zu warten
 document.querySelector('details[data-area="audio"]')?.addEventListener("toggle", () => setTimeout(audioFetch, 0));
 document.addEventListener("visibilitychange", () => setTimeout(audioFetch, 0));
-const audioSet = (name, req, data) => channel.obs.question(req, Object.assign({ inputName: name }, data)).catch(err => { $("audioList").insertAdjacentHTML("afterbegin", `<p class="small" style="color:var(--red)">OBS: ${esc(err.message || String(err))}</p>`); });
+const audioSet = (name, req, data) =>
+  channel.obs.question(req, Object.assign({ inputName: name }, data)).catch(err => {
+    $("audioList").insertAdjacentHTML(
+      "afterbegin",
+      `<p class="small" style="color:var(--red)">OBS: ${esc(err.message || String(err))}</p>`
+    );
+  });
 function audioDraw() {
-  const box = $("audioList"); if (!box) return;
+  const box = $("audioList");
+  if (!box) return;
   box.innerHTML = "";
   if (!channel.obs.isOpen) {
     box.innerHTML = `<div class="audio-z"><b>Ton der Quellen in OBS</b><p class="small">Lautstärke, Stumm, Abhören und Lautstärke je Szene regelt die App direkt in OBS – wie im OBS-Mixer. Dafür muss die App mit OBS verbunden sein.</p>
@@ -58,21 +106,34 @@ function audioDraw() {
     return;
   }
   // Lautstärke je Szene: an/aus und für welche Szene die Regler gerade gelten
-  const perSceneBox = document.createElement("div"); perSceneBox.className = "audio-per-scene";
-  const k = audioScene(), own = (((Z.audio || {}).sceneVolumes) || {})[k] || {};
+  const perSceneBox = document.createElement("div");
+  perSceneBox.className = "audio-per-scene";
+  const k = audioScene(),
+    own = ((Z.audio || {}).sceneVolumes || {})[k] || {};
   perSceneBox.innerHTML = `<label class="toggleSwitch"><input type="checkbox"${audioPerScene() ? " checked" : ""}> Lautstärke je Szene merken</label>
     ${audioPerScene() ? `<span class="small">Regler gelten jetzt für „${esc(audioSceneTitle(k))}“</span>${Object.keys(own).length ? `<button class="button">Szene auf Standard</button>` : ""}` : ""}`;
-  perSceneBox.querySelector("input").onchange = ev => { Z.audio = Object.assign({}, Z.audio, { perScene: ev.target.checked }); send(); audioDraw(); };
+  perSceneBox.querySelector("input").onchange = ev => {
+    Z.audio = Object.assign({}, Z.audio, { perScene: ev.target.checked });
+    send();
+    audioDraw();
+  };
   const reset = perSceneBox.querySelector("button");
-  if (reset) reset.onclick = () => { delete Z.audio.sceneVolumes[k]; send(); sceneVolumesApply(k); };
+  if (reset)
+    reset.onclick = () => {
+      delete Z.audio.sceneVolumes[k];
+      send();
+      sceneVolumesApply(k);
+    };
   box.appendChild(perSceneBox);
   const titles = Object.fromEntries(AUDIO_OBS);
   audioInputs.forEach(name => {
-    const T = audioRevision[name]; if (!T) return;
+    const T = audioRevision[name];
+    if (!T) return;
     const title = titles[name] || name;
-    const sceneOwn = audioPerScene() && name in ((((Z.audio || {}).sceneVolumes) || {})[audioScene()] || {});
+    const sceneOwn = audioPerScene() && name in (((Z.audio || {}).sceneVolumes || {})[audioScene()] || {});
     // kompakt wie im OBS-Mixer: Kopfzeile (Name · Prozent · Abhören · Stumm · Mehr), darunter Pegel und Regler
-    const z = document.createElement("div"); z.className = "audio-z" + (T.mute ? " muted" : "");
+    const z = document.createElement("div");
+    z.className = "audio-z" + (T.mute ? " muted" : "");
     z.innerHTML = `<div class="audio-head"><div class="tname"><b title="${esc(name)}">${esc(title)}</b>${title !== name ? `<span>${esc(name)}</span>` : ""}</div>
         ${sceneOwn ? `<span class="audio-scene-own" title="Diese Lautstärke gilt nur in der Szene „${esc(audioSceneTitle(audioScene()))}“">Szene</span>` : ""}
         ${T.monitor && T.monitor !== "OBS_MONITORING_TYPE_NONE" ? `<span class="audio-listen" title="${esc((MONITOR.find(([v]) => v === T.monitor) || [, ""])[1])}: ${esc(MONITOR_HINT[T.monitor] || "")}">${icon("headphones")}</span>` : ""}
@@ -86,33 +147,64 @@ function audioDraw() {
         <label>Verzögerung (ms)<input type="number" min="-950" max="20000" step="10" value="${T.delay}"></label>
         <span class="small">${esc(MONITOR_HINT[T.monitor] || "")}</span>
       </div>`;
-    const slider = z.querySelector("input[type=range]"), display = z.querySelector(".audio-vol");
+    const slider = z.querySelector("input[type=range]"),
+      display = z.querySelector(".audio-vol");
     let timerHandle = null;
-    slider.oninput = () => { sceneVolumeRemember(name, T.vol, +slider.value); T.vol = +slider.value; display.textContent = T.vol + " %"; display.classList.toggle("loud", T.vol > 100);
-      clearTimeout(timerHandle); timerHandle = setTimeout(() => audioSet(name, "SetInputVolume", { inputVolumeMul: T.vol / 100 }), 40); };       // live, wie der OBS-Regler
-    z.querySelector(".audio-mute").onclick = () => { T.mute = !T.mute; audioSet(name, "SetInputMute", { inputMuted: T.mute }); audioDraw(); };
-    z.querySelector(".gfx-more").onclick = () => { audioMoreOpen.has(name) ? audioMoreOpen.delete(name) : audioMoreOpen.add(name); audioDraw(); };
-    z.querySelector("input[type=number]").onchange = ev => { T.delay = Math.max(-950, Math.min(20000, +ev.target.value || 0)); audioSet(name, "SetInputAudioSyncOffset", { inputAudioSyncOffset: T.delay }); };
-    z.querySelector(".audio-monitor-choice").onchange = ev => { T.monitor = ev.target.value; audioSet(name, "SetInputAudioMonitorType", { monitorType: T.monitor }); audioDraw(); };
+    slider.oninput = () => {
+      sceneVolumeRemember(name, T.vol, +slider.value);
+      T.vol = +slider.value;
+      display.textContent = T.vol + " %";
+      display.classList.toggle("loud", T.vol > 100);
+      clearTimeout(timerHandle);
+      timerHandle = setTimeout(() => audioSet(name, "SetInputVolume", { inputVolumeMul: T.vol / 100 }), 40);
+    }; // live, wie der OBS-Regler
+    z.querySelector(".audio-mute").onclick = () => {
+      T.mute = !T.mute;
+      audioSet(name, "SetInputMute", { inputMuted: T.mute });
+      audioDraw();
+    };
+    z.querySelector(".gfx-more").onclick = () => {
+      audioMoreOpen.has(name) ? audioMoreOpen.delete(name) : audioMoreOpen.add(name);
+      audioDraw();
+    };
+    z.querySelector("input[type=number]").onchange = ev => {
+      T.delay = Math.max(-950, Math.min(20000, +ev.target.value || 0));
+      audioSet(name, "SetInputAudioSyncOffset", { inputAudioSyncOffset: T.delay });
+    };
+    z.querySelector(".audio-monitor-choice").onchange = ev => {
+      T.monitor = ev.target.value;
+      audioSet(name, "SetInputAudioMonitorType", { monitorType: T.monitor });
+      audioDraw();
+    };
     box.appendChild(z);
   });
   // Caster und Gast als eigene OBS-Tonquelle (VDO.Ninja-Ton direkt in OBS statt im Overlay)
-  const missing = [["c1", "Caster 1"], ["c2", "Caster 2"], ["guest", "Gast"]].filter(([k, n]) => {
-    const Q = (Z.sources || {})[k] || {}; return Q.type === "link" && /vdo\.ninja|obs\.ninja|^[^/:]+$/i.test(Q.url || "") && !audioRevision["Cast – Ton " + n];
+  const missing = [
+    ["c1", "Caster 1"],
+    ["c2", "Caster 2"],
+    ["guest", "Gast"],
+  ].filter(([k, n]) => {
+    const Q = (Z.sources || {})[k] || {};
+    return (
+      Q.type === "link" && /vdo\.ninja|obs\.ninja|^[^/:]+$/i.test(Q.url || "") && !audioRevision["Cast – Ton " + n]
+    );
   });
   missing.forEach(([k, n]) => {
-    const z = document.createElement("div"); z.className = "audio-z";
+    const z = document.createElement("div");
+    z.className = "audio-z";
     z.innerHTML = `<div class="audio-head"><div class="tname"><b>${esc(n)}</b><span>VDO.Ninja – Ton läuft noch im Overlay</span></div><button class="button">Als eigene OBS-Tonquelle</button></div>`;
     z.querySelector("button").onclick = () => audioSourceCreate(k, n);
     box.appendChild(z);
   });
-  if (box.children.length <= 1) box.innerHTML = `<p class="small">In OBS gibt es noch keine Quelle mit Ton – Setup → Szenen &amp; OBS → „In OBS anlegen“.</p>`;
+  if (box.children.length <= 1)
+    box.innerHTML = `<p class="small">In OBS gibt es noch keine Quelle mit Ton – Setup → Szenen &amp; OBS → „In OBS anlegen“.</p>`;
 }
 /* ---------- Pegel wie im OBS-Mixer ----------
    OBS schickt etwa 20-mal pro Sekunde InputVolumeMeters (Abo 1<<16, 01-core.js). Gezeichnet wird nur, solange der
    Bereich Ton zu sehen ist – über transform (kein Neuaufbau, kein Layout). Skala wie OBS: −60 dB … 0 dB. */
-let audioLevels = {}, audioMeterFrame = 0;
-const audioDb = v => v > 0 ? Math.max(0, Math.min(1, (20 * Math.log10(v) + 60) / 60)) : 0;
+let audioLevels = {},
+  audioMeterFrame = 0;
+const audioDb = v => (v > 0 ? Math.max(0, Math.min(1, (20 * Math.log10(v) + 60) / 60)) : 0);
 function audioMeters(inputs) {
   (inputs || []).forEach(x => {
     const ch = x.inputLevelsMul || [];
@@ -121,10 +213,11 @@ function audioMeters(inputs) {
   if (audioMeterFrame || document.hidden) return;
   audioMeterFrame = requestAnimationFrame(() => {
     audioMeterFrame = 0;
-    const box = $("audioList"); if (!box || !box.offsetParent) return;
+    const box = $("audioList");
+    if (!box || !box.offsetParent) return;
     box.querySelectorAll(".audio-meter[data-name]").forEach(m => {
       const [level, peak] = audioLevels[m.dataset.name] || [0, 0];
-      m.firstChild.style.transform = `scaleX(${(1 - audioDb(level)).toFixed(3)})`;   // deckt den unbeleuchteten Teil ab
+      m.firstChild.style.transform = `scaleX(${(1 - audioDb(level)).toFixed(3)})`; // deckt den unbeleuchteten Teil ab
       m.lastChild.style.transform = `translateX(${(audioDb(peak) * 100).toFixed(1)}%)`;
     });
   });
@@ -133,23 +226,38 @@ function audioMeters(inputs) {
    An: Wer in einer Szene einen Regler bewegt, speichert die Lautstärke dieser Quelle für diese Szene
    (Z.audio.sceneVolumes[szene][quelle]). Beim Szenenwechsel stellt die App die gespeicherten Werte in OBS ein;
    Quellen ohne eigenen Wert in der neuen Szene bekommen ihren Standard (der Wert vor der ersten Szenen-Änderung, "*"). */
-const audioPerScene = () => !!((Z.audio || {}).perScene);
-const audioScene = () => { try { return (onSource() ? (Z.broadcast || {}).scene : $("scene").value) || ""; } catch (err) { return ""; } };
+const audioPerScene = () => !!(Z.audio || {}).perScene;
+const audioScene = () => {
+  try {
+    return (onSource() ? (Z.broadcast || {}).scene : $("scene").value) || "";
+  } catch (err) {
+    return "";
+  }
+};
 function audioSceneTitle(k) {
-  const own = OVERLAY_SCENES.find(([x]) => x === k), dach = typeof DACH_SCENES !== "undefined" ? DACH_SCENES.find(x => x[1] === k) : null;
+  const own = OVERLAY_SCENES.find(([x]) => x === k),
+    dach = typeof DACH_SCENES !== "undefined" ? DACH_SCENES.find(x => x[1] === k) : null;
   return own ? own[1] : dach ? dach[2] : k;
 }
 function sceneVolumeRemember(name, before, vol) {
-  const k = audioScene(); if (!audioPerScene() || !k) return;
-  const A = Z.audio = Object.assign({}, Z.audio), S = A.sceneVolumes = A.sceneVolumes || {};
-  S["*"] = S["*"] || {}; if (!(name in S["*"])) S["*"][name] = before;     // Standard: wie es vorher war
-  S[k] = S[k] || {}; S[k][name] = vol; laterSend();
+  const k = audioScene();
+  if (!audioPerScene() || !k) return;
+  const A = (Z.audio = Object.assign({}, Z.audio)),
+    S = (A.sceneVolumes = A.sceneVolumes || {});
+  S["*"] = S["*"] || {};
+  if (!(name in S["*"])) S["*"][name] = before; // Standard: wie es vorher war
+  S[k] = S[k] || {};
+  S[k][name] = vol;
+  laterSend();
 }
 function sceneVolumesApply(k) {
   if (!audioPerScene() || !channel.obs.isOpen) return;
-  const S = (Z.audio || {}).sceneVolumes || {}, own = S[k] || {}, standard = S["*"] || {};
+  const S = (Z.audio || {}).sceneVolumes || {},
+    own = S[k] || {},
+    standard = S["*"] || {};
   for (const name of new Set([...Object.keys(standard), ...Object.keys(own)])) {
-    const vol = Math.round(+(name in own ? own[name] : standard[name])), T = audioRevision[name];   // nur Zahlen (Daten aus einer Datei)
+    const vol = Math.round(+(name in own ? own[name] : standard[name])),
+      T = audioRevision[name]; // nur Zahlen (Daten aus einer Datei)
     if (!Number.isFinite(vol) || vol < 0 || vol > 2000 || (T && T.vol === vol)) continue;
     if (T) T.vol = vol;
     audioSet(name, "SetInputVolume", { inputVolumeMul: vol / 100 });
@@ -157,26 +265,59 @@ function sceneVolumesApply(k) {
   audioDraw();
 }
 let audioLastScene = null;
-setInterval(() => {                                               // jeder Weg zählt: Klick, Strg K, DACH, Sitzung laden
-  const k = audioScene(); if (k === audioLastScene) return;
-  const first = audioLastScene === null; audioLastScene = k;
+setInterval(() => {
+  // jeder Weg zählt: Klick, Strg K, DACH, Sitzung laden
+  const k = audioScene();
+  if (k === audioLastScene) return;
+  const first = audioLastScene === null;
+  audioLastScene = k;
   if (!first) sceneVolumesApply(k);
 }, 250);
 
 // VDO.Ninja-Gast als eigene Browserquelle nur für den Ton (unsichtbar klein), im Overlay wird sein Ton dann stumm geschaltet
 async function audioSourceCreate(k, n) {
-  const Q = (Z.sources || {})[k] || {}; let u = (Q.url || "").trim();
+  const Q = (Z.sources || {})[k] || {};
+  let u = (Q.url || "").trim();
   if (!/^https?:\/\//i.test(u)) u = "https://vdo.ninja/?view=" + encodeURIComponent(u);
   u += (u.includes("?") ? "&" : "?") + "novideo&cleanoutput";
-  const scene = onSource() ? "Cast – Sendung" : ((sceneCfg().list["cast-duo"] || {}).obs || "Cast – Sendung"), name = "Cast – Ton " + n;
-  if (!await confirmDialog({ title: `${n}: eigene Tonquelle in OBS?`, text: `In „${scene}“ entsteht „${name}“ – nur der Ton von ${n}, regelbar wie jede OBS-Quelle. Im Overlay wird sein Ton stumm, damit nichts doppelt läuft.`, button: "Anlegen" })) return;
+  const scene = onSource() ? "Cast – Sendung" : (sceneCfg().list["cast-duo"] || {}).obs || "Cast – Sendung",
+    name = "Cast – Ton " + n;
+  if (
+    !(await confirmDialog({
+      title: `${n}: eigene Tonquelle in OBS?`,
+      text: `In „${scene}“ entsteht „${name}“ – nur der Ton von ${n}, regelbar wie jede OBS-Quelle. Im Overlay wird sein Ton stumm, damit nichts doppelt läuft.`,
+      button: "Anlegen",
+    }))
+  )
+    return;
   try {
-    const fresh = await channel.obs.question("CreateInput", { sceneName: scene, inputName: name, inputKind: "browser_source",
-      inputSettings: { url: u, width: 16, height: 16, reroute_audio: true, shutdown: false, restart_when_active: false } });
-    try { await channel.obs.question("SetSceneItemIndex", { sceneName: scene, sceneItemId: fresh.sceneItemId, sceneItemIndex: 0 }); } catch (err) {}
-    Z.audio = Z.audio || {}; Z.audio[k] = Object.assign({}, Z.audio[k], { obs: true }); send();
+    const fresh = await channel.obs.question("CreateInput", {
+      sceneName: scene,
+      inputName: name,
+      inputKind: "browser_source",
+      inputSettings: {
+        url: u,
+        width: 16,
+        height: 16,
+        reroute_audio: true,
+        shutdown: false,
+        restart_when_active: false,
+      },
+    });
+    try {
+      await channel.obs.question("SetSceneItemIndex", {
+        sceneName: scene,
+        sceneItemId: fresh.sceneItemId,
+        sceneItemIndex: 0,
+      });
+    } catch (err) {}
+    Z.audio = Z.audio || {};
+    Z.audio[k] = Object.assign({}, Z.audio[k], { obs: true });
+    send();
     setTimeout(audioFetch, 600);
-  } catch (err) { alert("OBS: " + (err.message || err)); }
+  } catch (err) {
+    alert("OBS: " + (err.message || err));
+  }
 }
 
 // Ton im App-Fenster (Vorschau): Standard aus – betrifft nur dieses Fenster, nie den Stream.
@@ -184,17 +325,39 @@ async function audioSourceCreate(k, n) {
 // die Lautstärke regelt die App für alles im Fenster – die Vorschau selbst spielt dann mit 100 %.
 function monitorSend() {
   if (window.castApp) window.castApp.audio(!!ui.appAudio, ui.appAudioVol ?? 60);
-  try { $("frame").contentWindow.postMessage({ cast: "monitor", mode: ui.appAudio ? "app" : "off", vol: window.castApp ? 100 : (ui.appAudioVol ?? 60) }, location.origin); } catch (err) {}
+  try {
+    $("frame").contentWindow.postMessage(
+      { cast: "monitor", mode: ui.appAudio ? "app" : "off", vol: window.castApp ? 100 : (ui.appAudioVol ?? 60) },
+      location.origin
+    );
+  } catch (err) {}
 }
 function appAudioDraw() {
-  $("appAudio").classList.toggle("on", !!ui.appAudio); $("appAudio").setAttribute("aria-checked", !!ui.appAudio);
-  $("appAudioVol").value = ui.appAudioVol ?? 60; $("appAudioVol").disabled = !ui.appAudio; $("appAudioText").textContent = ui.appAudio ? (ui.appAudioVol ?? 60) + " %" : "off";
-  $("appAudioHint").textContent = ui.appAudio ? "Du hörst die Vorschau im App-Fenster – Videos, Kameras, Clips und Seiten. Der Stream bleibt unverändert." : "Das App-Fenster ist stumm. Der Stream in OBS ist davon nicht betroffen.";
+  $("appAudio").classList.toggle("on", !!ui.appAudio);
+  $("appAudio").setAttribute("aria-checked", !!ui.appAudio);
+  $("appAudioVol").value = ui.appAudioVol ?? 60;
+  $("appAudioVol").disabled = !ui.appAudio;
+  $("appAudioText").textContent = ui.appAudio ? (ui.appAudioVol ?? 60) + " %" : "off";
+  $("appAudioHint").textContent = ui.appAudio
+    ? "Du hörst die Vorschau im App-Fenster – Videos, Kameras, Clips und Seiten. Der Stream bleibt unverändert."
+    : "Das App-Fenster ist stumm. Der Stream in OBS ist davon nicht betroffen.";
 }
-$("appAudio").onclick = () => { ui.appAudio = !ui.appAudio; uiSave(); appAudioDraw(); monitorSend(); };
-$("appAudioVol").oninput = () => { ui.appAudioVol = +$("appAudioVol").value; $("appAudioText").textContent = ui.appAudioVol + " %"; uiSave(); monitorSend(); };
+$("appAudio").onclick = () => {
+  ui.appAudio = !ui.appAudio;
+  uiSave();
+  appAudioDraw();
+  monitorSend();
+};
+$("appAudioVol").oninput = () => {
+  ui.appAudioVol = +$("appAudioVol").value;
+  $("appAudioText").textContent = ui.appAudioVol + " %";
+  uiSave();
+  monitorSend();
+};
 $("frame").addEventListener("load", () => setTimeout(monitorSend, 400));
-appAudioDraw(); if (window.castApp) monitorSend(); setTimeout(monitorSend, 1200);
+appAudioDraw();
+if (window.castApp) monitorSend();
+setTimeout(monitorSend, 1200);
 /* ---------- Cleanfeed ---------- */
 function cleanDraw() {
   const ing = onSource() && Z.broadcast.scene === "ingame";
@@ -202,36 +365,94 @@ function cleanDraw() {
   $("cleanButton").classList.toggle("on", !!Z.broadcast.clean);
   $("cleanButton").textContent = Z.broadcast.clean ? "Cleanfeed · AN" : "Cleanfeed";
 }
-$("cleanButton").onclick = () => { Z.broadcast.clean = !Z.broadcast.clean; cleanDraw(); send(); };
+$("cleanButton").onclick = () => {
+  Z.broadcast.clean = !Z.broadcast.clean;
+  cleanDraw();
+  send();
+};
 // eigene OBS-Szene „Cast – Cleanfeed“: alles aus der Ingame-Szene außer den Grafiken der App
-document.querySelector('details[data-area=scenes-setup] .content, #szenenEinrichten')?.insertAdjacentHTML("beforeend", `
+document.querySelector("details[data-area=scenes-setup] .content, #szenenEinrichten")?.insertAdjacentHTML(
+  "beforeend",
+  `
   <div class="line" style="margin-top:10px"><button class="button" id="cleanObs">Cleanfeed-Szene in OBS anlegen</button></div>
   <p class="small" id="cleanObsStatus">Legt „Cast – Cleanfeed“ an: dieselben Quellen wie in der Ingame-Szene (z. B. Spielaufnahme, Ton), aber ohne die Grafiken der App.
-    Ausgeben z. B. über OBS → Virtuelle Kamera (Ausgabe „Szene“), NDI oder Source Record.</p>`);
-const TRANSFORM_FIELDS = ["positionX", "positionY", "rotation", "scaleX", "scaleY", "alignment", "boundsType", "boundsAlignment", "boundsWidth", "boundsHeight", "cropLeft", "cropRight", "cropTop", "cropBottom", "cropToBounds"];
+    Ausgeben z. B. über OBS → Virtuelle Kamera (Ausgabe „Szene“), NDI oder Source Record.</p>`
+);
+const TRANSFORM_FIELDS = [
+  "positionX",
+  "positionY",
+  "rotation",
+  "scaleX",
+  "scaleY",
+  "alignment",
+  "boundsType",
+  "boundsAlignment",
+  "boundsWidth",
+  "boundsHeight",
+  "cropLeft",
+  "cropRight",
+  "cropTop",
+  "cropBottom",
+  "cropToBounds",
+];
 async function cleanfeedCreate() {
-  const st = t => { $("cleanObsStatus").textContent = t; };
+  const st = t => {
+    $("cleanObsStatus").textContent = t;
+  };
   if (!channel.obs.isOpen) return st("Erst mit OBS verbinden (⚙ App-Einstellungen).");
-  const source = onSource() ? "Cast – Sendung" : ((sceneCfg().list.ingame || {}).obs || "");
+  const source = onSource() ? "Cast – Sendung" : (sceneCfg().list.ingame || {}).obs || "";
   if (!source) return st("Für Ingame ist keine OBS-Szene zugeordnet.");
   try {
     const { sceneItems } = await channel.obs.question("GetSceneItemList", { sceneName: source });
-    const take = (sceneItems || []).filter(x => !/^Cast – (Overlay|Hintergrund)/.test(x.sourceName)).sort((a, b) => a.sceneItemIndex - b.sceneItemIndex);
-    if (!take.length) return st(`In „${source}“ liegt außer den Grafiken der App nichts – zuerst die Spielaufnahme dort einfügen.`);
-    if (!await confirmDialog({ title: "Cleanfeed-Szene anlegen?", text: `In OBS entsteht (oder wird erneuert) „Cast – Cleanfeed“ mit diesen Quellen aus „${source}“:`, list: take.map(x => x.sourceName), button: "Anlegen" })) return;
+    const take = (sceneItems || [])
+      .filter(x => !/^Cast – (Overlay|Hintergrund)/.test(x.sourceName))
+      .sort((a, b) => a.sceneItemIndex - b.sceneItemIndex);
+    if (!take.length)
+      return st(`In „${source}“ liegt außer den Grafiken der App nichts – zuerst die Spielaufnahme dort einfügen.`);
+    if (
+      !(await confirmDialog({
+        title: "Cleanfeed-Szene anlegen?",
+        text: `In OBS entsteht (oder wird erneuert) „Cast – Cleanfeed“ mit diesen Quellen aus „${source}“:`,
+        list: take.map(x => x.sourceName),
+        button: "Anlegen",
+      }))
+    )
+      return;
     const { scenes } = await channel.obs.question("GetSceneList", {});
-    if ((scenes || []).some(x => x.sceneName === "Cast – Cleanfeed")) await channel.obs.question("RemoveScene", { sceneName: "Cast – Cleanfeed" });
+    if ((scenes || []).some(x => x.sceneName === "Cast – Cleanfeed"))
+      await channel.obs.question("RemoveScene", { sceneName: "Cast – Cleanfeed" });
     await channel.obs.question("CreateScene", { sceneName: "Cast – Cleanfeed" });
     for (const x of take) {
-      const fresh = await channel.obs.question("CreateSceneItem", { sceneName: "Cast – Cleanfeed", sourceName: x.sourceName, sceneItemEnabled: x.sceneItemEnabled !== false });
+      const fresh = await channel.obs.question("CreateSceneItem", {
+        sceneName: "Cast – Cleanfeed",
+        sourceName: x.sourceName,
+        sceneItemEnabled: x.sceneItemEnabled !== false,
+      });
       try {
-        const { sceneItemTransform: t } = await channel.obs.question("GetSceneItemTransform", { sceneName: source, sceneItemId: x.sceneItemId });
-        const clean = {}; TRANSFORM_FIELDS.forEach(k => { if (t && t[k] !== undefined) clean[k] = t[k]; });
-        if (clean.boundsType === "OBS_BOUNDS_NONE") { delete clean.boundsWidth; delete clean.boundsHeight; }
-        await channel.obs.question("SetSceneItemTransform", { sceneName: "Cast – Cleanfeed", sceneItemId: fresh.sceneItemId, sceneItemTransform: clean });
+        const { sceneItemTransform: t } = await channel.obs.question("GetSceneItemTransform", {
+          sceneName: source,
+          sceneItemId: x.sceneItemId,
+        });
+        const clean = {};
+        TRANSFORM_FIELDS.forEach(k => {
+          if (t && t[k] !== undefined) clean[k] = t[k];
+        });
+        if (clean.boundsType === "OBS_BOUNDS_NONE") {
+          delete clean.boundsWidth;
+          delete clean.boundsHeight;
+        }
+        await channel.obs.question("SetSceneItemTransform", {
+          sceneName: "Cast – Cleanfeed",
+          sceneItemId: fresh.sceneItemId,
+          sceneItemTransform: clean,
+        });
       } catch (err) {}
     }
-    st(`✓ „Cast – Cleanfeed“ angelegt (${take.length} Quelle${take.length > 1 ? "n" : ""}). Ausgeben z. B. über die virtuelle Kamera mit Ausgabe „Szene“.`);
-  } catch (err) { st("OBS: " + (err.message || err)); }
+    st(
+      `✓ „Cast – Cleanfeed“ angelegt (${take.length} Quelle${take.length > 1 ? "n" : ""}). Ausgeben z. B. über die virtuelle Kamera mit Ausgabe „Szene“.`
+    );
+  } catch (err) {
+    st("OBS: " + (err.message || err));
+  }
 }
 if ($("cleanObs")) $("cleanObs").onclick = cleanfeedCreate;

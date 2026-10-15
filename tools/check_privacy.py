@@ -68,6 +68,7 @@ def file_problems() -> list[str]:
 
 
 def main() -> None:
+    """Print every problem found and exit with code 1 if there is one."""
     problems = commit_problems() + file_problems()
     for problem in problems:
         print("✗", problem)                            # never print the address itself – the log is public

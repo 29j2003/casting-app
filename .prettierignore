@@ -1,0 +1,8 @@
+# generated or data-only files
+web/legacy.js
+web/lang-en.js
+web/*.html
+tests/
+build/
+dist/
+pyinstaller-work/

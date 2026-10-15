@@ -33,13 +33,14 @@ JSON-Felder). Texte, die Nutzer sehen, sind deutsch und bekommen eine englische 
            (state,    │ Overlays │◄───│ Steuerseite │  web/control.html
             live …)   │ in OBS   │    │  (Z, send())│
                       └──────────┘    └─────────────┘
-                 web/overlay.html + broadcast.js + cast.js
+                 web/overlay.html + broadcast.js + cast/ (als /cast.js)
 ```
 
 * **Der Zustand `Z`** ist alles, was eine Sendung ausmacht: Teams, Texte, Szene, Einblendungen, Turnier, Theme …
   Standardwerte und alle Felder stehen in `web/cast-core.js` (`DEFAULT`). Die Steuerseite ändert `Z` und ruft `send()` auf.
   `send()` schickt `Z` an den Server (`POST /api/state`), und der Server verteilt es per Server-Sent Events
-  (`/api/events`) an alle Overlays. Die Overlays zeichnen mit `web/cast.js` neu – aber nur, was sich geändert hat.
+  (`/api/events`) an alle Overlays. Die Overlays zeichnen mit `web/cast/` (ausgeliefert als `/cast.js`) neu – aber nur, was
+  sich geändert hat.
 * **Ein Overlay für alles:** OBS hat eine Browserquelle `overlay.html`. `web/broadcast.js` lädt dort die Szenen
   (`web/<scene>.html`) und macht die Übergänge. Teile, die in beiden Szenen vorkommen (`data-part`), bleiben stehen
   oder gleiten an ihren neuen Platz.
@@ -61,7 +62,7 @@ JSON-Felder). Texte, die Nutzer sehen, sind deutsch und bekommen eine englische 
 | `web/control.css` | Steuerseite: Aussehen (Farben als Variablen in `:root`) |
 | `web/control/01-core.js` … `13-app.js` | Steuerseite: Logik nach Themen (Lageplan in `01-core.js`); der Server liefert sie verbunden als `/control.js` |
 | `web/cast-core.js` | gemeinsamer Kern: Standardzustand, Übertragung, Turnier-Logik, Overlay-Texte |
-| `web/cast.js` | Zeichnen aller Overlay-Teile |
+| `web/cast/01-base.js` … `15-connection.js` | Overlays: Zeichnen aller Teile nach Themen (Lageplan in `01-base.js`); der Server liefert sie verbunden und in eine Funktion gekapselt als `/cast.js` |
 | `web/broadcast.js` | Szenenwechsel und Übergänge in `overlay.html` |
 | `web/themes.js` | die mitgelieferten Themes |
 | `web/<scene>.html` | Szenen – **erzeugt** von `tools/generate_scenes.py` |
@@ -69,8 +70,25 @@ JSON-Felder). Texte, die Nutzer sehen, sind deutsch und bekommen eine englische 
 | `web/legacy.js`, `casting_app/legacy.py` | Übernahme alter Daten (Version 2.1 und älter) |
 | `tests/` | pytest-Tests; `tests/live/` Skripte gegen die laufende App |
 
-Große Dateien haben oben einen Kopfkommentar mit ihrem Aufbau. In `web/control/*.js` und `web/cast-core.js` sind die
-Abschnitte mit `/* ---------- Name ---------- */` markiert – danach suchen.
+Große Dateien haben oben einen Kopfkommentar mit ihrem Aufbau. In `web/control/*.js`, `web/cast/*.js` und
+`web/cast-core.js` sind die Abschnitte mit `/* ---------- Name ---------- */` markiert – danach suchen.
+
+**Nummerierte Teile (`web/control/`, `web/cast/`):** Was im Browser *ein* Skript ist, liegt für Menschen in mehreren
+Dateien nach Themen. Der Server hängt sie in Namensreihenfolge aneinander (`joined_script()` in `app_server.py`,
+`JOINED_SCRIPTS`) und baut neu, sobald sich eine Datei ändert. Eine Funktion darf deshalb in einer späteren Datei stehen
+als ihr Aufruf. `/cast.js` ist in eine Funktion gekapselt (nichts davon ist global – nach außen nur `window.CastOverlay`),
+`/control.js` nicht (Tests und Konsole rufen Funktionen der Steuerseite direkt auf). Neue Datei = neue Nummer an der
+passenden Stelle; `const`/`let`, die beim Laden schon gebraucht werden, müssen vor ihrer ersten Nutzung stehen.
+
+**Code-Stil:** JavaScript und CSS sind mit [Prettier](https://prettier.io) formatiert (Einstellungen in
+`.prettierrc.json`, Zeilenbreite 120; ausgenommen sind erzeugte Dateien und das Wörterbuch `lang-en.js`, siehe
+`.prettierignore`). Nach Änderungen: `npx prettier@3 --write web casting_app/desktop/scripts` (braucht Node.js, gehört
+nicht zur App). Python: Docstring je Modul, Klasse und öffentlicher Funktion, englische Kommentare; `pyflakes` läuft in der CI.
+
+**Eigene Version (Fork):** Liga-Design → [Ein neues Theme](#ein-neues-theme-liga-design); Szenen →
+`tools/generate_scenes.py`; ein neues Overlay-Teil → eigene Datei in `web/cast/` und die Zeichnen-Funktion in
+`DRAW_PARTS` (`web/cast/14-draw.js`) eintragen; ein neuer Bereich der Steuerseite → eigene Datei in `web/control/` plus
+Aufbau in `control.html`. Die Rezepte unten beschreiben die Schritte.
 
 ## Einrichten, starten, testen
 
@@ -137,7 +155,7 @@ Wörter, die das Overlay selbst schreibt (Turnierrunden, „Freilos“, Hinweise
    für Haken `data-kind="bool"`, für mehrzeilige Listen `data-kind="list"`.
 3. **Anzeige:** ein Element mit `data-t="texts.subtitle"` in der Szene zeigt den Text automatisch an
    (die Szene wird erzeugt, also in `tools/generate_scenes.py` einbauen, siehe nächstes Rezept). Was mehr als Text
-   braucht, zeichnet eine Funktion in `web/cast.js`.
+   braucht, zeichnet eine Funktion in `web/cast/` (Teil in `DRAW_PARTS`, `14-draw.js`).
 4. **Übersetzung** des neuen Beschriftungstexts in `web/lang-en.js`.
 
 ### Eine Szene ändern oder eine neue Szene anlegen
@@ -160,7 +178,7 @@ Die Dateien `web/<scene>.html` werden erzeugt – nie von Hand ändern.
 
 ### Eine neue Einblendungsart
 1. `web/cast-core.js` → `GFX_DEFAULT_POS`: Art und Standardposition.
-2. `web/cast.js` → `gfxContent()`: was die Einblendung zeigt.
+2. `web/cast/07-graphics.js` → `gfxContent()`: was die Einblendung zeigt.
 3. `web/cast.css`: Aussehen als `.gfx-<art>`. Die Position kommt von `.pos-…`.
 4. Steuerseite:
    * `web/control/…` → `GFX_NAMES` (Name in der Liste)
@@ -206,7 +224,7 @@ So bleiben alle Stellen gleich, ohne eigenen Abgleich. Neue Texte → `web/lang-
 
 `Z.background.playlists` (Felder in `web/control/07-background.js`, Abschnitt „Playlisten“). `bgApply(scene)` schreibt vor
 jedem Senden, was laufen soll, nach `Z.background.videos` (Liste) und `Z.background.play` (Übergang, Dauer, Reihenfolge) –
-das Overlay (`cast.js`: `background()`) kennt keine Playlisten. Clips: `Z.background.clip = { id: Zeitpunkt, videos, audio }`,
+das Overlay (`cast/12-background.js`: `background()`) kennt keine Playlisten. Clips: `Z.background.clip = { id: Zeitpunkt, videos, audio }`,
 jede Seite spielt einen Abruf einmal (`clips()`). Alte Zustände: `bgPlaylists()` macht aus `videos` die Playlist „Standard“.
 Spielt OBS ab (`source: "obs"`), bekommt die Quelle „Cast – Hintergrund“ die Videos (`obsBackground(true)`).
 * **Ton je Szene:** `bgAudioFor(szene)` – eigene Wahl der Szene (`Z.background.sceneAudio[szene]`, Knopf „Ton an/aus“
@@ -220,14 +238,14 @@ Spielt OBS ab (`source: "obs"`), bekommt die Quelle „Cast – Hintergrund“ d
   `SetSceneItemEnabled` (versteckt: Filter wieder 100 %, Medium per `TriggerMediaInputAction` angehalten). Ein neuer
   Wechsel (`bgFadeRun`) bricht eine laufende Blende ab und setzt an der aktuellen Deckkraft an. Ohne Filter: hart.
 * **Gleichlauf:** `Z.background.play.since` = Start der Playlist (bleibt, solange die Videos gleich sind). Ein einzelnes
-  Video in Schleife springt beim Start auf `(jetzt − since) % Dauer` (`bgSince` in `cast.js`), die Vorschau prüft alle
+  Video in Schleife springt beim Start auf `(jetzt − since) % Dauer` (`bgSince` in `cast/12-background.js`), die Vorschau prüft alle
   4 s nach. Spielt OBS ab, fragt die Steuerseite alle 4 s `GetMediaInputStatus` und schickt `{cast: "bg-sync", cursor, at}`
   an ihre Vorschau-iframes (`bgSeek`, Sprung erst ab 0,35 s Abweichung).
 
 ### Werbung (Szene `ads`)
 
 `Z.ads = { videos, badge, back, play }`. Die Steuerseite (`07-background.js`, „Werbung“) setzt `play = { id, list, from }`
-und wechselt nach `ads`; `cast.js` (`ads()`) spielt die Liste im Teil `[data-part=ads]` nacheinander mit Ton, das letzte
+und wechselt nach `ads`; `cast/13-ads-music.js` (`ads()`) spielt die Liste im Teil `[data-part=ads]` nacheinander mit Ton, das letzte
 Bild bleibt stehen. Die Vorschau im App-Fenster meldet `ads-progress` und `ads-ended` per `postMessage` an die
 Steuerseite; danach läuft `adsBack` (Sekunden aus `back`) bis zurück zu `from`. Verlässt die Sendung die Szene, wird
 `play` gelöscht (`sceneSwitch`, bei DACH-Seiten `dachSwitch`). Schild „WERBUNG“/„AD“: `OVERLAY_WORDS.ad`.
@@ -265,7 +283,7 @@ bisher laufenden Spiels über `gameId` in `Z.tournament.res` – nur bei selbst 
 ### Teams-Vorstellung (Szene `teams`, Folien)
 
 Eine Szene mit drei Folien (`.ti-slide[data-slide=a|b|compare]` in `.ti-slides`); Kopfzeile und untere Leiste bleiben stehen.
-`cast.js` → `teamIntro()` setzt `data-tislide` an der Szene (Body bzw. `.layer`) und füllt Spielerkarten (`data-ti-players`),
+`cast/08-players-team-intro.js` → `teamIntro()` setzt `data-tislide` an der Szene (Body bzw. `.layer`) und füllt Spielerkarten (`data-ti-players`),
 Werte (`data-ti="a.winrate"` …) und den Vergleich (`data-ti-tape`). Welche Folie läuft, rechnen Overlay und Steuerseite gleich:
 von Hand `Z.teamIntro.slide`, automatisch aus `auto` (Sekunden) und `started` (`teamIntroSlide()` / `tiCurrent()`).
 Neue Folie: Markup in `tools/generate_scenes.py` (`ti_*`), Schlüssel in `slides`, CSS-Regel für `[data-tislide=…]`, `tiSlides()` in `05-live.js`.
@@ -295,7 +313,7 @@ gibt es dieselbe Wahl beim Einrichten. `tourFocus(id)` (`09-tournament.js`) spri
 Teams; `tourGroup(v)` hebt die Hervorhebung auf, wenn das Team in der neuen Gruppe nicht steht; `tourFocusOptions()` listet
 nur Teams der gewählten Gruppe.
 
-Im Overlay (`cast.js`, `tournamentDraw`) gilt die Hervorhebung nur, wenn das Team zu sehen ist (`teamShown`); dann ist seine
+Im Overlay (`cast/05-tournament.js`, `tournamentDraw`) gilt die Hervorhebung nur, wenn das Team zu sehen ist (`teamShown`); dann ist seine
 Zeile in der Akzentfarbe getönt. Das Profil steht nie über dem Turnier:
 - Gruppen-Raster mit freiem Feld (z. B. 5 Gruppen in 3 Spalten): als `.bracket-cell` im Raster, absolut gesetzt und mit
   `zoom` auf Tabellengröße – die Zeile wird nicht höher, die Tabellen bleiben, wo sie sind.
@@ -318,7 +336,7 @@ Ein Spiel in `Z.tournament.res` bekommt `fixed: true`, sobald es von Hand geänd
 
 ### Box-Stil der Overlays (hell · dunkel · Mischung)
 
-Theme-Feld `boxStyle` (`light` Standard, `dark`, `mixed`; in `Z.themeData[theme]`). `cast.js` → `theme()` setzt
+Theme-Feld `boxStyle` (`light` Standard, `dark`, `mixed`; in `Z.themeData[theme]`). `cast/01-base.js` → `theme()` setzt
 `body[data-boxstyle]` und `--paper`/`--paper-text` (die hellen Theme-Farben). `cast.css` (Abschnitt „Box-Stil“) stellt bei
 dunkel/Mischung `--light`/`--text-dark` auf dunkel um – alle Felder, die `var(--light)` nutzen, folgen. Logo-Felder
 (Sponsor, Marke) nutzen `--paper` und bleiben hell; bei Mischung auch Titel (`[data-part=title]`, `[data-part=head]`, `.large`).
@@ -417,7 +435,7 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
   - **Überblendung** (gleicher Teil, anderer Inhalt) läuft nacheinander: der alte Inhalt geht in der ersten Hälfte, der
     neue kommt ab 45 % – nie zwei halb durchsichtige Texte übereinander. Gilt für alle Übergangsarten (`OUT`/`IN`).
 * **Logo kleiner statt Raster verschieben:** Ein Szenen-Logo mit `data-max` (Breite in px, z. B. „4 Personen“ über
-  `max_brand` in `tools/generate_scenes.py`) wird über `--brand-scale` verkleinert (`cast.js`, Theme); erst wenn es dabei
+  `max_brand` in `tools/generate_scenes.py`) wird über `--brand-scale` verkleinert (`cast/01-base.js`, Theme); erst wenn es dabei
   unter 55 % fiele, steht nur das Icon. Die CSS-Regel `.brand { scale: var(--brand-scale, 1) }` gleitet beim Wechsel mit.
 * **Docks** (`web/control/06-layout.js`): `ui.dock.bottom/right` ist eine Liste von Einträgen – Bereich (`"audio"` oder
   `{area, open}`), Tab-Gruppe (`{tabs: […], active}`) oder Stapel (`{stack: [Einträge]}`, nur unter der Vorschau: eine Spalte
@@ -429,7 +447,7 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
 * **Erklärtexte** (`06-layout.js`): feste `p.small` ohne `id` direkt in `.content` eines Bereichs, länger als 70 Zeichen, bekommen
   `.explain` und sind versteckt; das „?“ am Titel schaltet `details.explain-open`. Statusmeldungen brauchen deshalb eine `id`.
 * **Teams-Vorstellung** (`05-live.js`, `tiDraw`): Reiter `ui.tiTab`; Daten in `Z.teamIntro` – `names` (Anzeigename nur für
-  `.ti-name`-Spans der Szene, `cast.js → teams()`), `rows` (Zeilen im Vergleich), `h2h` (direkter Vergleich).
+  `.ti-name`-Spans der Szene, `cast/03-teams-veto-series.js → teams()`), `rows` (Zeilen im Vergleich), `h2h` (direkter Vergleich).
 * **Steuerseite schreibt nur Änderungen:** Zeitgeber (Timer alle 250 ms, Match-Leiste, Log) nutzen `setText`, `setImage`,
   `setHtml` (`01-core.js`) – das DOM wird nur angefasst, wenn sich der Wert wirklich ändert (spart Layout und Bildaufbau).
 * **DACH CS – Offiziell** (`web/broadcast.js`, `dachShow`): drei iframes im Wechsel. Ebenen: vorige Seite (z 1) ·
@@ -444,7 +462,7 @@ Wer ein Feld umbenennt oder einen gespeicherten Wert ändert, muss dafür sorgen
   (`dachMatchCheck`) und sperrt bei `false` die Szenen aus `DACH_NEEDS_MATCH` (`aria-disabled`). **Quelle je Rahmen:**
   `Z.dachFrame[seite][rahmen].src` (eine aus `DACH_SOURCES`, Standard = der Rahmen selbst); `dachFrameSet` legt je
   Quelle ein `.dach-cam[data-source]` an (dieselbe Quelle nur einmal). Quellenart **„Video“** (`Z.sources[k].type =
-  "video"`, `video: "media/videos/…"`, `loop`, `audio`) zeichnet `sources()` in `cast.js`. Neue Seite vermessen:
+  "video"`, `video: "media/videos/…"`, `loop`, `audio`) zeichnet `sources()` in `cast/10-sources.js`. Neue Seite vermessen:
   Video/Screenshot der Seite, gelbe Linie suchen (1920 × 1080), Werte in `DACH_FRAME` eintragen.
 * **PySide6 unter 6.12** (`pyproject.toml`): Ab 6.12 steckt Qt WebEngine im eigenen Paket `PySide6_WebEngine` (nicht mehr
   in Addons) – ohne es fehlt `PySide6.QtWebEngineWidgets`. Zum Umstieg: Paket ergänzen, `tools/build.py` und die
@@ -680,20 +698,26 @@ kommen aus `tools/build.py` – wer sie ändert, muss `asset_suffix()` anpassen.
 * **Overlays im normalen Browser:** `http://localhost:8787/overlay.html` oder eine einzelne Szene, z. B.
   `http://localhost:8787/players.html?preview=1`.
 * **Studio-Modus:** zweite `overlay.html?preview=1&studio=<szene>` (`#studioFrame`, `13-app.js`); sie zeigt immer die gewählte
-  Szene (cast.js setzt `Z.broadcast.scene` nur dort um), Wechsel per `postMessage({cast: "studio", scene})` ohne Neuladen.
+  Szene (`cast/` setzt `Z.broadcast.scene` nur dort um), Wechsel per `postMessage({cast: "studio", scene})` ohne Neuladen.
 
 ## Worauf man achten muss
 
 * **Leistung** – die Overlays laufen in OBS während des Streams:
-  - nur neu zeichnen, was sich geändert hat (`newNeeded` in `cast.js`)
+  - nur neu zeichnen, was sich geändert hat (`newNeeded` in `cast/01-base.js`)
   - keine Endlos-Animationen im Leerlauf
   - keine Filter auf großen Flächen
   - teure Messungen nur bei Änderung: `fit()` (Namen kürzen) merkt sich Text, Theme-Schrift und Breite und misst sonst
     nicht neu; Spielstand und Serie schreiben nur, wenn sich der Text ändert; Live-Stats zeichnen die Teams nur bei
-    geänderten Werten neu
+    geänderten Werten neu; `fit()` springt beim Verkleinern gleich nahe ans Ergebnis statt Pixel für Pixel
+  - erst alle Lagen lesen, dann schreiben (Szenenwechsel in `broadcast.js`, Ecken der Boxen) – abwechselnd erzwänge
+    jedes Lesen eine neue Berechnung der ganzen Seite
+  - OBS-Bildtakt (`cast/15-connection.js`) nur, solange sich etwas bewegt (Animation, Video, eingebettete Seite)
+  - „Über dem Spiel“ wird nach dem Ausblenden geleert, sonst zeichnet das Overlay den unsichtbaren Inhalt weiter
 * **Leistung der Steuerseite und des Servers:**
-  - `/control.js` wird einmal verbunden und erst neu gebaut, wenn sich eine Datei in `web/control/` ändert
-    (`control_script()`, Stempel aus den Änderungszeiten)
+  - `/control.js` und `/cast.js` werden einmal verbunden und erst neu gebaut, wenn sich eine ihrer Dateien ändert
+    (`joined_script()`, Stempel aus den Änderungszeiten)
+  - die Vorschau bekommt wie OBS den kleinen Zustand mit Bild-Verweisen und jedes Bild nur einmal (`previewPost`)
+  - der Server liest einen neuen Zustand einmal als JSON und baut jedes Ereignis einmal für alle Seiten (`event_message`)
   - `video_info.py` merkt sich die Angaben je Datei (Pfad, Größe, Änderungszeit) – FFprobe läuft nur einmal je Video
   - Status der Unterseiten (`subStatusDraw`) rechnet nur sichtbare Gruppen und das Turnier einmal je Durchlauf (`subMemo`)
   - HTML nur setzen, wenn es sich ändert (`setHtml`); laufender Status (Werbung) wird als Text nachgetragen, ohne die Liste neu zu bauen
